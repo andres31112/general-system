@@ -1,0 +1,106 @@
+/* ======== ESTILO GENERAL ======== */
+body {
+    background-color: #f5f6f8;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #212529;
+}
+
+/* ======== TITULO PRINCIPAL ======== */
+h1 {
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 1.5rem;
+}
+
+/* ======== TARJETAS PRINCIPALES (izquierda) ======== */
+.card {
+    border: none;
+    border-radius: 10px;
+    background: #fff;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* Icono dentro de círculo */
+.card .d-inline-block {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 18px;
+    font-size: 1.8rem;
+}
+
+/* Título de tarjeta */
+.card-title {
+    font-weight: 600;
+    margin-top: 8px;
+    color: #212529;
+}
+
+/* ======== PANEL OSCURO (derecha) ======== */
+.card.bg-dark {
+    border-radius: 12px;
+    padding: 25px;
+    background: #212529;
+}
+
+.card.bg-dark h3 {
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.card.bg-dark p {
+    font-size: 0.9rem;
+    color: #adb5bd;
+    margin-bottom: 1.5rem;
+}
+
+/* Imagen ilustración */
+.card.bg-dark img {
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+/* ======== BOTONES PANEL OSCURO ======== */
+.card.bg-dark .btn {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-top: 8px;
+    padding: 10px 15px;
+}
+
+.card.bg-dark .btn-light {
+    background: #fff;
+    color: #212529;
+    border: none;
+}
+
+.card.bg-dark .btn-light:hover {
+    background: #e9ecef;
+}
+
+.card.bg-dark .btn-secondary {
+    background: #495057;
+    border: none;
+}
+
+.card.bg-dark .btn-secondary:hover {
+    background: #343a40;
+}
+
+/* ======== EFECTO HOVER ======== */
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-6px);
+}
