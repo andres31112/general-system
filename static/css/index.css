@@ -23,7 +23,7 @@
 }
 
 /* --- ========================================== --- */
-/* ---          ESTILOS BASE Y GENERALES          --- */
+/* ---         ESTILOS BASE Y GENERALES           --- */
 /* --- ========================================== --- */
 body {
     margin: 0;
@@ -62,7 +62,7 @@ body:has(.navbar.scrolled) main.content {
 
 
 /* --- ========================================== --- */
-/* ---          CABECERA ANIMADA (HEADER)         --- */
+/* ---       CABECERA ANIMADA (HEADER)            --- */
 /* --- ========================================== --- */
 header.main-header {
     position: relative;
@@ -121,7 +121,7 @@ header.main-header:has(.navbar.scrolled) {
 
 
 /* --- ========================================== --- */
-/* ---            BARRA DE NAVEGACIÓN             --- */
+/* ---           BARRA DE NAVEGACIÓN              --- */
 /* --- ========================================== --- */
 .navbar {
     z-index: 100;
@@ -158,6 +158,24 @@ header.main-header:has(.navbar.scrolled) {
     color: var(--color-primario);
 }
 
+/* Nuevo botón de Iniciar Sesión en la barra de navegación */
+.btn-login-nav {
+    background-color: transparent;
+    border: 1px solid var(--color-primario);
+    color: var(--color-primario);
+    padding: 8px 18px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    text-decoration: none;
+    transition: all var(--transicion-rapida);
+}
+.btn-login-nav:hover {
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+}
+
 .icon-profile {
     background-color: transparent;
     border: none;
@@ -184,7 +202,7 @@ header.main-header:has(.navbar.scrolled) {
     top: 0;
     left: 0;
     right: 0;
-    background-color: var(--color-fondo-seccion);
+    background-color: var(--color-blanco);
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     padding: 5px 20px;
 }
@@ -198,11 +216,12 @@ header.main-header:has(.navbar.scrolled) {
     width: 45px;
     height: 45px;
     box-shadow: none;
+    border-radius: 0;
 }
 
 
 /* --- ========================================== --- */
-/* ---                 SECCIONES                  --- */
+/* ---              SECCIONES                     --- */
 /* --- ========================================== --- */
 .banner {
     padding: 40px 24px;
@@ -324,7 +343,7 @@ header.main-header:has(.navbar.scrolled) {
 
 
 /* --- ========================================== --- */
-/* ---            CARRUSEL PERSONALIZADO          --- */
+/* ---          CARRUSEL PERSONALIZADO            --- */
 /* --- ========================================== --- */
 
 .carousel-component {
@@ -450,8 +469,89 @@ header.main-header:has(.navbar.scrolled) {
     width: 1.5rem;
 }
 
+
 /* --- ========================================== --- */
-/* ---          DISEÑO RESPONSIVO                 --- */
+/* ---             NUEVAS SECCIONES               --- */
+/* --- ========================================== --- */
+
+/* Sección de Filosofía */
+.philosophy-section {
+    background-color: var(--color-fondo-seccion);
+    padding: 60px 24px;
+    text-align: center;
+}
+.philosophy-section h2 {
+    margin-bottom: 40px;
+}
+.philosophy-section .row {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+.philosophy-icon {
+    font-size: 3rem;
+    color: var(--color-primario);
+    margin-bottom: 15px;
+}
+.philosophy-section h3 {
+    font-size: 1.5rem;
+    color: var(--color-primario-oscuro);
+    margin-bottom: 10px;
+}
+
+/* Formulario de contacto */
+.contact-form-section {
+    padding: 60px 24px;
+    background-color: var(--color-blanco);
+}
+.contact-form-section .container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+.contact-form-section h2 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.form-group {
+    margin-bottom: 20px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--color-texto-principal);
+}
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--color-borde-suave);
+    border-radius: 5px;
+    font-family: var(--fuente-secundaria);
+}
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 3px rgba(0, 120, 173, 0.2);
+}
+.submit-button {
+    width: 100%;
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+    border: none;
+    padding: 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color var(--transicion-rapida);
+}
+.submit-button:hover {
+    background-color: var(--color-primario-oscuro);
+}
+
+/* --- ========================================== --- */
+/* ---           DISEÑO RESPONSIVO                --- */
 /* --- ========================================== --- */
 
 @media (max-width: 991.98px) {

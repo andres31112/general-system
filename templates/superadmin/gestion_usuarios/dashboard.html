@@ -7,157 +7,8 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <style>
-        /*
-         * Estilos personalizados para el panel de gestión de usuarios.
-         */
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/dashboard.css') }}">
 
-        /* Variables CSS para una gestión de colores y sombras más sencilla */
-        :root {
-            --primary-color: #0d6efd;
-            --success-color: #198754;
-            --info-color: #0dcaf0;
-            --warning-color: #ffc107;
-            --dark-color: #212529;
-            --light-color: #f8f9fa;
-            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --card-hover-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-            --border-radius-lg: 1rem;
-        }
-
-        body {
-            background-color: var(--light-color);
-            font-family: 'Poppins', sans-serif; /* Fuente moderna recomendada */
-        }
-
-        /* --- Encabezado --- */
-        .main-header {
-            background-color: #fff;
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #e9ecef;
-            box-shadow: var(--card-shadow);
-        }
-
-        .search-bar .input-group-text {
-            background-color: #e9ecef;
-            border: none;
-            border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
-            color: #495057;
-        }
-
-        .search-bar .form-control {
-            border: none;
-            background-color: #e9ecef;
-            border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
-            transition: all 0.3s ease;
-        }
-
-        .search-bar .form-control:focus {
-            background-color: #fff;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-
-        .action-link {
-            font-size: 1.5rem;
-            color: #495057;
-            transition: color 0.3s ease;
-        }
-
-        .action-link:hover {
-            color: var(--primary-color);
-        }
-
-        /* --- Contenido Principal del Dashboard --- */
-        .dashboard-content {
-            padding: 3rem 1.5rem;
-        }
-
-        .main-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--dark-color);
-            margin-bottom: 2rem;
-        }
-
-        /* --- Estilos de las Tarjetas de Usuario --- */
-        .user-card {
-            border: none;
-            border-radius: var(--border-radius-lg);
-            background-color: #fff;
-            box-shadow: var(--card-shadow);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            padding: 2.5rem 1.5rem;
-            display: block;
-            height: 100%;
-            text-align: center;
-        }
-
-        .user-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--card-hover-shadow);
-        }
-
-        .icon-wrapper {
-            display: inline-block;
-            padding: 1.5rem;
-            border-radius: 50%;
-            margin-bottom: 1.5rem;
-            font-size: 2.5rem;
-            transition: background-color 0.3s ease;
-        }
-        
-        /* Colores para los iconos */
-        .professors-card .icon-wrapper { background-color: rgba(13, 110, 253, 0.1); color: var(--primary-color); }
-        .students-card .icon-wrapper { background-color: rgba(25, 135, 84, 0.1); color: var(--success-color); }
-        .parents-card .icon-wrapper { background-color: rgba(13, 202, 240, 0.1); color: var(--info-color); }
-        .admins-card .icon-wrapper { background-color: rgba(255, 193, 7, 0.1); color: var(--warning-color); }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        /* --- Sección de "Crear Usuario" --- */
-        .create-user-section {
-            height: 100%;
-            border-radius: var(--border-radius-lg);
-            overflow: hidden;
-            padding: 2rem;
-        }
-
-        .create-user-section img {
-            border-radius: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .create-user-section .section-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 0.5rem;
-        }
-
-        .create-user-section .section-description {
-            color: rgba(255, 255, 255, 0.75);
-            font-size: 0.95rem;
-            margin-bottom: 2rem;
-        }
-
-        .create-user-section .btn {
-            border-radius: 50px;
-            padding: 0.75rem 2rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .create-user-section .btn:hover {
-            background-color: #e9ecef;
-            color: var(--dark-color);
-            transform: scale(1.05);
-        }
-    </style>
 </head>
 <body>
 
@@ -211,7 +62,7 @@
                 </div>
 
                 <div class="col-md-6">
-                    <a href="#" class="user-card parents-card text-decoration-none">
+                    <a href="{{ url_for('admin.padres') }}" class="user-card parents-card text-decoration-none">
                         <div class="card-body">
                             <div class="icon-wrapper">
                                 <i class="fas fa-users"></i>
@@ -222,7 +73,7 @@
                 </div>
 
                 <div class="col-md-6">
-                    <a href="#" class="user-card admins-card text-decoration-none">
+                    <a href="{{ url_for('admin.superadmins') }}" class="user-card admins-card text-decoration-none">
                         <div class="card-body">
                             <div class="icon-wrapper">
                                 <i class="fas fa-pen-fancy"></i>

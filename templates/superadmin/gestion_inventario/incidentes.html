@@ -8,24 +8,156 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/equipos.css') }}">
-    <style>
-        .table-controls {
-            margin-bottom: 15px;
-        }
-        .paginacion {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 10px;
-            margin-top: 10px;
-        }
-    </style>
+
 </head>
 
 <body>
     {% extends "base.html" %}
     {% block content %}
+<style>
+    /* Variables CSS para una gestión de colores y sombras más sencilla */
+    :root {
+        --color-primario: #0078ad;
+        --color-primario-oscuro: #00628e;
+        --color-texto-principal: #2c3e50;
+        --color-texto-secundario: #7f8c8d;
+        --color-blanco: #FFFFFF;
+        --color-fondo-seccion: #f8f9fa;
+        --color-borde-suave: #ecf0f1;
+        --color-rojo: #dc3545;
+        --color-azul-claro: #17a2b8;
+    }
 
+    /* Estilos Generales */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--color-fondo-seccion);
+        color: var(--color-texto-principal);
+        margin: 0;
+    }
+
+    /* Encabezado */
+    .main-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--color-borde-suave);
+        background-color: var(--color-blanco);
+    }
+    
+    .main-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-primario);
+        margin: 0;
+    }
+    
+    .header-icons {
+        display: flex;
+        gap: 1.5rem;
+        color: var(--color-texto-secundario);
+    }
+
+    /* Contenedor de contenido principal */
+    .content-area {
+        padding: 2rem;
+    }
+
+    /* Controles de la tabla y botón de registro */
+    .table-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .form-control {
+        border-radius: 50px;
+        border: 1px solid var(--color-borde-suave);
+        padding: 0.75rem 1.25rem;
+        background-color: var(--color-blanco);
+    }
+
+    .form-control:focus {
+        border-color: var(--color-primario);
+        box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
+    }
+    
+    .btn-danger {
+        background-color: var(--color-rojo);
+        border-color: var(--color-rojo);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+    
+    .btn-primary {
+        background-color: var(--color-primario);
+        border-color: var(--color-primario);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--color-primario-oscuro);
+        border-color: var(--color-primario-oscuro);
+    }
+    
+    .btn-secondary {
+        background-color: var(--color-texto-secundario);
+        border-color: var(--color-texto-secundario);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+
+    /* Tabla */
+    .table-container {
+        background-color: var(--color-blanco);
+        border-radius: 1rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table-dark {
+        background-color: var(--color-primario-oscuro) !important;
+        color: var(--color-blanco);
+    }
+    
+    .table-dark th {
+        border-color: var(--color-primario);
+    }
+
+    .table-striped > tbody > tr:nth-of-type(odd) {
+        background-color: var(--color-fondo-seccion);
+    }
+
+    /* Paginación */
+    .paginacion {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--color-borde-suave);
+    }
+</style>
     <header class="main-header">
         <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
             <i class="fa-solid fa-arrow-left"></i>

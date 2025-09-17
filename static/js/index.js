@@ -121,7 +121,48 @@ function initCarousel(carouselId) {
     startAutoSlide();
 }
 
-// Inicializar el carrusel cuando el DOM esté listo
+// Funcionalidad de scroll suave para los botones
+function setupSmoothScroll(buttonId, targetId) {
+    const button = document.getElementById(buttonId);
+    if (button) {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                targetElement.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }
+}
+
+// Validación del formulario de contacto
+function setupContactForm() {
+    const form = document.getElementById('contact-form');
+    if (form) {
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const message = document.getElementById('message').value;
+
+            if (name.trim() === '' || email.trim() === '' || message.trim() === '') {
+                alert('Por favor, completa todos los campos.');
+                return;
+            }
+
+            // Aquí puedes añadir la lógica para enviar el formulario a un backend (Ej: Fetch API)
+            console.log('Formulario enviado:', { name, email, message });
+            alert('¡Gracias! Tu mensaje ha sido enviado. Nos pondremos en contacto contigo pronto.');
+            form.reset();
+        });
+    }
+}
+
+
+// Inicializar el carrusel y otras funciones cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     initCarousel('mi-carrusel-1');
+    setupSmoothScroll('contact-scroll-btn', 'contact-form');
+    setupSmoothScroll('admissions-btn', 'contact-form');
+    setupContactForm();
 });

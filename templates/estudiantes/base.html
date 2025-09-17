@@ -12,77 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/base.css') }}">
 
-    <style>
-        body {
-            display: flex;
-            min-height: 100vh;
-            font-family: 'Inter', sans-serif;
-        }
-        .sidebar {
-            width: 280px;
-            flex-shrink: 0;
-            transition: transform 0.3s ease-in-out;
-            z-index: 1050;
-        }
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-        }
-        @media (max-width: 991.98px) {
-            .sidebar {
-                position: fixed;
-                left: -280px;
-                height: 100%;
-            }
-            .sidebar.show {
-                transform: translateX(280px);
-            }
-            .main-content {
-                margin-left: 0;
-            }
-        }
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.75);
-            padding: 12px 15px;
-            transition: background-color 0.2s, color 0.2s;
-        }
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
-        .sidebar .nav-link i {
-            width: 20px;
-        }
-        .sidebar-footer {
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 20px !important;
-            padding-bottom: 20px !important;
-        }
-        .content-wrapper {
-            padding: 20px;
-            flex-grow: 1;
-        }
-        .nav-link.dropdown-toggle::after {
-            display: inline-block;
-            margin-left: .255em;
-            vertical-align: .255em;
-            content: "";
-            border-top: .3em solid;
-            border-right: .3em solid transparent;
-            border-bottom: 0;
-            border-left: .3em solid transparent;
-        }
-        .nav-link[aria-expanded="true"]::after {
-            transform: rotate(-180deg);
-        }
-        .collapse.show .nav-link,
-        .collapsing .nav-link {
-            padding-left: 3rem !important;
-        }
-    </style>
+    
 </head>
 <body class="bg-light">
 
@@ -92,59 +22,50 @@
         </div>
 
         <nav class="nav flex-column flex-grow-1 p-3">
-            <a href="{{ url_for('estudiante.estudiante_panel') }}" class="nav-link rounded my-1 {% if request.endpoint == 'estudiante.dashboard' %}active{% endif %}">
+            <a href="{{ url_for('estudiante.estudiante_panel') }}" class="nav-link rounded my-1 >
                 <i class="fas fa-home fa-fw me-2"></i>Inicio
             </a>
             
-            <a class="nav-link rounded my-1 dropdown-toggle" href="#academicaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="{% if 'academica' in request.endpoint or 'calificaciones' in request.endpoint or 'horario' in request.endpoint or 'inscripcion' in request.endpoint %}true{% else %}false{% endif %}">
+            <a class="nav-link rounded my-1 dropdown-toggle" href="#academicaSubmenu" data-bs-toggle="collapse" role="button" >
                 <i class="fas fa-book-open fa-fw me-2"></i>Gestión Académica
             </a>
-            <div class="collapse {% if 'academica' in request.endpoint or 'calificaciones' in request.endpoint or 'horario' in request.endpoint or 'inscripcion' in request.endpoint %}show{% endif %}" id="academicaSubmenu">
-                {% if current_user.has_permission('ver_calificaciones') %}
+            <div class="collapse  id="academicaSubmenu">
                 <a href="" class="nav-link rounded my-1">
                     <i class="fas fa-poll fa-fw me-2"></i>Calificaciones
                 </a>
-                {% endif %}
-                {% if current_user.has_permission('ver_horario') %}
+             
                 <a href="" class="nav-link rounded my-1">
                     <i class="fas fa-calendar-alt fa-fw me-2"></i>Horario de Clases
                 </a>
-                {% endif %}
-                {% if current_user.has_permission('ver_historial_academico') %}
+            
                 <a href="" class="nav-link rounded my-1">
                     <i class="fas fa-history fa-fw me-2"></i>Historial Académico
                 </a>
-                {% endif %}
-                {% if current_user.has_permission('inscripcion_materias') %}
+           
                 <a href="" class="nav-link rounded my-1">
                     <i class="fas fa-plus-square fa-fw me-2"></i>Inscripción de Materias
                 </a>
-                {% endif %}
+            
             </div>
 
-            {% if current_user.has_permission('ver_comunicaciones_estudiante') %}
-            <a href="" class="nav-link rounded my-1 {% if 'comunicaciones' in request.endpoint %}active{% endif %}">
+            
+            <a href="" class="nav-link rounded my-1 ">
                 <i class="fas fa-bullhorn fa-fw me-2"></i>Comunicaciones
             </a>
-            {% endif %}
+        
 
-            {% if current_user.has_permission('ver_estado_cuenta') %}
-            <a href="" class="nav-link rounded my-1 {% if 'estado_cuenta' in request.endpoint %}active{% endif %}">
+            <a href="" class="nav-link rounded my-1 ">
                 <i class="fas fa-dollar-sign fa-fw me-2"></i>Estado de Cuenta
             </a>
-            {% endif %}
-
-            {% if current_user.has_permission('editar_perfil') %}
-            <a href="" class="nav-link rounded my-1 {% if 'perfil' in request.endpoint %}active{% endif %}">
+   
+            <a href="" class="nav-link rounded my-1 ">
                 <i class="fas fa-user-circle fa-fw me-2"></i>Mi Perfil
             </a>
-            {% endif %}
-            
-            {% if current_user.has_permission('acceso_soporte') %}
-            <a href="" class="nav-link rounded my-1 {% if 'soporte' in request.endpoint %}active{% endif %}">
+           
+            <a href="" class="nav-link rounded my-1 ">
                 <i class="fas fa-question-circle fa-fw me-2"></i>Soporte
             </a>
-            {% endif %}
+           
         </nav>
 
         <div class="sidebar-footer p-3">

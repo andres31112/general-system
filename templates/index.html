@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-ie2d02b+a9zGgYgYq/6T2l2s9zH2h6bB6Q+sC3FfFfFfP3E4p4Zl4+x4j2l2s9zH2h6bB6Q+" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
     <title>Colegio Naciones Unidas - Inicio</title>
 </head>
@@ -32,14 +33,15 @@
                         <li class="nav-item"><a class="nav-link" href="#">Inicio</a></li>
                         <li class="nav-item"><a class="nav-link" href="#">Quienes Somos</a></li>
                         <li class="nav-item"><a class="nav-link" href="#">Comunidad</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#">Contactos</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#contact-form">Contactos</a></li>
                     </ul>
-                    <div class="d-flex">
+                    <div class="d-flex align-items-center gap-3">
                         <a href="{{ url_for('auth.login') }}" class="icon-profile btn" aria-label="Iniciar Sesión">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
                                 <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
                             </svg>
                         </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn-login-nav">Iniciar Sesión</a>
                     </div>
                 </div>
             </div>
@@ -50,8 +52,8 @@
         <section class="banner">
             <div class="banner-content">
                 <div class="welcome-message">
-                    <h1>Mensaje de bienvenida</h1>
-                    <a href="{{ url_for('auth.login') }}" class="btn-login" role="button">Iniciar Sesión</a>
+                    <h1>¡Bienvenidos a la Familia del Colegio Naciones Unidas!</h1>
+                    <a href="#" id="admissions-btn" class="btn-login" role="button">Conoce Nuestros Programas</a>
                 </div>
                 
                 <div class="statistics">
@@ -75,20 +77,44 @@
             </div>
         </section>
         
+        <section class="philosophy-section">
+            <div class="container text-center">
+                <h2>Nuestra Filosofía</h2>
+                <div class="row">
+                    <div class="col-md-4">
+                        <i class="fas fa-hand-holding-heart philosophy-icon"></i>
+                        <h3>Misión</h3>
+                        <p>Formar líderes integrales y ciudadanos del mundo, comprometidos con el desarrollo sostenible y la justicia social.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <i class="fas fa-eye philosophy-icon"></i>
+                        <h3>Visión</h3>
+                        <p>Ser un referente educativo de excelencia, impulsando la innovación, el pensamiento crítico y la creatividad en nuestros estudiantes.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <i class="fas fa-users philosophy-icon"></i>
+                        <h3>Valores</h3>
+                        <p>Inculcamos el respeto, la responsabilidad, la empatía y la excelencia académica en cada uno de nuestros programas.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="banner-secondary">
             <div class="banner-content2">
                 <div class="information-contacts">
-                    <p>Educacion, Ciencia, Cultura y Deporte para trascender</p>
+                    <p>Educación, Ciencia, Cultura y Deporte para trascender</p>
                     <h2>COLEGIO NACIONES UNIDAS</h2>
-                    <button class="contact-button">Contactanos</button>
+                    <button class="contact-button" id="contact-scroll-btn">Contáctanos</button>
                 </div>
                 <div class="map-container">
- <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3976.241315830026!2d-74.09312642571089!3d4.729188041355447!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e3f9b23b184284b%3A0xc47e3a9c7b949673!2sIED%20Naciones%20Unidas%20Sede%20A!5e0!3m2!1ses!2sco!4v1714577840131!5m2!1ses!2sco" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>                </div>
+                    <iframe src="http://googleusercontent.com/maps.google.com/2" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
             </div>
         </section>
 
         <section id="mi-carrusel-1" class="carousel-component" aria-labelledby="carousel-title">
-            <h2 id="carousel-title" class="sr-only">Nuestros Programas y Cursos</h2>
+            <h2 id="carousel-title">Nuestros Programas y Cursos</h2>
             <div class="slides-wrapper">
                 <div class="slides-container">
                     <div class="carousel-slide">
@@ -173,6 +199,28 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
             </button>
         </section>
+
+        <section id="contact-form" class="contact-form-section">
+            <div class="container">
+                <h2>Contáctanos</h2>
+                <form id="contact-form">
+                    <div class="form-group">
+                        <label for="name">Nombre</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Correo Electrónico</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">Mensaje</label>
+                        <textarea id="message" name="message" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-button">Enviar Mensaje</button>
+                </form>
+            </div>
+        </section>
+
         <section class="filler-section">
             <h2>Más contenido de la página</h2>
         </section>

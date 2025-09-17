@@ -1,106 +1,158 @@
-/* ======== ESTILO GENERAL ======== */
-body {
-    background-color: #f5f6f8;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #212529;
-}
 
-/* ======== TITULO PRINCIPAL ======== */
-h1 {
-    font-weight: 700;
-    color: #212529;
-    margin-bottom: 1.5rem;
-}
+    /* Variables CSS para una gestión de colores y sombras más sencilla */
+    :root {
+        --color-primario: #0078ad;
+        --color-primario-oscuro: #00628e;
+        --color-texto-principal: #2c3e50;
+        --color-texto-secundario: #7f8c8d;
+        --color-blanco: #FFFFFF;
+        --color-fondo-seccion: #f8f9fa;
+        --color-borde-suave: #ecf0f1;
+        --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        --card-hover-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        --border-radius-lg: 1rem;
+    }
 
-/* ======== TARJETAS PRINCIPALES (izquierda) ======== */
-.card {
-    border: none;
-    border-radius: 10px;
-    background: #fff;
-    transition: all 0.3s ease;
-    text-align: center;
-}
+    body {
+        background-color: var(--color-fondo-seccion);
+        font-family: 'Inter', sans-serif;
+        color: var(--color-texto-principal);
+    }
 
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
-}
+    /* --- Encabezado --- */
+    .main-header {
+        background-color: var(--color-blanco);
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--color-borde-suave);
+        box-shadow: var(--card-shadow);
+    }
 
-/* Icono dentro de círculo */
-.card .d-inline-block {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    padding: 18px;
-    font-size: 1.8rem;
-}
+    .search-bar .input-group-text {
+        background-color: var(--color-borde-suave);
+        border: none;
+        border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
+        color: var(--color-texto-secundario);
+    }
 
-/* Título de tarjeta */
-.card-title {
-    font-weight: 600;
-    margin-top: 8px;
-    color: #212529;
-}
+    .search-bar .form-control {
+        border: none;
+        background-color: var(--color-borde-suave);
+        border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+        transition: all 0.3s ease;
+    }
 
-/* ======== PANEL OSCURO (derecha) ======== */
-.card.bg-dark {
-    border-radius: 12px;
-    padding: 25px;
-    background: #212529;
-}
+    .search-bar .form-control:focus {
+        background-color: var(--color-blanco);
+        box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
+    }
 
-.card.bg-dark h3 {
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: #fff;
-}
+    .action-link {
+        font-size: 1.5rem;
+        color: var(--color-texto-secundario);
+        transition: color 0.3s ease;
+    }
 
-.card.bg-dark p {
-    font-size: 0.9rem;
-    color: #adb5bd;
-    margin-bottom: 1.5rem;
-}
+    .action-link:hover {
+        color: var(--color-primario);
+    }
 
-/* Imagen ilustración */
-.card.bg-dark img {
-    border-radius: 8px;
-    margin-bottom: 1rem;
-}
+    /* --- Contenido Principal del Dashboard --- */
+    .dashboard-content {
+        padding: 3rem 1.5rem;
+    }
 
-/* ======== BOTONES PANEL OSCURO ======== */
-.card.bg-dark .btn {
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    margin-top: 8px;
-    padding: 10px 15px;
-}
+    .main-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--color-texto-principal);
+        margin-bottom: 2rem;
+    }
 
-.card.bg-dark .btn-light {
-    background: #fff;
-    color: #212529;
-    border: none;
-}
+    /* --- Estilos de las Tarjetas de Usuario --- */
+    .user-card {
+        border: none;
+        border-radius: var(--border-radius-lg);
+        background-color: var(--color-blanco);
+        box-shadow: var(--card-shadow);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        padding: 2.5rem 1.5rem;
+        display: block;
+        height: 100%;
+        text-align: center;
+        text-decoration: none;
+        color: var(--color-texto-principal);
+    }
 
-.card.bg-dark .btn-light:hover {
-    background: #e9ecef;
-}
+    .user-card:hover {
+        transform: translateY(-8px);
+        box-shadow: var(--card-hover-shadow);
+    }
 
-.card.bg-dark .btn-secondary {
-    background: #495057;
-    border: none;
-}
+    .icon-wrapper {
+        display: inline-block;
+        padding: 1.5rem;
+        border-radius: 50%;
+        margin-bottom: 1.5rem;
+        font-size: 2.5rem;
+        transition: background-color 0.3s ease;
+    }
+    
+    /* Colores para los iconos */
+    .professors-card .icon-wrapper { background-color: rgba(0, 120, 173, 0.1); color: var(--color-primario); }
+    .students-card .icon-wrapper { background-color: rgba(0, 120, 173, 0.1); color: var(--color-primario); }
+    .parents-card .icon-wrapper { background-color: rgba(0, 120, 173, 0.1); color: var(--color-primario); }
+    .admins-card .icon-wrapper { background-color: rgba(0, 120, 173, 0.1); color: var(--color-primario); }
 
-.card.bg-dark .btn-secondary:hover {
-    background: #343a40;
-}
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--color-texto-principal);
+    }
 
-/* ======== EFECTO HOVER ======== */
-.hover-lift {
-    transition: all 0.3s ease;
-}
+    /* --- Sección de "Crear Usuario" --- */
+    .create-user-section {
+        height: 100%;
+        border-radius: var(--border-radius-lg);
+        overflow: hidden;
+        padding: 2rem;
+        background: linear-gradient(45deg, var(--color-primario), var(--color-primario-oscuro)) !important;
+        color: var(--color-blanco) !important;
+    }
+    
+    .create-user-section .card-body {
+        padding: 2rem;
+    }
 
-.hover-lift:hover {
-    transform: translateY(-6px);
-}
+    .create-user-section img {
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .create-user-section .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-blanco);
+        margin-bottom: 0.5rem;
+    }
+
+    .create-user-section .section-description {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.95rem;
+        margin-bottom: 2rem;
+    }
+
+    .create-user-section .btn {
+        border-radius: 50px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        background-color: var(--color-blanco);
+        color: var(--color-primario);
+        border: none;
+    }
+
+    .create-user-section .btn:hover {
+        background-color: var(--color-fondo-seccion);
+        color: var(--color-primario-oscuro);
+        transform: scale(1.05);
+    }

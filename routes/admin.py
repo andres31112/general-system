@@ -251,7 +251,68 @@ def api_estudiantes_directorio():
         print(f"Error en la API de directorio de estudiantes: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
-# --- Rutas para la Gestión Académica (Horarios y Materias) ---
+@admin_bp.route('/padres')
+@login_required
+@role_required(1)
+def padres():
+    """Muestra la página con la lista de padres."""
+    return render_template('superadmin/gestion_usuarios/padres.html')
+
+@admin_bp.route('/superadmins')
+@login_required
+@role_required(1)
+def superadmins():
+    """Muestra la página con la lista de superadmins."""
+    return render_template('superadmin/gestion_usuarios/administrativos.html')
+
+@admin_bp.route('/api/padres')
+@login_required
+@role_required(1)
+def api_padres():
+    try:
+        rol_padre = db.session.query(Rol).filter_by(nombre='Padre').first()
+        padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all() if rol_padre else []
+        lista_padres = []
+        for padre in padres:
+            hijos_asignados = []
+    
+            lista_padres.append({
+                'id_usuario': padre.id_usuario,
+                'no_identidad': padre.no_identidad,
+                'nombre_completo': f"{padre.nombre} {padre.apellido}",
+                'correo': padre.correo,
+                'rol': padre.rol.nombre if padre.rol else 'N/A',
+                'estado_cuenta': padre.estado_cuenta,
+                'hijos_asignados': hijos_asignados # Placeholder
+            })
+        return jsonify({"data": lista_padres})
+    except Exception as e:
+        print(f"Error en la API de padres: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+@admin_bp.route('/api/superadmins')
+@login_required
+@role_required(1)
+def api_superadmins():
+    try:
+        
+        superadmins = Usuario.query.filter_by(id_rol_fk=1).all()
+        lista_superadmins = []
+        for superadmin in superadmins:
+            lista_superadmins.append({
+                'id_usuario': superadmin.id_usuario,
+                'no_identidad': superadmin.no_identidad,
+                'nombre_completo': f"{superadmin.nombre} {superadmin.apellido}",
+                'correo': superadmin.correo,
+                'rol': superadmin.rol.nombre if superadmin.rol else 'N/A',
+                'estado_cuenta': superadmin.estado_cuenta
+            })
+        return jsonify({"data": lista_superadmins})
+    except Exception as e:
+        print(f"Error en la API de superadmins: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+
 @admin_bp.route('/gestion-academica')
 @login_required
 @role_required(1)

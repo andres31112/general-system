@@ -1,6 +1,120 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    /* Variables CSS para una gestión de colores y sombras más sencilla */
+    :root {
+        --color-primario: #0078ad;
+        --color-primario-oscuro: #00628e;
+        --color-texto-principal: #2c3e50;
+        --color-texto-secundario: #7f8c8d;
+        --color-blanco: #FFFFFF;
+        --color-fondo-seccion: #f8f9fa;
+        --color-borde-suave: #ecf0f1;
+        --color-rojo: #dc3545;
+    }
+
+    /* Estilos Generales */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--color-fondo-seccion);
+        color: var(--color-texto-principal);
+    }
+
+    /* Encabezado */
+    .header-main {
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--color-borde-suave);
+        background-color: var(--color-blanco);
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .h4 {
+        color: var(--color-primario-oscuro);
+        font-weight: 700;
+    }
+    
+    .text-secondary {
+        color: var(--color-texto-secundario) !important;
+    }
+    
+    .text-secondary:hover {
+        color: var(--color-primario) !important;
+    }
+
+    /* Contenedor principal y tarjetas */
+    .main-container {
+        padding: 1rem;
+    }
+
+    .card {
+        border-radius: 1rem;
+        border: 1px solid var(--color-borde-suave);
+        background-color: var(--color-blanco);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-header {
+        background-color: var(--color-primario);
+        color: var(--color-blanco);
+        border-bottom: 1px solid var(--color-primario-oscuro);
+        border-radius: 1rem 1rem 0 0;
+        padding: 1rem 1.5rem;
+    }
+
+    /* Formulario */
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        border: 1px solid var(--color-borde-suave);
+        padding: 0.75rem 1rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--color-primario);
+        box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
+    }
+
+    .btn-primary {
+        background-color: var(--color-primario);
+        border-color: var(--color-primario);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--color-primario-oscuro);
+        border-color: var(--color-primario-oscuro);
+    }
+
+    /* Tabla */
+    .table-hover tbody tr:hover {
+        background-color: var(--color-fondo-seccion);
+    }
+
+    .table-striped > tbody > tr:nth-of-type(odd) {
+        background-color: #f0f3f6;
+    }
+    
+    .btn-danger {
+        background-color: var(--color-rojo);
+        border-color: var(--color-rojo);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+
+    .flash-messages .alert {
+        border-radius: 0.5rem;
+        font-weight: 500;
+    }
+</style>
 <div class="container-fluid px-4">
     <header class="d-flex justify-content-between align-items-center py-3">
         <h1 class="h4 mb-0">Gestión de Cursos</h1>

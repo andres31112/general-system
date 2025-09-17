@@ -1,166 +1,121 @@
-/* static/css/superadmin/base.css */
 
-body {
-    font-family: 'Inter', sans-serif;
-    overflow-x: hidden; /* Evita barras de desplazamiento horizontales no deseadas */
-    margin: 0; /* Asegura que no haya margen predeterminado en el body */
-    padding: 0; /* Asegura que no haya padding predeterminado en el body */
-}
-
-/* Contenedor principal de la aplicación para flexbox */
-.app-container {
-    display: flex; /* Usa flexbox para el layout de sidebar y contenido */
-    min-height: 100vh; /* Asegura que ocupe al menos toda la altura de la ventana */
-}
-
-.sidebar {
-    position: fixed; /* Fijo en la pantalla */
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px; /* ¡IMPORTANTE! Define el ancho del sidebar */
-<<<<<<< Updated upstream
-    background-color: #438ad1; /* ¡IMPORTANTE! Color de fondo para que sea visible (gris oscuro) */
-    color: #c5c5c5; /* Color de texto para el sidebar */
-    z-index: 1000; /* Asegura que esté por encima de otros elementos */
-    padding: 0; /* Elimina padding por defecto si lo hubiera */
-    box-shadow: 0 2px 5px 0 rgba(246, 226, 226, 0.05), 0 2px 10px 0 rgba(0, 0, 0, 0.05);
-=======
-    background-color: #343a40; /* ¡IMPORTANTE! Color de fondo para que sea visible (gris oscuro) */
-    color: #c5c5c5; /* Color de texto para el sidebar */
-    z-index: 1000; /* Asegura que esté por encima de otros elementos */
-    padding: 0; /* Elimina padding por defecto si lo hubiera */
-    box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.05), 0 2px 10px 0 rgba(0, 0, 0, 0.05);
->>>>>>> Stashed changes
-    transition: all 0.3s ease-in-out;
-    display: flex; /* Usa flexbox para organizar el contenido interno del sidebar */
-    flex-direction: column; /* Organiza los elementos internos verticalmente */
-}
-
-/* Cabecera del sidebar */
-.sidebar-header {
-    padding: 1.5rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-<<<<<<< Updated upstream
-    border-bottom: 1px solid rgba(243, 231, 231, 0.1);
-=======
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
->>>>>>> Stashed changes
-    color: #fff;
-    font-size: 1.25rem;
-}
-
-.sidebar-header .logo {
-    font-size: 1.75rem;
-    color: #0d6efd; /* Color azul para el ícono del logo */
-}
-
-/* Navegación del sidebar */
-.sidebar-nav {
-    list-style: none;
-    padding: 1rem 0;
-    margin: 0;
-    flex-grow: 1; /* Permite que la lista de navegación ocupe el espacio disponible */
-}
-
-.sidebar-nav li {
-    margin-bottom: 0.25rem;
-}
-
-.sidebar-nav .nav-link {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1.5rem;
-    color: #c5c5c5;
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.sidebar-nav .nav-link:hover {
-    color: #fff;
-    background-color: #4a5568; /* Color de fondo al pasar el ratón */
-}
-
-.sidebar-nav .nav-link.active {
-    color: #fff;
-    background-color: #0d6efd; /* Color azul para el enlace activo */
-    border-left: 4px solid #fff; /* Borde para el enlace activo */
-    padding-left: 1.25rem; /* Ajusta el padding para el borde */
-}
-
-.sidebar-nav .nav-link i {
-    width: 25px;
-    text-align: center;
-    margin-right: 0.75rem;
-    font-size: 1.1rem;
-}
-
-/* Pie de página del sidebar */
-.sidebar-footer {
-    padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background-color: #2c3238; /* Un poco más oscuro que el sidebar */
-    color: #c5c5c5;
-}
-
-.sidebar-footer .user-info {
-    flex-grow: 1;
-}
-
-.sidebar-footer .user-name {
-    font-weight: 600;
-    color: #fff;
-}
-
-.sidebar-footer .user-role {
-    font-size: 0.85rem;
-    color: #adb5bd;
-}
-
-/* Contenido principal */
-.main-content {
-    margin-left: 280px; /* ¡IMPORTANTE! Empuja el contenido a la derecha del sidebar */
-    flex-grow: 1; /* Permite que el contenido principal ocupe el resto del espacio */
-    transition: all 0.3s ease-in-out;
-    background-color: #f8f9fa; /* Color de fondo para el contenido principal */
-    min-height: 100vh; /* Asegura que el contenido principal ocupe toda la altura */
-}
-
-/* Media queries para responsividad */
-@media (max-width: 991.98px) {
-    .sidebar {
-        left: -280px; /* Oculta el sidebar completamente fuera de la pantalla */
-        /* width: 280px; se mantiene */
-        box-shadow: none; /* Elimina la sombra cuando está oculto */
+    :root {
+        --color-primario: #0078ad;
+        --color-primario-oscuro: #00628e;
+        --color-texto-principal: #2c3e50;
+        --color-texto-secundario: #7f8c8d;
+        --color-blanco: #FFFFFF;
+        --color-fondo-seccion: #f8f9fa;
+        --color-borde-suave: #ecf0f1;
     }
 
-    .sidebar.active {
-        left: 0; /* Muestra el sidebar */
-        box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.05), 0 2px 10px 0 rgba(0, 0, 0, 0.05); /* Restaura la sombra */
+    /* Estilos generales del cuerpo y layout */
+    body {
+        font-family: 'Inter', sans-serif;
+        color: var(--color-texto-principal);
+        background-color: var(--color-fondo-seccion);
     }
 
     .main-content {
-        margin-left: 0; /* Elimina el margen en pantallas pequeñas */
+        transition: margin-left 0.3s ease;
     }
 
-    /* Opcional: Overlay cuando el sidebar está abierto en móvil */
-    .overlay {
+    @media (min-width: 992px) {
+        .main-content {
+            margin-left: 280px; /* Ancho del sidebar en desktop */
+        }
+    }
+
+    /* Estilos del Sidebar */
+    .sidebar {
+        width: 280px;
         position: fixed;
+        height: 100vh;
         top: 0;
+        left: -280px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        background-color: var(--color-primario-oscuro) !important;
+        border-right: 1px solid var(--color-primario);
+    }
+
+    .sidebar.show {
         left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999; /* Justo debajo del sidebar */
-        display: none;
     }
-    .sidebar.active + .overlay {
-        display: block;
+
+    @media (min-width: 992px) {
+        .sidebar {
+            left: 0;
+        }
     }
-}
+
+    .sidebar-header {
+        background-color: var(--color-primario);
+        color: var(--color-blanco);
+        border-bottom: 1px solid var(--color-primario-oscuro);
+    }
+
+    .sidebar-header h1 {
+        font-weight: 700;
+    }
+
+    .nav-link {
+        color: var(--color-blanco);
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--color-blanco);
+    }
+
+    .nav-link.active {
+        background-color: var(--color-primario);
+        color: var(--color-blanco);
+        font-weight: 600;
+    }
+
+    .nav-link.active:hover {
+        background-color: var(--color-primario);
+        color: var(--color-blanco);
+    }
+
+    /* Estilos del pie de página del Sidebar */
+    .sidebar-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+    }
+
+    .sidebar-footer p {
+        color: var(--color-blanco);
+    }
+
+    .sidebar-footer .small {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    .sidebar-footer a {
+        color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    .sidebar-footer a:hover {
+        color: var(--color-blanco) !important;
+    }
+
+    /* Estilos de la cabecera móvil y contenido principal */
+    header {
+        background-color: var(--color-blanco) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border-bottom: 1px solid var(--color-borde-suave);
+    }
+
+    .content-wrapper {
+        padding: 2rem;
+    }
+
+    /* Estilos de los mensajes Flash (alertas) */
+    .alert {
+        border-radius: 0.5rem;
+        border: none;
+    }
+

@@ -3,6 +3,77 @@
 {% block title %}Gestión Académica{% endblock %}
 
 {% block content %}
+
+<style>
+    /* Variables CSS para una gestión de colores y sombras más sencilla */
+    :root {
+        --color-primario: #0078ad;
+        --color-primario-oscuro: #00628e;
+        --color-texto-principal: #2c3e50;
+        --color-texto-secundario: #7f8c8d;
+        --color-blanco: #FFFFFF;
+        --color-fondo-seccion: #f8f9fa;
+        --color-borde-suave: #ecf0f1;
+    }
+
+    /* Estilos Generales */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--color-fondo-seccion);
+        color: var(--color-texto-principal);
+        margin: 0;
+    }
+
+    /* Título de la Página */
+    .text-principal {
+        color: var(--color-texto-principal);
+        font-weight: 700;
+    }
+
+    /* Tarjetas de Acceso */
+    .card {
+        border-radius: 1rem;
+        background-color: var(--color-blanco);
+        border: 1px solid var(--color-borde-suave);
+        text-decoration: none;
+        color: var(--color-texto-principal);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .card-body {
+        padding: 2rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        font-size: 1.25rem;
+    }
+
+    .card-text {
+        color: var(--color-texto-secundario);
+    }
+    
+    /* Iconos */
+    .fa-2x {
+        font-size: 2.25rem !important;
+    }
+    
+    .text-primary {
+        color: var(--color-primario) !important;
+    }
+
+    /* Utilidades */
+    .hover-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+</style>
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">

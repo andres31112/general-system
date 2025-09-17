@@ -12,6 +12,143 @@
     <body>
  {% extends "base.html" %}
     {% block content %}
+    <style>
+    /* Variables CSS para una gestión de colores y sombras más sencilla */
+    :root {
+        --color-primario: #0078ad;
+        --color-primario-oscuro: #00628e;
+        --color-texto-principal: #2c3e50;
+        --color-texto-secundario: #7f8c8d;
+        --color-blanco: #FFFFFF;
+        --color-fondo-seccion: #f8f9fa;
+        --color-borde-suave: #ecf0f1;
+    }
+
+    /* Estilos Generales */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--color-fondo-seccion);
+        color: var(--color-texto-principal);
+        margin: 0;
+    }
+
+    /* Título de la Página */
+    .fw-bold {
+        font-weight: 700 !important;
+    }
+
+    /* Tarjetas de Acceso Rápido */
+    .card {
+        border-radius: 1rem;
+        background-color: var(--color-blanco);
+        border: 1px solid var(--color-borde-suave);
+        text-decoration: none;
+        color: var(--color-texto-principal);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .card-body {
+        padding: 2rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        color: var(--color-texto-principal);
+        font-size: 1.25rem;
+    }
+
+    /* Contenedor de iconos */
+    .rounded-circle {
+        border-radius: 50% !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .p-4 {
+        padding: 1.5rem !important;
+    }
+    
+    .p-3 {
+        padding: 1rem !important;
+    }
+
+    /* Colores para los íconos */
+    .bg-info.bg-opacity-10 {
+        background-color: rgba(0, 120, 173, 0.1) !important;
+    }
+    .text-primary { color: var(--color-primario) !important; }
+    
+    .bg-success.bg-opacity-10 {
+        background-color: rgba(40, 167, 69, 0.1) !important;
+    }
+    .text-success { color: #28a745 !important; }
+
+    .bg-warning.bg-opacity-10 {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+    }
+    .text-warning { color: #ffc107 !important; }
+
+    .bg-danger.bg-opacity-10 {
+        background-color: rgba(220, 53, 69, 0.1) !important;
+    }
+    .text-danger { color: #dc3545 !important; }
+    
+    .bg-secondary.bg-opacity-10 {
+        background-color: rgba(108, 117, 125, 0.1) !important;
+    }
+    .text-secondary { color: #6c757d !important; }
+
+    /* Sección de Bienvenida */
+    .bg-dark {
+        background-color: var(--color-primario-oscuro) !important;
+    }
+
+    .text-white {
+        color: var(--color-blanco) !important;
+    }
+
+    .illustration-placeholder {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .illustration-placeholder i {
+        color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    .btn-light {
+        background-color: var(--color-blanco);
+        color: var(--color-primario);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    
+    .btn-light:hover {
+        background-color: var(--color-fondo-seccion);
+        color: var(--color-primario-oscuro);
+    }
+
+    .btn-secondary {
+        background-color: rgba(255, 255, 255, 0.2);
+        color: var(--color-blanco);
+        border-color: rgba(255, 255, 255, 0.2);
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+        background-color: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+</style>
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
