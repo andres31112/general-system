@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mantenimiento de Equipos TIC</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/mantenimiento.css') }}">
+</head>
+<body>
+{% extends "base.html" %}
+{% block content %}
+
+<header class="main-header">
+    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <h1>Mantenimiento de Equipos TIC</h1>
+    <div class="header-icons">
+        <i class="fa-solid fa-bell"></i>
+        <i class="fa-solid fa-user"></i>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- Dashboard con resumen -->
+    <section class="dashboard">
+        <div class="card resumen-card">
+            <i class="fa-solid fa-desktop icon"></i>
+            <div>
+                <h3>Total Equipos</h3>
+                <p>120</p>
+            </div>
+        </div>
+        <div class="card resumen-card">
+            <i class="fa-solid fa-screwdriver-wrench icon"></i>
+            <div>
+                <h3>Mantenimientos Pendientes</h3>
+                <p>15</p>
+            </div>
+        </div>
+        <div class="card resumen-card">
+            <i class="fa-solid fa-check-circle icon"></i>
+            <div>
+                <h3>Últimos Mantenimientos</h3>
+                <p>10 realizados</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Buscador -->
+    <div class="buscador">
+        <input type="text" id="buscarMantenimiento" placeholder="🔍 Buscar por tipo o incidente">
+    </div>
+
+    <!-- Tabla -->
+    <section class="table-container">
+        <table class="table table-hover" id="tablaMantenimiento">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Equipo</th>
+                    <th>Tipo</th>
+                    <th>Último mantenimiento</th>
+                    <th>Próximo mantenimiento</th>
+                    <th>Acción</th>
+                    <th>Opciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr data-tipo="Computadora" data-incidente="Reemplazo disco duro">
+                    <td>001</td>
+                    <td>LAB1-PC01</td>
+                    <td>Computadora</td>
+                    <td>2023-08-15</td>
+                    <td>2023-12-15</td>
+                    <td><span class="badge badge-correctivo">Correctivo</span></td>
+                    <td>
+                        <button class="btn registrar-btn">
+                            <i class="fas fa-tools me-1"></i> Registrar
+                        </button>
+                        <button class="btn historial-btn">
+                            <i class="fas fa-history me-1"></i> Historial
+                        </button>
+                    </td>
+                </tr>
+                <tr data-tipo="Computadora" data-incidente="Mantenimiento preventivo">
+                    <td>002</td>
+                    <td>LAB1-PC02</td>
+                    <td>Computadora</td>
+                    <td>2023-08-01</td>
+                    <td>2023-11-01</td>
+                    <td><span class="badge badge-preventivo">Preventivo</span></td>
+                    <td>
+                        <button class="btn registrar-btn">
+                            <i class="fas fa-tools me-1"></i> Registrar
+                        </button>
+                        <button class="btn historial-btn">
+                            <i class="fas fa-history me-1"></i> Historial
+                        </button>
+                    </td>
+                </tr>
+                <tr data-tipo="Proyector" data-incidente="Fallo lámpara">
+                    <td>003</td>
+                    <td>LAB2-PRO01</td>
+                    <td>Proyector</td>
+                    <td>2023-07-22</td>
+                    <td>2023-10-22</td>
+                    <td><span class="badge badge-correctivo">Correctivo</span></td>
+                    <td>
+                        <button class="btn registrar-btn">
+                            <i class="fas fa-tools me-1"></i> Registrar
+                        </button>
+                        <button class="btn historial-btn">
+                            <i class="fas fa-history me-1"></i> Historial
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Paginación -->
+        <div class="paginacion">
+            <button id="prevMantenimiento" class="btn btn-paginacion">Anterior</button>
+            <span id="paginaMantenimiento">Página 1</span>
+            <button id="nextMantenimiento" class="btn btn-paginacion">Siguiente</button>
+        </div>
+    </section>
+
+</div>
+
+<script>
+    // Paginación
+    let currentPage = 1;
+    function mostrarFilas(tablaID, pagina){
+        const filas = document.querySelectorAll(`#${tablaID} tbody tr`);
+        const limit = 5;
+        const start = (pagina - 1) * limit;
+        const end = start + limit;
+        filas.forEach((f,i)=> f.style.display = (i>=start && i<end)?"":"none");
+        const totalPaginas = Math.ceil(filas.length / limit);
+        document.getElementById('paginaMantenimiento').innerText = `Página ${pagina} de ${totalPaginas}`;
+    }
+    mostrarFilas('tablaMantenimiento', currentPage);
+    document.getElementById('prevMantenimiento').addEventListener('click', ()=>{
+        if(currentPage>1){ currentPage--; mostrarFilas('tablaMantenimiento', currentPage); }
+    });
+    document.getElementById('nextMantenimiento').addEventListener('click', ()=>{
+        const filas = document.querySelectorAll('#tablaMantenimiento tbody tr');
+        const totalPaginas = Math.ceil(filas.length/5);
+        if(currentPage<totalPaginas){ currentPage++; mostrarFilas('tablaMantenimiento', currentPage); }
+    });
+
+    // Buscador
+    document.getElementById('buscarMantenimiento').addEventListener('input', function(){
+        const valor = this.value.toLowerCase();
+        const filas = document.querySelectorAll('#tablaMantenimiento tbody tr');
+        filas.forEach(f=>{
+            const tipo = f.getAttribute('data-tipo').toLowerCase();
+            const incidente = f.getAttribute('data-incidente').toLowerCase();
+            f.style.display = (tipo.includes(valor)||incidente.includes(valor))? "":"none";
+        });
+    });
+</script>
+
+{% endblock %}
+</body>
+</html>
+

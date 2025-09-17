@@ -1,5 +1,5 @@
 /* --- ========================================== --- */
-/* ---             PALETA Y FUENTES               --- */
+/* ---        ESTILO PARA GESTIÓN INVENTARIO      --- */
 /* --- ========================================== --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Montserrat:wght@400;600;700&display=swap');
 
@@ -21,105 +21,189 @@
     --transicion-rapida: 0.3s ease-in-out;
     --transicion-lenta: 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
-/* --- ========================================== --- */
-/* ---             ESTILO BASE                    --- */
-/* --- ========================================== --- */
-body{
-    font-family: 'Monserrat', sans-serif;
-    background-color: var(--color-texto-principal);
-}
-h1, h2, h3, h4, h5 .texto-principal{
+
+/* --- GENERAL --- */
+body {
+    font-family: var(--fuente-secundaria);
+    background-color: var(--color-fondo-seccion);
     color: var(--color-texto-principal);
+    margin: 0;
+    padding: 0;
 }
-/* --- ========================================== --- */
-/* ---             TARJETAS                       --- */
-/* --- ========================================== --- */
-.summary-card{
+
+/* --- HEADER --- */
+.main-header {
     background-color: var(--color-blanco);
-    border: 1px solid var(--color-borde-suave);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    transition: transform 0.2 ease-in-out;
-    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-borde-suave);
+    display: flex;
     align-items: center;
-    gap: 0.75rem;
-    border-radius: 20px;
+    justify-content: space-between;
+    padding: 12px 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,.05);
 }
-.summary-card p{
-    text-align: center;
+
+.main-header h1 {
+    font-family: var(--fuente-principal);
+    font-weight: 600;
+    color: var(--color-primario);
+    margin: 0;
 }
-.summary-card:hover{
-    transform: translateY(-4px);
-    box-shadow: 0 4px 10px rgba(0,0,0,.1);
+
+.header-icons i {
+    font-size: 1.2rem;
+    margin-left: 15px;
+    color: var(--color-texto-secundario);
+    cursor: pointer;
+    transition: color var(--transicion-rapida);
 }
-.summary-card .icon{
-    font-size: 1.5rem;
+.header-icons i:hover {
     color: var(--color-primario);
 }
-.summary-card .number{
-    font-size: 1.5rem;
-    font-weight: 700;
+
+/* --- TARJETAS DE RESUMEN --- */
+.summary-card {
+    background: var(--color-blanco);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--color-borde-suave);
+    transition: transform var(--transicion-rapida), box-shadow var(--transicion-rapida);
+}
+
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+.summary-card .icon {
+    font-size: 2rem;
+    color: var(--color-primario);
+    margin-bottom: 8px;
+}
+
+.summary-card h3 {
+    font-family: var(--fuente-principal);
+    font-weight: 600;
     color: var(--color-texto-principal);
 }
-/* --- ========================================== --- */
-/* ---             PANEL EQUIPOS                  --- */
-/* --- ========================================== --- */
-.panel-content{
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-.table-container{
-    flex-grow: 1;
-    overflow-y: auto;
-    max-height: 250px;
-}
-.table{
-    margin-bottom: 0;
-}
-.table th, .table td{
-    text-align: center;
-    vertical-align: middle;
-}
-.table-hover tbody tr{
-    cursor: pointer;
-}
-.table thead th{
-    position: sticky;
-    top: 0;
-    background-color: var(--color-blanco);
-    z-index: 1;
-    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+
+.summary-card .number {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--color-primario-oscuro);
 }
 
+/* --- TABLAS --- */
+.table {
+    font-size: 0.9rem;
+}
+.table thead.table-dark {
+    background-color: var(--color-primario-oscuro) !important;
+}
+.table-hover tbody tr:hover {
+    background-color: #eaf6fb;
+}
 
+/* --- CARD GENERAL --- */
+.card {
+    border: 1px solid var(--color-borde-suave);
+    border-radius: 12px;
+    overflow: hidden;
+}
 
+.card-header {
+    font-family: var(--fuente-principal);
+    font-weight: 600;
+}
 
+/* --- NAV TABS --- */
+.nav-tabs .nav-link {
+    color: var(--color-texto-principal);
+    font-weight: 500;
+    transition: var(--transicion-rapida);
+}
+.nav-tabs .nav-link.active {
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+    border-radius: 8px 8px 0 0;
+}
+.nav-tabs .nav-link:hover {
+    color: var(--color-primario);
+}
 
+/* --- BOTONES GENERALES --- */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    font-family: var(--fuente-secundaria);
+    transition: background-color var(--transicion-rapida), transform var(--transicion-rapida);
+}
+.btn:hover {
+    transform: scale(1.02);
+}
+.btn-primary {
+    background-color: var(--color-primario);
+    border: none;
+}
+.btn-primary:hover {
+    background-color: var(--color-primario-oscuro);
+}
+.btn-success {
+    background-color: #28a745;
+    border: none;
+}
+.btn-success:hover {
+    background-color: #218838;
+}
 
+/* --- BOTONES VER Y EDITAR PERSONALIZADOS --- */
+.btn-ver {
+    background-color: var(--color-primario);
+    border: none;
+    color: var(--color-blanco);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: var(--transicion-rapida);
+}
+.btn-ver:hover {
+    background-color: var(--color-primario-oscuro);
+    transform: scale(1.05);
+}
 
+.btn-editar {
+    background-color: #ff9800;   /* Naranja personalizado */
+    border: none;
+    color: var(--color-blanco);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: var(--transicion-rapida);
+}
+.btn-editar:hover {
+    background-color: #e68900;
+    transform: scale(1.05);
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* --- MODAL --- */
+.modal-content {
+    border-radius: 12px;
+    border: none;
+}
+.modal-header {
+    border-bottom: none;
+}
+.modal-title {
+    font-family: var(--fuente-principal);
+    font-weight: 600;
+}
+.form-label {
+    font-weight: 500;
+    color: var(--color-texto-principal);
+}
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid var(--color-borde-suave);
+}

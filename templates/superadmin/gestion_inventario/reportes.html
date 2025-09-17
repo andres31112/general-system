@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Inventario</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/reporte.css') }}">
+</head>
+<body>
+
+  {% extends "base.html" %}
+  {% block content %}
+<header class="main-header">
+        <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h1>Gestion Inventario</h1>
+        <div class="header-icons">
+            <i class="fa-solid fa-bell"></i>
+            <i class="fa-solid fa-user"></i>
+        </div>
+    </header>
+  <div class="container-fluid py-3">
+
+    <!-- 📘 Sección de Salones -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-door-open me-2"></i> Salones</h5>
+        <div class="d-flex gap-2">
+          <select id="limiteSalones" class="form-select form-select-sm">
+            <option value="5">Mostrar 5</option>
+            <option value="10">Mostrar 10</option>
+            <option value="all">Mostrar todos</option>
+          </select>
+          <button id="exportSalonesPDF" class="btn btn-light btn-sm">
+            <i class="fa-solid fa-file-pdf"></i> Exportar
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table id="tablaSalones" class="table table-hover align-middle text-center">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Sede</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>Aula 101</td><td>Aula</td><td>Sede A</td></tr>
+              <tr><td>2</td><td>Aula 102</td><td>Aula</td><td>Sede A</td></tr>
+              <tr><td>3</td><td>Lab Computo 1</td><td>Sala de Cómputo</td><td>Sede B</td></tr>
+              <tr><td>4</td><td>Lab Computo 2</td><td>Sala de Cómputo</td><td>Sede B</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <button id="prevSalones" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-chevron-left"></i> Anterior
+          </button>
+          <span id="paginaSalones" class="small text-muted">Página 1</span>
+          <button id="nextSalones" class="btn btn-outline-secondary btn-sm">
+            Siguiente <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 💻 Sección de Equipos -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-computer me-2"></i> Equipos</h5>
+        <div class="d-flex gap-2">
+          <select id="limiteEquipos" class="form-select form-select-sm">
+            <option value="5">Mostrar 5</option>
+            <option value="10">Mostrar 10</option>
+            <option value="all">Mostrar todos</option>
+          </select>
+          <button id="exportEquiposPDF" class="btn btn-light btn-sm">
+            <i class="fa-solid fa-file-pdf"></i> Exportar
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table id="tablaEquipos" class="table table-hover align-middle text-center">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Salón</th>
+                <th>Descripción</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>E1</td><td>PC-01</td><td class="text-success">Disponible</td><td>Lab Computo 1</td><td>Computador i5</td>
+                <td>
+                  <button class="btn-ver btn-sm"><i class="fa-solid fa-eye"></i></button>
+                  <button class="btn-editar btn-sm"><i class="fa-solid fa-pen-to-square"></i></button>
+                </td>
+              </tr>
+              <tr>
+                <td>E2</td><td>Proyector-02</td><td class="text-warning">Mantenimiento</td><td>Aula 101</td><td>Proyector Epson</td>
+                <td>
+                  <button class="btn-ver btn-sm"><i class="fa-solid fa-eye"></i></button>
+                  <button class="btn-editar btn-sm"><i class="fa-solid fa-pen-to-square"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <button id="prevEquipos" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-chevron-left"></i> Anterior
+          </button>
+          <span id="paginaEquipos" class="small text-muted">Página 1</span>
+          <button id="nextEquipos" class="btn btn-outline-secondary btn-sm">
+            Siguiente <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    // 👉 Aquí va el mismo JS de paginación y exportar PDF que ya tienes
+  </script>
+
+  {% endblock %}
+</body>
+</html>

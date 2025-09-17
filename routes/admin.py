@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from controllers.decorators import role_required
-from controllers.forms import RegistrationForm, UserEditForm
+from controllers.forms import RegistrationForm, UserEditForm, SalonForm
 from extensions import db
 from datetime import datetime, timedelta, time, date
 from controllers.models import db, Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, Descanso
@@ -46,23 +46,40 @@ def salones():
     salones = db.session.query(Salon).all()
     return render_template('superadmin/gestion_inventario/salones.html', salones=salones)
 
+@admin_bp.route('/reportes')
+@role_required(1)
+def reportes():
+    return render_template('superadmin/gestion_inventario/reportes.html')
+
+@admin_bp.route('/incidentes')
+@role_required(1)
+def incidentes():
+    return render_template('superadmin/gestion_inventario/incidentes.html')
+
+@admin_bp.route('/mantenimiento')
+@role_required(1)
+def mantenimiento():
+    return render_template('superadmin/gestion_inventario/mantenimiento.html')
 
 @admin_bp.route('/gestion-salones')
-@login_required
-@role_required(1)
 def gestion_salones():
     salones = db.session.query(Salon).all()
+
+    # estadísticas rápidas
     total_salones = db.session.query(Salon).count()
     salas_computo = db.session.query(Salon).filter_by(tipo='sala_computo').count()
-    salas_general = db.session.query(Salon).filter_by(tipo='sala_general').count()
-    salas_especial = db.session.query(Salon).filter_by(tipo='sala_especial').count()
+    aulas = db.session.query(Salon).filter_by(tipo='aula').count()
+    laboratorios = db.session.query(Salon).filter_by(tipo='laboratorio').count()
+    auditorios = db.session.query(Salon).filter_by(tipo='auditorio').count()
+
     return render_template(
         'superadmin/gestion_inventario/salones.html',
+        salones=salones,
         total_salones=total_salones,
         salas_computo=salas_computo,
-        salas_general=salas_general,
-        salas_especial=salas_especial,
-        salones=salones
+        aulas=aulas,
+        laboratorios=laboratorios,
+        auditorios=auditorios
     )
 
 

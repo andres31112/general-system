@@ -1,0 +1,143 @@
+/* 🎨 VARIABLES DE COLOR */
+:root {
+    --color-primario: #0078ad;
+    --color-primario-oscuro: #00628e;
+    --color-secundario: #28a745;
+    --color-secundario-oscuro: #1e7e34;
+    --color-naranja: #ff9800;
+    --color-naranja-oscuro: #e68900;
+    --color-gris: #f8f9fa;
+    --color-texto: #212529;
+    --color-blanco: #ffffff;
+    --transicion: all 0.3s ease;
+}
+
+/* GENERAL */
+body {
+    background-color: var(--color-gris);
+    font-family: 'Inter', sans-serif;
+    color: var(--color-texto);
+    padding: 15px;
+}
+
+/* TARJETAS */
+.card {
+    border-radius: 12px;
+    border: none;
+    overflow: hidden;
+}
+.card-header {
+    font-weight: 600;
+    font-size: 1rem;
+}
+.card-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+.card-header.bg-primary {
+    background-color: var(--color-primario) !important;
+}
+.card-header.bg-success {
+    background-color: var(--color-secundario) !important;
+}
+
+/* TABLAS */
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+.table thead {
+    color: var(--color-blanco);
+}
+.table-hover tbody tr:hover {
+    background-color: #f1f9ff;
+}
+.table td, 
+.table th {
+    vertical-align: middle;
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 10px;
+}
+
+/* PAGINADORES */
+.btn-outline-secondary {
+    border-radius: 6px;
+    font-size: 0.8rem;
+    transition: var(--transicion);
+}
+.btn-outline-secondary:hover {
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+    border-color: var(--color-primario);
+}
+
+/* BOTONES PDF */
+#exportSalonesPDF, 
+#exportEquiposPDF {
+    background-color: var(--color-blanco);
+    color: var(--color-primario);
+    border: 1px solid var(--color-primario);
+    font-weight: 500;
+    transition: var(--transicion);
+}
+#exportSalonesPDF:hover, 
+#exportEquiposPDF:hover {
+    background-color: var(--color-primario);
+    color: var(--color-blanco);
+}
+
+/* SELECT */
+.form-select {
+    border-radius: 6px;
+    font-size: 0.85rem;
+    padding: 3px 8px;
+}
+
+/* TEXTO DE PAGINA */
+#paginaSalones,
+#paginaEquipos {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* ESTADOS DE EQUIPOS */
+#tablaEquipos td:nth-child(3) {
+    font-weight: 600;
+}
+.text-success {
+    color: var(--color-secundario) !important;
+}
+.text-warning {
+    color: var(--color-naranja-oscuro) !important;
+}
+
+/* BOTONES DE ACCIONES */
+.btn-ver {
+    background-color: var(--color-primario);
+    border: none;
+    color: var(--color-blanco);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    transition: var(--transicion);
+}
+.btn-ver:hover {
+    background-color: var(--color-primario-oscuro);
+    transform: scale(1.05);
+}
+
+.btn-editar {
+    background-color: var(--color-naranja);
+    border: none;
+    color: var(--color-blanco);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    transition: var(--transicion);
+}
+.btn-editar:hover {
+    background-color: var(--color-naranja-oscuro);
+    transform: scale(1.05);
+}

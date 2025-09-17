@@ -64,11 +64,10 @@
                         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sedeB-pane">Salones Sede B</button>
                     </li>
                     <div>
-                        <a href="{{ url_for('admin.registro_salon') }}" class="btn btn-success ms-3" >
+                        <a href="{{ url_for('admin.registro_salon') }}" class="btn btn-success ms-3">
                             <i class="fas fa-plus"></i>
                         </a>
                     </div>
-                    
                 </ul>
                 
                 <div class="tab-content">
@@ -83,9 +82,6 @@
                                                 <th><input type="checkbox"></th>
                                                 <th>Nombre Salón</th>
                                                 <th>Tipo</th>
-                                                <th>Capacidad</th>
-                                                <th>Sillas</th>
-                                                <th>Mesas</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -93,21 +89,20 @@
                                             {% for salon in salones_a %}
                                             <tr>
                                                 <td><input type="checkbox"></td>
-                                                <td>{{ salon.nombre_salon }}</td>
+                                                <td>{{ salon.nombre }}</td>
                                                 <td>
-                                                    {% if salon.tipo_salon == "sala_computo" %}
+                                                    {% if salon.tipo == "sala_computo" %}
                                                         <span class="badge bg-info">Sala de Cómputo</span>
-                                                    {% elif salon.tipo_salon == "aula" %}
+                                                    {% elif salon.tipo == "aula" %}
                                                         <span class="badge bg-secondary">Aula</span>
-                                                    {% elif salon.tipo_salon == "laboratorio" %}
+                                                    {% elif salon.tipo == "laboratorio" %}
                                                         <span class="badge bg-warning">Laboratorio</span>
-                                                    {% elif salon.tipo_salon == "auditorio" %}
+                                                    {% elif salon.tipo == "auditorio" %}
                                                         <span class="badge bg-dark">Auditorio</span>
+                                                    {% else %}
+                                                        <span class="badge bg-light text-dark">{{ salon.tipo }}</span>
                                                     {% endif %}
                                                 </td>
-                                                <td>{{ salon.capacidad or '-' }}</td>
-                                                <td>{{ salon.cantidad_sillas or '-' }}</td>
-                                                <td>{{ salon.cantidad_mesas or '-' }}</td>
                                                 <td>
                                                     <button class="btn btn-primary btn-sm">Editar</button>
                                                     <button class="btn btn-secondary btn-sm">Ver</button>
@@ -115,7 +110,7 @@
                                             </tr>
                                             {% else %}
                                             <tr>
-                                                <td colspan="7" class="text-center">No hay salones en esta sede</td>
+                                                <td colspan="4" class="text-center">No hay salones en esta sede</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -136,9 +131,6 @@
                                                 <th><input type="checkbox"></th>
                                                 <th>Nombre Salón</th>
                                                 <th>Tipo</th>
-                                                <th>Capacidad</th>
-                                                <th>Sillas</th>
-                                                <th>Mesas</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -146,21 +138,20 @@
                                             {% for salon in salones_b %}
                                             <tr>
                                                 <td><input type="checkbox"></td>
-                                                <td>{{ salon.nombre_salon }}</td>
+                                                <td>{{ salon.nombre }}</td>
                                                 <td>
-                                                    {% if salon.tipo_salon == "sala_computo" %}
+                                                    {% if salon.tipo == "sala_computo" %}
                                                         <span class="badge bg-info">Sala de Cómputo</span>
-                                                    {% elif salon.tipo_salon == "aula" %}
+                                                    {% elif salon.tipo == "aula" %}
                                                         <span class="badge bg-secondary">Aula</span>
-                                                    {% elif salon.tipo_salon == "laboratorio" %}
+                                                    {% elif salon.tipo == "laboratorio" %}
                                                         <span class="badge bg-warning">Laboratorio</span>
-                                                    {% elif salon.tipo_salon == "auditorio" %}
+                                                    {% elif salon.tipo == "auditorio" %}
                                                         <span class="badge bg-dark">Auditorio</span>
+                                                    {% else %}
+                                                        <span class="badge bg-light text-dark">{{ salon.tipo }}</span>
                                                     {% endif %}
                                                 </td>
-                                                <td>{{ salon.capacidad or '-' }}</td>
-                                                <td>{{ salon.cantidad_sillas or '-' }}</td>
-                                                <td>{{ salon.cantidad_mesas or '-' }}</td>
                                                 <td>
                                                     <button class="btn btn-primary btn-sm">Editar</button>
                                                     <button class="btn btn-secondary btn-sm">Ver</button>
@@ -168,7 +159,7 @@
                                             </tr>
                                             {% else %}
                                             <tr>
-                                                <td colspan="7" class="text-center">No hay salones en esta sede</td>
+                                                <td colspan="4" class="text-center">No hay salones en esta sede</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -183,10 +174,8 @@
     </div>
 </main>
 
-
-
-     <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
-    {% endblock %}
+<script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
+{% endblock %}
 
 </body>
 

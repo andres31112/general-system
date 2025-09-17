@@ -8,332 +8,320 @@
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/equipos.css') }}">
 </head>
 
 <body>
-    {% extends "superadmin/base.html" %}
+    {% extends "base.html" %}
     {% block content %}
     <header class="main-header">
+        <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
         <h1>Gestion Inventario</h1>
         <div class="header-icons">
             <i class="fa-solid fa-bell"></i>
             <i class="fa-solid fa-user"></i>
         </div>
     </header>
-    <main class="content-area">
-        <section class="page-header">
-            <div class="title-action">
-                <h2 class="page-title">Lista de equipos</h2>
-                <a href="{{ url_for('registro_equipo') }}" class="btn-create">Registrar Nuevo Equipo</a>
-            </div>
-            <div class="placeholder-image">
-                <i class="fa-solid fa-image"></i>
-            </div>
-        </section>
 
-        <section class="table-container">
-            <div class="table-controls">
-                <div class="dropdown ">
-                    <button class="dropdown-toggle d-none" id="dropdownBtn">Mas Opciones <i
-                            class="fa-solid fa-chevron-down"></i></button>
-                    <div class="dropdown-menu d-none" id="dropdownMenu">
-                        <a href="#">Exportar a CSV</a>
-                        <a href="#">Eliminar seleccionados</a>
-                        <a href="#">Asignar curso en bloque</a>
+    <main class="container-fluid p-4">
+        <!--Tarjetas-->
+        <section class="row mb-3">
+            <div class="col-lg-4 col-md-6 mb-3">
+                <div class="summary-card">
+                    <div class="icon">
+                        <i class="fa-solid fa-desktop"></i>
                     </div>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    <div class="search-bar d-flex align-items-center">
-                        <i class="fa-solid fa-search"></i>
-                        <input type="search" placeholder="Buscar Equipos">
-                    </div>
-                    <button class="btn btn-danger me-md-2" type="button">Eliminar</button>
+                    <h3 class="h6 mb-0">Total equipos</h3>
+                    <p class="number mb-0" id="total-equipos">0</p>
                 </div>
             </div>
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAllCheckbox"></th>
-                        <th>ID/Referencia</th>
-                        <th>Nombre del equipo</th>
-                        <th>Usuario asignado</th>
-                        <th>Estado del equipo</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><input type="checkbox" class="row-checkbox"></td>
-                        <td>EQ-001</td>
-                        <td>LAB1-PC01</td>
-                        <td>Elena Rodriguez</td>
-                        <td><span class="badge bg-success fs-6">Activo</span></td>
-                        <td>
-                            <button class="btn btn-primary me-md-2 editar-btn" type="button" data-bs-toggle="modal"
-                                data-bs-target="#editarModal" data-id="EQ-001" data-nombre="LAB1-PC01"
-                                data-sala="Laboratorio 1" data-usuario="Elena Rodriguez" data-estado="Activo"
-                                data-software="Windows 10" data-ram="8GB" data-disco="256GB SSD"
-                                data-descripcion="Equipo de laboratorio con Windows 10, 8GB RAM y 256GB SSD."
-                                data-fecha="2023-01-15"
-                                data-observaciones="Equipo en buen estado, sin incidencias recientes."
-                                data-tipo="Computadora">Editar</button>
-                            <button class="btn btn-secondary me-md-2 ver-btn" type="button" data-bs-toggle="modal"
-                                data-bs-target="#equipoModal" data-id="EQ-001" data-nombre="LAB1-PC01"
-                                data-sala="Laboratorio 1" data-usuario="Elena Rodriguez" data-estado="Activo"
-                                data-software="Windows 10" data-ram="8GB" data-disco="256GB SSD"
-                                data-descripcion="Equipo de laboratorio con Windows 10, 8GB RAM y 256GB SSD."
-                                data-fecha="2023-01-15"
-                                data-observaciones="Equipo en buen estado, sin incidencias recientes."
-                                data-tipo="Computadora">Ver
-                            </button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="row-checkbox"></td>
-                        <td>EQ-002</td>
-                        <td>LAB1-PC02</td>
-                        <td>Elena Rodriguez</td>
-                        <td><span class="badge bg-danger fs-6">En revisión</span></td>
-                        <td><button class="btn btn-primary me-md-2" type="button">Editar</button><button
-                                class="btn btn-secondary me-md-2" type="button">Ver</button></td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="row-checkbox"></td>
-                        <td>EQ-003</td>
-                        <td>LAB2-PC01</td>
-                        <td>Elena Rodriguez</td>
-                        <td><span class="badge bg-secondary fs-6">Fuera de servicio</span></td>
-                        <td><button class="btn btn-primary me-md-2" type="button">Editar</button><button
-                                class="btn btn-secondary me-md-2" type="button">Ver</button></td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="row-checkbox"></td>
-                        <td>EQ-004</td>
-                        <td>LAB2-PC02</td>
-                        <td>Elena Rodriguez</td>
-                        <td><span class="badge bg-success fs-6">Activo</span></td>
-                        <td><button class="btn btn-primary me-md-2" type="button">Editar</button><button
-                                class="btn btn-secondary me-md-2" type="button">Ver</button></td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="row-checkbox"></td>
-                        <td>EQ-005</td>
-                        <td>LAB1-PC03</td>
-                        <td>Elena Rodriguez</td>
-                        <td><span class="badge bg-secondary fs-6">Fuera de servicio</span></td>
-                        <td><button class="btn btn-primary me-md-2" type="button">Editar</button><button
-                                class="btn btn-secondary me-md-2" type="button">Ver</button></td>
-                    </tr>
-                    <tr>
-                        <td><input type="checkbox" class="row-checkbox"></td>
-                        <td>EQ-006</td>
-                        <td>LAB2-PC03</td>
-                        <td>Elena Rodriguez</td>
-                        <td><span class="badge bg-danger fs-6">En revisión</span></td>
-                        <td><button class="btn btn-primary me-md-2" type="button">Editar</button><button
-                                class="btn btn-secondary me-md-2" type="button">Ver</button></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="col-lg-4 col-md-6 mb-3">
+                <div class="summary-card">
+                    <div class="icon">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h3 class="h6 mb-0">Equipos Disponibles</h3>
+                    <p class="number mb-0" id="total-equipos">0</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 mb-3">
+                <div class="summary-card">
+                    <div class="icon">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+                    <h3 class="h6 mb-0">Mantenimiento</h3>
+                    <p class="number mb-0" id="total-equipos">0</p>
+                </div>
+            </div>
         </section>
     </main>
-    <!-- Modal para ver detalles del equipo -->
-    <div class="modal fade" id="equipoModal" tabindex="-1" aria-labelledby="equipoModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="equipoModalLabel">Detalles del Equipo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <main class="row">
+        <div class="container-fluid">
+            <div class="row">
+                
+                <!-- 📌 Tabla principal de equipos -->
+                <div class="col-md-9 col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Equipos Registrados</h5>
+                    <div>
+                        <button class="btn btn-light btn-sm" onclick="mostrarTodosLosEquipos()">Ver Todos</button>
+                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgregar">➕ Agregar Equipo</button>
+                    </div>
+                    </div>
+                    <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle text-center">
+                        <thead class="table-dark">
+                            <tr>
+                            <th>Equipo</th>
+                            <th>Estado</th>
+                            <th>Sede</th>
+                            <th>Sala</th>
+                            <th>Asignado a</th>
+                            <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaEquiposGlobal"></tbody>
+                        </table>
+                    </div>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>ID/Referencia:</strong> <span id="modal-id"></span></p>
-                            <p><strong>Nombre del equipo:</strong> <span id="modal-nombre"></span></p>
-                            <p><strong>tipo de equipo</strong> <span id="modal-tipo"></span></p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Usuario asignado:</strong> <span id="modal-usuario"></span></p>
-                            <p><strong>Estado del equipo:</strong> <span id="modal-estado"></span></p>
-                            <p><strong>Sala:</strong> <span id="modal-sala"></span></p>
+                </div>
+
+                <!-- 📌 Tabla lateral de sedes y salas -->
+                <div class="col-md-3 col-12">
+                <div class="card shadow-sm salas-card">
+                    <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item">
+                        <a class="nav-link active" id="tab-sedeA" href="#" onclick="mostrarSede(1)">Sede A</a>
+                        </li>
+                        <li class="nav-item">
+                        <a class="nav-link" id="tab-sedeB" href="#" onclick="mostrarSede(2)">Sede B</a>
+                        </li>
+                    </ul>
+                    </div>
+                    <div class="card-body p-2">
+                    <div id="contenedorSede">
+                        <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle text-center">
+                            <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Sala</th>
+                            </tr>
+                            </thead>
+                            <tbody id="tablaSalas"></tbody>
+                        </table>
                         </div>
                     </div>
-                    <hr>
-                    <h5>Especificaciones Técnicas</h5>
-                    <p><strong>Sistema Operativo:</strong> <span id="modal-software"></span></p>
-                    <p><strong>RAM:</strong> <span id="modal-ram"></span></p>
-                    <p><strong>Disco Duro:</strong> <span id="modal-disco"></span></p>
-                    <p><strong>Fecha de adquisición:</strong> <span id="modal-fecha"></span></p>
-                    <p><strong>Descripción:</strong> <span id="modal-descripcion"></span></p>
-                    <p><strong>Observaciones:</strong> <span id="modal-observaciones"></span></p>
-                    <hr>
-                    <h5>Historial de incidentes</h5>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Descripción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>2023-05-10</td>
-                                <td>Problema de conexión a la red.</td>
-                            </tr>
-                            <tr>
-                                <td>2023-07-22</td>
-                                <td>Fallo en el disco duro, reemplazado.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <hr>
-                    <h5>Historial de mantenimiento</h5>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Descripción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>2023-06-20</td>
-                                <td>Mantenimiento preventivo realizado.</td>
-                            </tr>
-                            <tr>
-                                <td>2023-08-15</td>
-                                <td>Reemplazo de disco duro.</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
+
             </div>
-        </div>
-    </div>
-    <!-- Modal para editar detalles del equipo -->
-    <div class="modal fade" id="editarModal" tabindex="-1" aria-labelledby="editarModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editarModalLabel">Editar Equipo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- 📌 Modal Agregar Equipo -->
+            <div class="modal fade" id="modalAgregar" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Agregar Nuevo Equipo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="editarForm">
-                        <div class="row">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="editar-id" class="form-label">ID/Referencia</label>
-                                    <input type="text" class="form-control" id="editar-id" readonly>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="editar-usuario" class="form-label">Usuario asignado</label>
-                                    <input type="text" class="form-control" id="editar-usuario">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="editar-nombre" class="form-label">Nombre del equipo</label>
-                                    <input type="text" class="form-control" id="editar-nombre">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="editar-estado" class="form-label">Estado del equipo</label>
-                                    <select class="form-select" id="editar-estado">
-                                        <option value="operativo">Activo</option>
-                                        <option value="en_mantenimiento">En revisión</option>
-                                        <option value="fuera_de_servicio">Fuera de servicio</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="editar-tipo" class="form-label">Tipo de equipo</label>
-                                    <select class="form-select" id="editar-tipo">
-                                        <option value="computadora">Computadora</option>
-                                        <option value="impresora">Impresora</option>
-                                        <option value="proyector">Proyector</option>
-                                        <option value="otro">Otro</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="editar-sala" class="form-label">Sala</label>
-                                    <input type="text" class="form-control" id="editar-sala">
-                                </div>
-                            </div>
-                            <hr>
-                            <h5>Especificaciones Técnicas</h5>
-                            <div class="col-md-6 mb-3">
-                                <label for="editar-software" class="form-label">Sistema operativo</label>
-                                <input type="text" class="form-control" id="editar-software">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editar-ram" class="form-label">RAM</label>
-                                <input type="text" class="form-control" id="editar-ram">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editar-disco" class="form-label">Disco duro</label>
-                                <input type="text" class="form-control" id="editar-disco">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="editar-fecha" class="form-label">Fecha de adquisición</label>
-                                <input type="date" class="form-control" id="editar-fecha" readonly>
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <label for="editar-descripcion" class="form-label">Descripción</label>
-                                <input type="text" class="form-control" id="editar-descripcion">
-                            </div>
-                            <div class="col-md-12">
-                                <label for="editar-observaciones" class="form-label">Observaciones</label>
-                                <textarea class="form-control" id="editar-observaciones" rows="3"></textarea>
-                            </div>
-                        </div>
+                    <form id="formAgregar">
+                    <div class="mb-2">
+                        <label class="form-label">Nombre del Equipo</label>
+                        <input type="text" id="nuevoNombre" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Estado</label>
+                        <select id="nuevoEstado" class="form-select">
+                        <option>Disponible</option>
+                        <option>Mantenimiento</option>
+                        <option>Asignado</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Sede</label>
+                        <select id="nuevoSede" class="form-select" onchange="cargarSalas(this.value)" required>
+                        <option value="">Seleccione Sede</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Sala</label>
+                        <select id="nuevoSala" class="form-select" required></select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Asignado a</label>
+                        <input type="text" id="nuevoEstudiante" class="form-control">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Registrar Equipo</button>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-primary" form="editarForm">Guardar cambios</button>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <script>
-        document.querySelectorAll('.editar-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('editar-id').value = btn.getAttribute('data-id');
-                document.getElementById('editar-nombre').value = btn.getAttribute('data-nombre');
-                document.getElementById('editar-sala').value = btn.getAttribute('data-sala');
-                document.getElementById('editar-usuario').value = btn.getAttribute('data-usuario');
-                document.getElementById('editar-estado').value = btn.getAttribute('data-estado');
-                document.getElementById('editar-software').value = btn.getAttribute('data-software');
-                document.getElementById('editar-ram').value = btn.getAttribute('data-ram');
-                document.getElementById('editar-disco').value = btn.getAttribute('data-disco');
-                document.getElementById('editar-descripcion').value = btn.getAttribute('data-descripcion');
-                document.getElementById('editar-fecha').value = btn.getAttribute('data-fecha');
-                document.getElementById('editar-observaciones').value = btn.getAttribute('data-observaciones');
-                document.getElementById('editar-tipo').value = btn.getAttribute('data-tipo');
-            });
-        });
-
-        document.querySelectorAll('.ver-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('modal-id').textContent = btn.getAttribute('data-id');
-                document.getElementById('modal-nombre').textContent = btn.getAttribute('data-nombre');
-                document.getElementById('modal-sala').textContent = btn.getAttribute('data-sala');
-                document.getElementById('modal-usuario').textContent = btn.getAttribute('data-usuario');
-                document.getElementById('modal-estado').textContent = btn.getAttribute('data-estado');
-                document.getElementById('modal-software').textContent = btn.getAttribute('data-software');
-                document.getElementById('modal-ram').textContent = btn.getAttribute('data-ram');
-                document.getElementById('modal-disco').textContent = btn.getAttribute('data-disco');
-                document.getElementById('modal-descripcion').textContent = btn.getAttribute('data-descripcion');
-                document.getElementById('modal-fecha').textContent = btn.getAttribute('data-fecha');
-                document.getElementById('modal-observaciones').textContent = btn.getAttribute('data-observaciones');
-                document.getElementById('modal-tipo').textContent = btn.getAttribute('data-tipo');
-            });
-        });
-    </script>
-
+            </div>
+    </main>
     <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
+    <script>
+        /* 📌 Datos simulados (como si vinieran del localhost) */
+        let sedes = [
+        { id: 1, nombre: "Sede A", salones: [
+            { id: 101, nombre: "Aula 101", tipo: "Aula", equipos: [
+                { nombre:"PC-01", estado:"Disponible", estudiante:"Juan" },
+                { nombre:"PC-02", estado:"Mantenimiento", estudiante:"" }
+            ]},
+            { id: 102, nombre: "Lab Computo 1", tipo: "Sala de Cómputo", equipos: [
+                { nombre:"PC-03", estado:"Disponible", estudiante:"Maria" }
+            ]}
+        ]},
+        { id: 2, nombre: "Sede B", salones: [
+            { id: 201, nombre: "Aula 201", tipo: "Aula", equipos: [] },
+            { id: 202, nombre: "Lab Computo 2", tipo: "Sala de Cómputo", equipos: [
+                { nombre:"PC-04", estado:"Disponible", estudiante:"Pedro" }
+            ]}
+        ]}
+        ];
 
+        /* 📌 Render equipos en tabla principal */
+        function actualizarTablaEquipos(equipos, sedeNombre, salaNombre) {
+        const tbody = document.getElementById("tablaEquiposGlobal");
+        tbody.innerHTML = "";
+
+        equipos.forEach(eq => {
+            const row = `
+            <tr>
+                <td>${eq.nombre}</td>
+                <td>${eq.estado}</td>
+                <td>${sedeNombre}</td>
+                <td>${salaNombre}</td>
+                <td>${eq.estudiante || "-"}</td>
+                <td>
+                <button class="btn btn-info btn-sm">Ver</button>
+                <button class="btn btn-warning btn-sm">Editar</button>
+                </td>
+            </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        }
+
+        /* 📌 Mostrar todos los equipos */
+        function mostrarTodosLosEquipos() {
+        const tbody = document.getElementById("tablaEquiposGlobal");
+        tbody.innerHTML = "";
+
+        sedes.forEach(sede => {
+            sede.salones.forEach(salon => {
+            salon.equipos.forEach(eq => {
+                const row = `
+                <tr>
+                    <td>${eq.nombre}</td>
+                    <td>${eq.estado}</td>
+                    <td>${sede.nombre}</td>
+                    <td>${salon.nombre}</td>
+                    <td>${eq.estudiante || "-"}</td>
+                    <td>
+                    <button class="btn btn-info btn-sm">Ver</button>
+                    <button class="btn btn-warning btn-sm">Editar</button>
+                    </td>
+                </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+            });
+        });
+        }
+
+        /* 📌 Mostrar salas */
+        function mostrarSede(sedeId) {
+        document.getElementById("tab-sedeA").classList.remove("active");
+        document.getElementById("tab-sedeB").classList.remove("active");
+        if (sedeId === 1) document.getElementById("tab-sedeA").classList.add("active");
+        if (sedeId === 2) document.getElementById("tab-sedeB").classList.add("active");
+
+        const tbody = document.getElementById("tablaSalas");
+        tbody.innerHTML = "";
+        const sede = sedes.find(s => s.id == sedeId);
+
+        sede.salones.forEach(salon => {
+            const row = `
+            <tr onclick="mostrarEquiposDeSala(${sede.id}, ${salon.id})">
+                <td>${salon.id}</td>
+                <td>${salon.nombre}</td>
+            </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        }
+
+        /* 📌 Mostrar equipos de sala */
+        function mostrarEquiposDeSala(sedeId, salaId) {
+        const sede = sedes.find(s => s.id == sedeId);
+        const salon = sede.salones.find(s => s.id == salaId);
+        actualizarTablaEquipos(salon.equipos, sede.nombre, salon.nombre);
+        }
+
+        /* 📌 Cargar sedes en formulario */
+        function cargarSedes() {
+        const select = document.getElementById("nuevoSede");
+        sedes.forEach(s => {
+            const opt = document.createElement("option");
+            opt.value = s.id;
+            opt.textContent = s.nombre;
+            select.appendChild(opt);
+        });
+        }
+
+        /* 📌 Cargar salas según sede */
+        function cargarSalas(sedeId) {
+        const select = document.getElementById("nuevoSala");
+        select.innerHTML = "";
+        const sede = sedes.find(s => s.id == sedeId);
+        if (sede) {
+            sede.salones.forEach(salon => {
+            const opt = document.createElement("option");
+            opt.value = salon.id;
+            opt.textContent = salon.nombre;
+            select.appendChild(opt);
+            });
+        }
+        }
+
+        /* 📌 Agregar equipo al arreglo */
+        document.getElementById("formAgregar").addEventListener("submit", e => {
+        e.preventDefault();
+        const nombre = document.getElementById("nuevoNombre").value;
+        const estado = document.getElementById("nuevoEstado").value;
+        const sedeId = parseInt(document.getElementById("nuevoSede").value);
+        const salaId = parseInt(document.getElementById("nuevoSala").value);
+        const estudiante = document.getElementById("nuevoEstudiante").value;
+
+        const sede = sedes.find(s => s.id === sedeId);
+        const sala = sede.salones.find(s => s.id === salaId);
+
+        // agregar el nuevo equipo
+        sala.equipos.push({ nombre, estado, estudiante });
+
+        // refrescar vista
+        mostrarTodosLosEquipos();
+
+        // cerrar modal
+        bootstrap.Modal.getInstance(document.getElementById('modalAgregar')).hide();
+        e.target.reset();
+        });
+
+        /* 📌 Inicializar */
+        mostrarTodosLosEquipos();
+        mostrarSede(1);
+        cargarSedes();
+    </script>
     {% endblock%}
 
 </body>
