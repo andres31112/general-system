@@ -1,17 +1,13 @@
-// static/js/superadmin/profesores.js
 document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('profesores-table-body');
 
-    // Función para renderizar los datos en la tabla
     function renderTable(profesores) {
-        tableBody.innerHTML = ''; // Limpiar cualquier contenido previo
-
+        tableBody.innerHTML = ''; 
         profesores.forEach(profesor => {
             const row = document.createElement('tr');
             
             const userId = profesor.id_usuario; 
 
-            // Determinar la clase del badge según el estado de la cuenta
             const estadoClase = profesor.estado_cuenta === 'activa' ? 'badge-success' : 'badge-danger';
             const estadoTexto = profesor.estado_cuenta === 'activa' ? 'Activo' : 'Inactivo';
 
@@ -36,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.appendChild(row);
         });
     }
-    // Función para obtener los datos de la API
     async function fetchProfesores() {
         try {
             const response = await fetch('/admin/api/profesores');
@@ -54,10 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Llamar a la función para cargar los datos al iniciar la página
     fetchProfesores();
 
-    // Configurar la recarga automática cada 3 segundos (3000 milisegundos)
-    // Nota: El intervalo de 3 segundos es muy corto para un ambiente de producción.
+  
     setInterval(fetchProfesores, 3000);
 });

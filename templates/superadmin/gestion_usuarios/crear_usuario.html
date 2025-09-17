@@ -106,12 +106,55 @@
 
                     <div class="mb-3">
                         <label for="{{ form.rol.id }}" class="form-label">Rol del Usuario</label>
-                        {{ form.rol(class="form-select") }}
+                        <select id="{{ form.rol.id }}" name="{{ form.rol.name }}" class="form-select">
+                            <option value="" disabled selected>Selecciona un Rol...</option>
+                            {% for id, nombre in form.rol.choices %}
+                                <option value="{{ id }}">{{ nombre }}</option>
+                            {% endfor %}
+                        </select>
                         {% for error in form.rol.errors %}
                             <div class="text-danger small">{{ error }}</div>
                         {% endfor %}
                     </div>
 
+                    <div id="student-fields" style="display: none;">
+                        <hr class="my-4">
+                        <h3 class="h6 mb-3">Detalles de Matrícula</h3>
+                        <div class="mb-3">
+                            <label for="{{ form.curso_id.id }}" class="form-label">Curso</label>
+                            {{ form.curso_id(class="form-select") }}
+                            {% for error in form.curso_id.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.anio_matricula.id }}" class="form-label">Año de Matrícula</label>
+                            {{ form.anio_matricula(class="form-control", value=now().year, placeholder="Ej: 2024") }}
+                            {% for error in form.anio_matricula.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div id="professor-fields" style="display: none;">
+                        <hr class="my-4">
+                        <h3 class="h6 mb-3">Asignación de Asignatura</h3>
+                        <div class="mb-3">
+                            <label for="{{ form.asignatura_id.id }}" class="form-label">Asignatura</label>
+                            {{ form.asignatura_id(class="form-select") }}
+                            {% for error in form.asignatura_id.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.curso_asignacion_id.id }}" class="form-label">Curso de la Asignatura</label>
+                            {{ form.curso_asignacion_id(class="form-select") }}
+                            {% for error in form.curso_asignacion_id.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
                     <button type="submit" class="btn btn-dark w-100 py-2 mt-3">CREAR USUARIO</button>
                 </form>
             </div>
@@ -124,11 +167,38 @@
             </div>
         </div>
 
-        <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary w-100 py-2 mt-4">Atrás</a>
+        <a href="{{ url_for('admin.profesores') }}" class="btn btn-secondary w-100 py-2 mt-4">Atrás</a>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-{% endblock %}
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rolSelect = document.getElementById('{{ form.rol.id }}');
+            const studentFields = document.getElementById('student-fields');
+            const professorFields = document.getElementById('professor-fields');
+
+            rolSelect.addEventListener('change', function() {
+                const selectedRoleName = rolSelect.options[rolSelect.selectedIndex].text.toLowerCase();
+                
+                studentFields.style.display = 'none';
+                professorFields.style.display = 'none';
+
+                if (selectedRoleName.includes('estudiante')) {
+                    studentFields.style.display = 'block';
+                } else if (selectedRoleName.includes('profesor')) {
+                    professorFields.style.display = 'block';
+                }
+            });
+            
+            const initialRoleName = rolSelect.options[rolSelect.selectedIndex].text.toLowerCase();
+            if (initialRoleName.includes('estudiante')) {
+                studentFields.style.display = 'block';
+            } else if (initialRoleName.includes('profesor')) {
+                professorFields.style.display = 'block';
+            }
+        });
+    </script>
+{% endblock %}
 </body>
 </html>

@@ -1,12 +1,163 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Usuarios/Roles</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/dashboard.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios/Roles</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <style>
+        /*
+         * Estilos personalizados para el panel de gestión de usuarios.
+         */
+
+        /* Variables CSS para una gestión de colores y sombras más sencilla */
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #198754;
+            --info-color: #0dcaf0;
+            --warning-color: #ffc107;
+            --dark-color: #212529;
+            --light-color: #f8f9fa;
+            --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --card-hover-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            --border-radius-lg: 1rem;
+        }
+
+        body {
+            background-color: var(--light-color);
+            font-family: 'Poppins', sans-serif; /* Fuente moderna recomendada */
+        }
+
+        /* --- Encabezado --- */
+        .main-header {
+            background-color: #fff;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #e9ecef;
+            box-shadow: var(--card-shadow);
+        }
+
+        .search-bar .input-group-text {
+            background-color: #e9ecef;
+            border: none;
+            border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg);
+            color: #495057;
+        }
+
+        .search-bar .form-control {
+            border: none;
+            background-color: #e9ecef;
+            border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0;
+            transition: all 0.3s ease;
+        }
+
+        .search-bar .form-control:focus {
+            background-color: #fff;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .action-link {
+            font-size: 1.5rem;
+            color: #495057;
+            transition: color 0.3s ease;
+        }
+
+        .action-link:hover {
+            color: var(--primary-color);
+        }
+
+        /* --- Contenido Principal del Dashboard --- */
+        .dashboard-content {
+            padding: 3rem 1.5rem;
+        }
+
+        .main-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin-bottom: 2rem;
+        }
+
+        /* --- Estilos de las Tarjetas de Usuario --- */
+        .user-card {
+            border: none;
+            border-radius: var(--border-radius-lg);
+            background-color: #fff;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 2.5rem 1.5rem;
+            display: block;
+            height: 100%;
+            text-align: center;
+        }
+
+        .user-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--card-hover-shadow);
+        }
+
+        .icon-wrapper {
+            display: inline-block;
+            padding: 1.5rem;
+            border-radius: 50%;
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+            transition: background-color 0.3s ease;
+        }
+        
+        /* Colores para los iconos */
+        .professors-card .icon-wrapper { background-color: rgba(13, 110, 253, 0.1); color: var(--primary-color); }
+        .students-card .icon-wrapper { background-color: rgba(25, 135, 84, 0.1); color: var(--success-color); }
+        .parents-card .icon-wrapper { background-color: rgba(13, 202, 240, 0.1); color: var(--info-color); }
+        .admins-card .icon-wrapper { background-color: rgba(255, 193, 7, 0.1); color: var(--warning-color); }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        /* --- Sección de "Crear Usuario" --- */
+        .create-user-section {
+            height: 100%;
+            border-radius: var(--border-radius-lg);
+            overflow: hidden;
+            padding: 2rem;
+        }
+
+        .create-user-section img {
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .create-user-section .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        .create-user-section .section-description {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        .create-user-section .btn {
+            border-radius: 50px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .create-user-section .btn:hover {
+            background-color: #e9ecef;
+            color: var(--dark-color);
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 <body>
 
@@ -15,86 +166,89 @@
 {% block title %}Gestión de Usuarios/Roles{% endblock %}
 
 {% block content %}
-<header class="bg-white shadow-sm p-3 d-none d-lg-flex justify-content-between align-items-center">
-    <div class="input-group" style="max-width: 400px;">
-        <span class="input-group-text bg-light border-end-0" id="search-addon"><i class="fas fa-search"></i></span>
-        <input type="search" class="form-control border-start-0" placeholder="Buscar estudiantes, informes, etc..." aria-label="Buscar" aria-describedby="search-addon">
-    </div>
+<header class="main-header d-none d-lg-flex justify-content-between align-items-center">
+    <div class="search-bar input-group" style="max-width: 400px;">
+        <span class="input-group-text"><i class="fas fa-search"></i></span>
+        <input type="search" class="form-control" placeholder="Buscar usuarios, roles, etc..." aria-label="Buscar">
+    </div>
 
-    <div class="d-flex align-items-center">
-        <a href="#" class="text-secondary me-4"><i class="fas fa-bell fs-5"></i></a>
-        <a href="#" class="text-secondary"><i class="fas fa-user-circle fs-5"></i></a>
-    </div>
+    <div class="user-actions d-flex align-items-center">
+        <a href="#" class="action-link me-4" aria-label="Notificaciones">
+            <i class="fas fa-bell"></i>
+        </a>
+        <a href="#" class="action-link" aria-label="Perfil de usuario">
+            <i class="fas fa-user-circle"></i>
+        </a>
+    </div>
 </header>
 
-<main class="p-4 p-md-5">
-    <h1 class="h2 fw-bold mb-4">¿Qué Usuarios Desea Gestionar hoy?</h1>
+<main class="dashboard-content p-4 p-md-5">
+    <h1 class="main-title">¿Qué Usuarios Desea Gestionar hoy?</h1>
 
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <a href="{{ url_for('admin.profesores') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
-                        <div class="card-body">
-                            <div class="d-inline-block bg-primary bg-opacity-10 text-primary rounded-circle p-3 mb-3">
-                                <i class="fas fa-briefcase fs-2"></i>
-                            </div>
-                            <h3 class="h5 card-title fw-bold text-dark">Profesores</h3>
-                        </div>
-                    </a>
-                </div>
+    <div class="row g-4 user-cards-container">
+        <div class="col-lg-8">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <a href="{{ url_for('admin.profesores') }}" class="user-card professors-card text-decoration-none">
+                        <div class="card-body">
+                            <div class="icon-wrapper">
+                                <i class="fas fa-briefcase"></i>
+                            </div>
+                            <h3 class="card-title">Profesores</h3>
+                        </div>
+                    </a>
+                </div>
 
-                <div class="col-md-6">
-                    <a href="{{ url_for('admin.estudiantes') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
-                        <div class="card-body">
-                            <div class="d-inline-block bg-success bg-opacity-10 text-success rounded-circle p-3 mb-3">
-                                <i class="fas fa-user-graduate fs-2"></i>
-                            </div>
-                            <h3 class="h5 card-title fw-bold text-dark">Estudiantes</h3>
-                        </div>
-                    </a>
-                </div>
+                <div class="col-md-6">
+                    <a href="{{ url_for('admin.estudiantes') }}" class="user-card students-card text-decoration-none">
+                        <div class="card-body">
+                            <div class="icon-wrapper">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <h3 class="card-title">Estudiantes</h3>
+                        </div>
+                    </a>
+                </div>
 
-                <div class="col-md-6">
-                    <a href="#" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
-                        <div class="card-body">
-                            <div class="d-inline-block bg-info bg-opacity-10 text-info rounded-circle p-3 mb-3">
-                                <i class="fas fa-users fs-2"></i>
-                            </div>
-                            <h3 class="h5 card-title fw-bold text-dark">Padres/Tutores</h3>
-                        </div>
-                    </a>
-                </div>
+                <div class="col-md-6">
+                    <a href="#" class="user-card parents-card text-decoration-none">
+                        <div class="card-body">
+                            <div class="icon-wrapper">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h3 class="card-title">Padres/Tutores</h3>
+                        </div>
+                    </a>
+                </div>
 
-                <div class="col-md-6">
-                    <a href="#" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
-                        <div class="card-body">
-                            <div class="d-inline-block bg-warning bg-opacity-10 text-warning rounded-circle p-3 mb-3">
-                                <i class="fas fa-pen-fancy fs-2"></i>
-                            </div>
-                            <h3 class="h5 card-title fw-bold text-dark">Administradores<br>Institucionales</h3>
-                        </div>
-                    </a>
-                </div>
-            </div>
-        </div>
+                <div class="col-md-6">
+                    <a href="#" class="user-card admins-card text-decoration-none">
+                        <div class="card-body">
+                            <div class="icon-wrapper">
+                                <i class="fas fa-pen-fancy"></i>
+                            </div>
+                            <h3 class="card-title">Administradores<br>Institucionales</h3>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
 
-        <div class="col-lg-4">
-            <div class="card bg-dark text-white h-100 border-0 shadow-lg">
-                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center p-4">
-                    <img src="https://placehold.co/300x180/495057/FFFFFF?text=Ilustracion" class="img-fluid rounded mb-4" alt="Ilustración">
-                    <h3 class="h5 fw-bold">Crea Usuarios</h3>
-                    <p class="text-white-50 mb-4">Define nuevos perfiles de usuario y gestiona sus permisos dentro del sistema de forma sencilla.</p>
-               
-                    <br>
-                    <a href="{{ url_for('admin.crear_usuario') }}" class="btn btn-light fw-bold w-100 mt-2">
-                        <i class="fas fa-user-plus me-2"></i>
-                        Crear nuevo Usuario
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+        <div class="col-lg-4">
+            <div class="create-user-section card bg-dark text-white shadow-lg">
+                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center p-4">
+                    <img src="https://placehold.co/300x180/495057/FFFFFF?text=Ilustracion" class="img-fluid rounded mb-4" alt="Ilustración para la creación de usuarios">
+                    <h3 class="section-title">Crea Usuarios</h3>
+                    <p class="section-description">Define nuevos perfiles de usuario y gestiona sus permisos dentro del sistema de forma sencilla.</p>
+                    <br>
+                    <a href="{{ url_for('admin.crear_usuario') }}" class="btn btn-light fw-bold w-100 mt-2">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Crear nuevo Usuario
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 {% endblock %}
 

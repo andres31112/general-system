@@ -5,28 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Horarios - Dashboard del Colegio</title>
     
-    <!-- Enlaces a librerías externas -->
-    <!-- Bootstrap 5.3.3 para diseño responsivo y componentes UI -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- Google Fonts - Montserrat para tipografía moderna -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Chart.js para gráficos interactivos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2canvas para captura de pantalla (usado en generación PDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- jsPDF para generación de archivos PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/Horario.css') }}">
-
-
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/Horario.css') }}">
 </head>
 <body>
-    <!-- ========================================
-         SISTEMA DE MENSAJES FLASH DE FLASK
-         Muestra notificaciones del servidor
-         ======================================== -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="alert-container">
@@ -37,29 +22,17 @@
         {% endif %}
     {% endwith %}
 
-    <!-- ========================================
-         BARRA DE NAVEGACIÓN PRINCIPAL
-         ======================================== -->
     <nav class="navbar navbar-expand-lg navbar-light sticky-top">
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <!-- Logo circular identificativo del sistema -->
                 <div class="logo-circle"></div>
                 <h1 class="h5 mb-0 text-principal">Dashboard del Colegio - Gestión de Horarios</h1>
             </a>
         </div>
     </nav>
 
-    <!-- ========================================
-         CONTENIDO PRINCIPAL DE LA APLICACIÓN
-         ======================================== -->
     <main class="container-fluid p-4">
-        <!-- ========================================
-             SECCIÓN DE TARJETAS DE RESUMEN
-             Muestra estadísticas clave del sistema
-             ======================================== -->
         <section class="row mb-3">
-            <!-- Tarjeta: Total de Cursos registrados -->
             <div class="col-lg-4 col-md-6 mb-3">
                 <div class="summary-card">
                     <div class="icon"><i class="fa-solid fa-book-open"></i></div>
@@ -70,7 +43,6 @@
                 </div>
             </div>
             
-            <!-- Tarjeta: Total de Profesores activos -->
             <div class="col-lg-4 col-md-6 mb-3">
                 <div class="summary-card">
                     <div class="icon"><i class="fa-solid fa-users"></i></div>
@@ -81,73 +53,56 @@
                 </div>
             </div>
             
-            <!-- Tarjeta: Horarios Activos (valor dinámico desde Flask) -->
             <div class="col-lg-4 col-md-12 mb-3">
                 <div class="summary-card">
                     <div class="icon"><i class="fa-solid fa-calendar-check"></i></div>
                     <div>
                         <h3 class="h6 mb-0">Horarios Activos</h3>
-                        <!-- Valor inyectado desde el template Flask -->
                         <p class="number mb-0" id="active-schedules">{{ horarios|length }}</p>
                     </div>
                 </div>
             </div>
         </section>
         
-        <!-- ========================================
-             PANEL DE GESTIÓN AVANZADA
-             Visible solo en la pestaña "Horario General"
-             Permite crear, editar y configurar horarios
-             ======================================== -->
         <div class="main-panel d-none mb-3" id="management-panel">
             <div class="panel-content p-3 d-flex flex-row flex-wrap gap-3">
                 
-                <!-- Grupo: Gestión de Horarios Generales -->
                 <div class="management-group">
                     <h5 class="h6 text-principal">Gestión de Horarios</h5>
                     
-                    <!-- Selector de horario existente con opción de eliminar -->
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="dropdown flex-grow-1">
                             <button class="btn btn-outline-primary dropdown-toggle w-100" type="button" 
                                     id="scheduleSelectorDropdown" data-bs-toggle="dropdown">Seleccionar</button>
-                            <!-- Lista dinámica de horarios disponibles -->
                             <ul class="dropdown-menu w-100" id="schedule-list"></ul>
                         </div>
-                        <!-- Botón para eliminar horario seleccionado -->
                         <button class="btn btn-danger" id="delete-schedule-btn" title="Eliminar Horario">
                             <i class="fa-solid fa-trash-alt"></i>
                         </button>
                     </div>
                     
-                    <!-- Botones de acción principales -->
                     <div class="d-grid gap-2">
                         <button class="btn btn-primary" id="create-schedule-btn">Crear Nuevo Horario</button>
                         <button class="btn btn-success" id="assign-schedule-btn">Asignar a Cursos</button>
                     </div>
                 </div>
                 
-                <!-- Grupo: Gestión de Materias/Asignaturas -->
                 <div class="management-group">
                     <h5 class="h6 text-principal">Gestión de Materias</h5>
                     
-                    <!-- Formulario inline para añadir nueva materia -->
                     <div class="d-flex gap-2 my-2">
                         <input type="text" id="new-subject-name" class="form-control form-control-sm" 
                                placeholder="Nueva materia">
                         <button class="btn btn-primary btn-sm" id="add-subject-btn">Añadir</button>
                     </div>
                     
-                    <!-- Lista scrolleable de materias existentes -->
                     <ul class="list-group global-resource-list" id="global-subjects-list" 
                         style="max-height: 100px; overflow-y: auto;"></ul>
                 </div>
                 
-                <!-- Grupo: Configuración de Horario General Semanal -->
                 <div class="management-group">
                     <h5 class="h6 text-principal">Horario General Semanal</h5>
                     
-                    <!-- Configuración de horas de inicio y fin del horario -->
                     <div class="d-flex align-items-center gap-2 my-2">
                         <label for="general-start-time" class="form-label mb-0 small text-nowrap">Inicio:</label>
                         <input type="time" class="form-control form-control-sm" id="general-start-time" step="1800">
@@ -155,14 +110,12 @@
                         <input type="time" class="form-control form-control-sm" id="general-end-time" step="1800">
                     </div>
                     
-                    <!-- Selector múltiple de días de la semana -->
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" 
                                 id="daysDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside">
                             Seleccionar Días
                         </button>
                         <ul class="dropdown-menu w-100">
-                            <!-- Checkboxes para cada día de la semana -->
                             <li><label class="dropdown-item">
                                 <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Lunes">Lunes
                             </label></li>
@@ -186,10 +139,8 @@
                     
                     <hr class="my-3">
                     
-                    <!-- Subsección: Gestión de Descansos -->
                     <h5 class="h6 text-principal">Gestión de Descansos</h5>
                     
-                    <!-- Formulario para añadir períodos de descanso -->
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <input type="time" id="break-start-time" class="form-control form-control-sm" 
                                step="900" title="Hora de inicio del descanso">
@@ -198,23 +149,16 @@
                         <button class="btn btn-primary btn-sm" id="add-break-btn">Añadir</button>
                     </div>
                     
-                    <!-- Lista dinámica de descansos configurados -->
                     <ul class="list-group" id="break-list"></ul>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================
-             SECCIÓN PRINCIPAL DE CONTENIDO
-             Contiene las pestañas y vistas principales
-             ======================================== -->
         <section class="row">
-            <!-- Columna Principal: Gráficos y Visualización de Horarios -->
             <div class="col-lg-8 mb-4" id="main-column">
                 <div class="main-panel" id="chart-panel">
                     <div class="panel-content p-0">
                         
-                        <!-- Sistema de pestañas para alternar entre vistas -->
                         <ul class="nav nav-tabs nav-fill" id="horarioTab" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="horario-curso-tab" data-bs-toggle="tab" 
@@ -230,20 +174,15 @@
                             </li>
                         </ul>
                         
-                        <!-- Contenido de las pestañas -->
                         <div class="tab-content" id="horarioTabContent">
                             
-                            <!-- Pestaña: Horario Específico de Curso -->
                             <div class="tab-pane fade show active" id="horario-curso-pane" role="tabpanel">
                                 <div id="schedule-display-content" class="h-100 d-flex align-items-center justify-content-center">
-                                    <!-- Mensaje inicial antes de seleccionar un curso -->
                                     Seleccione un curso para ver su horario
                                 </div>
                             </div>
                             
-                            <!-- Pestaña: Vista General con Gráfico -->
                             <div class="tab-pane fade" id="horario-general-pane" role="tabpanel">
-                                <!-- Canvas para renderizar el gráfico de Chart.js -->
                                 <canvas id="horarioGeneralChart"></canvas>
                             </div>
                         </div>
@@ -251,12 +190,10 @@
                 </div>
             </div>
             
-            <!-- Columna Lateral: Lista de Cursos por Sede -->
             <div class="col-lg-4 mb-4" id="side-column">
                 <div class="main-panel" id="course-list-panel">
                     <div class="panel-content p-0">
                         
-                        <!-- Pestañas para diferentes sedes del colegio -->
                         <ul class="nav nav-tabs nav-fill" id="sedeTab" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="sede-a-tab" data-bs-toggle="tab" 
@@ -272,10 +209,8 @@
                             </li>
                         </ul>
                         
-                        <!-- Contenido de las pestañas de sedes -->
                         <div class="tab-content" id="sedeTabContent">
                             
-                            <!-- Sede A: Cursos 1-6 -->
                             <div class="tab-pane fade show active" id="sede-a-pane" role="tabpanel">
                                 <div class="table-container p-2">
                                     <table class="table table-hover">
@@ -286,7 +221,6 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <!-- Filas de cursos con data-course-name para identificación JavaScript -->
                                             <tr class="course-row" data-course-name="Curso 1"><td>1</td><td>Curso 1</td></tr>
                                             <tr class="course-row" data-course-name="Curso 2"><td>2</td><td>Curso 2</td></tr>
                                             <tr class="course-row" data-course-name="Curso 3"><td>3</td><td>Curso 3</td></tr>
@@ -298,7 +232,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Sede B: Cursos 7-12 -->
                             <div class="tab-pane fade" id="sede-b-pane" role="tabpanel">
                                 <div class="table-container p-2">
                                     <table class="table table-hover">
@@ -322,7 +255,6 @@
                         </div>
                     </div>
                     
-                    <!-- Botón de acceso a configuraciones avanzadas -->
                     <div class="d-grid p-2 border-top">
                         <button class="btn btn-outline-primary" id="additional-settings-btn">
                             <i class="fa-solid fa-cog me-2"></i>Ajustes Adicionales
@@ -333,12 +265,6 @@
         </section>
     </main>
 
-    <!-- ========================================
-         MODALES (VENTANAS EMERGENTES)
-         Interfaces para operaciones específicas
-         ======================================== -->
-    
-    <!-- Modal: Crear Nuevo Horario General -->
     <div class="modal fade" id="createScheduleModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -359,7 +285,6 @@
         </div>
     </div>
 
-    <!-- Modal: Asignar Horario a Cursos Específicos -->
     <div class="modal fade" id="assignScheduleModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -369,7 +294,6 @@
                 </div>
                 <div class="modal-body">
                     <p>Seleccione los cursos para asignar el horario <strong id="schedule-name-to-assign"></strong>.</p>
-                    <!-- Lista dinámica de cursos con checkboxes -->
                     <div id="course-assignment-list" class="list-group" style="max-height: 250px; overflow-y: auto;"></div>
                 </div>
                 <div class="modal-footer">
@@ -380,7 +304,6 @@
         </div>
     </div>
 
-    <!-- Modal: Configuración Avanzada de Recursos del Curso -->
     <div class="modal fade" id="additional-settings-modal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
@@ -391,7 +314,6 @@
                 <div class="modal-body">
                     <p>Define las materias, profesores y salones para el <strong id="settings-course-name"></strong>.</p>
                     
-                    <!-- Formulario para añadir recursos (materia + profesor + salón) -->
                     <div class="mb-4 p-3 border rounded">
                         <h6 class="h6">Añadir Recurso</h6>
                         <div class="row g-2 align-items-end">
@@ -415,7 +337,6 @@
                         </div>
                     </div>
                     
-                    <!-- Tabla de recursos actualmente configurados -->
                     <h6 class="h6">Recursos Actuales</h6>
                     <div class="table-responsive" style="max-height: 200px;">
                         <table class="table table-striped table-sm">
@@ -438,7 +359,6 @@
         </div>
     </div>
 
-    <!-- Modal: Alertas y Notificaciones Generales -->
     <div class="modal fade" id="alertModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -454,7 +374,6 @@
         </div>
     </div>
 
-    <!-- Modal: Confirmaciones de Acciones Críticas -->
     <div class="modal fade" id="confirmModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -471,8 +390,10 @@
         </div>
     </div>
     
-    <!-- Bootstrap JavaScript Bundle (incluye Popper.js) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='js/superadmin/Horario.js') }}">
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+<script src="{{ url_for('static', filename='js/superadmin/Horario.js') }}"></script></body>
 </html>

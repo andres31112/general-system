@@ -1,0 +1,228 @@
+    {% extends "base.html" %}
+
+    {% block title %}Gestión de Sedes{% endblock %}
+
+    {% block content %}
+    <div class="container-fluid px-4">
+        <header class="d-flex justify-content-between align-items-center py-3">
+            <h1 class="h4 mb-0">Gestión de Sedes</h1>
+            <div>
+                <a href="#" class="text-secondary me-3"><i class="fas fa-bell fs-5"></i></a>
+                <a href="#" class="text-secondary"><i class="fas fa-user-circle fs-5"></i></a>
+            </div>
+        </header>
+
+        <div class="main-container mt-4">
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="row">
+                <div class="col-lg-5 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Registrar Nueva Sede</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="sedeForm" method="POST" action="{{ url_for('admin.api_sedes') }}">
+                                {{ form.hidden_tag() }}
+                                <div class="mb-3">
+                                    <label for="{{ form.nombre.id }}" class="form-label">{{ form.nombre.label }}</label>
+                                    {{ form.nombre(class="form-control") }}
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 mt-2">Guardar Sede</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Sedes Registradas</h5>
+                            <input type="text" id="searchBar" class="form-control w-50" placeholder="Buscar sede...">
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre de la Sede</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sedesTableBody">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('sedeForm');
+        const tableBody = document.getElementById('sedesTableBody');
+        const searchBar = document.getElementById('searchBar');
+        const flashContainer = document.querySelector('.flash-messages');
+        let allSedes = [];
+
+        function showFlashMessage(message, category) {
+            flashContainer.innerHTML = '';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${category} alert-dismissible fade show`;
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>`;
+            flashContainer.appendChild(alertDiv);
+        }
+
+        function renderSedes(sedes) {
+            tableBody.innerHTML = '';
+            if (sedes.length === 0) {
+                const noDataRow = document.createElement('tr');
+                noDataRow.innerHTML = `<td colspan="2" class="text-center">No hay sedes registradas.</td>`;
+                tableBody.appendChild(noDataRow);
+            } else {
+                sedes.forEach(sede => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${sede.nombre}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${sede.id}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+        }
+
+        // Function to load all sedes from the API
+        function fetchSedes() {
+            fetch('{{ url_for("admin.api_sedes") }}')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error al cargar sedes.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    allSedes = data;
+                    renderSedes(allSedes);
+                })
+                .catch(error => {
+                    console.error('Error al cargar sedes:', error);
+                    showFlashMessage('No se pudieron cargar las sedes. Por favor, inténtalo de nuevo.', 'danger');
+                });
+        }
+
+        // Handle form submission
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            fetch('{{ url_for("admin.api_sedes") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(JSON.stringify(errorData));
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                form.reset();
+                fetchSedes();
+                showFlashMessage('Sede creada exitosamente.', 'success');
+            })
+            .catch(error => {
+                console.error('Error al crear sede:', error);
+                try {
+                    const errorDetails = JSON.parse(error.message);
+                    if (errorDetails.errors) {
+                        Object.keys(errorDetails.errors).forEach(key => {
+                            const input = document.getElementById(key);
+                            if (input) {
+                                input.classList.add('is-invalid');
+                                input.nextElementSibling.textContent = errorDetails.errors[key].join(', ');
+                            }
+                        });
+                    } else if (errorDetails.error) {
+                        showFlashMessage(errorDetails.error, 'danger');
+                    }
+                } catch (parseError) {
+                    showFlashMessage('Error de red. No se pudo conectar con el servidor.', 'danger');
+                }
+                fetchSedes(); // ✅ Reload the table even on failure to ensure synchronization
+            });
+        });
+
+        // Handle sede deletion
+        tableBody.addEventListener('click', function(event) {
+            if (event.target.closest('.delete-btn')) {
+                const button = event.target.closest('.delete-btn');
+                const sedeId = button.dataset.id;
+                if (confirm('¿Estás seguro de que quieres eliminar esta sede?')) {
+                    fetch('{{ url_for("admin.api_sedes") }}', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: sedeId })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(errorData => { throw new Error(JSON.stringify(errorData)); });
+                        }
+                        return response.json();
+                    })
+                    .then(result => {
+                        showFlashMessage('Sede eliminada exitosamente.', 'success');
+                        fetchSedes();
+                    })
+                    .catch(error => {
+                        console.error('Error al eliminar sede:', error);
+                        try {
+                            const errorDetails = JSON.parse(error.message);
+                            if (errorDetails.error) { showFlashMessage(errorDetails.error, 'danger'); }
+                        } catch (parseError) {
+                            showFlashMessage('Error de red. No se pudo eliminar la sede.', 'danger');
+                        }
+                        fetchSedes(); // ✅ Reload the table even on failure
+                    });
+                }
+            }
+        });
+
+        // Handle search in the table
+        searchBar.addEventListener('keyup', function() {
+            const searchText = this.value.toLowerCase();
+            const filteredSedes = allSedes.filter(sede =>
+                sede.nombre.toLowerCase().includes(searchText)
+            );
+            renderSedes(filteredSedes);
+        });
+
+        fetchSedes();
+    });
+    </script>
+    {% endblock %}

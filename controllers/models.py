@@ -3,9 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from controllers.permisos import ROLE_PERMISSIONS
 
-# ===============================h
 # Roles
-# ===============================
 class Rol(db.Model):
     __tablename__ = 'roles'
     id_rol = db.Column(db.Integer, primary_key=True)
@@ -13,11 +11,8 @@ class Rol(db.Model):
 
     # Relación inversa a usuarios
     usuarios = db.relationship('Usuario', back_populates='rol', lazy=True)
-
-
-# ===============================
+# -----------------------------------------------------------------------------------------------------------------------------------------------------
 # Usuarios
-# ===============================
 class Usuario(db.Model, UserMixin):
     __tablename__ = 'usuarios'
     id_usuario = db.Column(db.Integer, primary_key=True)
@@ -33,31 +28,21 @@ class Usuario(db.Model, UserMixin):
     id_rol_fk = db.Column(db.Integer, db.ForeignKey('roles.id_rol'), nullable=False)
     rol = db.relationship('Rol', back_populates='usuarios', lazy='joined')
     estado_cuenta = db.Column(db.Enum('activa', 'inactiva', name='estado_cuenta_enum'), nullable=False, default='activa')
-    # ------------------------------
     # Propiedad para nombre completo
-    # ------------------------------
     @property
     def nombre_completo(self):
         return f"{self.nombre} {self.apellido}"
-
-    # ------------------------------
     # Funciones de contraseña
-    # ------------------------------
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-
-    # ------------------------------
     # Flask-Login: ID del usuario
-    # ------------------------------
     def get_id(self):
         return str(self.id_usuario)
 
-    # ------------------------------
     # Funciones de roles y permisos
-    # ------------------------------
     def has_role(self, role_name):
         return self.rol.nombre.lower() == role_name.lower() if self.rol else False
 
@@ -67,9 +52,7 @@ class Usuario(db.Model, UserMixin):
         return permiso_nombre in ROLE_PERMISSIONS.get(self.rol.nombre, [])
 
 
-# ===============================
 # Académico
-# ===============================
 class Sede(db.Model):
     __tablename__ = 'Sede'
     id = db.Column(db.Integer, primary_key=True)
@@ -214,7 +197,6 @@ class Salon(db.Model):
     tipo = db.Column(db.String(50), nullable=False) # 'sala_computo', 'sala_general', etc.
     id_sede_fk = db.Column(db.Integer, db.ForeignKey('Sede.id'), nullable=False)
     
-    # Relación con la sede
     sede = db.relationship('Sede', backref=db.backref('salones', lazy=True))
 
     def __repr__(self):
