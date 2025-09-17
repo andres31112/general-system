@@ -3,120 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Horarios Generales</title>
+    <title>Gestión de Horarios - Dashboard del Colegio</title>
+    
+    <!-- Enlaces a librerías externas -->
+    <!-- Bootstrap 5.3.3 para diseño responsivo y componentes UI -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Google Fonts - Montserrat para tipografía moderna -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js para gráficos interactivos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --color-primario: #0078ad;
-            --color-primario-oscuro: #00628e;
-            --color-texto-principal: #2c3e50;
-            --color-texto-secundario: #7f8c8d;
-            --color-blanco: #FFFFFF;
-            --color-fondo-seccion: #f8f9fa;
-            --color-borde-suave: #ecf0f1;
-        }
+    <!-- html2canvas para captura de pantalla (usado en generación PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF para generación de archivos PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/Horario.css') }}">
 
-        body {
-            font-family: 'Montserrat', sans-serif;
-            background-color: var(--color-fondo-seccion);
-        }
 
-        h1, h2, h3, h4, h5, h6, .text-principal {
-            font-weight: 700;
-            color: var(--color-texto-principal);
-        }
-
-        .navbar {
-            box-shadow: 0 .125rem .25rem rgba(0,0,0,.08);
-            background-color: var(--color-blanco);
-        }
-
-        .navbar-brand .logo-circle {
-            width: 30px;
-            height: 30px;
-            background-color: var(--color-primario);
-            border-radius: 50%;
-            margin-right: 0.75rem;
-        }
-
-        .main-panel {
-            border-radius: 0.75rem;
-            border: 1px solid var(--color-borde-suave);
-            background-color: var(--color-blanco);
-            box-shadow: 0 2px 5px rgba(0,0,0,.08);
-            display: flex;
-            flex-direction: column;
-        }
-
-        #chart-panel {
-            min-height: 350px;
-        }
-
-        .panel-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .btn-primary {
-            --bs-btn-bg: var(--color-primario);
-            --bs-btn-border-color: var(--color-primario);
-            --bs-btn-hover-bg: var(--color-primario-oscuro);
-            --bs-btn-hover-border-color: var(--color-primario-oscuro);
-            border-radius: 0.5rem;
-            font-weight: 600;
-            padding: 0.5rem 1rem;
-        }
-
-        .btn-outline-primary {
-            --bs-btn-color: var(--color-primario);
-            --bs-btn-border-color: var(--color-primario);
-            --bs-btn-hover-bg: var(--color-primario);
-            --bs-btn-hover-border-color: var(--color-primario);
-        }
-
-        .btn-danger {
-            --bs-btn-bg: #dc3545;
-            --bs-btn-border-color: #dc3545;
-            --bs-btn-hover-bg: #bb2d3b;
-            --bs-btn-hover-border-color: #bb2d3b;
-        }
-
-        .management-group {
-            border: 1px solid var(--color-borde-suave);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            flex: 1 1 300px;
-        }
-
-        #break-list .list-group-item, .global-resource-list .list-group-item {
-            padding: 0.5rem 1rem;
-        }
-
-        #horarioGeneralChart {
-            cursor: pointer;
-        }
-        
-        .alert-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-        }
-        .alert {
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .alert-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .alert-danger { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-    </style>
 </head>
 <body>
+    <!-- ========================================
+         SISTEMA DE MENSAJES FLASH DE FLASK
+         Muestra notificaciones del servidor
+         ======================================== -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="alert-container">
@@ -127,86 +37,308 @@
         {% endif %}
     {% endwith %}
 
+    <!-- ========================================
+         BARRA DE NAVEGACIÓN PRINCIPAL
+         ======================================== -->
     <nav class="navbar navbar-expand-lg navbar-light sticky-top">
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center" href="#">
+                <!-- Logo circular identificativo del sistema -->
                 <div class="logo-circle"></div>
-                <h1 class="h5 mb-0 text-principal">Horario General</h1>
+                <h1 class="h5 mb-0 text-principal">Dashboard del Colegio - Gestión de Horarios</h1>
             </a>
         </div>
     </nav>
 
+    <!-- ========================================
+         CONTENIDO PRINCIPAL DE LA APLICACIÓN
+         ======================================== -->
     <main class="container-fluid p-4">
-        <div class="main-panel mb-3" id="management-panel">
+        <!-- ========================================
+             SECCIÓN DE TARJETAS DE RESUMEN
+             Muestra estadísticas clave del sistema
+             ======================================== -->
+        <section class="row mb-3">
+            <!-- Tarjeta: Total de Cursos registrados -->
+            <div class="col-lg-4 col-md-6 mb-3">
+                <div class="summary-card">
+                    <div class="icon"><i class="fa-solid fa-book-open"></i></div>
+                    <div>
+                        <h3 class="h6 mb-0">Total Cursos</h3>
+                        <p class="number mb-0" id="total-courses">12</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta: Total de Profesores activos -->
+            <div class="col-lg-4 col-md-6 mb-3">
+                <div class="summary-card">
+                    <div class="icon"><i class="fa-solid fa-users"></i></div>
+                    <div>
+                        <h3 class="h6 mb-0">Total Profesores</h3>
+                        <p class="number mb-0" id="total-teachers">8</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta: Horarios Activos (valor dinámico desde Flask) -->
+            <div class="col-lg-4 col-md-12 mb-3">
+                <div class="summary-card">
+                    <div class="icon"><i class="fa-solid fa-calendar-check"></i></div>
+                    <div>
+                        <h3 class="h6 mb-0">Horarios Activos</h3>
+                        <!-- Valor inyectado desde el template Flask -->
+                        <p class="number mb-0" id="active-schedules">{{ horarios|length }}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ========================================
+             PANEL DE GESTIÓN AVANZADA
+             Visible solo en la pestaña "Horario General"
+             Permite crear, editar y configurar horarios
+             ======================================== -->
+        <div class="main-panel d-none mb-3" id="management-panel">
             <div class="panel-content p-3 d-flex flex-row flex-wrap gap-3">
+                
+                <!-- Grupo: Gestión de Horarios Generales -->
                 <div class="management-group">
                     <h5 class="h6 text-principal">Gestión de Horarios</h5>
+                    
+                    <!-- Selector de horario existente con opción de eliminar -->
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="dropdown flex-grow-1">
-                            <button class="btn btn-outline-primary dropdown-toggle w-100" type="button" id="scheduleSelectorDropdown" data-bs-toggle="dropdown">Seleccionar</button>
-                            <ul class="dropdown-menu w-100" id="schedule-list">
-                            </ul>
+                            <button class="btn btn-outline-primary dropdown-toggle w-100" type="button" 
+                                    id="scheduleSelectorDropdown" data-bs-toggle="dropdown">Seleccionar</button>
+                            <!-- Lista dinámica de horarios disponibles -->
+                            <ul class="dropdown-menu w-100" id="schedule-list"></ul>
                         </div>
-                        <button class="btn btn-danger" id="delete-schedule-btn" title="Eliminar Horario"><i class="fa-solid fa-trash-alt"></i></button>
+                        <!-- Botón para eliminar horario seleccionado -->
+                        <button class="btn btn-danger" id="delete-schedule-btn" title="Eliminar Horario">
+                            <i class="fa-solid fa-trash-alt"></i>
+                        </button>
                     </div>
+                    
+                    <!-- Botones de acción principales -->
                     <div class="d-grid gap-2">
                         <button class="btn btn-primary" id="create-schedule-btn">Crear Nuevo Horario</button>
+                        <button class="btn btn-success" id="assign-schedule-btn">Asignar a Cursos</button>
                     </div>
                 </div>
                 
+                <!-- Grupo: Gestión de Materias/Asignaturas -->
                 <div class="management-group">
                     <h5 class="h6 text-principal">Gestión de Materias</h5>
+                    
+                    <!-- Formulario inline para añadir nueva materia -->
                     <div class="d-flex gap-2 my-2">
-                        <input type="text" id="new-subject-name" class="form-control form-control-sm" placeholder="Nueva materia">
+                        <input type="text" id="new-subject-name" class="form-control form-control-sm" 
+                               placeholder="Nueva materia">
                         <button class="btn btn-primary btn-sm" id="add-subject-btn">Añadir</button>
                     </div>
-                    <ul class="list-group global-resource-list" id="global-subjects-list" style="max-height: 100px; overflow-y: auto;">
-                    </ul>
+                    
+                    <!-- Lista scrolleable de materias existentes -->
+                    <ul class="list-group global-resource-list" id="global-subjects-list" 
+                        style="max-height: 100px; overflow-y: auto;"></ul>
                 </div>
                 
+                <!-- Grupo: Configuración de Horario General Semanal -->
                 <div class="management-group">
                     <h5 class="h6 text-principal">Horario General Semanal</h5>
+                    
+                    <!-- Configuración de horas de inicio y fin del horario -->
                     <div class="d-flex align-items-center gap-2 my-2">
                         <label for="general-start-time" class="form-label mb-0 small text-nowrap">Inicio:</label>
                         <input type="time" class="form-control form-control-sm" id="general-start-time" step="1800">
                         <label for="general-end-time" class="form-label mb-0 small text-nowrap">Fin:</label>
                         <input type="time" class="form-control form-control-sm" id="general-end-time" step="1800">
                     </div>
+                    
+                    <!-- Selector múltiple de días de la semana -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" id="daysDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside">Seleccionar Días</button>
+                        <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" 
+                                id="daysDropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+                            Seleccionar Días
+                        </button>
                         <ul class="dropdown-menu w-100">
-                            <li><label class="dropdown-item"><input class="form-check-input me-2 day-checkbox" type="checkbox" value="Lunes">Lunes</label></li>
-                            <li><label class="dropdown-item"><input class="form-check-input me-2 day-checkbox" type="checkbox" value="Martes">Martes</label></li>
-                            <li><label class="dropdown-item"><input class="form-check-input me-2 day-checkbox" type="checkbox" value="Miércoles">Miércoles</label></li>
-                            <li><label class="dropdown-item"><input class="form-check-input me-2 day-checkbox" type="checkbox" value="Jueves">Jueves</label></li>
-                            <li><label class="dropdown-item"><input class="form-check-input me-2 day-checkbox" type="checkbox" value="Viernes">Viernes</label></li>
-                            <li><label class="dropdown-item"><input class="form-check-input me-2 day-checkbox" type="checkbox" value="Sábado">Sábado</label></li>
+                            <!-- Checkboxes para cada día de la semana -->
+                            <li><label class="dropdown-item">
+                                <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Lunes">Lunes
+                            </label></li>
+                            <li><label class="dropdown-item">
+                                <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Martes">Martes
+                            </label></li>
+                            <li><label class="dropdown-item">
+                                <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Miércoles">Miércoles
+                            </label></li>
+                            <li><label class="dropdown-item">
+                                <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Jueves">Jueves
+                            </label></li>
+                            <li><label class="dropdown-item">
+                                <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Viernes">Viernes
+                            </label></li>
+                            <li><label class="dropdown-item">
+                                <input class="form-check-input me-2 day-checkbox" type="checkbox" value="Sábado">Sábado
+                            </label></li>
                         </ul>
                     </div>
+                    
                     <hr class="my-3">
+                    
+                    <!-- Subsección: Gestión de Descansos -->
                     <h5 class="h6 text-principal">Gestión de Descansos</h5>
+                    
+                    <!-- Formulario para añadir períodos de descanso -->
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        <input type="time" id="break-start-time" class="form-control form-control-sm" step="900">
-                        <input type="number" id="break-duration" class="form-control form-control-sm" placeholder="Duración (min)">
+                        <input type="time" id="break-start-time" class="form-control form-control-sm" 
+                               step="900" title="Hora de inicio del descanso">
+                        <input type="number" id="break-duration" class="form-control form-control-sm" 
+                               placeholder="Duración (min)" min="1" max="120">
                         <button class="btn btn-primary btn-sm" id="add-break-btn">Añadir</button>
                     </div>
-                    <ul class="list-group" id="break-list">
-                    </ul>
+                    
+                    <!-- Lista dinámica de descansos configurados -->
+                    <ul class="list-group" id="break-list"></ul>
                 </div>
             </div>
         </div>
 
+        <!-- ========================================
+             SECCIÓN PRINCIPAL DE CONTENIDO
+             Contiene las pestañas y vistas principales
+             ======================================== -->
         <section class="row">
-            <div class="col-12">
+            <!-- Columna Principal: Gráficos y Visualización de Horarios -->
+            <div class="col-lg-8 mb-4" id="main-column">
                 <div class="main-panel" id="chart-panel">
                     <div class="panel-content p-0">
-                        <canvas id="horarioGeneralChart"></canvas>
+                        
+                        <!-- Sistema de pestañas para alternar entre vistas -->
+                        <ul class="nav nav-tabs nav-fill" id="horarioTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="horario-curso-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#horario-curso-pane" type="button" role="tab">
+                                    Horario de Curso
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="horario-general-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#horario-general-pane" type="button" role="tab">
+                                    Horario General
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <!-- Contenido de las pestañas -->
+                        <div class="tab-content" id="horarioTabContent">
+                            
+                            <!-- Pestaña: Horario Específico de Curso -->
+                            <div class="tab-pane fade show active" id="horario-curso-pane" role="tabpanel">
+                                <div id="schedule-display-content" class="h-100 d-flex align-items-center justify-content-center">
+                                    <!-- Mensaje inicial antes de seleccionar un curso -->
+                                    Seleccione un curso para ver su horario
+                                </div>
+                            </div>
+                            
+                            <!-- Pestaña: Vista General con Gráfico -->
+                            <div class="tab-pane fade" id="horario-general-pane" role="tabpanel">
+                                <!-- Canvas para renderizar el gráfico de Chart.js -->
+                                <canvas id="horarioGeneralChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna Lateral: Lista de Cursos por Sede -->
+            <div class="col-lg-4 mb-4" id="side-column">
+                <div class="main-panel" id="course-list-panel">
+                    <div class="panel-content p-0">
+                        
+                        <!-- Pestañas para diferentes sedes del colegio -->
+                        <ul class="nav nav-tabs nav-fill" id="sedeTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="sede-a-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#sede-a-pane" type="button" role="tab">
+                                    Sede A
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="sede-b-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#sede-b-pane" type="button" role="tab">
+                                    Sede B
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <!-- Contenido de las pestañas de sedes -->
+                        <div class="tab-content" id="sedeTabContent">
+                            
+                            <!-- Sede A: Cursos 1-6 -->
+                            <div class="tab-pane fade show active" id="sede-a-pane" role="tabpanel">
+                                <div class="table-container p-2">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Id</th>
+                                                <th>Nombre</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Filas de cursos con data-course-name para identificación JavaScript -->
+                                            <tr class="course-row" data-course-name="Curso 1"><td>1</td><td>Curso 1</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 2"><td>2</td><td>Curso 2</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 3"><td>3</td><td>Curso 3</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 4"><td>4</td><td>Curso 4</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 5"><td>5</td><td>Curso 5</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 6"><td>6</td><td>Curso 6</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Sede B: Cursos 7-12 -->
+                            <div class="tab-pane fade" id="sede-b-pane" role="tabpanel">
+                                <div class="table-container p-2">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Id</th>
+                                                <th>Nombre</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="course-row" data-course-name="Curso 7"><td>7</td><td>Curso 7</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 8"><td>8</td><td>Curso 8</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 9"><td>9</td><td>Curso 9</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 10"><td>10</td><td>Curso 10</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 11"><td>11</td><td>Curso 11</td></tr>
+                                            <tr class="course-row" data-course-name="Curso 12"><td>12</td><td>Curso 12</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de acceso a configuraciones avanzadas -->
+                    <div class="d-grid p-2 border-top">
+                        <button class="btn btn-outline-primary" id="additional-settings-btn">
+                            <i class="fa-solid fa-cog me-2"></i>Ajustes Adicionales
+                        </button>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
+    <!-- ========================================
+         MODALES (VENTANAS EMERGENTES)
+         Interfaces para operaciones específicas
+         ======================================== -->
+    
+    <!-- Modal: Crear Nuevo Horario General -->
     <div class="modal fade" id="createScheduleModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -216,7 +348,8 @@
                 </div>
                 <div class="modal-body">
                     <label for="new-schedule-name" class="form-label">Nombre del Horario</label>
-                    <input type="text" class="form-control" id="new-schedule-name" placeholder="Ej: Horario B">
+                    <input type="text" class="form-control" id="new-schedule-name" 
+                           placeholder="Ej: Horario Matutino, Horario Vespertino">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -226,6 +359,86 @@
         </div>
     </div>
 
+    <!-- Modal: Asignar Horario a Cursos Específicos -->
+    <div class="modal fade" id="assignScheduleModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Asignar Horario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Seleccione los cursos para asignar el horario <strong id="schedule-name-to-assign"></strong>.</p>
+                    <!-- Lista dinámica de cursos con checkboxes -->
+                    <div id="course-assignment-list" class="list-group" style="max-height: 250px; overflow-y: auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="save-assignment-btn">Asignar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Configuración Avanzada de Recursos del Curso -->
+    <div class="modal fade" id="additional-settings-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="additional-settings-modal-label">Ajustes Adicionales</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Define las materias, profesores y salones para el <strong id="settings-course-name"></strong>.</p>
+                    
+                    <!-- Formulario para añadir recursos (materia + profesor + salón) -->
+                    <div class="mb-4 p-3 border rounded">
+                        <h6 class="h6">Añadir Recurso</h6>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label for="subject-name-select" class="form-label small">Nombre de la Materia</label>
+                                <select id="subject-name-select" class="form-select"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="teacher-name-input" class="form-label small">Profesor</label>
+                                <input type="text" id="teacher-name-input" class="form-control" 
+                                       placeholder="Nombre del profesor">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="classroom-name-input" class="form-label small">Salón</label>
+                                <input type="text" id="classroom-name-input" class="form-control" 
+                                       placeholder="Número/nombre del salón">
+                            </div>
+                            <div class="col-md-2 d-grid">
+                                <button class="btn btn-primary" id="add-resource-btn">Añadir</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabla de recursos actualmente configurados -->
+                    <h6 class="h6">Recursos Actuales</h6>
+                    <div class="table-responsive" style="max-height: 200px;">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Materia</th>
+                                    <th>Profesor</th>
+                                    <th>Salón</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resource-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Alertas y Notificaciones Generales -->
     <div class="modal fade" id="alertModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -241,6 +454,7 @@
         </div>
     </div>
 
+    <!-- Modal: Confirmaciones de Acciones Críticas -->
     <div class="modal fade" id="confirmModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -257,437 +471,8 @@
         </div>
     </div>
     
+    <!-- Bootstrap JavaScript Bundle (incluye Popper.js) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const ctx = document.getElementById('horarioGeneralChart').getContext('2d');
-            const dayCheckboxes = document.querySelectorAll('.day-checkbox');
-            const scheduleSelectorDropdown = document.getElementById('scheduleSelectorDropdown');
-            const createScheduleBtn = document.getElementById('create-schedule-btn');
-            const deleteScheduleBtn = document.getElementById('delete-schedule-btn');
-            const generalStartTimeInput = document.getElementById('general-start-time');
-            const generalEndTimeInput = document.getElementById('general-end-time');
-            const addBreakBtn = document.getElementById('add-break-btn');
-            const breakStartTimeInput = document.getElementById('break-start-time');
-            const breakDurationInput = document.getElementById('break-duration');
-            const breakList = document.getElementById('break-list');
-            const addSubjectBtn = document.getElementById('add-subject-btn');
-            const newSubjectNameInput = document.getElementById('new-subject-name');
-            const subjectsList = document.getElementById('global-subjects-list');
-
-            const createScheduleModal = new bootstrap.Modal(document.getElementById('createScheduleModal'));
-            const alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
-            const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
-
-            // Los horarios se cargan directamente desde Flask
-            let horarios = {{ horarios | tojson | safe }}; 
-            let allSubjects = [];
-            let currentSchedule = horarios[0] || null;
-
-            const formatTime12 = time => {
-                if (!time) return '';
-                const [h, m] = time.split(':').map(Number);
-                const hour = h % 12 || 12;
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                return `${hour.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
-            };
-            const timeToDecimal = time => {
-                if (!time) return 0;
-                const [h, m] = time.split(':').map(Number);
-                return h + m / 60;
-            };
-            const decimalToTime = decimal => {
-                const h = Math.floor(decimal);
-                const m = Math.round((decimal - h) * 60);
-                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            };
-            const showAlert = (message, title = 'Notificación') => {
-                document.getElementById('alertModalBody').innerHTML = message;
-                document.querySelector('#alertModal .modal-title').textContent = title;
-                alertModal.show();
-            };
-            const showConfirm = (message, callback) => {
-                document.getElementById('confirmModalBody').textContent = message;
-                document.getElementById('confirmActionBtn').onclick = () => { callback(); confirmModal.hide(); };
-                confirmModal.show();
-            };
-            const updateFlashMessages = async () => {
-                const response = await fetch('/get_flash_messages');
-                const messages = await response.json();
-                const alertContainer = document.querySelector('.alert-container');
-                alertContainer.innerHTML = '';
-                messages.forEach(msg => {
-                    const div = document.createElement('div');
-                    div.className = `alert alert-${msg.category}`;
-                    div.textContent = msg.message;
-                    alertContainer.appendChild(div);
-                });
-            };
-
-            async function fetchData() {
-                try {
-                    const subjectsResponse = await fetch('/admin/api/materias');
-                    allSubjects = await subjectsResponse.json();
-                } catch (e) {
-                    console.error("Error al cargar datos:", e);
-                }
-            }
-
-            function updateUI() {
-                if (currentSchedule) {
-                    generalStartTimeInput.value = currentSchedule.horaInicio || '';
-                    generalEndTimeInput.value = currentSchedule.horaFin || '';
-                    dayCheckboxes.forEach(cb => cb.checked = currentSchedule.diasSemana && currentSchedule.diasSemana.includes(cb.value));
-                } else {
-                    generalStartTimeInput.value = '';
-                    generalEndTimeInput.value = '';
-                    dayCheckboxes.forEach(cb => cb.checked = false);
-                }
-                renderScheduleDropdown();
-                renderBreakList();
-                renderGlobalResourcesUI();
-                updateChart();
-            }
-
-            function renderScheduleDropdown() {
-                const scheduleListEl = document.getElementById('schedule-list');
-                scheduleListEl.innerHTML = '';
-                horarios.forEach(schedule => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.className = 'dropdown-item';
-                    a.href = '#';
-                    a.textContent = schedule.nombre;
-                    a.addEventListener('click', e => {
-                        e.preventDefault();
-                        currentSchedule = schedule;
-                        updateUI();
-                    });
-                    li.appendChild(a);
-                    scheduleListEl.appendChild(li);
-                });
-                scheduleSelectorDropdown.textContent = currentSchedule ? currentSchedule.nombre : 'Seleccionar';
-            }
-
-            function renderBreakList() {
-                const breakList = document.getElementById('break-list');
-                breakList.innerHTML = '';
-                if (!currentSchedule || !currentSchedule.descansos) return;
-                currentSchedule.descansos.sort((a, b) => timeToDecimal(a.horaInicio) - timeToDecimal(b.horaInicio)).forEach(breakItem => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.innerHTML = `<span>${breakItem.horaInicio} (${breakItem.duracion} min)</span><button class="btn btn-danger btn-sm delete-break-btn" data-break-id="${breakItem.id}"><i class="fa-solid fa-trash-alt"></i></button>`;
-                    breakList.appendChild(li);
-                });
-            }
-
-            function renderGlobalResourcesUI() {
-                const listEl = document.getElementById('global-subjects-list');
-                listEl.innerHTML = '';
-                allSubjects.sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.innerHTML = `<span>${item.nombre}</span><button class="btn btn-outline-danger btn-sm delete-subject-btn" data-subject-id="${item.id}"><i class="fa-solid fa-trash-alt"></i></button>`;
-                    listEl.appendChild(li);
-                });
-            }
-
-            const calculateClassBlocks = (schedule) => {
-                if (!schedule.horaInicio || !schedule.horaFin) return [];
-                const sortedBreaks = [...(schedule.descansos || [])].sort((a, b) => timeToDecimal(a.horaInicio) - timeToDecimal(b.horaInicio));
-                let blocks = [{ start: schedule.horaInicio, end: schedule.horaFin }];
-                
-                sortedBreaks.forEach(breakItem => {
-                    const breakStart = timeToDecimal(breakItem.horaInicio);
-                    const breakEnd = breakStart + (breakItem.duracion / 60);
-                    let newBlocks = [];
-                    
-                    blocks.forEach(block => {
-                        const blockStart = timeToDecimal(block.start);
-                        const blockEnd = timeToDecimal(block.end);
-                        if (breakStart >= blockEnd || breakEnd <= blockStart) { 
-                            newBlocks.push(block); 
-                        } else {
-                            if (breakStart > blockStart) newBlocks.push({ start: block.start, end: decimalToTime(breakStart) });
-                            if (breakEnd < blockEnd) newBlocks.push({ start: decimalToTime(breakEnd), end: block.end });
-                        }
-                    });
-                    blocks = newBlocks;
-                });
-                return blocks.filter(b => timeToDecimal(b.start) < timeToDecimal(b.end));
-            };
-
-            function updateChart() {
-                if (!window.horarioGeneralChart) return;
-                
-                if (!currentSchedule || !currentSchedule.diasSemana) {
-                    window.horarioGeneralChart.data.datasets = [];
-                    window.horarioGeneralChart.data.labels = [];
-                    window.horarioGeneralChart.update();
-                    return;
-                }
-                
-                const selectedDays = currentSchedule.diasSemana.split(',').filter(d => d);
-                let allTimePoints = [];
-                window.horarioGeneralChart.data.datasets = [];
-                const classBlocksByDay = {};
-                let maxSegments = 0;
-                
-                selectedDays.forEach(day => {
-                    const blocks = calculateClassBlocks(currentSchedule);
-                    classBlocksByDay[day] = blocks;
-                    if (blocks.length > maxSegments) maxSegments = blocks.length;
-                });
-
-                for (let i = 0; i < maxSegments; i++) {
-                    window.horarioGeneralChart.data.datasets.push({
-                        label: `Bloque ${i + 1}`,
-                        data: [],
-                        backgroundColor: [],
-                        borderWidth: 1,
-                        borderRadius: 5
-                    });
-                }
-                
-                const colorPrimario = getComputedStyle(document.documentElement).getPropertyValue('--color-primario');
-                
-                selectedDays.forEach(day => {
-                    const blocks = classBlocksByDay[day];
-                    for (let i = 0; i < maxSegments; i++) {
-                        window.horarioGeneralChart.data.datasets[i].backgroundColor.push(colorPrimario);
-                        if (blocks[i]) {
-                            const segment = [timeToDecimal(blocks[i].start), timeToDecimal(blocks[i].end)];
-                            window.horarioGeneralChart.data.datasets[i].data.push(segment);
-                            allTimePoints.push(...segment);
-                        } else {
-                            window.horarioGeneralChart.data.datasets[i].data.push(null);
-                        }
-                    }
-                });
-                
-                const yMin = allTimePoints.length > 0 ? Math.floor(Math.min(...allTimePoints)) - 0.5 : 6;
-                const yMax = allTimePoints.length > 0 ? Math.ceil(Math.max(...allTimePoints)) + 0.5 : 18;
-                
-                window.horarioGeneralChart.options.scales.y.min = yMin;
-                window.horarioGeneralChart.options.scales.y.max = yMax;
-                window.horarioGeneralChart.data.labels = selectedDays;
-                window.horarioGeneralChart.update();
-            }
-
-            window.horarioGeneralChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: [], datasets: [] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'x',
-                    scales: {
-                        x: { stacked: true, title: { display: true, text: 'Días de la Semana' } },
-                        y: {
-                            stacked: false,
-                            title: { display: true, text: 'Horas' },
-                            ticks: {
-                                stepSize: 1,
-                                callback: (value) => formatTime12(decimalToTime(value))
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => `Bloque: ${context.label} - ${formatTime12(decimalToTime(context.raw[0]))} a ${formatTime12(decimalToTime(context.raw[1]))}`
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Event Listeners
-            createScheduleBtn.addEventListener('click', () => createScheduleModal.show());
-
-            document.getElementById('save-new-schedule-btn').addEventListener('click', async () => {
-                const newName = document.getElementById('new-schedule-name').value.trim();
-                if (!newName) return showAlert("El nombre no puede estar vacío.");
-
-                try {
-                    const response = await fetch('/admin/api/horarios', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: newName })
-                    });
-                    const newSchedule = await response.json();
-                    if (response.ok) {
-                        horarios.push(newSchedule);
-                        currentSchedule = newSchedule;
-                        updateUI();
-                        createScheduleModal.hide();
-                    } else {
-                        showAlert(newSchedule.error || "Error al crear el horario.");
-                    }
-                } catch (e) {
-                    showAlert("Error al conectar con el servidor.");
-                }
-            });
-
-            deleteScheduleBtn.addEventListener('click', () => {
-                if (!currentSchedule) return showAlert("No hay horario seleccionado.");
-                showConfirm(`¿Eliminar el horario "${currentSchedule.nombre}"?`, async () => {
-                    try {
-                        const response = await fetch(`/admin/api/horarios`, {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: currentSchedule.id })
-                        });
-                        const result = await response.json();
-                        if (response.ok) {
-                            horarios = horarios.filter(h => h.id !== currentSchedule.id);
-                            currentSchedule = horarios[0] || null;
-                            updateUI();
-                        } else {
-                            showAlert(result.error || "Error al eliminar el horario.");
-                        }
-                    } catch (e) {
-                        showAlert("Error al conectar con el servidor.");
-                    }
-                });
-            });
-
-            generalStartTimeInput.addEventListener('change', async () => {
-                if (!currentSchedule) return;
-                currentSchedule.horaInicio = generalStartTimeInput.value;
-                try {
-                    const response = await fetch(`/admin/api/horarios`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentSchedule.id, horaInicio: currentSchedule.horaInicio })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) showAlert(result.error || "Error al actualizar la hora.");
-                    updateUI();
-                } catch (e) { showAlert("Error al conectar con el servidor."); }
-            });
-
-            generalEndTimeInput.addEventListener('change', async () => {
-                if (!currentSchedule) return;
-                currentSchedule.horaFin = generalEndTimeInput.value;
-                try {
-                    const response = await fetch(`/admin/api/horarios`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentSchedule.id, horaFin: currentSchedule.horaFin })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) showAlert(result.error || "Error al actualizar la hora.");
-                    updateUI();
-                } catch (e) { showAlert("Error al conectar con el servidor."); }
-            });
-            
-            dayCheckboxes.forEach(c => c.addEventListener('change', async () => {
-                if (!currentSchedule) return;
-                const selectedDays = Array.from(dayCheckboxes).filter(i => i.checked).map(i => i.value).join(',');
-                currentSchedule.diasSemana = selectedDays;
-                try {
-                    const response = await fetch(`/admin/api/horarios`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: currentSchedule.id, diasSemana: currentSchedule.diasSemana })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) showAlert(result.error || "Error al actualizar los días.");
-                    updateUI();
-                } catch (e) { showAlert("Error al conectar con el servidor."); }
-            }));
-            
-            addBreakBtn.addEventListener('click', async () => {
-                if (!currentSchedule) return showAlert('Por favor, seleccione un horario primero.');
-                const start = breakStartTimeInput.value;
-                const duration = parseInt(breakDurationInput.value, 10);
-                if (!start || !duration || duration <= 0) return showAlert('Ingrese una hora y duración válidas.');
-                try {
-                    const response = await fetch(`/admin/api/horarios/${currentSchedule.id}/breaks`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ horaInicio: start, duracion: duration })
-                    });
-                    const newBreak = await response.json();
-                    if (response.ok) {
-                        currentSchedule.descansos = currentSchedule.descansos || [];
-                        currentSchedule.descansos.push(newBreak);
-                        updateUI();
-                        breakStartTimeInput.value = '';
-                        breakDurationInput.value = '';
-                    } else {
-                        showAlert(newBreak.error || "Error al añadir el descanso.");
-                    }
-                } catch (e) { showAlert("Error al conectar con el servidor."); }
-            });
-
-            breakList.addEventListener('click', async e => {
-                const button = e.target.closest('button.delete-break-btn');
-                if (button && currentSchedule) {
-                    const breakId = button.dataset.breakId;
-                    showConfirm(`¿Eliminar este descanso?`, async () => {
-                        try {
-                            const response = await fetch(`/admin/api/horarios/${currentSchedule.id}/breaks`, {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ id: breakId })
-                            });
-                            const result = await response.json();
-                            if (response.ok) {
-                                currentSchedule.descansos = currentSchedule.descansos.filter(b => b.id != breakId);
-                                updateUI();
-                            } else {
-                                showAlert(result.error || "Error al eliminar el descanso.");
-                            }
-                        } catch (e) { showAlert("Error al conectar con el servidor."); }
-                    });
-                }
-            });
-
-            addSubjectBtn.addEventListener('click', async () => {
-                const name = newSubjectNameInput.value.trim();
-                if (!name) return showAlert("El nombre de la materia no puede estar vacío.");
-                try {
-                    const response = await fetch('/admin/api/materias', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: name })
-                    });
-                    const newSubject = await response.json();
-                    if (response.ok) {
-                        allSubjects.push(newSubject);
-                        renderGlobalResourcesUI();
-                        newSubjectNameInput.value = '';
-                    } else {
-                        showAlert(newSubject.error || "Error al añadir la materia.");
-                    }
-                } catch (e) { showAlert("Error al conectar con el servidor."); }
-            });
-
-            subjectsList.addEventListener('click', async e => {
-                const button = e.target.closest('button.delete-subject-btn');
-                if (button) {
-                    const subjectId = button.dataset.subjectId;
-                    showConfirm(`¿Eliminar esta materia?`, async () => {
-                        try {
-                            const response = await fetch(`/admin/api/materias/${subjectId}`, { method: 'DELETE' });
-                            const result = await response.json();
-                            if (response.ok) {
-                                allSubjects = allSubjects.filter(s => s.id != subjectId);
-                                renderGlobalResourcesUI();
-                            } else {
-                                showAlert(result.error || "Error al eliminar la materia.");
-                            }
-                        } catch (e) { showAlert("Error al conectar con el servidor."); }
-                    });
-                }
-            });
-
-            updateUI();
-            fetchData();
-        });
-    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='js/superadmin/Horario.js') }}">
 </body>
 </html>

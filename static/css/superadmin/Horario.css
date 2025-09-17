@@ -1,0 +1,418 @@
+    <style>
+        /* ========================================
+           VARIABLES CSS PERSONALIZADAS
+           Definición de la paleta de colores del sistema
+           ======================================== */
+        :root {
+            --color-primario: #0078ad;           /* Azul principal del sistema */
+            --color-primario-oscuro: #00628e;    /* Azul oscuro para hover states */
+            --color-texto-principal: #2c3e50;    /* Color principal del texto */
+            --color-texto-secundario: #7f8c8d;   /* Color secundario del texto */
+            --color-blanco: #FFFFFF;             /* Blanco puro */
+            --color-fondo-seccion: #f8f9fa;      /* Gris claro para fondos */
+            --color-borde-suave: #ecf0f1;        /* Gris muy claro para bordes */
+        }
+
+        /* ========================================
+           ESTILOS GLOBALES DEL SISTEMA
+           ======================================== */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--color-fondo-seccion);
+        }
+
+        /* Estilos para todos los encabezados del sistema */
+        h1, h2, h3, h4, h5, h6, .text-principal {
+            font-weight: 700;
+            color: var(--color-texto-principal);
+        }
+
+        /* ========================================
+           NAVBAR - BARRA DE NAVEGACIÓN SUPERIOR
+           ======================================== */
+        .navbar {
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.08);
+            background-color: var(--color-blanco);
+        }
+
+        /* Logo circular en la navbar */
+        .navbar-brand .logo-circle {
+            width: 30px;
+            height: 30px;
+            background-color: var(--color-primario);
+            border-radius: 50%;
+            margin-right: 0.75rem;
+        }
+
+        /* ========================================
+           TARJETAS DE RESUMEN DEL DASHBOARD
+           Muestran estadísticas clave del sistema
+           ======================================== */
+        .summary-card { 
+            background-color: var(--color-blanco); 
+            border: 1px solid var(--color-borde-suave); 
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,.05);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; 
+            padding: 0.75rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem; 
+        }
+        
+        /* Efecto hover: eleva la tarjeta y aumenta la sombra */
+        .summary-card:hover { 
+            transform: translateY(-4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,.1);
+        }
+        
+        /* Icono de la tarjeta de resumen */
+        .summary-card .icon { 
+            font-size: 1.5rem; 
+            color: var(--color-primario); 
+        }
+        
+        /* Número grande que muestra la estadística */
+        .summary-card .number { 
+            font-size: 1.5rem; 
+            font-weight: 700; 
+            color: var(--color-texto-principal); 
+        }
+
+        /* ========================================
+           PANELES PRINCIPALES DEL SISTEMA
+           Contenedores para diferentes secciones
+           ======================================== */
+        .main-panel {
+            border-radius: 0.75rem;
+            border: 1px solid var(--color-borde-suave);
+            background-color: var(--color-blanco);
+            box-shadow: 0 2px 5px rgba(0,0,0,.08);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Panel específico para gráficos con altura mínima garantizada */
+        #chart-panel {
+            min-height: 350px;
+        }
+
+        /* Contenido flexible dentro de los paneles */
+        .panel-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ========================================
+           TABLAS Y CONTENEDORES DE DATOS
+           Para mostrar listas de cursos, horarios, etc.
+           ======================================== */
+        .table-container { 
+            flex-grow: 1; 
+            overflow-y: auto;                      /* Scroll vertical automático */
+            max-height: 250px;                     /* Altura máxima antes del scroll */
+        }
+        
+        .table { 
+            margin-bottom: 0; 
+        }
+        
+        /* Centrado de contenido en todas las celdas */
+        .table th, .table td { 
+            text-align: center; 
+            vertical-align: middle; 
+        }
+        
+        /* Cursor pointer en filas clickeables */
+        .table-hover tbody tr { 
+            cursor: pointer; 
+        }
+        
+        /* Header fijo que permanece visible durante scroll */
+        .table thead th { 
+            position: sticky; 
+            top: 0; 
+            background-color: var(--color-blanco); 
+            z-index: 1; 
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); 
+        }
+
+        /* ========================================
+           SISTEMA DE PESTAÑAS (TABS)
+           Para navegación entre diferentes vistas
+           ======================================== */
+        .nav-tabs { 
+            border-bottom: 1px solid var(--color-borde-suave); 
+        }
+        
+        /* Estilo de enlaces de pestañas inactivas */
+        .nav-tabs .nav-link { 
+            color: var(--color-texto-secundario); 
+            border: none; 
+            border-bottom: 3px solid transparent;
+            font-weight: 600; 
+        }
+        
+        /* Estilo de pestaña activa con borde azul */
+        .nav-tabs .nav-link.active { 
+            color: var(--color-primario); 
+            border-color: var(--color-primario);
+        }
+        
+        /* Contenedor del contenido de las pestañas */
+        .tab-content { 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        
+        /* Panel individual de cada pestaña */
+        .tab-pane { 
+            padding: 1rem; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* ========================================
+           BOTONES PERSONALIZADOS DEL SISTEMA
+           ======================================== */
+        .btn-primary {
+            --bs-btn-bg: var(--color-primario);
+            --bs-btn-border-color: var(--color-primario);
+            --bs-btn-hover-bg: var(--color-primario-oscuro);
+            --bs-btn-hover-border-color: var(--color-primario-oscuro);
+            border-radius: 0.5rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-outline-primary {
+            --bs-btn-color: var(--color-primario);
+            --bs-btn-border-color: var(--color-primario);
+            --bs-btn-hover-bg: var(--color-primario);
+            --bs-btn-hover-border-color: var(--color-primario);
+        }
+
+        .btn-danger {
+            --bs-btn-bg: #dc3545;
+            --bs-btn-border-color: #dc3545;
+            --bs-btn-hover-bg: #bb2d3b;
+            --bs-btn-hover-border-color: #bb2d3b;
+        }
+
+        /* ========================================
+           GRUPOS DE GESTIÓN
+           Secciones organizadas para diferentes funcionalidades
+           ======================================== */
+        .management-group {
+            border: 1px solid var(--color-borde-suave);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            flex: 1 1 300px;                       /* Flex basis de 300px mínimo */
+        }
+
+        /* Layout específico del panel de gestión */
+        #management-panel .panel-content { 
+            flex-direction: row;                   /* Disposición horizontal */
+            flex-wrap: wrap;                       /* Permite wrapping en pantallas pequeñas */
+        }
+        
+        #management-panel .management-group { 
+            flex: 1 1 300px; 
+        }
+
+        /* Estilos para elementos de lista */
+        #break-list .list-group-item, .global-resource-list .list-group-item {
+            padding: 0.5rem 1rem;
+        }
+
+        /* Cursor pointer para indicar interactividad del gráfico */
+        #horarioGeneralChart {
+            cursor: pointer;
+        }
+
+        /* ========================================
+           GRILLA DE HORARIOS
+           Tabla especializada para mostrar horarios de clase
+           ======================================== */
+        .schedule-grid { 
+            table-layout: fixed;                   /* Ancho fijo de columnas para consistencia */
+            border-collapse: separate; 
+            border-spacing: 0; 
+            border: 1px solid var(--color-borde-suave); 
+            border-radius: 0.5rem; 
+        }
+        
+        /* Celdas de la grilla con altura fija */
+        .schedule-grid th, .schedule-grid td { 
+            border-top: 1px solid var(--color-borde-suave); 
+            border-left: 1px solid var(--color-borde-suave); 
+            padding: 2px; 
+            height: 65px;                          /* Altura fija para uniformidad */
+        }
+        
+        /* Elimina bordes duplicados en primera columna y fila */
+        .schedule-grid th:first-child, .schedule-grid td:first-child { 
+            border-left: none; 
+        }
+        .schedule-grid thead tr:first-child th { 
+            border-top: none; 
+        }
+        
+        /* Header de la grilla con color corporativo */
+        .schedule-grid thead th { 
+            background-color: var(--color-primario); 
+            color: var(--color-blanco); 
+            font-size: 0.9rem; 
+            padding: 0.5rem; 
+        }
+        
+        /* Celda especial de esquina superior izquierda */
+        .schedule-grid thead th:first-child { 
+            background-color: var(--color-fondo-seccion); 
+            color: var(--color-texto-principal); 
+            border-top-left-radius: 0.5rem; 
+        }
+        
+        /* Bordes redondeados en las esquinas */
+        .schedule-grid thead th:last-child { 
+            border-top-right-radius: 0.5rem; 
+        }
+        .schedule-grid tbody tr:last-child td:first-child { 
+            border-bottom-left-radius: 0.5rem; 
+        }
+        .schedule-grid tbody tr:last-child td:last-child { 
+            border-bottom-right-radius: 0.5rem; 
+        }
+        
+        /* Alineación vertical centrada */
+        .schedule-grid td { 
+            vertical-align: middle; 
+        } 
+        
+        /* Etiquetas de hora en la primera columna */
+        .schedule-grid .hour-label { 
+            font-weight: 600; 
+            font-size: 0.75rem; 
+            width: 140px;                          /* Ancho fijo para consistencia */
+            background-color: var(--color-fondo-seccion); 
+            padding: 0.5rem 0.25rem; 
+        }
+        
+        /* Filas especiales para períodos de descanso */
+        .schedule-grid .break-row td { 
+            background-color: var(--color-borde-suave); 
+            font-size: 0.8rem; 
+            color: var(--color-texto-secundario); 
+            font-weight: 600; 
+        }
+        
+        /* Select dropdown para elegir materias */
+        .schedule-grid .subject-select { 
+            border: none; 
+            text-align: center; 
+            font-size: 0.8rem; 
+            background-color: transparent; 
+            width: 100%; 
+            border-radius: 0; 
+            margin-bottom: 2px; 
+        }
+        
+        /* Elimina outline por defecto del navegador */
+        .schedule-grid .subject-select:focus { 
+            outline: none; 
+            box-shadow: none; 
+        }
+        
+        /* Información adicional de la materia (profesor/salón) */
+        .schedule-grid .subject-details { 
+            font-size: 0.7rem; 
+            color: var(--color-texto-secundario); 
+            line-height: 1.2; 
+        }
+        
+        /* Slots que no tienen clase asignada */
+        .schedule-grid .inactive-slot { 
+            background-color: var(--color-blanco); 
+        }
+        
+        /* Items deshabilitados en listas */
+        .list-group-item.disabled { 
+            background-color: var(--color-borde-suave); 
+            opacity: 0.7; 
+        }
+
+        /* ========================================
+           ESTILOS ESPECÍFICOS PARA EXPORTACIÓN PDF
+           ======================================== */
+        .pdf-table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            font-size: 9px;                        /* Fuente pequeña optimizada para PDF */
+        }
+        
+        .pdf-table th, .pdf-table td { 
+            border: 1px solid var(--color-borde-suave); 
+            text-align: center; 
+            vertical-align: middle; 
+            padding: 4px; 
+        }
+        
+        .pdf-table thead th { 
+            background-color: var(--color-primario); 
+            color: var(--color-blanco); 
+        }
+        
+        .pdf-table thead th:first-child { 
+            background-color: var(--color-fondo-seccion); 
+            color: var(--color-texto-principal); 
+        }
+        
+        .pdf-table .hour-label { 
+            background-color: var(--color-fondo-seccion); 
+            font-weight: bold; 
+        }
+        
+        .pdf-table .break-row td { 
+            background-color: var(--color-borde-suave); 
+            color: var(--color-texto-secundario); 
+            font-weight: bold; 
+        }
+        
+        .pdf-table .subject-details-pdf { 
+            font-size: 8px; 
+            color: var(--color-texto-secundario); 
+            display: block; 
+        }
+        
+        /* ========================================
+           SISTEMA DE ALERTAS Y NOTIFICACIONES
+           ======================================== */
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;                         /* Por encima de modales Bootstrap */
+        }
+        
+        .alert {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .alert-success { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border-color: #c3e6cb; 
+        }
+        
+        .alert-danger { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border-color: #f5c6cb; 
+        }
+    </style>

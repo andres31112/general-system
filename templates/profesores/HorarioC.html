@@ -1,0 +1,24 @@
+{% extends "layout_profesor.html" %}
+{% block contenido %}
+<div class="container mt-3">
+    <h3 class="text-principal mb-3">Horario de Clases</h3>
+    <div class="table-responsive">
+        <table id="tabla-horario" class="table schedule-grid">
+            <thead>
+                <tr>
+                    <th>Hora / Día</th>
+                    <th>Lunes</th>
+                    <th>Martes</th>
+                    <th>Miércoles</th>
+                    <th>Jueves</th>
+                    <th>Viernes</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpo-horario">
+                <!-- Las filas se generan con JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/profesor/horario.js') }}"></script>
+{% endblock %}
