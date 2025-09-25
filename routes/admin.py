@@ -73,6 +73,34 @@ def crear_equipo():
         form=form
     )
 
+from flask import jsonify  # Asegúrate de que esté importado (ya lo está en el archivo)
+
+@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipo_detalle(equipo_id):
+    equipo = Equipo.query.get_or_404(equipo_id)
+    data = equipo.to_dict()  # Usa el método existente en models.py para los campos básicos
+    
+    # Agrega historial de incidentes
+    data['incidentes'] = [
+        {
+            'fecha': i.fecha.strftime("%Y-%m-%d"),
+            'descripcion': i.descripcion
+        } for i in equipo.incidentes
+    ]
+    
+    # Agrega historial de mantenimientos (usa 'programaciones' del backref en models.py)
+    data['mantenimientos'] = [
+        {
+            'fecha': m.fecha_programada.strftime("%Y-%m-%d") if m.fecha_programada else (m.fecha_realizada.strftime("%Y-%m-%d") if m.fecha_realizada else ''),
+            'tipo': m.tipo,
+            'estado': m.estado
+        } for m in equipo.programaciones
+    ]
+    
+    return jsonify(data), 200
+
 @admin_bp.route('/salones')
 @login_required
 @role_required(1)
