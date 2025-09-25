@@ -2,6 +2,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
 from controllers.permisos import ROLE_PERMISSIONS
+from datetime import datetime
 
 # Roles
 class Rol(db.Model):
@@ -201,3 +202,87 @@ class Salon(db.Model):
 
     def __repr__(self):
         return f"Salon('{self.nombre}', '{self.tipo}')"
+    
+class Equipo(db.Model):
+    __tablename__ = 'Equipos'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', 'Revisión', name='estado_equipo_enum'), nullable=False, default='Disponible')
+    id_salon_fk = db.Column(db.Integer, db.ForeignKey('Salones.id'), nullable=False)
+    asignado_a = db.Column(db.String(100))
+    id_referencia = db.Column(db.String(50))
+    tipo = db.Column(db.String(100))
+    sistema_operativo = db.Column(db.String(100))
+    ram = db.Column(db.String(50))
+    disco_duro = db.Column(db.String(100))
+    fecha_adquisicion = db.Column(db.Date)
+    descripcion = db.Column(db.Text)
+    observaciones = db.Column(db.Text)
+    salon = db.relationship('Salon', backref=db.backref('equipos', lazy=True))
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "estado": self.estado,
+            "id_salon_fk": self.id_salon_fk,
+            "sala_nombre": self.salon.nombre if self.salon else "",
+            "sede_nombre": self.salon.sede.nombre if self.salon and self.salon.sede else "",
+            "asignado_a": self.asignado_a or "",
+            "id_referencia": self.id_referencia or "",
+            "tipo": self.tipo or "",
+            "sistema_operativo": self.sistema_operativo or "",
+            "ram": self.ram or "",
+            "disco_duro": self.disco_duro or "",
+            "fecha_adquisicion": self.fecha_adquisicion.strftime("%Y-%m-%d") if self.fecha_adquisicion else "",
+            "descripcion": self.descripcion or "",
+            "observaciones": self.observaciones or ""
+        }
+    
+class Incidente(db.Model):
+    __tablename__ = 'Incidentes'
+    id = db.Column(db.Integer, primary_key=True)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
+    usuario_asignado = db.Column(db.String(100), nullable=True)
+    sede = db.Column(db.String(100), nullable=False)
+    fecha = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+    descripcion = db.Column(db.Text, nullable=False)
+    estado = db.Column(db.String(50), nullable=True)
+    equipo = db.relationship('Equipo', backref=db.backref('incidentes', lazy=True))
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "equipo_id": self.equipo_id,
+            "equipo_nombre": self.equipo.nombre if self.equipo else "",
+            "usuario_asignado": self.usuario_asignado or "",
+            "sede": self.sede,
+            "fecha": self.fecha.strftime("%Y-%m-%d"),
+            "descripcion": self.descripcion,
+            "estado": self.estado or ""
+        }
+
+class Mantenimiento(db.Model):
+    __tablename__ = 'Mantenimiento'
+    id = db.Column(db.Integer, primary_key=True)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
+    sede_id = db.Column(db.Integer, db.ForeignKey('Sede.id'), nullable=False)
+    fecha_programada = db.Column(db.Date, nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)
+    estado = db.Column(db.String(50), default='pendiente')
+    descripcion = db.Column(db.Text, nullable=True)
+    fecha_realizada = db.Column(db.Date, nullable=True)
+    tecnico = db.Column(db.String(100), nullable=True)
+    equipo = db.relationship('Equipo', backref=db.backref('programaciones', lazy=True))
+    sede = db.relationship('Sede', lazy='joined')
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "equipo_id": self.equipo_id,
+            "equipo_nombre": self.equipo.nombre if self.equipo else "",
+            "sede": self.sede.nombre if self.sede else "",
+            "fecha_programada": self.fecha_programada.strftime("%Y-%m-%d"),
+            "tipo": self.tipo,
+            "estado": self.estado,
+            "descripcion": self.descripcion or "",
+            "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else "",
+            "tecnico": self.tecnico or ""
+        }

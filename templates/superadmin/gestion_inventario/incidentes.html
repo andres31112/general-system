@@ -2,463 +2,257 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Incidentes TIC</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/equipos.css') }}">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gestión de Mantenimientos TIC</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/equipos.css') }}" />
+  <style>
+    .table-controls { margin-bottom: 15px; }
+    .paginacion {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .badge { padding: 5px 10px; border-radius: 5px; font-size: 0.85em; }
+    .incidente { background: #dc3545; color: white; }
+    .mantenimiento { background: #ffc107; color: black; }
+  </style>
 </head>
 
 <body>
-    {% extends "base.html" %}
-    {% block content %}
-<style>
-    /* Variables CSS para una gestión de colores y sombras más sencilla */
-    :root {
-        --color-primario: #0078ad;
-        --color-primario-oscuro: #00628e;
-        --color-texto-principal: #2c3e50;
-        --color-texto-secundario: #7f8c8d;
-        --color-blanco: #FFFFFF;
-        --color-fondo-seccion: #f8f9fa;
-        --color-borde-suave: #ecf0f1;
-        --color-rojo: #dc3545;
-        --color-azul-claro: #17a2b8;
-    }
+  {% extends "base.html" %}
+  {% block content %}
 
-    /* Estilos Generales */
-    body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--color-fondo-seccion);
-        color: var(--color-texto-principal);
-        margin: 0;
-    }
+  <header class="main-header">
+    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+      <i class="fa-solid fa-arrow-left"></i>
+    </a>
+    <h1>Gestión de Mantenimientos TIC</h1>
+    <div class="header-icons">
+      <i class="fa-solid fa-bell"></i>
+      <i class="fa-solid fa-user"></i>
+    </div>
+  </header>
 
-    /* Encabezado */
-    .main-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 2rem;
-        border-bottom: 1px solid var(--color-borde-suave);
-        background-color: var(--color-blanco);
-    }
-    
-    .main-header h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--color-primario);
-        margin: 0;
-    }
-    
-    .header-icons {
-        display: flex;
-        gap: 1.5rem;
-        color: var(--color-texto-secundario);
-    }
+  <main class="content-area">
 
-    /* Contenedor de contenido principal */
-    .content-area {
-        padding: 2rem;
-    }
-
-    /* Controles de la tabla y botón de registro */
-    .table-controls {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-    
-    .form-control {
-        border-radius: 50px;
-        border: 1px solid var(--color-borde-suave);
-        padding: 0.75rem 1.25rem;
-        background-color: var(--color-blanco);
-    }
-
-    .form-control:focus {
-        border-color: var(--color-primario);
-        box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
-    }
-    
-    .btn-danger {
-        background-color: var(--color-rojo);
-        border-color: var(--color-rojo);
-        border-radius: 50px;
-        font-weight: 600;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-    }
-
-    .btn-danger:hover {
-        background-color: #c82333;
-        border-color: #bd2130;
-    }
-    
-    .btn-primary {
-        background-color: var(--color-primario);
-        border-color: var(--color-primario);
-        border-radius: 50px;
-        font-weight: 600;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-    }
-
-    .btn-primary:hover {
-        background-color: var(--color-primario-oscuro);
-        border-color: var(--color-primario-oscuro);
-    }
-    
-    .btn-secondary {
-        background-color: var(--color-texto-secundario);
-        border-color: var(--color-texto-secundario);
-        border-radius: 50px;
-        font-weight: 600;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
-    }
-    
-    .btn-secondary:hover {
-        background-color: #6c757d;
-        border-color: #6c757d;
-    }
-
-    /* Tabla */
-    .table-container {
-        background-color: var(--color-blanco);
-        border-radius: 1rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-    
-    .table {
-        margin-bottom: 0;
-    }
-    
-    .table-dark {
-        background-color: var(--color-primario-oscuro) !important;
-        color: var(--color-blanco);
-    }
-    
-    .table-dark th {
-        border-color: var(--color-primario);
-    }
-
-    .table-striped > tbody > tr:nth-of-type(odd) {
-        background-color: var(--color-fondo-seccion);
-    }
-
-    /* Paginación */
-    .paginacion {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 10px;
-        padding: 1rem 1.5rem;
-        border-top: 1px solid var(--color-borde-suave);
-    }
-</style>
-    <header class="main-header">
-        <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
-            <i class="fa-solid fa-arrow-left"></i>
-        </a>
-        <h1>Gestion Inventario</h1>
-        <div class="header-icons">
-            <i class="fa-solid fa-bell"></i>
-            <i class="fa-solid fa-user"></i>
-        </div>
-    </header>
-
-    <main class="content-area">
-
-        <!-- Buscador -->
-        <div class="table-controls mb-2 d-flex gap-2">
-            <input type="text" id="buscarIncidente" placeholder="Buscar por sede, estado o tipo de equipo" class="form-control w-auto">
-            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#registrarIncidenteModal">
-                <i class="fas fa-exclamation-triangle me-2"></i>Registrar Incidente
-            </button>
-        </div>
-
-        <!-- Tabla de equipos con incidentes -->
-        <section class="table-container">
-            <table class="table table-striped table-hover" id="tablaEquipos">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Equipo</th>
-                        <th>Usuario asignado</th>
-                        <th>Sede</th>
-                        <th>Fecha</th>
-                        <th>Incidente</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Ejemplo de 10 equipos -->
-                    <tr data-sede="Laboratorio 1" data-tipo="Computadora" data-estado="activo">
-                        <td>LAB1-PC01</td>
-                        <td>Elena Rodriguez</td>
-                        <td>Laboratorio 1</td>
-                        <td>2023-08-15</td>
-                        <td>Reemplazo de disco duro</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="LAB1-PC01">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 1" data-tipo="Computadora" data-estado="en_revision">
-                        <td>LAB1-PC02</td>
-                        <td>Juan Pérez</td>
-                        <td>Laboratorio 1</td>
-                        <td>2023-08-01</td>
-                        <td>Mantenimiento preventivo</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="LAB1-PC02">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 2" data-tipo="Computadora" data-estado="activo">
-                        <td>LAB2-PC01</td>
-                        <td>Elena Rodriguez</td>
-                        <td>Laboratorio 2</td>
-                        <td>2023-07-30</td>
-                        <td>Actualización de software</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="LAB2-PC01">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 2" data-tipo="Computadora" data-estado="fuera_servicio">
-                        <td>LAB2-PC02</td>
-                        <td>Juan Pérez</td>
-                        <td>Laboratorio 2</td>
-                        <td>2023-07-25</td>
-                        <td>Fallo en disco duro</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="LAB2-PC02">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 3" data-tipo="Proyector" data-estado="activo">
-                        <td>PROY-01</td>
-                        <td>Elena Rodriguez</td>
-                        <td>Laboratorio 3</td>
-                        <td>2023-07-20</td>
-                        <td>Reemplazo lámpara</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="PROY-01">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 3" data-tipo="Impresora" data-estado="en_revision">
-                        <td>IMP-01</td>
-                        <td>Juan Pérez</td>
-                        <td>Laboratorio 3</td>
-                        <td>2023-07-15</td>
-                        <td>Atasco de papel</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="IMP-01">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 4" data-tipo="Computadora" data-estado="activo">
-                        <td>LAB4-PC01</td>
-                        <td>Elena Rodriguez</td>
-                        <td>Laboratorio 4</td>
-                        <td>2023-07-10</td>
-                        <td>Instalación software</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="LAB4-PC01">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 4" data-tipo="Proyector" data-estado="fuera_servicio">
-                        <td>PROY-02</td>
-                        <td>Juan Pérez</td>
-                        <td>Laboratorio 4</td>
-                        <td>2023-07-05</td>
-                        <td>Problema de conexión</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="PROY-02">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 5" data-tipo="Computadora" data-estado="activo">
-                        <td>LAB5-PC01</td>
-                        <td>Elena Rodriguez</td>
-                        <td>Laboratorio 5</td>
-                        <td>2023-06-30</td>
-                        <td>Mantenimiento preventivo</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="LAB5-PC01">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                    <tr data-sede="Laboratorio 5" data-tipo="Impresora" data-estado="en_revision">
-                        <td>IMP-02</td>
-                        <td>Juan Pérez</td>
-                        <td>Laboratorio 5</td>
-                        <td>2023-06-25</td>
-                        <td>Falta tinta</td>
-                        <td>
-                            <button class="btn btn-primary historial-btn" data-bs-toggle="modal" data-bs-target="#historialModal"
-                                data-nombre="IMP-02">
-                                <i class="fas fa-eye me-1"></i>Ver Historial
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <!-- Paginación -->
-            <div class="paginacion">
-                <button id="prevEquipos" class="btn btn-secondary btn-sm">Anterior</button>
-                <span id="paginaEquipos">Página 1</span>
-                <button id="nextEquipos" class="btn btn-secondary btn-sm">Siguiente</button>
-            </div>
-        </section>
-    </main>
-
-    <!-- Modal historial -->
-    <div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Historial de Incidentes - <span id="modalEquipo"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Descripción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historialBody"></tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
-            </div>
-        </div>
+    <!-- Controles -->
+    <div class="table-controls d-flex gap-2 justify-content-between">
+      <input type="text" id="buscarMantenimiento"
+        placeholder="Buscar por equipo, sede, fecha o tipo"
+        class="form-control w-auto" />
+      <button class="btn btn-success" data-bs-toggle="modal"
+        data-bs-target="#programarModal">
+        <i class="fas fa-plus me-1"></i>Programar Mantenimiento
+      </button>
     </div>
 
-    <script>
-        const equipos = {
-            "LAB1-PC01": [
-                { fecha: "2023-08-15", descripcion: "Reemplazo de disco duro" },
-                { fecha: "2023-07-22", descripcion: "Fallo en disco duro, reemplazado" }
-            ],
-            "LAB1-PC02": [
-                { fecha: "2023-08-01", descripcion: "Mantenimiento preventivo" },
-                { fecha: "2023-06-15", descripcion: "Pantalla no enciende" }
-            ],
-            "LAB2-PC01": [
-                { fecha: "2023-07-30", descripcion: "Actualización de software" }
-            ],
-            "LAB2-PC02": [
-                { fecha: "2023-07-25", descripcion: "Fallo en disco duro" }
-            ],
-            "PROY-01": [
-                { fecha: "2023-07-20", descripcion: "Reemplazo lámpara" }
-            ],
-            "IMP-01": [
-                { fecha: "2023-07-15", descripcion: "Atasco de papel" }
-            ],
-            "LAB4-PC01": [
-                { fecha: "2023-07-10", descripcion: "Instalación software" }
-            ],
-            "PROY-02": [
-                { fecha: "2023-07-05", descripcion: "Problema de conexión" }
-            ],
-            "LAB5-PC01": [
-                { fecha: "2023-06-30", descripcion: "Mantenimiento preventivo" }
-            ],
-            "IMP-02": [
-                { fecha: "2023-06-25", descripcion: "Falta tinta" }
-            ]
-        };
+    <!-- Tabla -->
+    <section class="table-container">
+      <table class="table table-striped table-hover" id="tablaMantenimientos">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Equipo</th>
+            <th>Sede</th>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+            <th>Origen</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="mantenimientosBody">
+          <!-- Registros dinámicos -->
+        </tbody>
+      </table>
 
-        // Modal historial
-        document.querySelectorAll('.historial-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const equipo = btn.getAttribute('data-nombre');
-                document.getElementById('modalEquipo').textContent = equipo;
+      <!-- Paginación -->
+      <div class="paginacion">
+        <button id="prevMantenimientos" class="btn btn-secondary btn-sm">Anterior</button>
+        <span id="paginaMantenimientos">Página 1</span>
+        <button id="nextMantenimientos" class="btn btn-secondary btn-sm">Siguiente</button>
+      </div>
+    </section>
+  </main>
 
-                const tbody = document.getElementById('historialBody');
-                tbody.innerHTML = '';
-                if (equipos[equipo]) {
-                    equipos[equipo]
-                        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-                        .forEach(item => {
-                            const row = `<tr><td>${item.fecha}</td><td>${item.descripcion}</td></tr>`;
-                            tbody.innerHTML += row;
-                        });
-                }
-            });
+  <!-- Modal Programar -->
+  <div class="modal fade" id="programarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form id="formProgramar" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Programar Mantenimiento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="equipoSelect" class="form-label">Equipo</label>
+            <select id="equipoSelect" class="form-select" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="fechaProgramacion" class="form-label">Fecha Programada</label>
+            <input type="date" id="fechaProgramacion" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="tipoProgramacion" class="form-label">Tipo</label>
+            <input type="text" id="tipoProgramacion" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label for="descripcionInput" class="form-label">Descripción</label>
+            <textarea id="descripcionInput" class="form-control" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Guardar</button>
+          <button type="button" class="btn btn-secondary"
+            data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let todosLosMantenimientos = [];
+
+    // Cargar equipos
+    async function cargarEquipos() {
+      const res = await fetch('/admin/api/equipos_todos');
+      const equipos = await res.json();
+      const select = document.getElementById('equipoSelect');
+      select.innerHTML = '';
+      equipos.forEach(eq => {
+        const option = document.createElement('option');
+        option.value = eq.id;
+        option.textContent = `${eq.nombre} (${eq.sede_nombre})`;
+        select.appendChild(option);
+      });
+    }
+
+    // Cargar mantenimientos/incidentes
+    async function cargarMantenimientos() {
+      const res = await fetch('/admin/api/incidentes'); // trae incidentes + equipos en mantenimiento
+      todosLosMantenimientos = await res.json();
+      const tbody = document.getElementById('mantenimientosBody');
+      tbody.innerHTML = '';
+
+      todosLosMantenimientos.forEach(m => {
+        const origen = m.id ? "Incidente" : "Mantenimiento";
+        const badgeClass = m.estado === "Mantenimiento" ? "mantenimiento" : "incidente";
+
+        const row = document.createElement('tr');
+        row.dataset.equipo = m.equipo_nombre.toLowerCase();
+        row.dataset.sede = (m.sede || "").toLowerCase();
+        row.dataset.fecha = m.fecha || "";
+        row.dataset.tipo = (m.tipo || "").toLowerCase();
+
+        row.innerHTML = `
+          <td>${m.id || "-"}</td>
+          <td>${m.equipo_nombre}</td>
+          <td>${m.sede || "-"}</td>
+          <td>${m.fecha}</td>
+          <td>${m.tipo || "-"}</td>
+          <td>${m.descripcion}</td>
+          <td><span class="badge ${badgeClass}">${m.estado}</span></td>
+          <td>${origen}</td>
+          <td>
+            ${origen === "Incidente" ? `
+              <button class="btn btn-danger btn-sm cancelar-btn" data-id="${m.id}">
+                <i class="fas fa-times"></i> Cancelar
+              </button>` : "-"}
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      mostrarFilas(1);
+      agregarEventosBotones();
+    }
+
+    // Mostrar filas con paginación
+    function mostrarFilas(pagina) {
+      const filas = document.querySelectorAll('#tablaMantenimientos tbody tr');
+      const limit = 5;
+      const start = (pagina - 1) * limit;
+      const end = start + limit;
+      filas.forEach((f, i) => f.style.display = (i >= start && i < end) ? "" : "none");
+      const totalPaginas = Math.ceil(filas.length / limit) || 1;
+      document.getElementById('paginaMantenimientos').innerText = `Página ${pagina} de ${totalPaginas}`;
+    }
+
+    // Eventos de paginación
+    document.getElementById('prevMantenimientos').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        mostrarFilas(currentPage);
+      }
+    });
+
+    document.getElementById('nextMantenimientos').addEventListener('click', () => {
+      const filas = document.querySelectorAll('#tablaMantenimientos tbody tr');
+      const totalPaginas = Math.ceil(filas.length / 5);
+      if (currentPage < totalPaginas) {
+        currentPage++;
+        mostrarFilas(currentPage);
+      }
+    });
+
+    // Buscar
+    document.getElementById('buscarMantenimiento').addEventListener('input', function () {
+      const valor = this.value.toLowerCase();
+      const filas = document.querySelectorAll('#tablaMantenimientos tbody tr');
+      filas.forEach(f => {
+        const texto = (f.dataset.equipo + f.dataset.sede + f.dataset.fecha + f.dataset.tipo).toLowerCase();
+        f.style.display = texto.includes(valor) ? "" : "none";
+      });
+      currentPage = 1;
+      mostrarFilas(currentPage);
+    });
+
+    // Eventos botones
+    function agregarEventosBotones() {
+      document.querySelectorAll('.cancelar-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          if (confirm('¿Cancelar mantenimiento?')) {
+            await fetch(`/admin/api/mantenimientos/${id}/cancelar`, { method: 'PUT' });
+            cargarMantenimientos();
+          }
         });
+      });
+    }
 
-        // Paginación
-        function mostrarFilas(tablaID, pagina) {
-            const filas = document.querySelectorAll(`#${tablaID} tbody tr`);
-            const limit = 5;
-            const start = (pagina - 1) * limit;
-            const end = start + limit;
-            filas.forEach((f, i) => f.style.display = (i >= start && i < end) ? "" : "none");
-            const totalPaginas = Math.ceil(filas.length / limit);
-            document.getElementById('paginaEquipos').innerText = `Página ${pagina} de ${totalPaginas}`;
-        }
+    // Guardar nuevo
+    document.getElementById('formProgramar').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        equipo_id: document.getElementById('equipoSelect').value,
+        fecha_programada: document.getElementById('fechaProgramacion').value,
+        tipo: document.getElementById('tipoProgramacion').value,
+        descripcion: document.getElementById('descripcionInput').value,
+      };
+      await fetch('/admin/api/mantenimientos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const modal = bootstrap.Modal.getInstance(document.getElementById('programarModal'));
+      modal.hide();
+      e.target.reset();
+      cargarMantenimientos();
+    });
 
-        let currentPage = 1;
-        mostrarFilas('tablaEquipos', currentPage);
-
-        document.getElementById('prevEquipos').addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                mostrarFilas('tablaEquipos', currentPage);
-            }
-        });
-        document.getElementById('nextEquipos').addEventListener('click', () => {
-            const filas = document.querySelectorAll('#tablaEquipos tbody tr');
-            const totalPaginas = Math.ceil(filas.length / 5);
-            if (currentPage < totalPaginas) {
-                currentPage++;
-                mostrarFilas('tablaEquipos', currentPage);
-            }
-        });
-
-        // Buscador
-        document.getElementById('buscarIncidente').addEventListener('input', function () {
-            const valor = this.value.toLowerCase();
-            const filas = document.querySelectorAll('#tablaEquipos tbody tr');
-            filas.forEach(f => {
-                const sede = f.getAttribute('data-sede').toLowerCase();
-                const estado = f.getAttribute('data-estado').toLowerCase();
-                const tipo = f.getAttribute('data-tipo').toLowerCase();
-                f.style.display = (sede.includes(valor) || estado.includes(valor) || tipo.includes(valor)) ? "" : "none";
-            });
-        });
-    </script>
-
-    {% endblock %}
+    // Inicializar
+    window.addEventListener('DOMContentLoaded', () => {
+      cargarEquipos();
+      cargarMantenimientos();
+    });
+  </script>
+  {% endblock %}
 </body>
 </html>

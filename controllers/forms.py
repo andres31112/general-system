@@ -225,3 +225,50 @@ class SedeForm(FlaskForm):
         sede = Sede.query.filter_by(nombre=nombre.data).first()
         if sede:
             raise ValidationError('Esta sede ya existe. Por favor, elige un nombre diferente.')
+
+# ================================
+# Funciones para QuerySelect - Equipos
+# ================================
+def get_all_salones():
+    """Retorna todos los salones ordenados por nombre con información de sede."""
+    from controllers.models import Salon
+    return Salon.query.join(Sede).order_by(Salon.nombre).all()
+
+# ================================
+# Formulario para Equipos
+# ================================
+class EquipoForm(FlaskForm):
+    id_referencia = StringField('ID/Referencia del Equipo', validators=[Length(max=50)])
+    nombre = StringField('Nombre del Equipo', validators=[DataRequired(), Length(min=2, max=100)])
+    tipo = SelectField('Tipo de Equipo', choices=[
+        ('computadora', 'Computadora de Escritorio'),
+        ('laptop', 'Laptop'),
+        ('tablet', 'Tablet'),
+        ('proyector', 'Proyector'),
+        ('impresora', 'Impresora'),
+        ('scanner', 'Escáner'),
+        ('servidor', 'Servidor'),
+        ('otro', 'Otro')
+    ], validators=[DataRequired()])
+    estado = SelectField('Estado del Equipo', choices=[
+        ('Disponible', 'Disponible'),
+        ('Asignado', 'Asignado'),
+        ('Mantenimiento', 'Mantenimiento'),
+        ('Incidente', 'Incidente'),
+        ('Revisión', 'Revisión')
+    ], validators=[DataRequired()], default='Disponible')
+    salon = QuerySelectField('Sala', query_factory=get_all_salones, get_pk=lambda s: s.id, get_label=lambda s: f"{s.nombre} ({s.sede.nombre if s.sede else 'Sin sede'})", allow_blank=True, blank_text='Selecciona una Sala...')
+    asignado_a = StringField('Asignado a', validators=[Length(max=100)])
+    sistema_operativo = StringField('Sistema Operativo', validators=[Length(max=100)])
+    ram = StringField('Memoria RAM', validators=[Length(max=50)], render_kw={"placeholder": "Ej: 8GB DDR4"})
+    disco_duro = StringField('Disco Duro', validators=[Length(max=100)], render_kw={"placeholder": "Ej: 256GB SSD"})
+    fecha_adquisicion = StringField('Fecha de Adquisición', render_kw={"type": "date"})
+    descripcion = TextAreaField('Descripción', validators=[Length(max=500)])
+    observaciones = TextAreaField('Observaciones', validators=[Length(max=500)])
+    submit = SubmitField('Registrar Equipo')
+
+    def validate_id_referencia(self, id_referencia):
+        if id_referencia.data:
+            from controllers.models import Equipo
+            if Equipo.query.filter_by(id_referencia=id_referencia.data).first():
+                raise ValidationError('Esa referencia ya está registrada. Por favor, elige una diferente.')

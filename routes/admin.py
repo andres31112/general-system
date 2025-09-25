@@ -4,8 +4,8 @@ from flask_login import login_required, current_user
 from controllers.decorators import role_required
 from extensions import db
 from datetime import datetime, timedelta, time, date
-from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm
-from controllers.models import db, Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, Descanso, Matricula
+from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
+from controllers.models import db, Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, Descanso, Matricula, Equipo, Incidente, Mantenimiento
 from sqlalchemy.exc import IntegrityError
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -41,6 +41,38 @@ def equipos():
     """Muestra la lista de equipos (página de equipos)."""
     return render_template('superadmin/gestion_inventario/equipos.html')
 
+@admin_bp.route('/registro_equipos', methods=['GET', 'POST'])
+@login_required
+@role_required(1)
+def crear_equipo():
+    form = EquipoForm()
+    if form.validate_on_submit():
+        nuevo_equipo = Equipo(
+            id_referencia=form.id_referencia.data,
+            nombre=form.nombre.data,
+            tipo=form.tipo.data,
+            estado=form.estado.data,
+            id_salon_fk=form.salon.data.id if form.salon.data else None,
+            asignado_a=form.asignado_a.data,
+            sistema_operativo=form.sistema_operativo.data,
+            ram=form.ram.data,
+            disco_duro=form.disco_duro.data,
+            fecha_adquisicion=datetime.strptime(form.fecha_adquisicion.data, '%Y-%m-%d').date() if form.fecha_adquisicion.data else None,
+            descripcion=form.descripcion.data,
+            observaciones=form.observaciones.data
+        )
+        db.session.add(nuevo_equipo)
+        db.session.commit()
+
+        flash(f'Equipo "{nuevo_equipo.nombre}" creado exitosamente!', 'success')
+        return redirect(url_for('admin.equipos'))
+
+    return render_template(
+        'superadmin/gestion_inventario/registro_equipo.html',
+        title='Crear Nuevo Equipo',
+        form=form
+    )
+
 @admin_bp.route('/salones')
 @login_required
 @role_required(1)
@@ -48,6 +80,84 @@ def salones():
     """Muestra la lista de todos los salones."""
     salones = db.session.query(Salon).all()
     return render_template('superadmin/gestion_inventario/salones.html', salones=salones)
+
+# ===============================
+# API Sedes, Salas y Equipos
+# ===============================
+
+@admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
+@login_required
+@role_required(1)
+def api_sedes():
+    """
+    Endpoint para gestionar sedes (Listar, Crear, Eliminar).
+    GET: Devuelve todas las sedes.
+    POST: Crea una nueva sede.
+    DELETE: Elimina una sede por su ID.
+    """
+    if request.method == 'GET':
+        sedes = Sede.query.order_by(Sede.nombre).all()
+        return jsonify([{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]), 200
+
+    if request.method == 'POST':
+        data = request.get_json()
+        nombre = data.get("nombre")
+        direccion = data.get("direccion", "Dirección por defecto")
+
+        if not nombre:
+            return jsonify({"error": "El nombre de la sede es obligatorio"}), 400
+
+        try:
+            nueva_sede = Sede(nombre=nombre, direccion=direccion)
+            db.session.add(nueva_sede)
+            db.session.commit()
+            return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({"error": "Ya existe una sede con ese nombre"}), 409
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+
+    if request.method == 'DELETE':
+        data = request.get_json()
+        sede_id = data.get('id')
+
+        if not sede_id:
+            return jsonify({"error": "ID de sede no proporcionado"}), 400
+
+        sede = Sede.query.get(sede_id)
+        if not sede:
+            return jsonify({"error": "Sede no encontrada"}), 404
+
+        try:
+            db.session.delete(sede)
+            db.session.commit()
+            return jsonify({"message": "Sede eliminada exitosamente"}), 200
+        except Exception:
+            db.session.rollback()
+            return jsonify({"error": "No se pudo eliminar la sede"}), 500
+
+    return jsonify({"error": "Método no permitido"}), 405
+
+
+@admin_bp.route('/api/sedes/<int:sede_id>/salas')
+def api_salas(sede_id):
+    salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
+    return jsonify([{"id": s.id, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
+
+@admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
+def api_equipos(sede_id, salon_id):
+    equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
+    data = []
+    for eq in equipos:
+        data.append({
+            "id": eq.id,
+            "nombre": eq.nombre,
+            "estado": eq.estado,
+            "asignado_a": eq.asignado_a or ""
+        })
+    return jsonify(data)
 
 @admin_bp.route('/reportes')
 @role_required(1)
@@ -61,11 +171,120 @@ def incidentes():
     """Muestra la página de gestión de incidentes."""
     return render_template('superadmin/gestion_inventario/incidentes.html')
 
+# ===============================
+# API de Incidentes
+# ===============================
+@admin_bp.route('/api/incidentes', methods=['GET'])
+@login_required
+@role_required(1)
+def api_incidentes():
+    data = []
+
+    # 1. Obtener incidentes registrados
+    incidentes = Incidente.query.all()
+    for inc in incidentes:
+        data.append({
+            "id": inc.id,
+            "equipo_id": inc.equipo_id,
+            "equipo_nombre": inc.equipo.nombre if inc.equipo else "Sin equipo",
+            "usuario_asignado": inc.usuario_asignado or "",
+            "sede": inc.sede,
+            "fecha": inc.fecha.strftime("%Y-%m-%d"),
+            "descripcion": inc.descripcion,
+            "estado": inc.estado or ""
+        })
+
+    # 2. Obtener equipos en mantenimiento (que no estén en incidentes)
+    equipos_mantenimiento = Equipo.query.filter_by(estado="Mantenimiento").all()
+    incidentes_ids = {inc.equipo_id for inc in incidentes}
+
+    for eq in equipos_mantenimiento:
+        if eq.id not in incidentes_ids:
+            data.append({
+                "id": None,
+                "equipo_id": eq.id,
+                "equipo_nombre": eq.nombre,
+                "usuario_asignado": "",
+                "sede": eq.salon.sede.nombre if eq.salon and eq.salon.sede else "Sin sede",
+                "fecha": datetime.utcnow().strftime("%Y-%m-%d"),
+                "descripcion": "Equipo en mantenimiento",
+                "estado": "Mantenimiento"
+            })
+
+    return jsonify(data)
+
 @admin_bp.route('/mantenimiento')
 @role_required(1)
 def mantenimiento():
     """Muestra la página de mantenimiento de equipos."""
     return render_template('superadmin/gestion_inventario/mantenimiento.html')
+
+# ===============================
+# API de Mantenimientos
+# ===============================
+@admin_bp.route('/api/mantenimientos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_mantenimientos():
+    mantenimientos = Mantenimiento.query.all()
+    data = []
+    for m in mantenimientos:
+        data.append({
+            "id": m.id,
+            "equipo_id": m.equipo.id if m.equipo else None,
+            "equipo_nombre": m.equipo.nombre if m.equipo else "Sin equipo",
+            "sede_id": m.sede.id if m.sede else None,
+            "sede_nombre": m.sede.nombre if m.sede else "Sin sede",
+            "fecha_programada": m.fecha_programada.strftime("%Y-%m-%d"),
+            "tipo": m.tipo,
+            "descripcion": m.descripcion or "",
+            "estado": m.estado
+        })
+    return jsonify(data)
+
+
+@admin_bp.route('/api/mantenimientos', methods=['POST'])
+@login_required
+@role_required(1)
+def crear_mantenimiento():
+    data = request.get_json()
+    equipo_id = data.get("equipo_id")
+    fecha_programada = datetime.strptime(data.get("fecha_programada"), "%Y-%m-%d").date()
+    tipo = data.get("tipo", "mantenimiento")
+    descripcion = data.get("descripcion", "")
+
+    equipo = Equipo.query.get(equipo_id)
+    if not equipo:
+        return jsonify({"error": "Equipo no encontrado"}), 404
+
+    sede_id = equipo.salon.sede.id if equipo.salon and equipo.salon.sede else None
+    if not sede_id:
+        return jsonify({"error": "El equipo no tiene sede asociada"}), 400
+
+    nuevo = Mantenimiento(
+        equipo_id=equipo_id,
+        sede_id=sede_id,
+        fecha_programada=fecha_programada,
+        tipo=tipo,
+        descripcion=descripcion,
+        estado="Programado"
+    )
+    db.session.add(nuevo)
+    db.session.commit()
+
+    return jsonify({"success": True, "id": nuevo.id})
+
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>/cancelar', methods=['POST'])
+@login_required
+@role_required(1)
+def cancelar_mantenimiento(mantenimiento_id):
+    m = Mantenimiento.query.get(mantenimiento_id)
+    if not m:
+        return jsonify({"error": "Mantenimiento no encontrado"}), 404
+    m.estado = "Cancelado"
+    db.session.commit()
+    return jsonify({"success": True})
 
 @admin_bp.route('/gestion-salones')
 def gestion_salones():
@@ -104,14 +323,6 @@ def registro_salon():
         flash('Sala creada exitosamente ✅', 'success')
         return redirect(url_for('admin.salones'))
     return render_template('superadmin/gestion_inventario/registro_salon.html', title='Crear Nueva Sala', form=form)
-
-
-@admin_bp.route('/registro_equipo', methods=['GET', 'POST'])
-@login_required
-@role_required(1)
-def registro_equipo():
-    """Muestra la página para registrar un nuevo equipo."""
-    return render_template('superadmin/gestion_inventario/registro_equipo.html')
 
 @admin_bp.route('/registro_incidente', methods=['GET', 'POST'])
 @login_required
@@ -274,8 +485,6 @@ def api_padres():
         padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all() if rol_padre else []
         lista_padres = []
         for padre in padres:
-            hijos_asignados = []
-    
             lista_padres.append({
                 'id_usuario': padre.id_usuario,
                 'no_identidad': padre.no_identidad,
@@ -283,7 +492,7 @@ def api_padres():
                 'correo': padre.correo,
                 'rol': padre.rol.nombre if padre.rol else 'N/A',
                 'estado_cuenta': padre.estado_cuenta,
-                'hijos_asignados': hijos_asignados # Placeholder
+                'hijos_asignados': []  # Placeholder
             })
         return jsonify({"data": lista_padres})
     except Exception as e:
@@ -295,7 +504,6 @@ def api_padres():
 @role_required(1)
 def api_superadmins():
     try:
-        
         superadmins = Usuario.query.filter_by(id_rol_fk=1).all()
         lista_superadmins = []
         for superadmin in superadmins:
@@ -313,6 +521,9 @@ def api_superadmins():
         return jsonify({"error": "Error interno del servidor"}), 500
 
 
+# ===============================
+# Gestión Académica
+# ===============================
 @admin_bp.route('/gestion-academica')
 @login_required
 @role_required(1)
@@ -327,12 +538,11 @@ def gestion_horario():
     horarios_list = [h.to_dict() for h in horarios]
     return render_template('superadmin/Horarios/HorarioG.html', horarios=horarios_list)
 
-# --- Rutas de API para interactuar con los datos (usadas con JavaScript) ---
+# --- API de Horarios ---
 @admin_bp.route('/api/horarios', methods=['GET'])
 @login_required
 @role_required(1)
 def api_list_horarios():
-    """API para obtener la lista completa de horarios."""
     horarios = HorarioGeneral.query.all()
     return jsonify([h.to_dict() for h in horarios])
 
@@ -340,7 +550,6 @@ def api_list_horarios():
 @login_required
 @role_required(1)
 def api_create_horario():
-    """API para crear un nuevo horario."""
     data = request.get_json() or {}
     nombre = data.get('nombre') or 'Horario'
     horaInicio = datetime.strptime(data.get('horaInicio','07:00'), '%H:%M').time()
@@ -355,7 +564,6 @@ def api_create_horario():
 @login_required
 @role_required(1)
 def api_update_horario():
-    """API para actualizar un horario existente."""
     data = request.get_json() or {}
     horario_id = data.get('id')
     if not horario_id:
@@ -382,7 +590,6 @@ def api_update_horario():
 @login_required
 @role_required(1)
 def api_delete_horario():
-    """API para eliminar un horario."""
     data = request.get_json() or {}
     horario_id = data.get('id')
     if not horario_id:
@@ -398,7 +605,6 @@ def api_delete_horario():
 @login_required
 @role_required(1)
 def api_create_break(horario_id):
-    """API para crear un descanso asociado a un horario."""
     data = request.get_json() or {}
     horaInicio_str = data.get('horaInicio')
     duracion = int(data.get('duracion') or 0)
@@ -421,7 +627,6 @@ def api_create_break(horario_id):
 @login_required
 @role_required(1)
 def api_delete_break(horario_id):
-    """API para eliminar un descanso específico."""
     data = request.get_json() or {}
     descanso_id = data.get('id')
     if not descanso_id:
@@ -433,11 +638,13 @@ def api_delete_break(horario_id):
     db.session.commit()
     return jsonify({"success": True})
 
+# ===============================
+# API de Materias
+# ===============================
 @admin_bp.route('/api/materias', methods=['GET'])
 @login_required
 @role_required(1)
 def api_list_materias():
-    """API para obtener la lista de todas las asignaturas (materias)."""
     materias = Asignatura.query.all()
     return jsonify([m.to_dict() if hasattr(m,'to_dict') else {"id":m.id,"nombre":m.nombre} for m in materias])
 
@@ -445,7 +652,6 @@ def api_list_materias():
 @login_required
 @role_required(1)
 def api_create_materia():
-    """API para crear una nueva asignatura (materia)."""
     data = request.get_json() or {}
     nombre = data.get('nombre')
     if not nombre:
@@ -459,7 +665,6 @@ def api_create_materia():
 @login_required
 @role_required(1)
 def api_delete_materia(mat_id):
-    """API para eliminar una asignatura (materia)."""
     m = Asignatura.query.get(mat_id)
     if not m:
         return jsonify({"error":"No encontrado"}), 404
@@ -467,27 +672,26 @@ def api_delete_materia(mat_id):
     db.session.commit()
     return jsonify({"success": True})
 
+# ===============================
+# Gestión de Usuarios
+# ===============================
 @admin_bp.route('/crear_usuario', methods=['GET', 'POST'])
 @login_required
-@role_required(1) # This decorator should protect the route
+@role_required(1)
 def crear_usuario():
-    """Maneja el formulario para crear un nuevo usuario (profesor, estudiante, etc.)."""
     form = RegistrationForm()
-    
     roles = db.session.query(Rol).all()
     cursos = db.session.query(Curso).all()
     form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles]
 
     if form.validate_on_submit():
         selected_role_id = int(form.rol.data)
-        
         rol_estudiante = db.session.query(Rol).filter_by(nombre='Estudiante').first()
         rol_profesor = db.session.query(Rol).filter_by(nombre='Profesor').first()
 
         is_student = (rol_estudiante and selected_role_id == rol_estudiante.id_rol)
         is_professor = (rol_profesor and selected_role_id == rol_profesor.id_rol)
 
-        # Create the new user object
         new_user = Usuario(
             tipo_doc=form.tipo_doc.data,
             no_identidad=form.no_identidad.data,
@@ -504,7 +708,6 @@ def crear_usuario():
             db.session.add(new_user)
             db.session.commit()
             
-            # Condicional para la matrícula de estudiantes
             if is_student:
                 if form.curso_id.data and form.anio_matricula.data:
                     nueva_matricula = Matricula(
@@ -519,17 +722,13 @@ def crear_usuario():
                     db.session.rollback()
                     return redirect(url_for('admin.crear_usuario'))
 
-            # ✅ New conditional for professor assignment
             elif is_professor:
                 if form.asignatura_id.data and form.curso_asignacion_id.data:
-                    # NOTE: The 'Clase' model requires 'horarioId'.
-                    # This code assumes a valid horarioId is available, e.g., via a new form field
-                    # or a default value.
                     new_clase = Clase(
                         profesorId=new_user.id_usuario,
                         asignaturaId=form.asignatura_id.data.id,
                         cursoId=form.curso_asignacion_id.data.id,
-                        horarioId=1  # Placeholder: You need to implement logic to get the correct ID
+                        horarioId=1  # TODO: cambiar por lógica real
                     )
                     db.session.add(new_clase)
                     db.session.commit()
@@ -558,7 +757,6 @@ def crear_usuario():
 @login_required
 @role_required(1)
 def editar_usuario(user_id):
-    """Maneja el formulario para editar un usuario existente."""
     user = db.session.query(Usuario).get_or_404(user_id)
     form = UserEditForm(original_no_identidad=user.no_identidad, original_correo=user.correo)
 
@@ -592,7 +790,6 @@ def editar_usuario(user_id):
 @login_required
 @role_required(1)
 def eliminar_usuario(user_id):
-    """Elimina un usuario de la base de datos."""
     user = db.session.query(Usuario).get_or_404(user_id)
     if current_user.id_usuario == user.id_usuario or user.has_role('administrador'):
         flash('No puedes eliminar tu propia cuenta o la de otro administrador.', 'danger')
@@ -603,110 +800,27 @@ def eliminar_usuario(user_id):
     flash(f'Usuario "{user.nombre_completo}" eliminado exitosamente.', 'success')
     return redirect(url_for('admin.profesores'))
 
+# ===============================
+# Gestión de Cursos
+# ===============================
 @admin_bp.route('/gestion_sedes')
 @login_required
 @role_required(1)
 def gestion_sedes():
-    """Muestra la página para gestionar sedes."""
     form = SedeForm()
     return render_template('superadmin/gestion_academica/sedes.html', form=form)
 
-# ✅ API para la gestión de sedes
-@admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
-@login_required  # Opcional, para proteger la ruta
-def api_sedes():
-    """
-    Endpoint para gestionar sedes (Listar, Crear, Eliminar).
-    GET: Devuelve todas las sedes.
-    POST: Crea una nueva sede.
-    DELETE: Elimina una sede por su ID.
-    """
-    
-    # Manejar solicitud GET para listar sedes
-    if request.method == 'GET':
-        sedes = Sede.query.order_by(Sede.nombre).all()
-        sedes_data = [{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]
-        return jsonify(sedes_data), 200
-
-    # Manejar solicitud POST para crear una nueva sede
-    if request.method == 'POST':
-        data = request.get_json()
-        form = SedeForm(data=data)
-        
-        # Validar el formulario con los datos recibidos
-        if form.validate_on_submit():
-            try:
-                # La validación de existencia ya la maneja SedeForm.validate_nombre
-                
-                # Crear una nueva instancia de Sede.
-                # Nota: Tu modelo Sede tiene un campo 'direccion' que no está en el formulario.
-                # Se necesita manejar este campo, ya sea añadiéndolo al formulario o asignando un valor por defecto.
-                # Aquí asumimos que también se envía en el JSON o se le asigna un valor por defecto.
-                nueva_sede = Sede(
-                    nombre=form.nombre.data,
-                    # Aquí necesitas un valor para 'direccion'. Por simplicidad, se puede dejar vacío o manejarlo.
-                    direccion="Dirección por defecto"  # <-- Ajusta esto según tu lógica de negocio
-                )
-                
-                db.session.add(nueva_sede)
-                db.session.commit()
-                
-                # Devolver una respuesta JSON exitosa
-                return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
-            
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({"error": str(e)}), 500
-        else:
-            # Si la validación falla, devolver los errores del formulario
-            errors = {}
-            for field, messages in form.errors.items():
-                errors[field] = messages
-            return jsonify({"errors": errors, "error": "Error de validación"}), 400
-
-    # Manejar solicitud DELETE para eliminar una sede
-    if request.method == 'DELETE':
-        data = request.get_json()
-        sede_id = data.get('id')
-        
-        if not sede_id:
-            return jsonify({"error": "ID de sede no proporcionado"}), 400
-
-        sede = Sede.query.get(sede_id)
-        
-        if not sede:
-            return jsonify({"error": "Sede no encontrada"}), 404
-            
-        try:
-            db.session.delete(sede)
-            db.session.commit()
-            return jsonify({"message": "Sede eliminada exitosamente"}), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": "No se pudo eliminar la sede."}), 500
-
-    # En caso de que se use un método no permitido
-    return jsonify({"error": "Método no permitido"}), 405
-# ✅ Ruta para la vista de gestión de cursos
 @admin_bp.route('/gestion_cursos')
 @login_required
 @role_required(1)
 def gestion_cursos():
-    """Muestra la página de gestión de cursos con el formulario y la lista."""
     form = CursoForm()
     return render_template('superadmin/gestion_academica/cursos.html', form=form)
 
-# ✅ API para la gestión de cursos
 @admin_bp.route('/api/cursos', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @role_required(1)
 def api_cursos():
-    """
-    API para la gestión de cursos.
-    - GET: Retorna la lista de todos los cursos.
-    - POST: Crea un nuevo curso.
-    - DELETE: Elimina un curso.
-    """
     if request.method == 'GET':
         cursos = db.session.query(Curso, Sede.nombre).join(Sede).all()
         cursos_list = [{
@@ -734,7 +848,7 @@ def api_cursos():
                 }), 201
             except IntegrityError:
                 db.session.rollback()
-                return jsonify({'error': 'Este curso ya existe. Por favor, elige un nombre diferente.'}), 409
+                return jsonify({'error': 'Este curso ya existe.'}), 409
             except Exception as e:
                 db.session.rollback()
                 return jsonify({'error': f'Error interno: {str(e)}'}), 500
@@ -758,7 +872,7 @@ def api_cursos():
             return jsonify({'message': 'Curso eliminado'}), 200
         except IntegrityError:
             db.session.rollback()
-            return jsonify({'error': 'No se puede eliminar el curso porque está asociado a estudiantes o clases. Elimina esas asociaciones primero.'}), 409
+            return jsonify({'error': 'No se puede eliminar el curso porque está asociado.'}), 409
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': f'Error interno: {str(e)}'}), 500
