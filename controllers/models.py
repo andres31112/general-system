@@ -195,13 +195,29 @@ class Salon(db.Model):
     __tablename__ = 'Salones'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
-    tipo = db.Column(db.String(50), nullable=False) # 'sala_computo', 'sala_general', etc.
+    tipo = db.Column(db.String(50), nullable=False)
+    capacidad = db.Column(db.Integer, nullable=True)
+    cantidad_sillas = db.Column(db.Integer, nullable=True)
+    cantidad_mesas = db.Column(db.Integer, nullable=True)   
     id_sede_fk = db.Column(db.Integer, db.ForeignKey('Sede.id'), nullable=False)
     
     sede = db.relationship('Sede', backref=db.backref('salones', lazy=True))
 
     def __repr__(self):
-        return f"Salon('{self.nombre}', '{self.tipo}')"
+        return f"Salon('{self.nombre}', '{self.tipo}', capacidad={self.capacidad})"
+    
+    def to_dict(self):
+        """Método para convertir el salón a diccionario para APIs JSON"""
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "tipo": self.tipo,
+            "capacidad": self.capacidad,
+            "cantidad_sillas": self.cantidad_sillas,
+            "cantidad_mesas": self.cantidad_mesas,
+            "sede_id": self.id_sede_fk,
+            "sede_nombre": self.sede.nombre if self.sede else "Sin sede"
+        }
     
 class Equipo(db.Model):
     __tablename__ = 'Equipos'
@@ -219,6 +235,7 @@ class Equipo(db.Model):
     descripcion = db.Column(db.Text)
     observaciones = db.Column(db.Text)
     salon = db.relationship('Salon', backref=db.backref('equipos', lazy=True))
+    
     def to_dict(self):
         return {
             "id": self.id,

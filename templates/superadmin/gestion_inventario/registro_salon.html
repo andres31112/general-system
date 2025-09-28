@@ -3,99 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Usuarios - Crear Usuario</title>
+    <title>Gestión de Salones - Crear Salón</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/crear_usuario.css') }}">
 </head>
 <body>
+{% extends "base.html" %}
 
-    {% extends "base.html" %}
-  
-    {% block content %}
+{% block content %}
+<style>
+    /* Variables CSS para una gestión de colores y sombras más sencilla */
+:root {
+    --color-primario: #0078ad;
+    --color-primario-oscuro: #00628e;
+    --color-texto-principal: #2c3e50;
+    --color-texto-secundario: #7f8c8d;
+    --color-blanco: #FFFFFF;
+    --color-fondo-seccion: #f8f9fa;
+    --color-borde-suave: #ecf0f1;
+    --color-rojo: #dc3545;
+    --color-negro: #212529;
+}
 
-    <div class="container-fluid px-4">
-        <header class="d-flex justify-content-between align-items-center py-3">
+/* Estilos Generales */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-fondo-seccion);
+    color: var(--color-texto-principal);
+}
+
+/* Encabezado */
+header {
+    background-color: var(--color-blanco);
+    border-bottom: 1px solid var(--color-borde-suave);
+    border-radius: 0.5rem;
+    padding: 1rem 2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.h4 {
+    color: var(--color-primario-oscuro);
+    font-weight: 700;
+}
+
+.text-secondary {
+    color: var(--color-texto-secundario) !important;
+}
+
+.text-secondary:hover {
+    color: var(--color-primario) !important;
+}
+
+/* Contenedor principal y tarjetas */
+.main-container {
+    padding: 1rem;
+}
+
+/* Formulario */
+.form-control, .form-select {
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-borde-suave);
+    padding: 0.75rem 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
+}
+
+/* Títulos dentro del formulario */
+.h5 {
+    font-weight: 600;
+    color: var(--color-primario-oscuro);
+}
+
+.h6 {
+    font-weight: 600;
+    color: var(--color-texto-principal);
+}
+
+hr.my-4 {
+    border-top: 2px solid var(--color-borde-suave);
+}
+
+/* Botones */
+.btn-dark {
+    background-color: var(--color-negro);
+    border-color: var(--color-negro);
+    border-radius: 50px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-dark:hover {
+    background-color: var(--color-texto-principal);
+    border-color: var(--color-texto-principal);
+}
+
+.btn-secondary {
+    background-color: var(--color-texto-secundario);
+    border-color: var(--color-texto-secundario);
+    border-radius: 50px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+/* Placeholder de imagen */
+.image-placeholder {
+    background-color: var(--color-borde-suave);
+    color: var(--color-texto-secundario);
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    min-height: 450px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Mensajes Flash */
+.flash-messages .alert {
+    border-radius: 0.5rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+</style>
+
+<div class="container-fluid px-4">
+    <header class="d-flex justify-content-between align-items-center py-3">
+        <div class="d-flex align-items-center">
             <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <h1 class="h4 mb-0">Gestion de salones</h1>
-            <div>
-                <a href="#" class="text-secondary me-3"><i class="fas fa-bell fs-5"></i></a>
-                <a href="#" class="text-secondary"><i class="fas fa-user-circle fs-5"></i></a>
-            </div>
-        </header>
+            <h1 class="h4 mb-0">Gestión de Salones</h1>
+        </div>
+        <div>
+            <a href="#" class="text-secondary me-3"><i class="fas fa-bell fs-5"></i></a>
+            <a href="#" class="text-secondary"><i class="fas fa-user-circle fs-5"></i></a>
+        </div>
+    </header>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <div class="main-container">
-            <div class="row">
-                <div class="col-lg-7">
-                    <h2 class="h5 mb-4">Crear Nuevo Usuario</h2>
-                    <form method="POST" action="{{ url_for('admin.registro_salon') }}">
-                        {{ form.hidden_tag() }}  {# Token CSRF #}
-
-                        <div class="mb-3">
-                            <label for="{{ form.id_sede_fk.id }}" class="form-label">Sede</label>
-                            {{ form.id_sede_fk(class="form-select") }}
-                            {% if form.id_sede_fk.errors %}
-                                <ul class="errors">
-                                    {% for error in form.id_sede_fk.errors %}
-                                        <li>{{ error }}</li>
-                                    {% endfor %}
-                                </ul>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.nombre_salon.id }}" class="form-label">Nombre del salón</label>
-                            {{ form.nombre_salon(class="form-control", placeholder="Ej: Laboratorio 1") }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.capacidad.id }}" class="form-label">Capacidad</label>
-                            {{ form.capacidad(class="form-control", placeholder="Ej: 40") }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.tipo_salon.id }}" class="form-label">Tipo de salón</label>
-                            {{ form.tipo_salon(class="form-select") }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.cantidad_sillas.id }}" class="form-label">Cantidad de Sillas</label>
-                            {{ form.cantidad_sillas(class="form-control") }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.cantidad_mesas.id }}" class="form-label">Cantidad de Mesas</label>
-                            {{ form.cantidad_mesas(class="form-control") }}
-                        </div>
-
-                        <button type="submit" class="btn btn-dark w-100 py-2 mt-3">CREAR SALA</button>
-                    </form>
-                </div>
-                
-                <div class="col-lg-5 d-none d-lg-flex align-items-center justify-content-center">
-                    <div class="image-placeholder">
-                        <i class="fa-regular fa-image"></i>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
                     </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="main-container mt-4">
+        <div class="row">
+            <div class="col-lg-7">
+                <h2 class="h5 mb-4">Crear Nuevo Salón</h2>
+                <form method="POST" action="{{ url_for('admin.registro_salon') }}">
+                    {{ form.hidden_tag() }}  {# Token CSRF #}
+
+                    <div class="mb-3">
+                        <label for="{{ form.nombre_salon.id }}" class="form-label">Nombre del Salón</label>
+                        {{ form.nombre_salon(class="form-control", placeholder="Ej: Laboratorio de Cómputo 1") }}
+                        {% for error in form.nombre_salon.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.sede.id }}" class="form-label">Sede</label>
+                        {{ form.sede(class="form-select") }}
+                        {% for error in form.sede.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.tipo.id }}" class="form-label">Tipo de Salón</label>
+                        {{ form.tipo(class="form-select") }}
+                        {% for error in form.tipo.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.capacidad.id }}" class="form-label">Capacidad</label>
+                        {{ form.capacidad(class="form-control", placeholder="Ej: 30") }}
+                        {% for error in form.capacidad.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.cantidad_sillas.id }}" class="form-label">Cantidad de Sillas</label>
+                        {{ form.cantidad_sillas(class="form-control", placeholder="Ej: 30") }}
+                        {% for error in form.cantidad_sillas.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.cantidad_mesas.id }}" class="form-label">Cantidad de Mesas</label>
+                        {{ form.cantidad_mesas(class="form-control", placeholder="Ej: 15") }}
+                        {% for error in form.cantidad_mesas.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn-dark w-100 py-2 mt-3">CREAR SALÓN</button>
+                </form>
+            </div>
+            
+            <div class="col-lg-5 d-none d-lg-flex align-items-center justify-content-center">
+                <div class="image-placeholder border rounded p-5 text-center">
+                    <i class="fa-solid fa-school fa-3x"></i>
+                    <p class="mt-3 text-muted">Gestión de Salones</p>
+                    <p class="small text-muted">Crea y administra los espacios académicos de tu institución</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    {%endblock%}
+        <a href="{{ url_for('admin.salones') }}" class="btn btn-secondary w-100 py-2 mt-4">Atrás</a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}
 </body>
 </html>

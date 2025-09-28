@@ -44,34 +44,30 @@ def equipos():
 @admin_bp.route('/api/equipos', methods=['GET'])
 @login_required
 @role_required(1)
-def api_get_equipos():
+def api_listar_equipos():
     """
-    API: Devuelve la lista completa de equipos, incluyendo su estado, salón y sede.
+    Devuelve la lista de todos los equipos registrados con detalles de sede y sala.
+    Usado para poblar la tabla de equipos en el frontend.
     """
-    from controllers.models import Equipo, Salon, Sede, db 
-    
-    # Consulta: Equipos, uniendo con Salón y Sede
-    equipos_data = db.session.query(
-        Equipo,
-        Salon.nombre.label('sala_nombre'),
-        Sede.nombre.label('sede_nombre')
-    ).join(Salon, Equipo.id_salon_fk == Salon.id)\
-    .join(Sede, Salon.id_sede_fk == Sede.id)\
-    .all()
-    
-    # Formatear la data para JSON
-    equipos_list = []
-    for equipo, sala_nombre, sede_nombre in equipos_data:
-        equipos_list.append({
-            'id': equipo.id,
-            'nombre': equipo.nombre or equipo.numero_serie, # Usar nombre, si no, número de serie
-            'estado': equipo.estado or 'Desconocido',
-            'sala': sala_nombre or 'Sin Salón',
-            'sede': sede_nombre or 'Sin Sede',
-            'asignado_a': 'N/A' # Esto debe ajustarse si tienes un campo de asignación real
-        })
-        
-    return jsonify(equipos_list), 200
+    try:
+        equipos = Equipo.query.all()
+        data = []
+        for equipo in equipos:
+            salon = Salon.query.get(equipo.id_salon_fk) if equipo.id_salon_fk else None
+            sede = salon.sede if salon and salon.id_sede_fk else None
+            data.append({
+                "id": equipo.id,
+                "id_referencia": equipo.id_referencia or "N/A",
+                "nombre": equipo.nombre or "Sin nombre",
+                "estado": equipo.estado or "Sin estado",
+                "sede": sede.nombre if sede else "Sin sede",
+                "sala": salon.nombre if salon else "Sin sala",
+                "asignado_a": equipo.asignado_a or "Sin asignar"
+            })
+        return jsonify(data), 200
+    except Exception as e:
+        print(f"Error cargando equipos: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
 
 @admin_bp.route('/registro_equipos', methods=['GET', 'POST'])
 @login_required
@@ -104,7 +100,55 @@ def crear_equipo():
         title='Crear Nuevo Equipo',
         form=form
     )
+
+@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_update_equipo(equipo_id):
+    equipo = Equipo.query.get_or_404(equipo_id)
+    data = request.get_json() or {}
     
+    # Campos existentes
+    if 'nombre' in data:
+        equipo.nombre = data['nombre']
+    if 'estado' in data:
+        equipo.estado = data['estado']
+    if 'id_salon_fk' in data:
+        equipo.id_salon_fk = data['id_salon_fk']
+    if 'asignado_a' in data:
+        equipo.asignado_a = data['asignado_a'] or None
+    if 'descripcion' in data:
+        equipo.descripcion = data['descripcion'] or None
+    
+    # Campos nuevos
+    if 'id_referencia' in data:
+        equipo.id_referencia = data['id_referencia'] or None
+    if 'tipo' in data:
+        equipo.tipo = data['tipo'] or None
+    if 'sistema_operativo' in data:
+        equipo.sistema_operativo = data['sistema_operativo'] or None
+    if 'ram' in data:
+        equipo.ram = data['ram'] or None
+    if 'disco_duro' in data:
+        equipo.disco_duro = data['disco_duro'] or None
+    if 'fecha_adquisicion' in data and data['fecha_adquisicion']:
+        from datetime import datetime
+        equipo.fecha_adquisicion = datetime.strptime(data['fecha_adquisicion'], '%Y-%m-%d').date()
+    if 'observaciones' in data:
+        equipo.observaciones = data['observaciones'] or None
+    
+    db.session.commit()
+    return jsonify(equipo.to_dict())
+
+@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_delete_equipo(equipo_id):
+    equipo = Equipo.query.get_or_404(equipo_id)
+    db.session.delete(equipo)
+    db.session.commit()
+    return jsonify({"success": True})
+
 @admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET'])
 @login_required
 @role_required(1)
@@ -131,83 +175,6 @@ def api_equipo_detalle(equipo_id):
     
     return jsonify(data), 200
 
-# Agregar estas rutas al archivo admin.py
-
-@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['PUT'])
-@login_required
-@role_required(1)
-def api_actualizar_equipo(equipo_id):
-    """Actualizar un equipo existente."""
-    try:
-        equipo = Equipo.query.get_or_404(equipo_id)
-        data = request.get_json() or {}
-        
-        # Actualizar campos editables
-        if 'asignado_a' in data:
-            equipo.asignado_a = data['asignado_a']
-        if 'estado' in data:
-            equipo.estado = data['estado']
-        if 'id_salon_fk' in data and data['id_salon_fk']:
-            equipo.id_salon_fk = int(data['id_salon_fk'])
-        if 'sistema_operativo' in data:
-            equipo.sistema_operativo = data['sistema_operativo']
-        if 'ram' in data:
-            equipo.ram = data['ram']
-        if 'disco_duro' in data:
-            equipo.disco_duro = data['disco_duro']
-        if 'fecha_adquisicion' in data and data['fecha_adquisicion']:
-            equipo.fecha_adquisicion = datetime.strptime(data['fecha_adquisicion'], '%Y-%m-%d').date()
-        if 'descripcion' in data:
-            equipo.descripcion = data['descripcion']
-        if 'observaciones' in data:
-            equipo.observaciones = data['observaciones']
-        
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Equipo actualizado exitosamente",
-            "equipo": equipo.to_dict()
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error actualizando equipo: {e}")
-        return jsonify({"error": "Error interno del servidor"}), 500
-
-
-@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['DELETE'])
-@login_required
-@role_required(1)
-def api_eliminar_equipo(equipo_id):
-    """Eliminar un equipo."""
-    try:
-        equipo = Equipo.query.get_or_404(equipo_id)
-        
-        # Verificar si el equipo tiene incidentes asociados
-        incidentes = Incidente.query.filter_by(equipo_id=equipo_id).first()
-        if incidentes:
-            return jsonify({"error": "No se puede eliminar el equipo porque tiene incidentes asociados"}), 409
-        
-        # Verificar si el equipo tiene mantenimientos asociados
-        mantenimientos = Mantenimiento.query.filter_by(equipo_id=equipo_id).first()
-        if mantenimientos:
-            return jsonify({"error": "No se puede eliminar el equipo porque tiene mantenimientos asociados"}), 409
-        
-        nombre_equipo = equipo.nombre
-        db.session.delete(equipo)
-        db.session.commit()
-        
-        return jsonify({
-            "success": True, 
-            "message": f"Equipo '{nombre_equipo}' eliminado exitosamente"
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error eliminando equipo: {e}")
-        return jsonify({"error": "Error interno del servidor"}), 500
-
 @admin_bp.route('/salones')
 @login_required
 @role_required(1)
@@ -216,46 +183,8 @@ def salones():
     salones = db.session.query(Salon).all()
     return render_template('superadmin/gestion_inventario/salones.html', salones=salones)
 
-@admin_bp.route('/api/salones', methods=['GET'])
-@login_required
-@role_required(1)
-def api_get_salones():
-    """
-    API: Devuelve la lista completa de salones, incluyendo su sede y el total de equipos.
-    """
-    from controllers.models import Salon, Sede, Equipo, db 
-    
-    # 1. Subconsulta para contar el número de equipos por salón
-    equipo_counts = db.session.query(
-        Equipo.id_salon_fk, 
-        db.func.count(Equipo.id).label('total_equipos')
-    ).group_by(Equipo.id_salon_fk).subquery()
-    
-    # 2. Consulta principal: Salones, uniendo con Sede y con el conteo de equipos (LEFT JOIN)
-    salones_data = db.session.query(
-        Salon, 
-        Sede.nombre.label('sede_nombre'),
-        equipo_counts.c.total_equipos
-    ).join(Sede, Salon.id_sede_fk == Sede.id)\
-    .outerjoin(equipo_counts, Salon.id == equipo_counts.c.id_salon_fk)\
-    .all()
-    
-    # 3. Formatear la data para JSON
-    salones_list = []
-    for salon, sede_nombre, total_equipos in salones_data:
-        salones_list.append({
-            'id': salon.id,
-            'nombre': salon.nombre,
-            'tipo': salon.tipo or 'N/A',
-            'capacidad': salon.capacidad or 0,
-            'sede': sede_nombre or 'Sin Sede',
-            'total_equipos': total_equipos or 0
-        })
-        
-    return jsonify(salones_list), 200
-
 # ===============================
-# API Sedes, Salas y Equipos
+# API Sedes, Salas y Equipos (sección actualizada)
 # ===============================
 
 @admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
@@ -368,6 +297,7 @@ def api_salas_todas():
         print(f"Error cargando salones: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
+# NUEVA RUTA: Obtener equipos de un salón específico (para contar en tabla y modal)
 @admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos', methods=['GET'])
 @login_required
 @role_required(1)
@@ -388,7 +318,7 @@ def api_equipos_por_salon(sede_id, salon_id):
     except Exception as e:
         print(f"Error cargando equipos del salón: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
-    
+
 @admin_bp.route('/api/salones/<int:salon_id>', methods=['PUT'])
 @login_required
 @role_required(1)
@@ -473,89 +403,23 @@ def api_obtener_salon(salon_id):
     except Exception as e:
         print(f"Error obteniendo salón: {e}")
         return jsonify({"error": "Salón no encontrado"}), 404
-    
-@admin_bp.route('/api/sedes/<int:sede_id>/salas')
-def api_salas(sede_id):
-    salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
-    return jsonify([{"id": s.id, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
 
-@admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
-def api_equipos(sede_id, salon_id):
-    equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
-    data = []
-    for eq in equipos:
-        data.append({
-            "id": eq.id,
-            "nombre": eq.nombre,
-            "estado": eq.estado,
-            "asignado_a": eq.asignado_a or ""
-        })
-    return jsonify(data)
+# Ruta principal de gestión de salones (versión DINÁMICA - usa JS para cargar datos)
+@admin_bp.route('/gestion_salones', endpoint='gestion_salones_stats')
+@login_required
+@role_required(1)
+def gestion_salones():
+    """
+    Muestra la página de gestión de salones con pestañas dinámicas.
+    Los datos se cargan vía API en el frontend (no pasa datos estáticos).
+    """
+    return render_template('superadmin/gestion_inventario/salones.html')
 
 @admin_bp.route('/reportes')
 @role_required(1)
 def reportes():
     """Muestra la página de reportes de inventario."""
     return render_template('superadmin/gestion_inventario/reportes.html')
-
-@admin_bp.route('/api/reportes/estado_equipos', methods=['GET'])
-@login_required
-@role_required(1)
-def api_reportes_estado_equipos():
-    """
-    Proporciona datos para el gráfico de estado de equipos y las métricas principales.
-    """
-    from controllers.models import Equipo, db
-    
-    # 1. Total de equipos
-    total = db.session.query(Equipo).count()
-    
-    # 2. Conteo por estado
-    # Incluye cualquier estado que exista en la base de datos
-    estados_raw = db.session.query(Equipo.estado, db.func.count(Equipo.estado)).group_by(Equipo.estado).all()
-    estados = {e[0]: e[1] for e in estados_raw}
-    
-    data = {
-        'total_equipos': total,
-        'estados': {
-            'Disponible': estados.get('Disponible', 0),
-            'Mantenimiento': estados.get('Mantenimiento', 0),
-            'Incidente': estados.get('Incidente', 0),
-            'Asignado': estados.get('Asignado', 0),
-            # Incluye todos los demás estados
-            **estados 
-        }
-    }
-    
-    return jsonify(data), 200
-
-@admin_bp.route('/api/reportes/equipos_por_sede', methods=['GET'])
-@login_required
-@role_required(1)
-def api_reportes_equipos_por_sede():
-    """
-    Proporciona datos para el gráfico de equipos por sede.
-    """
-    from controllers.models import Equipo, Salon, Sede, db
-    
-    # Consulta: Contar equipos agrupados por el nombre de su Sede
-    resultados = db.session.query(
-        Sede.nombre.label('sede_nombre'),
-        db.func.count(Equipo.id).label('total')
-    ).join(Salon, Salon.id_sede_fk == Sede.id)\
-    .join(Equipo, Equipo.id_salon_fk == Salon.id)\
-    .group_by(Sede.nombre)\
-    .order_by(db.func.count(Equipo.id).desc())\
-    .all()
-    
-    data = [{
-        'sede': r.sede_nombre,
-        'total': r.total
-    } for r in resultados]
-    
-    return jsonify(data), 200
-
-# El resto de tu código Python sigue...
 
 @admin_bp.route('/incidentes')
 @role_required(1)
@@ -704,44 +568,18 @@ def gestion_salones():
 def registro_salon():
     """Maneja el formulario para crear un nuevo salón."""
     form = SalonForm()
-    
     if form.validate_on_submit():
-        try:
-            # Convertir campos numéricos
-            capacidad = int(form.capacidad.data) if form.capacidad.data else None
-            cantidad_sillas = int(form.cantidad_sillas.data) if form.cantidad_sillas.data else None
-            cantidad_mesas = int(form.cantidad_mesas.data) if form.cantidad_mesas.data else None
-            
-            nuevo_salon = Salon(
-                nombre=form.nombre_salon.data,
-                tipo=form.tipo.data,
-                capacidad=capacidad,
-                cantidad_sillas=cantidad_sillas,
-                cantidad_mesas=cantidad_mesas,
-                id_sede_fk=form.sede.data.id
-            )
-            
-            db.session.add(nuevo_salon)
-            db.session.commit()
-            
-            flash(f'Salón "{nuevo_salon.nombre}" creado exitosamente ✅', 'success')
-            return redirect(url_for('admin.salones'))
-            
-        except ValueError as ve:
-            flash(f'Error en los datos numéricos: {str(ve)}', 'danger')
-        except IntegrityError:
-            db.session.rollback()
-            flash('Ya existe un salón con ese nombre. Por favor, elige uno diferente.', 'danger')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error al crear el salón: {str(e)}', 'danger')
-    
-    return render_template(
-        'superadmin/gestion_inventario/registro_salon.html', 
-        title='Crear Nuevo Salón', 
-        form=form
-    )
-    
+        nuevo_salon = Salon(
+            nombre=form.nombre_salon.data,
+            tipo=form.tipo.data,
+            id_sede_fk=form.sede.data.id
+        )
+        db.session.add(nuevo_salon)
+        db.session.commit()
+        flash('Sala creada exitosamente ✅', 'success')
+        return redirect(url_for('admin.salones'))
+    return render_template('superadmin/gestion_inventario/registro_salon.html', title='Crear Nueva Sala', form=form)
+
 @admin_bp.route('/registro_incidente', methods=['GET', 'POST'])
 @login_required
 @role_required('administrador')

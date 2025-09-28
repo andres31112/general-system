@@ -1,143 +1,88 @@
-/* 🎨 VARIABLES DE COLOR */
 :root {
     --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
     --color-secundario: #28a745;
-    --color-secundario-oscuro: #1e7e34;
-    --color-naranja: #ff9800;
-    --color-naranja-oscuro: #e68900;
-    --color-gris: #f8f9fa;
-    --color-texto: #212529;
-    --color-blanco: #ffffff;
-    --transicion: all 0.3s ease;
+    --color-warning: #ffc107;
+    --color-danger: #dc3545;
+    --color-info: #17a2b8;
 }
 
-/* GENERAL */
-body {
-    background-color: var(--color-gris);
-    font-family: 'Inter', sans-serif;
-    color: var(--color-texto);
-    padding: 15px;
+.dashboard-card {
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* TARJETAS */
-.card {
-    border-radius: 12px;
-    border: none;
-    overflow: hidden;
-}
-.card-header {
-    font-weight: 600;
-    font-size: 1rem;
-}
-.card-header h5 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-}
-.card-header.bg-primary {
-    background-color: var(--color-primario) !important;
-}
-.card-header.bg-success {
-    background-color: var(--color-secundario) !important;
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-/* TABLAS */
-.table {
-    border-radius: 8px;
-    overflow: hidden;
+.metric-card {
+    background: linear-gradient(135deg, var(--color-primario), #005a82);
+    color: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
 }
-.table thead {
-    color: var(--color-blanco);
+
+.metric-card.success {
+    background: linear-gradient(135deg, var(--color-secundario), #1e7e34);
 }
-.table-hover tbody tr:hover {
-    background-color: #f1f9ff;
+
+.metric-card.warning {
+    background: linear-gradient(135deg, var(--color-warning), #e0a800);
 }
-.table td, 
-.table th {
-    vertical-align: middle;
-    text-align: center;
+
+.metric-card.danger {
+    background: linear-gradient(135deg, var(--color-danger), #bd2130);
+}
+
+.metric-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.metric-label {
     font-size: 0.9rem;
-    padding: 10px;
+    opacity: 0.9;
 }
 
-/* PAGINADORES */
-.btn-outline-secondary {
-    border-radius: 6px;
-    font-size: 0.8rem;
-    transition: var(--transicion);
-}
-.btn-outline-secondary:hover {
-    background-color: var(--color-primario);
-    color: var(--color-blanco);
-    border-color: var(--color-primario);
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 1rem 0;
 }
 
-/* BOTONES PDF */
-#exportSalonesPDF, 
-#exportEquiposPDF {
-    background-color: var(--color-blanco);
-    color: var(--color-primario);
-    border: 1px solid var(--color-primario);
-    font-weight: 500;
-    transition: var(--transicion);
-}
-#exportSalonesPDF:hover, 
-#exportEquiposPDF:hover {
-    background-color: var(--color-primario);
-    color: var(--color-blanco);
+.chart-container.large {
+    height: 400px;
 }
 
-/* SELECT */
-.form-select {
-    border-radius: 6px;
-    font-size: 0.85rem;
-    padding: 3px 8px;
+.export-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
-/* TEXTO DE PAGINA */
-#paginaSalones,
-#paginaEquipos {
-    font-size: 0.8rem;
-    font-weight: 500;
+.table-actions {
+    white-space: nowrap;
 }
 
-/* ESTADOS DE EQUIPOS */
-#tablaEquipos td:nth-child(3) {
-    font-weight: 600;
-}
-.text-success {
-    color: var(--color-secundario) !important;
-}
-.text-warning {
-    color: var(--color-naranja-oscuro) !important;
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
 }
 
-/* BOTONES DE ACCIONES */
-.btn-ver {
-    background-color: var(--color-primario);
-    border: none;
-    color: var(--color-blanco);
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    transition: var(--transicion);
-}
-.btn-ver:hover {
-    background-color: var(--color-primario-oscuro);
-    transform: scale(1.05);
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 2rem;
 }
 
-.btn-editar {
-    background-color: var(--color-naranja);
-    border: none;
-    color: var(--color-blanco);
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    transition: var(--transicion);
-}
-.btn-editar:hover {
-    background-color: var(--color-naranja-oscuro);
-    transform: scale(1.05);
+@media (max-width: 768px) {
+    .export-buttons {
+        justify-content: center;
+        margin-top: 1rem;
+    }
 }

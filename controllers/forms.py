@@ -190,19 +190,63 @@ class ResetPasswordForm(FlaskForm):
     submit = SubmitField('Restablecer Contraseña')
 
 class SalonForm(FlaskForm):
-
     nombre_salon = StringField('Nombre de la Sala', validators=[DataRequired(), Length(min=2, max=100)])
     tipo = SelectField('Tipo de Sala', choices=[
         ('sala_computo', 'Sala de Cómputo'),
-        ('sala_general', 'Sala General'),
-        ('sala_especial', 'Sala Especializada')
+        ('aula', 'Aula'),
+        ('laboratorio', 'Laboratorio'),
+        ('auditorio', 'Auditorio')
     ], validators=[DataRequired()])
+    capacidad = StringField('Capacidad', validators=[DataRequired()], 
+                           render_kw={"type": "number", "min": "1", "max": "200"})
+    cantidad_sillas = StringField('Cantidad de Sillas', validators=[Length(max=10)],
+                                 render_kw={"type": "number", "min": "0", "max": "200"})
+    cantidad_mesas = StringField('Cantidad de Mesas', validators=[Length(max=10)],
+                                render_kw={"type": "number", "min": "0", "max": "100"})
     sede = QuerySelectField('Sede', query_factory=get_all_sedes,
                            get_pk=lambda s: s.id,
                            get_label=lambda s: s.nombre,
-                           allow_blank=True, blank_text='Selecciona una Sede...')
-    submit = SubmitField('Registrar Sala')    
+                           allow_blank=True, blank_text='Selecciona una Sede...',
+                           validators=[DataRequired()])
+    submit = SubmitField('Registrar Sala')
 
+    def validate_capacidad(self, capacidad):
+        try:
+            cap_value = int(capacidad.data)
+            if cap_value <= 0:
+                raise ValidationError('La capacidad debe ser un número mayor a 0.')
+            if cap_value > 200:
+                raise ValidationError('La capacidad no puede ser mayor a 200.')
+        except (ValueError, TypeError):
+            raise ValidationError('La capacidad debe ser un número válido.')
+
+    def validate_cantidad_sillas(self, cantidad_sillas):
+        if cantidad_sillas.data:
+            try:
+                sillas_value = int(cantidad_sillas.data)
+                if sillas_value < 0:
+                    raise ValidationError('La cantidad de sillas no puede ser negativa.')
+                if sillas_value > 200:
+                    raise ValidationError('La cantidad de sillas no puede ser mayor a 200.')
+            except (ValueError, TypeError):
+                raise ValidationError('La cantidad de sillas debe ser un número válido.')
+
+    def validate_cantidad_mesas(self, cantidad_mesas):
+        if cantidad_mesas.data:
+            try:
+                mesas_value = int(cantidad_mesas.data)
+                if mesas_value < 0:
+                    raise ValidationError('La cantidad de mesas no puede ser negativa.')
+                if mesas_value > 100:
+                    raise ValidationError('La cantidad de mesas no puede ser mayor a 100.')
+            except (ValueError, TypeError):
+                raise ValidationError('La cantidad de mesas debe ser un número válido.')
+
+    def validate_nombre_salon(self, nombre_salon):
+        from controllers.models import Salon
+        salon = Salon.query.filter_by(nombre=nombre_salon.data).first()
+        if salon:
+            raise ValidationError('Ya existe un salón con ese nombre. Por favor, elige uno diferente.')    
 
 class CursoForm(FlaskForm):
     nombreCurso = StringField('Nombre del Curso', validators=[DataRequired(), Length(min=2, max=100)])

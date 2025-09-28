@@ -104,17 +104,13 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN SALAS -->
+            <!-- SECCIÓN SALAS - ACTUALIZADA PARA PESTAÑAS DINÁMICAS -->
             <div class="col-md-3 col-12">
                 <div class="card shadow-sm salas-card">
                     <div class="card-header">
+                        <!-- Pestañas dinámicas - se crean automáticamente -->
                         <ul class="nav nav-tabs card-header-tabs">
-                            <li class="nav-item">
-                                <a class="nav-link active" id="tab-sede1" href="#" onclick="mostrarSede(1)">Sede A</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" id="tab-sede2" href="#" onclick="mostrarSede(2)">Sede B</a>
-                            </li>
+                            <!-- Las pestañas se llenarán dinámicamente con JavaScript -->
                         </ul>
                     </div>
                     <div class="card-body p-2">
@@ -327,6 +323,7 @@
 </div>
 
 <script>
+    // CÓDIGO JAVASCRIPT COMPLETO ACTUALIZADO PARA PESTAÑAS DINÁMICAS
     let sedesGlobal = [];
     let equiposGlobal = [];
     let paginaActual = 1;
@@ -338,7 +335,6 @@
         try {
             const res = await fetch('/admin/api/salas_todas');
             const salas = await res.json();
-            // Mapeo simple usando los datos del API (incluye sede_nombre)
             salasDisponibles = salas.map(sala => ({
                 id: sala.id,
                 nombre: sala.nombre,
@@ -349,25 +345,60 @@
         }
     }
 
+    // NUEVA: Función para crear dinámicamente pestañas para sedes
+    function crearTabsSedes(sedes) {
+        const tabsContainer = document.querySelector('.nav.nav-tabs.card-header-tabs');
+        
+        // Limpiar pestañas existentes
+        tabsContainer.innerHTML = '';
+        
+        // Crear una pestaña para cada sede
+        sedes.forEach((sede, index) => {
+            const tabItem = document.createElement('li');
+            tabItem.className = 'nav-item';
+            
+            const tabLink = document.createElement('a');
+            tabLink.className = `nav-link ${index === 0 ? 'active' : ''}`;
+            tabLink.id = `tab-sede${sede.id}`;
+            tabLink.href = '#';
+            tabLink.textContent = sede.nombre;
+            tabLink.onclick = () => mostrarSede(sede.id);
+            
+            tabItem.appendChild(tabLink);
+            tabsContainer.appendChild(tabItem);
+        });
+    }
+
+    // ACTUALIZADA: Función cargarSedes modificada
     async function cargarSedes() {
         try {
             const res = await fetch('/admin/api/sedes');
             const sedes = await res.json();
             sedesGlobal = sedes;
-            sedes.forEach(sede => {
-                const tab = document.getElementById(`tab-sede${sede.id}`);
-                if (tab) tab.textContent = sede.nombre;
-            });
+            
+            // NUEVA: Crear pestañas dinámicamente en lugar de codificarlas
+            crearTabsSedes(sedes);
+            
             // Cargar salas después de sedes
             await cargarSalas();
+            
+            // Mostrar primera sede por defecto si existe alguna
+            if (sedes.length > 0) {
+                mostrarSede(sedes[0].id);
+            }
+            
             mostrarTodosLosEquipos();
         } catch (error) {
             console.error('Error cargando sedes:', error);
         }
     }
 
+    // ACTUALIZADA: Función mostrarSede modificada para manejar pestañas dinámicas
     async function mostrarSede(sedeId) {
+        // Remover clase activa de todas las pestañas
         document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+        
+        // Agregar clase activa a la pestaña seleccionada
         const tab = document.getElementById(`tab-sede${sedeId}`);
         if (tab) tab.classList.add('active');
 
@@ -386,6 +417,19 @@
             });
         } catch (error) {
             console.error('Error cargando salones:', error);
+        }
+    }
+
+    // NUEVA: Función para refrescar pestañas cuando se agrega una nueva sede
+    async function refrescarTabsSedes() {
+        await cargarSedes();
+    }
+
+    // FUNCIÓN PARA INTEGRAR CON CREACIÓN DE SEDES
+    async function onSedeCreada() {
+        // Si estás en la página de equipos, refrescar las pestañas
+        if (typeof refrescarTabsSedes === 'function') {
+            await refrescarTabsSedes();
         }
     }
 
@@ -519,190 +563,200 @@
         document.getElementById('equipos-incidentes').textContent = incidentes;
     }
 
-    // Función para ver detalles del equipo
-    async function verEquipo(id) {
-        try {
-            const res = await fetch(`/admin/api/equipos/${id}`);
-            const equipo = await res.json();
-
-            // Llenar información básica en el modal de detalles
-            document.getElementById('detalle-id-referencia').textContent = equipo.id_referencia || '-';
-            document.getElementById('detalle-nombre').textContent = equipo.nombre || '-';
-            document.getElementById('detalle-tipo').textContent = equipo.tipo || '-';
-            document.getElementById('detalle-usuario').textContent = equipo.asignado_a || '-';
-            document.getElementById('detalle-sala').textContent = equipo.sala_nombre || '-';
-
-            // Estado con badge
-            const estadoBadge = document.getElementById('detalle-estado-badge');
-            estadoBadge.textContent = equipo.estado || 'Desconocido';
-            estadoBadge.className = 'badge ';
-            if (equipo.estado === 'Disponible') estadoBadge.className += 'text-bg-primary';
-            else if (equipo.estado === 'Asignado') estadoBadge.className += 'text-bg-secondary';
-            else if (equipo.estado === 'Mantenimiento') estadoBadge.className += 'text-bg-warning';
-            else if (equipo.estado === 'Incidente') estadoBadge.className += 'text-bg-danger';
-            else if (equipo.estado === 'Revisión') estadoBadge.className += 'text-bg-info';
-            else estadoBadge.className += 'text-bg-light';
-
-            // Especificaciones técnicas
-            document.getElementById('detalle-so').textContent = equipo.sistema_operativo || '-';
-            document.getElementById('detalle-ram').textContent = equipo.ram || '-';
-            document.getElementById('detalle-disco').textContent = equipo.disco_duro || '-';
-            document.getElementById('detalle-fecha').textContent = equipo.fecha_adquisicion || '-';
-            document.getElementById('detalle-descripcion').textContent = equipo.descripcion || '-';
-            document.getElementById('detalle-observaciones').textContent = equipo.observaciones || '-';
-
-            // Cargar historial de incidentes (simulado por ahora)
-            const incidentesTable = document.getElementById('detalle-incidentes');
-            incidentesTable.innerHTML = `
-                <tr>
-                    <td>2023-05-10</td>
-                    <td>Problema de conexión a la red.</td>
-                </tr>
-                <tr>
-                    <td>2023-07-22</td>
-                    <td>Fallo en el disco duro, reemplazado.</td>
-                </tr>
-            `;
-
-            // Cargar historial de mantenimientos (simulado por ahora)
-            const mantenimientosTable = document.getElementById('detalle-mantenimientos');
-            mantenimientosTable.innerHTML = `
-                <tr>
-                    <td>2023-06-15</td>
-                    <td>Preventivo</td>
-                    <td>Completado</td>
-                </tr>
-                <tr>
-                    <td>2023-08-01</td>
-                    <td>Correctivo</td>
-                    <td>Completado</td>
-                </tr>
-            `;
-
-            new bootstrap.Modal(document.getElementById('verEquipoModal')).show();
-        } catch (err) {
-            console.error('Error al ver equipo', err);
-            alert('Error al cargar detalles del equipo.');
+    // Función para editar equipo - MEJORADA
+async function editarEquipo(id) {
+    try {
+        const res = await fetch(`/admin/api/equipos/${id}`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
         }
+        const equipo = await res.json();
+
+        // Llenar el formulario del modal con los datos del equipo
+        document.getElementById('equipoId').value = equipo.id || '';
+        document.getElementById('idReferencia').value = equipo.id_referencia || '';
+        document.getElementById('nombreEquipo').value = equipo.nombre || '';
+        document.getElementById('tipoEquipo').value = equipo.tipo || '';
+        document.getElementById('usuarioAsignado').value = equipo.asignado_a || '';
+        document.getElementById('estadoEquipo').value = equipo.estado || '';
+        document.getElementById('salaEquipoTexto').value = equipo.salon_nombre || '';
+        document.getElementById('salaEquipo').value = equipo.id_salon_fk || '';
+
+        // Campos ocultos para valores no editables
+        document.getElementById('nombreEquipoHidden').value = equipo.nombre || '';
+        document.getElementById('idReferenciaHidden').value = equipo.id_referencia || '';
+        document.getElementById('tipoEquipoHidden').value = equipo.tipo || '';
+
+        // Especificaciones técnicas
+        document.getElementById('sistemaOperativo').value = equipo.sistema_operativo || '';
+        document.getElementById('ramEquipo').value = equipo.ram || '';
+        document.getElementById('discoDuro').value = equipo.disco_duro || '';
+        document.getElementById('fechaAdquisicion').value = equipo.fecha_adquisicion || '';
+        document.getElementById('descripcionEquipo').value = equipo.descripcion || '';
+        document.getElementById('observacionesEquipo').value = equipo.observaciones || '';
+
+        new bootstrap.Modal(document.getElementById('editarEquipoModal')).show();
+    } catch (err) {
+        console.error('Error al editar equipo', err);
+        alert('Error al cargar los datos del equipo para edición.');
+    }
+}
+
+// Manejar el envío del formulario de edición - MEJORADO
+document.getElementById('editarEquipoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('equipoId').value;
+    
+    // Preparar datos para enviar
+    const data = {
+        asignado_a: document.getElementById('usuarioAsignado').value,
+        estado: document.getElementById('estadoEquipo').value,
+        sistema_operativo: document.getElementById('sistemaOperativo').value,
+        ram: document.getElementById('ramEquipo').value,
+        disco_duro: document.getElementById('discoDuro').value,
+        fecha_adquisicion: document.getElementById('fechaAdquisicion').value,
+        descripcion: document.getElementById('descripcionEquipo').value,
+        observaciones: document.getElementById('observacionesEquipo').value
+    };
+
+    // Solo incluir id_salon_fk si tiene valor
+    const salonId = document.getElementById('salaEquipo').value;
+    if (salonId) {
+        data.id_salon_fk = parseInt(salonId);
     }
 
-    // Event listener para submit del formulario de editar
-    document.getElementById('editarEquipoForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+    try {
+        const res = await fetch(`/admin/api/equipos/${id}`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(data)
+        });
 
-        // Convertir id_salon_fk a int
-        data.id_salon_fk = parseInt(data.id_salon_fk) || null;
+        const responseData = await res.json();
 
-        // Validar fecha si existe
-        if (data.fecha_adquisicion && !/^\d{4}-\d{2}-\d{2}$/.test(data.fecha_adquisicion)) {
-            alert('Formato de fecha inválido.');
-            return;
+        if (res.ok) {
+            alert(responseData.message || 'Equipo actualizado con éxito.');
+            bootstrap.Modal.getInstance(document.getElementById('editarEquipoModal')).hide();
+            
+            // Recargar la tabla
+            await mostrarTodosLosEquipos();
+        } else {
+            alert(`Error al actualizar el equipo: ${responseData.error || 'Error desconocido'}`);
         }
+    } catch (err) {
+        console.error('Error al actualizar equipo', err);
+        alert('Error de conexión al actualizar el equipo.');
+    }
+});
 
-        const equipoId = data.id;
-        try {
-            const response = await fetch(`/admin/api/equipos/${equipoId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (response.ok) {
-                alert('Equipo actualizado correctamente.');
-                // Recargar la tabla y cerrar el modal si la actualización fue exitosa
-                renderizarTabla();
-                new bootstrap.Modal(document.getElementById('editarEquipoModal')).hide();
-            } else {
-                const errorData = await response.json();
-                alert('Error al actualizar el equipo: ' + (errorData.message || 'Error desconocido'));
+// Función para eliminar equipo - MEJORADA
+async function eliminarEquipo(id) {
+    // Buscar el equipo para mostrar su nombre en la confirmación
+    const equipo = equiposGlobal.find(e => e.id === id);
+    const nombreEquipo = equipo ? equipo.nombre : 'este equipo';
+    
+    if (!confirm(`¿Estás seguro de que deseas eliminar "${nombreEquipo}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/admin/api/equipos/${id}`, { 
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
-        } catch (err) {
-            console.error('Error al actualizar equipo', err);
-            alert('Error al actualizar el equipo.');
+        });
+        
+        const responseData = await res.json();
+        
+        if (res.ok) {
+            alert(responseData.message || 'Equipo eliminado con éxito.');
+            
+            // Recargar la tabla
+            await mostrarTodosLosEquipos();
+        } else {
+            alert(`Error al eliminar el equipo: ${responseData.error || 'Error desconocido'}`);
         }
-    });
-
-    // Función para editar equipo (abre modal)
-    async function editarEquipo(id) {
-        try {
-            // Cargar detalles del equipo
-            const response = await fetch(`/admin/api/equipos/${id}`);
-            const equipo = await response.json();
-
-            // Poblar el formulario con todos los campos
-            document.getElementById('equipoId').value = equipo.id;
-            
-            // Campos no editables (readonly) y sus campos ocultos correspondientes
-            document.getElementById('idReferencia').value = equipo.id_referencia || '';
-            document.getElementById('idReferenciaHidden').value = equipo.id_referencia || '';
-            
-            document.getElementById('nombreEquipo').value = equipo.nombre || '';
-            document.getElementById('nombreEquipoHidden').value = equipo.nombre || '';
-            
-            document.getElementById('tipoEquipo').value = equipo.tipo || '';
-            document.getElementById('tipoEquipoHidden').value = equipo.tipo || '';
-            
-            // Para la sala, mostrar texto legible pero mantener el ID en campo oculto
-            const salaTexto = equipo.sala_nombre && equipo.sede_nombre 
-                ? `${equipo.sala_nombre} (${equipo.sede_nombre})` 
-                : 'Sin sala asignada';
-            document.getElementById('salaEquipoTexto').value = salaTexto;
-            document.getElementById('salaEquipo').value = equipo.id_salon_fk || '';
-            
-            // Campos editables
-            document.getElementById('estadoEquipo').value = equipo.estado || 'Disponible';
-            document.getElementById('usuarioAsignado').value = equipo.asignado_a || '';
-            document.getElementById('sistemaOperativo').value = equipo.sistema_operativo || '';
-            document.getElementById('ramEquipo').value = equipo.ram || '';
-            document.getElementById('discoDuro').value = equipo.disco_duro || '';
-            document.getElementById('fechaAdquisicion').value = equipo.fecha_adquisicion 
-                ? new Date(equipo.fecha_adquisicion).toISOString().split('T')[0] 
-                : '';
-            document.getElementById('descripcionEquipo').value = equipo.descripcion || '';
-            document.getElementById('observacionesEquipo').value = equipo.observaciones || '';
-            // Mostrar modal
-            new bootstrap.Modal(document.getElementById('editarEquipoModal')).show();
-        } catch (err) {
-            console.error('Error al editar equipo', err);
-            alert('Error al cargar datos del equipo para editar.');
-        }
+    } catch (err) {
+        console.error('Error al eliminar equipo', err);
+        alert('Error de conexión al eliminar el equipo.');
     }
-    // Función para eliminar equipo
-    async function eliminarEquipo(id) {
-        if (!confirm('¿Está seguro de que desea eliminar este equipo? Esta acción no se puede deshacer.')) {
-            return;
-        }
-        try {
-            const response = await fetch(`/admin/api/equipos/${id}`, {
-                method: 'DELETE'
-            });
-            if (response.ok) {
-                alert('Equipo eliminado correctamente.');
-                // Recargar datos actuales (puede ser la sala o todos)
-                if (equiposGlobal.length > 0 && equiposGlobal[0].sala) {
-                    mostrarEquiposDeSala(equiposGlobal[0].sede_id || 1, equiposGlobal[0].id_salon_fk || 1);
-                } else {
-                    mostrarTodosLosEquipos();
-                }
-            } else {
-                const errorData = await response.json();
-                alert('Error al eliminar el equipo: ' + (errorData.message || 'Error desconocido'));
-            }
-        } catch (error) {
-            console.error('Error eliminando equipo:', error);
-            alert('Error al eliminar el equipo.');
-        }
-    }
+}
 
-    // Inicialización
-    document.addEventListener('DOMContentLoaded', async () => {
-        await cargarSedes();
-        mostrarSede(1);  // Mostrar primera sede por defecto
-    });
+// Función para ver detalles del equipo - MEJORADA
+async function verEquipo(id) {
+    try {
+        const res = await fetch(`/admin/api/equipos/${id}`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const equipo = await res.json();
+
+        // Llenar información básica en el modal de detalles
+        document.getElementById('detalle-id-referencia').textContent = equipo.id_referencia || '-';
+        document.getElementById('detalle-nombre').textContent = equipo.nombre || '-';
+        document.getElementById('detalle-tipo').textContent = equipo.tipo || '-';
+        document.getElementById('detalle-usuario').textContent = equipo.asignado_a || '-';
+        document.getElementById('detalle-sala').textContent = equipo.salon_nombre || '-';
+
+        // Estado con badge
+        const estadoBadge = document.getElementById('detalle-estado-badge');
+        estadoBadge.textContent = equipo.estado || 'Desconocido';
+        estadoBadge.className = 'badge ';
+        if (equipo.estado === 'Disponible') estadoBadge.className += 'text-bg-primary';
+        else if (equipo.estado === 'Asignado') estadoBadge.className += 'text-bg-secondary';
+        else if (equipo.estado === 'Mantenimiento') estadoBadge.className += 'text-bg-warning';
+        else if (equipo.estado === 'Incidente') estadoBadge.className += 'text-bg-danger';
+        else if (equipo.estado === 'Revisión') estadoBadge.className += 'text-bg-info';
+        else estadoBadge.className += 'text-bg-light';
+
+        // Especificaciones técnicas
+        document.getElementById('detalle-so').textContent = equipo.sistema_operativo || '-';
+        document.getElementById('detalle-ram').textContent = equipo.ram || '-';
+        document.getElementById('detalle-disco').textContent = equipo.disco_duro || '-';
+        document.getElementById('detalle-fecha').textContent = equipo.fecha_adquisicion || '-';
+        document.getElementById('detalle-descripcion').textContent = equipo.descripcion || '-';
+        document.getElementById('detalle-observaciones').textContent = equipo.observaciones || '-';
+
+        // Cargar historial de incidentes (usando datos reales si están disponibles)
+        const incidentesTable = document.getElementById('detalle-incidentes');
+        if (equipo.incidentes && equipo.incidentes.length > 0) {
+            incidentesTable.innerHTML = equipo.incidentes.map(inc => `
+                <tr>
+                    <td>${inc.fecha}</td>
+                    <td>${inc.descripcion}</td>
+                </tr>
+            `).join('');
+        } else {
+            incidentesTable.innerHTML = '<tr><td colspan="2" class="text-muted">Sin incidentes registrados</td></tr>';
+        }
+
+        // Cargar historial de mantenimientos (usando datos reales si están disponibles)
+        const mantenimientosTable = document.getElementById('detalle-mantenimientos');
+        if (equipo.mantenimientos && equipo.mantenimientos.length > 0) {
+            mantenimientosTable.innerHTML = equipo.mantenimientos.map(mant => `
+                <tr>
+                    <td>${mant.fecha}</td>
+                    <td>${mant.tipo}</td>
+                    <td>${mant.estado}</td>
+                </tr>
+            `).join('');
+        } else {
+            mantenimientosTable.innerHTML = '<tr><td colspan="3" class="text-muted">Sin mantenimientos registrados</td></tr>';
+        }
+
+        new bootstrap.Modal(document.getElementById('verEquipoModal')).show();
+    } catch (err) {
+        console.error('Error al ver equipo', err);
+        alert('Error al cargar los detalles del equipo.');
+    }
+}
+    // Cargar sedes al iniciar
+    window.onload = cargarSedes;
 </script>
 {% endblock %}
 </body>

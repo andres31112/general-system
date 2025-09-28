@@ -27,152 +27,436 @@
 </header>
 
 <main class="container-fluid p-4">
-    <!-- Tarjetas de resumen -->
     <section class="row mb-3">
         <div class="col-lg-4 col-md-6 mb-3">
             <div class="summary-card">
                 <div class="icon"><i class="fa-solid fa-school"></i></div>
                 <h3 class="h6 mb-0">Total Salones</h3>
+                <p class="number mb-0" id="total-salones">0</p>
             </div>
         </div>
         <div class="col-lg-4 col-md-6 mb-3">
             <div class="summary-card">
                 <div class="icon"><i class="fa-solid fa-desktop"></i></div>
                 <h3 class="h6 mb-0">Salas de Cómputo</h3>
+                <p class="number mb-0" id="salas-computo">0</p>
             </div>
         </div>
         <div class="col-lg-4 col-md-6 mb-3">
             <div class="summary-card">
                 <div class="icon"><i class="fa-solid fa-door-open"></i></div>
                 <h3 class="h6 mb-0">Salas Generales</h3>
+                <p class="number mb-0" id="salas-generales">0</p>
             </div>
         </div>
     </section>
 </main>
 
-<!-- Panel con pestañas -->
 <main class="row">
     <div class="col-lg-12 mb-4" id="main-column">
         <div class="main-panel">
             <div class="panel-content p-0">
                 
-                <ul class="nav nav-tabs nav-fill">
-                    <li class="nav-item">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sedeA-pane">Salones Sede A</button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sedeB-pane">Salones Sede B</button>
-                    </li>
-                    <div>
-                        <a href="{{ url_for('admin.registro_salon') }}" class="btn btn-success ms-3">
-                            <i class="fas fa-plus"></i>
+                <div class="d-flex justify-content-between align-items-center">
+                    <ul class="nav nav-tabs nav-fill flex-grow-1" id="pestanas-sedes">
+                        </ul>
+                    <div class="ms-3">
+                        <a href="{{ url_for('admin.registro_salon') }}" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Nuevo Salón
                         </a>
                     </div>
-                </ul>
+                </div>
                 
-                <div class="tab-content">
-                    <!-- Sede A -->
-                    <div class="tab-pane fade show active" id="sedeA-pane">
-                        <div class="card shadow-sm mt-3">
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th><input type="checkbox"></th>
-                                                <th>Nombre Salón</th>
-                                                <th>Tipo</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for salon in salones_a %}
-                                            <tr>
-                                                <td><input type="checkbox"></td>
-                                                <td>{{ salon.nombre }}</td>
-                                                <td>
-                                                    {% if salon.tipo == "sala_computo" %}
-                                                        <span class="badge bg-info">Sala de Cómputo</span>
-                                                    {% elif salon.tipo == "aula" %}
-                                                        <span class="badge bg-secondary">Aula</span>
-                                                    {% elif salon.tipo == "laboratorio" %}
-                                                        <span class="badge bg-warning">Laboratorio</span>
-                                                    {% elif salon.tipo == "auditorio" %}
-                                                        <span class="badge bg-dark">Auditorio</span>
-                                                    {% else %}
-                                                        <span class="badge bg-light text-dark">{{ salon.tipo }}</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-primary btn-sm">Editar</button>
-                                                    <button class="btn btn-secondary btn-sm">Ver</button>
-                                                </td>
-                                            </tr>
-                                            {% else %}
-                                            <tr>
-                                                <td colspan="4" class="text-center">No hay salones en esta sede</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+                <div class="tab-content" id="contenido-sedes">
                     </div>
-
-                    <!-- Sede B -->
-                    <div class="tab-pane fade" id="sedeB-pane">
-                        <div class="card shadow-sm mt-3">
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th><input type="checkbox"></th>
-                                                <th>Nombre Salón</th>
-                                                <th>Tipo</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for salon in salones_b %}
-                                            <tr>
-                                                <td><input type="checkbox"></td>
-                                                <td>{{ salon.nombre }}</td>
-                                                <td>
-                                                    {% if salon.tipo == "sala_computo" %}
-                                                        <span class="badge bg-info">Sala de Cómputo</span>
-                                                    {% elif salon.tipo == "aula" %}
-                                                        <span class="badge bg-secondary">Aula</span>
-                                                    {% elif salon.tipo == "laboratorio" %}
-                                                        <span class="badge bg-warning">Laboratorio</span>
-                                                    {% elif salon.tipo == "auditorio" %}
-                                                        <span class="badge bg-dark">Auditorio</span>
-                                                    {% else %}
-                                                        <span class="badge bg-light text-dark">{{ salon.tipo }}</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-primary btn-sm">Editar</button>
-                                                    <button class="btn btn-secondary btn-sm">Ver</button>
-                                                </td>
-                                            </tr>
-                                            {% else %}
-                                            <tr>
-                                                <td colspan="4" class="text-center">No hay salones en esta sede</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> <!-- End tab-content -->
+                
             </div>
         </div>
     </div>
 </main>
+
+<div class="modal fade" id="verSalonModal" tabindex="-1" aria-labelledby="verSalonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles del Salón</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <strong>Nombre:</strong> <span id="detalle-nombre">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Tipo:</strong> <span id="detalle-tipo">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Sede:</strong> <span id="detalle-sede">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <strong>Equipos:</strong> <span id="detalle-equipos">0</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Capacidad:</strong> <span id="detalle-capacidad">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Estado:</strong> <span id="detalle-estado">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editarSalonModal" tabindex="-1" aria-labelledby="editarSalonModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Salón</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editarSalonForm">
+                    <input type="hidden" id="salonId" name="id">
+                    <div class="mb-3">
+                        <label for="nombreSalon" class="form-label">Nombre del Salón</label>
+                        <input type="text" class="form-control" id="nombreSalon" name="nombre" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipoSalon" class="form-label">Tipo</label>
+                        <select class="form-select" id="tipoSalon" name="tipo" required>
+                            <option value="aula">Aula</option>
+                            <option value="sala_computo">Sala de Cómputo</option>
+                            <option value="laboratorio">Laboratorio</option>
+                            <option value="auditorio">Auditorio</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sedeSalon" class="form-label">Sede</label>
+                        <select class="form-select" id="sedeSalon" name="sede_id" required>
+                            </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="submit" form="editarSalonForm" class="btn btn-primary">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let sedesGlobal = [];
+    let salonesGlobal = [];
+
+    // Cargar todas las sedes
+    async function cargarSedes() {
+        try {
+            const res = await fetch('/admin/api/sedes');
+            const sedes = await res.json();
+            sedesGlobal = sedes;
+            
+            crearPestanasSedes(sedes);
+            await cargarTodosLosSalones();
+            
+            // Mostrar primera sede por defecto
+            if (sedes.length > 0) {
+                mostrarSalonesDeSede(sedes[0].id);
+            }
+            
+        } catch (error) {
+            console.error('Error cargando sedes:', error);
+        }
+    }
+
+    // Crear pestañas dinámicamente
+    function crearPestanasSedes(sedes) {
+        const pestanasContainer = document.getElementById('pestanas-sedes');
+        const contenidoContainer = document.getElementById('contenido-sedes');
+        
+        // Limpiar contenido existente
+        pestanasContainer.innerHTML = '';
+        contenidoContainer.innerHTML = '';
+        
+        sedes.forEach((sede, index) => {
+            // Crear pestaña
+            const tabItem = document.createElement('li');
+            tabItem.className = 'nav-item';
+            
+            const tabButton = document.createElement('button');
+            tabButton.className = `nav-link ${index === 0 ? 'active' : ''}`;
+            tabButton.setAttribute('data-bs-toggle', 'tab');
+            tabButton.setAttribute('data-bs-target', `#sede-${sede.id}-pane`);
+            tabButton.textContent = `${sede.nombre}`;
+            tabButton.onclick = () => mostrarSalonesDeSede(sede.id);
+            
+            tabItem.appendChild(tabButton);
+            pestanasContainer.appendChild(tabItem);
+            
+            // Crear contenido de la pestaña
+            const tabPane = document.createElement('div');
+            tabPane.className = `tab-pane fade ${index === 0 ? 'show active' : ''}`;
+            tabPane.id = `sede-${sede.id}-pane`;
+            
+            tabPane.innerHTML = `
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre Salón</th>
+                                        <th>Tipo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-sede-${sede.id}">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            contenidoContainer.appendChild(tabPane);
+        });
+    }
+
+    // Cargar todos los salones
+    async function cargarTodosLosSalones() {
+        try {
+            // Usa la nueva API que trae todos los salones con nombre de sede y conteo de equipos.
+            const res = await fetch('/admin/api/salas_todas'); 
+            const salones = await res.json();
+            salonesGlobal = salones;
+            
+            // Actualizar estadísticas
+            actualizarEstadisticas(salones);
+            
+        } catch (error) {
+            console.error('Error cargando salones:', error);
+        }
+    }
+
+    // Mostrar salones de una sede específica
+    async function mostrarSalonesDeSede(sedeId) {
+        const tbody = document.getElementById(`tabla-sede-${sedeId}`);
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        // Filtrar salones por sede. Se usa sede para el filtrado, aunque el backend trae nombre_sede, el salon en sí no trae el ID de sede.
+        // Asumiendo que la API /api/salas_todas trae 'sede_id' (aunque el backend no lo mostró en la respuesta JSON, la consulta sí lo hace)
+        const salonesSede = salonesGlobal.filter(salon => salon.sede_id === sedeId); 
+        
+        if (salonesSede.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">No hay salones en esta sede</td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Mostrar salones
+        for (const salon of salonesSede) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${salon.id}</td>
+                <td>${salon.nombre}</td>
+                <td>${obtenerBadgeTipo(salon.tipo)}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm me-2" onclick="editarSalon(${salon.id})">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="btn btn-secondary btn-sm me-2" onclick="verSalon(${salon.id})">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarSalon(${salon.id})">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+    }
+
+    // Obtener badge según el tipo de salón
+    function obtenerBadgeTipo(tipo) {
+        switch (tipo) {
+            case 'sala_computo':
+                return '<span class="badge bg-info">Sala de Cómputo</span>';
+            case 'aula':
+                return '<span class="badge bg-secondary">Aula</span>';
+            case 'laboratorio':
+                return '<span class="badge bg-warning">Laboratorio</span>';
+            case 'auditorio':
+                return '<span class="badge bg-dark">Auditorio</span>';
+            default:
+                return '<span class="badge bg-light text-dark">' + tipo + '</span>';
+        }
+    }
+
+    // Actualizar estadísticas
+    function actualizarEstadisticas(salones) {
+        const total = salones.length;
+        const salasComputo = salones.filter(s => s.tipo === 'sala_computo').length;
+        // Se asume que cualquier otro tipo es 'General'
+        const salasGenerales = total - salasComputo; 
+
+        document.getElementById('total-salones').textContent = total;
+        document.getElementById('salas-computo').textContent = salasComputo;
+        document.getElementById('salas-generales').textContent = salasGenerales;
+    }
+
+    // Ver detalles del salón
+    async function verSalon(salonId) {
+        // Se usa la API de detalle para obtener la información más completa y el conteo de equipos real
+        try {
+            const res = await fetch(`/admin/api/salones/${salonId}`);
+            const salon = await res.json();
+
+            // Poblar modal con información
+            document.getElementById('detalle-nombre').textContent = salon.nombre;
+            document.getElementById('detalle-tipo').innerHTML = obtenerBadgeTipo(salon.tipo);
+            document.getElementById('detalle-sede').textContent = salon.sede_nombre;
+            document.getElementById('detalle-equipos').textContent = salon.total_equipos;
+            document.getElementById('detalle-capacidad').textContent = salon.capacidad || 'No especificada';
+            document.getElementById('detalle-estado').textContent = 'Activo'; // Estado fijo
+
+            new bootstrap.Modal(document.getElementById('verSalonModal')).show();
+        } catch(error) {
+            console.error('Error al ver salón:', error);
+            alert('Error al cargar los detalles del salón.');
+        }
+    }
+
+    // Editar salón
+    async function editarSalon(salonId) {
+        const salon = salonesGlobal.find(s => s.id === salonId);
+        if (!salon) return;
+
+        // Poblar formulario
+        document.getElementById('salonId').value = salon.id;
+        document.getElementById('nombreSalon').value = salon.nombre;
+        document.getElementById('tipoSalon').value = salon.tipo;
+
+        // Poblar select de sedes
+        const sedeSelect = document.getElementById('sedeSalon');
+        sedeSelect.innerHTML = '';
+        sedesGlobal.forEach(sede => {
+            const option = document.createElement('option');
+            option.value = sede.id;
+            option.textContent = sede.nombre;
+            // Se usa salon.sede_id para seleccionar la sede actual
+            option.selected = sede.id === salon.sede_id; 
+            sedeSelect.appendChild(option);
+        });
+
+        new bootstrap.Modal(document.getElementById('editarSalonModal')).show();
+    }
+
+    // Eliminar salón
+    async function eliminarSalon(salonId) {
+        if (!confirm('¿Está seguro de que desea eliminar este salón? Esta acción no se puede deshacer.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/api/salones/${salonId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('Salón eliminado correctamente.');
+                await cargarTodosLosSalones();
+                
+                // Refrescar la pestaña actual
+                const activeTab = document.querySelector('.nav-link.active');
+                if (activeTab) {
+                    const sedeIdMatch = activeTab.getAttribute('data-bs-target').match(/sede-(\d+)-pane/);
+                    if (sedeIdMatch) {
+                        mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
+                    }
+                }
+            } else {
+                const errorData = await response.json();
+                // El backend envia el mensaje de error: "No se puede eliminar el salón porque tiene equipos asociados."
+                alert('Error al eliminar el salón: ' + (errorData.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error eliminando salón:', error);
+            alert('Error al eliminar el salón.');
+        }
+    }
+
+    // Event listener para formulario de editar
+    document.getElementById('editarSalonForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Se valida que 'sede_id' sea un número
+        data.sede_id = parseInt(data.sede_id);
+        
+        try {
+            const response = await fetch(`/admin/api/salones/${data.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('Salón actualizado correctamente.');
+                
+                // Refrescar todos los salones y la pestaña actual
+                await cargarTodosLosSalones();
+                const activeTab = document.querySelector('.nav-link.active');
+                if (activeTab) {
+                    const sedeIdMatch = activeTab.getAttribute('data-bs-target').match(/sede-(\d+)-pane/);
+                     if (sedeIdMatch) {
+                        mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
+                    }
+                }
+                
+                // Ocultar modal
+                const modalElement = document.getElementById('editarSalonModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+                modalInstance.hide();
+                
+            } else {
+                const errorData = await response.json();
+                alert('Error al actualizar el salón: ' + (errorData.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error actualizando salón:', error);
+            alert('Error al actualizar el salón.');
+        }
+    });
+
+    // Función para refrescar pestañas (para integración con creación de sedes)
+    async function refrescarPestanasSalones() {
+        await cargarSedes();
+    }
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Asegurarse de que Bootstrap esté cargado si se usa en la función de editar/ver
+        if (typeof bootstrap === 'undefined') {
+            console.error("Bootstrap no está cargado. Los modales podrían no funcionar.");
+        }
+        await cargarSedes();
+    });
+</script>
 
 <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
 {% endblock %}
