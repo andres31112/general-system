@@ -1,17 +1,17 @@
-# Importaciones necesarias para que todo el sistema funcione ⚙️
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from controllers.decorators import role_required
 from extensions import db
 from datetime import datetime, timedelta, time, date
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
-from controllers.models import db, Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, Descanso, Matricula, Equipo, Incidente, Mantenimiento
+from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento
 from sqlalchemy.exc import IntegrityError
+import json
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# --- Rutas de Navegación y Vistas Principales ---
+# --- Rutas principales ---
 @admin_bp.route('/dashboard')
 @login_required 
 @role_required(1) 
@@ -41,66 +41,6 @@ def equipos():
     """Muestra la lista de equipos (página de equipos)."""
     return render_template('superadmin/gestion_inventario/equipos.html')
 
-@admin_bp.route('/registro_equipos', methods=['GET', 'POST'])
-@login_required
-@role_required(1)
-def crear_equipo():
-    form = EquipoForm()
-    if form.validate_on_submit():
-        nuevo_equipo = Equipo(
-            id_referencia=form.id_referencia.data,
-            nombre=form.nombre.data,
-            tipo=form.tipo.data,
-            estado=form.estado.data,
-            id_salon_fk=form.salon.data.id if form.salon.data else None,
-            asignado_a=form.asignado_a.data,
-            sistema_operativo=form.sistema_operativo.data,
-            ram=form.ram.data,
-            disco_duro=form.disco_duro.data,
-            fecha_adquisicion=datetime.strptime(form.fecha_adquisicion.data, '%Y-%m-%d').date() if form.fecha_adquisicion.data else None,
-            descripcion=form.descripcion.data,
-            observaciones=form.observaciones.data
-        )
-        db.session.add(nuevo_equipo)
-        db.session.commit()
-
-        flash(f'Equipo "{nuevo_equipo.nombre}" creado exitosamente!', 'success')
-        return redirect(url_for('admin.equipos'))
-
-    return render_template(
-        'superadmin/gestion_inventario/registro_equipo.html',
-        title='Crear Nuevo Equipo',
-        form=form
-    )
-
-from flask import jsonify  # Asegúrate de que esté importado (ya lo está en el archivo)
-
-@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET'])
-@login_required
-@role_required(1)
-def api_equipo_detalle(equipo_id):
-    equipo = Equipo.query.get_or_404(equipo_id)
-    data = equipo.to_dict()  # Usa el método existente en models.py para los campos básicos
-    
-    # Agrega historial de incidentes
-    data['incidentes'] = [
-        {
-            'fecha': i.fecha.strftime("%Y-%m-%d"),
-            'descripcion': i.descripcion
-        } for i in equipo.incidentes
-    ]
-    
-    # Agrega historial de mantenimientos (usa 'programaciones' del backref en models.py)
-    data['mantenimientos'] = [
-        {
-            'fecha': m.fecha_programada.strftime("%Y-%m-%d") if m.fecha_programada else (m.fecha_realizada.strftime("%Y-%m-%d") if m.fecha_realizada else ''),
-            'tipo': m.tipo,
-            'estado': m.estado
-        } for m in equipo.programaciones
-    ]
-    
-    return jsonify(data), 200
-
 @admin_bp.route('/salones')
 @login_required
 @role_required(1)
@@ -108,84 +48,6 @@ def salones():
     """Muestra la lista de todos los salones."""
     salones = db.session.query(Salon).all()
     return render_template('superadmin/gestion_inventario/salones.html', salones=salones)
-
-# ===============================
-# API Sedes, Salas y Equipos
-# ===============================
-
-@admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
-@login_required
-@role_required(1)
-def api_sedes():
-    """
-    Endpoint para gestionar sedes (Listar, Crear, Eliminar).
-    GET: Devuelve todas las sedes.
-    POST: Crea una nueva sede.
-    DELETE: Elimina una sede por su ID.
-    """
-    if request.method == 'GET':
-        sedes = Sede.query.order_by(Sede.nombre).all()
-        return jsonify([{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]), 200
-
-    if request.method == 'POST':
-        data = request.get_json()
-        nombre = data.get("nombre")
-        direccion = data.get("direccion", "Dirección por defecto")
-
-        if not nombre:
-            return jsonify({"error": "El nombre de la sede es obligatorio"}), 400
-
-        try:
-            nueva_sede = Sede(nombre=nombre, direccion=direccion)
-            db.session.add(nueva_sede)
-            db.session.commit()
-            return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
-        except IntegrityError:
-            db.session.rollback()
-            return jsonify({"error": "Ya existe una sede con ese nombre"}), 409
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
-
-    if request.method == 'DELETE':
-        data = request.get_json()
-        sede_id = data.get('id')
-
-        if not sede_id:
-            return jsonify({"error": "ID de sede no proporcionado"}), 400
-
-        sede = Sede.query.get(sede_id)
-        if not sede:
-            return jsonify({"error": "Sede no encontrada"}), 404
-
-        try:
-            db.session.delete(sede)
-            db.session.commit()
-            return jsonify({"message": "Sede eliminada exitosamente"}), 200
-        except Exception:
-            db.session.rollback()
-            return jsonify({"error": "No se pudo eliminar la sede"}), 500
-
-    return jsonify({"error": "Método no permitido"}), 405
-
-
-@admin_bp.route('/api/sedes/<int:sede_id>/salas')
-def api_salas(sede_id):
-    salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
-    return jsonify([{"id": s.id, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
-
-@admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
-def api_equipos(sede_id, salon_id):
-    equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
-    data = []
-    for eq in equipos:
-        data.append({
-            "id": eq.id,
-            "nombre": eq.nombre,
-            "estado": eq.estado,
-            "asignado_a": eq.asignado_a or ""
-        })
-    return jsonify(data)
 
 @admin_bp.route('/reportes')
 @role_required(1)
@@ -199,120 +61,11 @@ def incidentes():
     """Muestra la página de gestión de incidentes."""
     return render_template('superadmin/gestion_inventario/incidentes.html')
 
-# ===============================
-# API de Incidentes
-# ===============================
-@admin_bp.route('/api/incidentes', methods=['GET'])
-@login_required
-@role_required(1)
-def api_incidentes():
-    data = []
-
-    # 1. Obtener incidentes registrados
-    incidentes = Incidente.query.all()
-    for inc in incidentes:
-        data.append({
-            "id": inc.id,
-            "equipo_id": inc.equipo_id,
-            "equipo_nombre": inc.equipo.nombre if inc.equipo else "Sin equipo",
-            "usuario_asignado": inc.usuario_asignado or "",
-            "sede": inc.sede,
-            "fecha": inc.fecha.strftime("%Y-%m-%d"),
-            "descripcion": inc.descripcion,
-            "estado": inc.estado or ""
-        })
-
-    # 2. Obtener equipos en mantenimiento (que no estén en incidentes)
-    equipos_mantenimiento = Equipo.query.filter_by(estado="Mantenimiento").all()
-    incidentes_ids = {inc.equipo_id for inc in incidentes}
-
-    for eq in equipos_mantenimiento:
-        if eq.id not in incidentes_ids:
-            data.append({
-                "id": None,
-                "equipo_id": eq.id,
-                "equipo_nombre": eq.nombre,
-                "usuario_asignado": "",
-                "sede": eq.salon.sede.nombre if eq.salon and eq.salon.sede else "Sin sede",
-                "fecha": datetime.utcnow().strftime("%Y-%m-%d"),
-                "descripcion": "Equipo en mantenimiento",
-                "estado": "Mantenimiento"
-            })
-
-    return jsonify(data)
-
 @admin_bp.route('/mantenimiento')
 @role_required(1)
 def mantenimiento():
     """Muestra la página de mantenimiento de equipos."""
     return render_template('superadmin/gestion_inventario/mantenimiento.html')
-
-# ===============================
-# API de Mantenimientos
-# ===============================
-@admin_bp.route('/api/mantenimientos', methods=['GET'])
-@login_required
-@role_required(1)
-def api_mantenimientos():
-    mantenimientos = Mantenimiento.query.all()
-    data = []
-    for m in mantenimientos:
-        data.append({
-            "id": m.id,
-            "equipo_id": m.equipo.id if m.equipo else None,
-            "equipo_nombre": m.equipo.nombre if m.equipo else "Sin equipo",
-            "sede_id": m.sede.id if m.sede else None,
-            "sede_nombre": m.sede.nombre if m.sede else "Sin sede",
-            "fecha_programada": m.fecha_programada.strftime("%Y-%m-%d"),
-            "tipo": m.tipo,
-            "descripcion": m.descripcion or "",
-            "estado": m.estado
-        })
-    return jsonify(data)
-
-
-@admin_bp.route('/api/mantenimientos', methods=['POST'])
-@login_required
-@role_required(1)
-def crear_mantenimiento():
-    data = request.get_json()
-    equipo_id = data.get("equipo_id")
-    fecha_programada = datetime.strptime(data.get("fecha_programada"), "%Y-%m-%d").date()
-    tipo = data.get("tipo", "mantenimiento")
-    descripcion = data.get("descripcion", "")
-
-    equipo = Equipo.query.get(equipo_id)
-    if not equipo:
-        return jsonify({"error": "Equipo no encontrado"}), 404
-
-    sede_id = equipo.salon.sede.id if equipo.salon and equipo.salon.sede else None
-    if not sede_id:
-        return jsonify({"error": "El equipo no tiene sede asociada"}), 400
-
-    nuevo = Mantenimiento(
-        equipo_id=equipo_id,
-        sede_id=sede_id,
-        fecha_programada=fecha_programada,
-        tipo=tipo,
-        descripcion=descripcion,
-        estado="Programado"
-    )
-    db.session.add(nuevo)
-    db.session.commit()
-
-    return jsonify({"success": True, "id": nuevo.id})
-
-
-@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>/cancelar', methods=['POST'])
-@login_required
-@role_required(1)
-def cancelar_mantenimiento(mantenimiento_id):
-    m = Mantenimiento.query.get(mantenimiento_id)
-    if not m:
-        return jsonify({"error": "Mantenimiento no encontrado"}), 404
-    m.estado = "Cancelado"
-    db.session.commit()
-    return jsonify({"success": True})
 
 @admin_bp.route('/gestion-salones')
 def gestion_salones():
@@ -351,6 +104,14 @@ def registro_salon():
         flash('Sala creada exitosamente ✅', 'success')
         return redirect(url_for('admin.salones'))
     return render_template('superadmin/gestion_inventario/registro_salon.html', title='Crear Nueva Sala', form=form)
+
+
+@admin_bp.route('/registro_equipo', methods=['GET', 'POST'])
+@login_required
+@role_required(1)
+def registro_equipo():
+    """Muestra la página para registrar un nuevo equipo."""
+    return render_template('superadmin/gestion_inventario/registro_equipo.html')
 
 @admin_bp.route('/registro_incidente', methods=['GET', 'POST'])
 @login_required
@@ -423,7 +184,6 @@ def estudiantes():
     rol_estudiante = db.session.query(Rol).filter_by(nombre='Estudiante').first()
     estudiantes = db.session.query(Usuario).filter_by(id_rol_fk=rol_estudiante.id_rol).all() if rol_estudiante else []
     return render_template('superadmin/gestion_usuarios/estudiantes.html', estudiantes=estudiantes)
-
 
 @admin_bp.route('/api/directorio/estudiantes', methods=['GET'])
 @login_required
@@ -501,7 +261,6 @@ def padres():
 @login_required
 @role_required(1)
 def superadmins():
-    """Muestra la página con la lista de superadmins."""
     return render_template('superadmin/gestion_usuarios/administrativos.html')
 
 @admin_bp.route('/api/padres')
@@ -513,6 +272,8 @@ def api_padres():
         padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all() if rol_padre else []
         lista_padres = []
         for padre in padres:
+            hijos_asignados = []
+    
             lista_padres.append({
                 'id_usuario': padre.id_usuario,
                 'no_identidad': padre.no_identidad,
@@ -520,7 +281,7 @@ def api_padres():
                 'correo': padre.correo,
                 'rol': padre.rol.nombre if padre.rol else 'N/A',
                 'estado_cuenta': padre.estado_cuenta,
-                'hijos_asignados': []  # Placeholder
+                'hijos_asignados': hijos_asignados # Placeholder
             })
         return jsonify({"data": lista_padres})
     except Exception as e:
@@ -548,172 +309,384 @@ def api_superadmins():
         print(f"Error en la API de superadmins: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
-
-# ===============================
-# Gestión Académica
-# ===============================
 @admin_bp.route('/gestion-academica')
 @login_required
 @role_required(1)
 def gestion_academica():
     return render_template('superadmin/gestion_academica/dashboard.html')
 
-@admin_bp.route('/gestion-horario')
+# === SISTEMA DE HORARIOS ===
+@admin_bp.route('/gestion-horarios')
 @login_required
 @role_required(1)
-def gestion_horario():
-    horarios = db.session.query(HorarioGeneral).all()
-    horarios_list = [h.to_dict() for h in horarios]
-    return render_template('superadmin/Horarios/HorarioG.html', horarios=horarios_list)
+def gestion_horarios():
+    """Página principal del sistema de horarios"""
+    return render_template('superadmin/Horarios/gestion_horarios.html')
 
-# --- API de Horarios ---
+@admin_bp.route('/api/horarios/nuevo', methods=['POST'])
+@login_required
+@role_required(1)
+def api_crear_horario_completo():
+    """API para crear un horario completo con bloques"""
+    try:
+        data = request.get_json()
+        print("📝 Datos recibidos para crear horario:", data)
+        
+        if not data.get('nombre'):
+            return jsonify({'success': False, 'error': 'El nombre del horario es requerido'}), 400
+        
+        # Validar días
+        dias = data.get('dias', [])
+        if not dias:
+            return jsonify({'success': False, 'error': 'Seleccione al menos un día'}), 400
+        
+        # Validar bloques
+        bloques = data.get('bloques', [])
+        if not bloques:
+            return jsonify({'success': False, 'error': 'Agregue al menos un bloque horario'}), 400
+        
+        # Crear horario general
+        nuevo_horario = HorarioGeneral(
+            nombre=data.get('nombre'),
+            periodo=data.get('periodo', 'Primer Semestre'),
+            horaInicio=datetime.strptime(data.get('horaInicio', '07:00'), '%H:%M').time(),
+            horaFin=datetime.strptime(data.get('horaFin', '17:00'), '%H:%M').time(),
+            diasSemana=json.dumps(dias),
+            duracion_clase=data.get('duracion_clase', 45),
+            duracion_descanso=data.get('duracion_descanso', 15),
+            activo=True
+        )
+        db.session.add(nuevo_horario)
+        db.session.flush()
+        
+        # Crear bloques del horario
+        for i, bloque_data in enumerate(bloques):
+            # Validar datos del bloque
+            if not all(key in bloque_data for key in ['dia_semana', 'horaInicio', 'horaFin', 'tipo']):
+                continue
+                
+            try:
+                nuevo_bloque = BloqueHorario(
+                    horario_general_id=nuevo_horario.id,
+                    dia_semana=bloque_data['dia_semana'],
+                    horaInicio=datetime.strptime(bloque_data['horaInicio'], '%H:%M').time(),
+                    horaFin=datetime.strptime(bloque_data['horaFin'], '%H:%M').time(),
+                    tipo=bloque_data['tipo'],
+                    nombre=bloque_data.get('nombre', f'Bloque {i+1}'),
+                    orden=bloque_data.get('orden', i),
+                    class_type=bloque_data.get('class_type'),
+                    break_type=bloque_data.get('break_type')
+                )
+                db.session.add(nuevo_bloque)
+            except ValueError as e:
+                print(f"⚠️ Error creando bloque {i+1}: {e}")
+                continue
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Horario creado correctamente',
+            'horario': {
+                'id': nuevo_horario.id,
+                'nombre': nuevo_horario.nombre,
+                'periodo': nuevo_horario.periodo
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error creating schedule: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/horarios/<int:horario_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_horario(horario_id):
+    """API para obtener un horario específico con sus bloques"""
+    try:
+        horario = HorarioGeneral.query.get_or_404(horario_id)
+        
+        # Obtener bloques ordenados
+        bloques = BloqueHorario.query.filter_by(horario_general_id=horario_id)\
+                                    .order_by(BloqueHorario.orden)\
+                                    .all()
+        
+        # Convertir diasSemana de JSON a lista
+        try:
+            dias_lista = json.loads(horario.diasSemana) if horario.diasSemana else []
+        except:
+            dias_lista = []
+        
+        return jsonify({
+            'id': horario.id,
+            'nombre': horario.nombre,
+            'periodo': horario.periodo,
+            'horaInicio': horario.horaInicio.strftime('%H:%M'),
+            'horaFin': horario.horaFin.strftime('%H:%M'),
+            'dias': dias_lista,
+            'bloques': [{
+                'id': b.id,
+                'dia_semana': b.dia_semana,
+                'horaInicio': b.horaInicio.strftime('%H:%M'),
+                'horaFin': b.horaFin.strftime('%H:%M'),
+                'tipo': b.tipo,
+                'nombre': b.nombre,
+                'class_type': b.class_type,
+                'break_type': b.break_type
+            } for b in bloques]
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting schedule: {str(e)}")
+        return jsonify({'error': f'Error al obtener horario: {str(e)}'}), 500
+
 @admin_bp.route('/api/horarios', methods=['GET'])
 @login_required
 @role_required(1)
-def api_list_horarios():
-    horarios = HorarioGeneral.query.all()
-    return jsonify([h.to_dict() for h in horarios])
-
-@admin_bp.route('/api/horarios', methods=['POST'])
-@login_required
-@role_required(1)
-def api_create_horario():
-    data = request.get_json() or {}
-    nombre = data.get('nombre') or 'Horario'
-    horaInicio = datetime.strptime(data.get('horaInicio','07:00'), '%H:%M').time()
-    horaFin = datetime.strptime(data.get('horaFin','12:00'), '%H:%M').time()
-    dias = data.get('diasSemana','')
-    nuevo = HorarioGeneral(nombre=nombre, horaInicio=horaInicio, horaFin=horaFin, diasSemana=dias)
-    db.session.add(nuevo)
-    db.session.commit()
-    return jsonify(nuevo.to_dict()), 201 
-
-@admin_bp.route('/api/horarios', methods=['PUT'])
-@login_required
-@role_required(1)
-def api_update_horario():
-    data = request.get_json() or {}
-    horario_id = data.get('id')
-    if not horario_id:
-        return jsonify({"error":"id requerido"}), 400
-    horario = HorarioGeneral.query.get(horario_id)
-    if not horario:
-        return jsonify({"error":"No encontrado"}), 404
-    if 'nombre' in data: horario.nombre = data['nombre']
-    if 'horaInicio' in data:
-        try:
-            horario.horaInicio = datetime.strptime(data['horaInicio'], '%H:%M').time()
-        except ValueError:
-            return jsonify({"error":"Formato horaInicio inválido"}), 400
-    if 'horaFin' in data:
-        try:
-            horario.horaFin = datetime.strptime(data['horaFin'], '%H:%M').time()
-        except ValueError:
-            return jsonify({"error":"Formato horaFin inválido"}), 400
-    if 'diasSemana' in data: horario.diasSemana = data['diasSemana']
-    db.session.commit()
-    return jsonify(horario.to_dict())
-
-@admin_bp.route('/api/horarios', methods=['DELETE'])
-@login_required
-@role_required(1)
-def api_delete_horario():
-    data = request.get_json() or {}
-    horario_id = data.get('id')
-    if not horario_id:
-        return jsonify({"error":"id requerido"}), 400
-    horario = HorarioGeneral.query.get(horario_id)
-    if not horario:
-        return jsonify({"error":"No encontrado"}), 404
-    db.session.delete(horario)
-    db.session.commit()
-    return jsonify({"success": True})
-
-@admin_bp.route('/api/horarios/<int:horario_id>/breaks', methods=['POST'])
-@login_required
-@role_required(1)
-def api_create_break(horario_id):
-    data = request.get_json() or {}
-    horaInicio_str = data.get('horaInicio')
-    duracion = int(data.get('duracion') or 0)
-    if not horaInicio_str or duracion <= 0:
-        return jsonify({"error":"horaInicio y duracion requeridos"}), 400
+def api_listar_horarios():
+    """API para listar todos los horarios"""
     try:
-        start_dt = datetime.strptime(horaInicio_str, '%H:%M')
-    except ValueError:
-        return jsonify({"error":"Formato horaInicio inválido"}), 400
-    end_dt = start_dt + timedelta(minutes=duracion)
-    horario = HorarioGeneral.query.get(horario_id)
-    if not horario:
-        return jsonify({"error":"Horario no encontrado"}), 404
-    nuevo = Descanso(horarioId=horario_id, horaInicio=start_dt.time(), horaFin=end_dt.time())
-    db.session.add(nuevo)
-    db.session.commit()
-    return jsonify(nuevo.to_dict()), 201
+        horarios = HorarioGeneral.query.all()
+        return jsonify([{
+            'id': h.id,
+            'nombre': h.nombre,
+            'periodo': h.periodo,
+            'horaInicio': h.horaInicio.strftime('%H:%M'),
+            'horaFin': h.horaFin.strftime('%H:%M'),
+            'activo': h.activo,
+            'totalCursos': len(h.cursos)  # Asegúrate de que use el nombre correcto
+        } for h in horarios])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/api/horarios/<int:horario_id>/breaks', methods=['DELETE'])
+@admin_bp.route('/api/horarios/<int:horario_id>', methods=['DELETE'])
 @login_required
 @role_required(1)
-def api_delete_break(horario_id):
-    data = request.get_json() or {}
-    descanso_id = data.get('id')
-    if not descanso_id:
-        return jsonify({"error":"id requerido"}), 400
-    descanso = Descanso.query.get(descanso_id)
-    if not descanso or descanso.horarioId != horario_id:
-        return jsonify({"error":"Descanso no encontrado"}), 404
-    db.session.delete(descanso)
-    db.session.commit()
-    return jsonify({"success": True})
+def api_eliminar_horario(horario_id):
+    """API para eliminar un horario"""
+    try:
+        horario = HorarioGeneral.query.get_or_404(horario_id)
+        
+        # Eliminar bloques asociados
+        BloqueHorario.query.filter_by(horario_general_id=horario_id).delete()
+        
+        # Desasignar de cursos
+        Curso.query.filter_by(horario_general_id=horario_id).update({'horario_general_id': None})
+        
+        db.session.delete(horario)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Horario eliminado correctamente'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# ===============================
-# API de Materias
-# ===============================
-@admin_bp.route('/api/materias', methods=['GET'])
+@admin_bp.route('/api/horarios/asignar', methods=['POST'])
 @login_required
 @role_required(1)
-def api_list_materias():
-    materias = Asignatura.query.all()
-    return jsonify([m.to_dict() if hasattr(m,'to_dict') else {"id":m.id,"nombre":m.nombre} for m in materias])
+def api_asignar_horario_curso():
+    """API para asignar horario a cursos"""
+    try:
+        data = request.get_json()
+        horario_id = data.get('horario_id')
+        cursos_ids = data.get('cursos_ids', [])
+        
+        if not horario_id:
+            return jsonify({'success': False, 'error': 'ID de horario requerido'}), 400
+        
+        horario = HorarioGeneral.query.get(horario_id)
+        if not horario:
+            return jsonify({'success': False, 'error': 'Horario no encontrado'}), 404
+        
+        cursos_asignados = 0
+        for curso_id in cursos_ids:
+            curso = Curso.query.get(curso_id)
+            if curso:
+                curso.horario_general_id = horario_id
+                cursos_asignados += 1
+        
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': f'Horario "{horario.nombre}" asignado a {cursos_asignados} cursos'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-@admin_bp.route('/api/materias', methods=['POST'])
+@admin_bp.route('/api/estadisticas/horarios')
 @login_required
 @role_required(1)
-def api_create_materia():
-    data = request.get_json() or {}
-    nombre = data.get('nombre')
-    if not nombre:
-        return jsonify({"error":"nombre requerido"}), 400
-    m = Asignatura(nombre=nombre)
-    db.session.add(m)
-    db.session.commit()
-    return jsonify({"id": m.id, "nombre": m.nombre}), 201
+def api_estadisticas_horarios():
+    """API para obtener estadísticas de horarios"""
+    try:
+        total_cursos = Curso.query.count()
+        
+        rol_profesor = Rol.query.filter_by(nombre='Profesor').first()
+        total_profesores = Usuario.query.filter_by(id_rol_fk=rol_profesor.id_rol).count() if rol_profesor else 0
+        
+        horarios_activos = HorarioGeneral.query.filter_by(activo=True).count()
+        total_salones = Salon.query.count()
+        
+        # Calcular salones libres
+        salones_ocupados = Curso.query.filter(Curso.horario_general_id.isnot(None)).count()
+        salones_libres = max(0, total_salones - salones_ocupados)
+        
+        return jsonify({
+            'total_cursos': total_cursos,
+            'total_profesores': total_profesores,
+            'horarios_activos': horarios_activos,
+            'salones_libres': salones_libres,
+            'total_salones': total_salones
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/api/materias/<int:mat_id>', methods=['DELETE'])
+@admin_bp.route('/gestion-horarios-cursos')
 @login_required
 @role_required(1)
-def api_delete_materia(mat_id):
-    m = Asignatura.query.get(mat_id)
-    if not m:
-        return jsonify({"error":"No encontrado"}), 404
-    db.session.delete(m)
-    db.session.commit()
-    return jsonify({"success": True})
+def gestion_horarios_cursos():
+    """Página para gestionar horarios específicos por curso"""
+    return render_template('superadmin/Horarios/gestion_horarios_cursos.html')
 
-# ===============================
-# Gestión de Usuarios
-# ===============================
+# =============================================
+# RUTAS PARA GESTIÓN DE HORARIOS DE CURSOS - CORREGIDAS
+# =============================================
+
+# ELIMINAR LAS RUTAS DUPLICADAS ANTERIORES (líneas 349-380)
+# Y MANTENER SOLO ESTAS:
+
+@admin_bp.route('/api/horario_curso/guardar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_guardar_horario_curso():
+    """API para guardar horario específico de curso - IMPLEMENTACIÓN REAL"""
+    try:
+        data = request.get_json()
+        curso_id = data.get('curso_id')
+        horario_general_id = data.get('horario_general_id')
+        asignaciones = data.get('asignaciones', {})
+        
+        if not curso_id:
+            return jsonify({'success': False, 'error': 'ID de curso requerido'}), 400
+        
+        # Verificar que el curso existe
+        curso = Curso.query.get(curso_id)
+        if not curso:
+            return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+        
+        # Asignar horario general al curso
+        if horario_general_id:
+            horario = HorarioGeneral.query.get(horario_general_id)
+            if not horario:
+                return jsonify({'success': False, 'error': 'Horario general no encontrado'}), 404
+            curso.horario_general_id = horario_general_id
+        
+        # Guardar asignaciones específicas del curso
+        # Primero eliminar asignaciones existentes para este curso
+        HorarioCurso.query.filter_by(curso_id=curso_id).delete()
+        
+        # Crear nuevas asignaciones
+        for clave, asignatura_id in asignaciones.items():
+            try:
+                # La clave es "Dia-Hora" ej: "Lunes-07:00"
+                partes = clave.split('-')
+                if len(partes) >= 2:
+                    dia = partes[0]
+                    hora = partes[1]
+                    
+                    nueva_asignacion = HorarioCurso(
+                        curso_id=curso_id,
+                        asignatura_id=asignatura_id,
+                        dia_semana=dia,
+                        hora_inicio=hora,
+                        horario_general_id=horario_general_id
+                    )
+                    db.session.add(nueva_asignacion)
+            except Exception as e:
+                print(f"Error creando asignación {clave}: {e}")
+                continue
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Horario del curso guardado correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error guardando horario de curso: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/horario_curso/cargar/<int:curso_id>')
+@login_required
+@role_required(1)
+def api_cargar_horario_curso(curso_id):
+    """API para cargar horario específico de curso - IMPLEMENTACIÓN REAL"""
+    try:
+        # Obtener asignaciones existentes para este curso
+        asignaciones_db = HorarioCurso.query.filter_by(curso_id=curso_id).all()
+        
+        # Convertir a formato para el frontend
+        asignaciones = {}
+        for asignacion in asignaciones_db:
+            clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
+            asignaciones[clave] = asignacion.asignatura_id
+        
+        # Obtener información del curso
+        curso = Curso.query.get(curso_id)
+        horario_general_id = curso.horario_general_id if curso else None
+        
+        return jsonify({
+            'curso_id': curso_id,
+            'horario_general_id': horario_general_id,
+            'asignaciones': asignaciones
+        })
+        
+    except Exception as e:
+        print(f"Error cargando horario de curso: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/estadisticas/horarios-cursos')
+@login_required
+@role_required(1)
+def api_estadisticas_horarios_cursos():
+    """API para estadísticas de horarios de cursos"""
+    try:
+        total_cursos = Curso.query.count()
+        cursos_con_horario = Curso.query.filter(Curso.horario_general_id.isnot(None)).count()
+        total_asignaturas = Asignatura.query.count()
+        
+        # Calcular porcentaje de horarios asignados
+        porcentaje_asignados = (cursos_con_horario / total_cursos * 100) if total_cursos > 0 else 0
+        
+        return jsonify({
+            'total_cursos': total_cursos,
+            'horarios_asignados': cursos_con_horario,
+            'total_materias': total_asignaturas,
+            'porcentaje_asignados': round(porcentaje_asignados, 1)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- Rutas existentes para gestión académica (mantener igual) ---
 @admin_bp.route('/crear_usuario', methods=['GET', 'POST'])
 @login_required
 @role_required(1)
 def crear_usuario():
     form = RegistrationForm()
+    
     roles = db.session.query(Rol).all()
     cursos = db.session.query(Curso).all()
     form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles]
 
     if form.validate_on_submit():
         selected_role_id = int(form.rol.data)
+        
         rol_estudiante = db.session.query(Rol).filter_by(nombre='Estudiante').first()
         rol_profesor = db.session.query(Rol).filter_by(nombre='Profesor').first()
 
@@ -756,7 +729,7 @@ def crear_usuario():
                         profesorId=new_user.id_usuario,
                         asignaturaId=form.asignatura_id.data.id,
                         cursoId=form.curso_asignacion_id.data.id,
-                        horarioId=1  # TODO: cambiar por lógica real
+                        horarioId=1
                     )
                     db.session.add(new_clase)
                     db.session.commit()
@@ -828,15 +801,67 @@ def eliminar_usuario(user_id):
     flash(f'Usuario "{user.nombre_completo}" eliminado exitosamente.', 'success')
     return redirect(url_for('admin.profesores'))
 
-# ===============================
-# Gestión de Cursos
-# ===============================
 @admin_bp.route('/gestion_sedes')
 @login_required
 @role_required(1)
 def gestion_sedes():
     form = SedeForm()
     return render_template('superadmin/gestion_academica/sedes.html', form=form)
+
+@admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def api_sedes():
+    if request.method == 'GET':
+        sedes = Sede.query.order_by(Sede.nombre).all()
+        sedes_data = [{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]
+        return jsonify(sedes_data), 200
+
+    if request.method == 'POST':
+        data = request.get_json()
+        form = SedeForm(data=data)
+        
+        if form.validate_on_submit():
+            try:
+                nueva_sede = Sede(
+                    nombre=form.nombre.data,
+                    direccion=form.direccion.data if hasattr(form, 'direccion') else "Dirección por defecto"
+                )
+                
+                db.session.add(nueva_sede)
+                db.session.commit()
+                
+                return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
+            
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({"error": str(e)}), 500
+        else:
+            errors = {}
+            for field, messages in form.errors.items():
+                errors[field] = messages
+            return jsonify({"errors": errors, "error": "Error de validación"}), 400
+
+    if request.method == 'DELETE':
+        data = request.get_json()
+        sede_id = data.get('id')
+        
+        if not sede_id:
+            return jsonify({"error": "ID de sede no proporcionado"}), 400
+
+        sede = Sede.query.get(sede_id)
+        
+        if not sede:
+            return jsonify({"error": "Sede no encontrada"}), 404
+            
+        try:
+            db.session.delete(sede)
+            db.session.commit()
+            return jsonify({"message": "Sede eliminada exitosamente"}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "No se pudo eliminar la sede."}), 500
+
+    return jsonify({"error": "Método no permitido"}), 405
 
 @admin_bp.route('/gestion_cursos')
 @login_required
@@ -876,7 +901,7 @@ def api_cursos():
                 }), 201
             except IntegrityError:
                 db.session.rollback()
-                return jsonify({'error': 'Este curso ya existe.'}), 409
+                return jsonify({'error': 'Este curso ya existe. Por favor, elige un nombre diferente.'}), 409
             except Exception as e:
                 db.session.rollback()
                 return jsonify({'error': f'Error interno: {str(e)}'}), 500
@@ -900,7 +925,155 @@ def api_cursos():
             return jsonify({'message': 'Curso eliminado'}), 200
         except IntegrityError:
             db.session.rollback()
-            return jsonify({'error': 'No se puede eliminar el curso porque está asociado.'}), 409
+            return jsonify({'error': 'No se puede eliminar el curso porque está asociado a estudiantes o clases. Elimina esas asociaciones primero.'}), 409
         except Exception as e:
             db.session.rollback()
             return jsonify({'error': f'Error interno: {str(e)}'}), 500
+
+# =============================================
+# RUTAS PARA GESTIÓN DE ASIGNATURAS
+# =============================================
+
+@admin_bp.route('/gestion-asignaturas')
+@login_required
+@role_required(1)
+def gestion_asignaturas():
+    """Página de gestión de asignaturas"""
+    return render_template('superadmin/gestion_academica/gestion_asignaturas.html')
+
+@admin_bp.route('/api/asignaturas')
+@login_required
+@role_required(1)
+def api_asignaturas():
+    """API para obtener todas las asignaturas"""
+    try:
+        asignaturas = Asignatura.query.order_by(Asignatura.nombre).all()
+        return jsonify([{
+            'id': a.id,
+            'nombre': a.nombre,
+            'descripcion': a.descripcion or '',
+            'color': getattr(a, 'color', '#0D3B66'),
+            'estado': getattr(a, 'estado', 'activa')
+        } for a in asignaturas])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/asignaturas/crear', methods=['POST'])
+@login_required
+@role_required(1)
+def api_crear_asignatura():
+    """API para crear una nueva asignatura"""
+    try:
+        data = request.get_json()
+        
+        if not data.get('nombre'):
+            return jsonify({'success': False, 'error': 'El nombre de la asignatura es requerido'}), 400
+        
+        # Verificar si ya existe una asignatura con el mismo nombre
+        existe = Asignatura.query.filter_by(nombre=data['nombre']).first()
+        if existe:
+            return jsonify({'success': False, 'error': 'Ya existe una asignatura con ese nombre'}), 400
+        
+        nueva_asignatura = Asignatura(
+            nombre=data['nombre'],
+            descripcion=data.get('descripcion', ''),
+            color=data.get('color', '#0D3B66')
+        )
+        
+        # Agregar campo estado si no existe en el modelo
+        if hasattr(nueva_asignatura, 'estado'):
+            nueva_asignatura.estado = data.get('estado', 'activa')
+        
+        db.session.add(nueva_asignatura)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Asignatura creada correctamente',
+            'asignatura': {
+                'id': nueva_asignatura.id,
+                'nombre': nueva_asignatura.nombre,
+                'descripcion': nueva_asignatura.descripcion,
+                'color': getattr(nueva_asignatura, 'color', '#0D3B66'),
+                'estado': getattr(nueva_asignatura, 'estado', 'activa')
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_asignatura(asignatura_id):
+    """API para actualizar una asignatura existente"""
+    try:
+        data = request.get_json()
+        asignatura = Asignatura.query.get_or_404(asignatura_id)
+        
+        if not data.get('nombre'):
+            return jsonify({'success': False, 'error': 'El nombre de la asignatura es requerido'}), 400
+        
+        # Verificar si ya existe otra asignatura con el mismo nombre
+        existe = Asignatura.query.filter(
+            Asignatura.nombre == data['nombre'],
+            Asignatura.id != asignatura_id
+        ).first()
+        if existe:
+            return jsonify({'success': False, 'error': 'Ya existe otra asignatura con ese nombre'}), 400
+        
+        asignatura.nombre = data['nombre']
+        asignatura.descripcion = data.get('descripcion', '')
+        
+        # Actualizar campos adicionales si existen en el modelo
+        if hasattr(asignatura, 'color'):
+            asignatura.color = data.get('color', '#0D3B66')
+        if hasattr(asignatura, 'estado'):
+            asignatura.estado = data.get('estado', 'activa')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Asignatura actualizada correctamente',
+            'asignatura': {
+                'id': asignatura.id,
+                'nombre': asignatura.nombre,
+                'descripcion': asignatura.descripcion,
+                'color': getattr(asignatura, 'color', '#0D3B66'),
+                'estado': getattr(asignatura, 'estado', 'activa')
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_asignatura(asignatura_id):
+    """API para eliminar una asignatura"""
+    try:
+        asignatura = Asignatura.query.get_or_404(asignatura_id)
+        
+        # Verificar si la asignatura está siendo utilizada en clases
+        clases_con_asignatura = Clase.query.filter_by(asignaturaId=asignatura_id).first()
+        if clases_con_asignatura:
+            return jsonify({
+                'success': False, 
+                'error': 'No se puede eliminar la asignatura porque está asignada a clases existentes'
+            }), 400
+        
+        db.session.delete(asignatura)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Asignatura eliminada correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500

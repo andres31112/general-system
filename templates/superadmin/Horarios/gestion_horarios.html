@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Horarios - Sistema Escolar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/Horario.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-clock"></i>
+                <h1>Gestión Horario General</h1>
+            </div>
+            <a href="{{ url_for('admin.inicio') }}" class="btn">
+                <i class="fas fa-arrow-left"></i> Volver al Dashboard
+            </a>
+        </header>
+
+        <div class="dashboard">
+            <div class="stat-card">
+                <h2><i class="fas fa-chalkboard"></i> Total Cursos</h2>
+                <div class="stat" id="total-cursos">0</div>
+            </div>
+            <div class="stat-card">
+                <h2><i class="fas fa-users"></i> Total Profesores</h2>
+                <div class="stat" id="total-profesores">0</div>
+            </div>
+            <div class="stat-card">
+                <h2><i class="fas fa-door-open"></i> Salones Libres</h2>
+                <div class="stat" id="salones-libres">0</div>
+            </div>
+            <div class="stat-card">
+                <h2><i class="fas fa-calendar-alt"></i> Horarios de Cursos</h2>
+                <button class="small" onclick="window.location.href='{{ url_for("admin.gestion_horarios_cursos") }}'">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+            </div>
+        </div>
+
+        <div class="schedule-container">
+            <div class="time-slots">
+                <h2><i class="fas fa-list-alt"></i> Gestión de Horario General</h2>
+                
+                <div class="time-slots-grid">
+                    <div class="form-group">
+                        <label>Nombre del Horario</label>
+                        <input type="text" placeholder="Ej: Horario 2024 Primer Semestre" id="schedule-name">
+                    </div>
+                    <div class="form-group">
+                        <label>Período Académico</label>
+                        <select id="schedule-period">
+                            <option value="Primer Semestre">Primer Semestre</option>
+                            <option value="Segundo Semestre">Segundo Semestre</option>
+                            <option value="Anual">Anual</option>
+                            <option value="Especial">Especial</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="schedule-visualization">
+                    <strong>Configuración de horario:</strong> <span id="schedule-config-status">Sin configurar</span>
+                    <div class="schedule-summary">
+                        <div id="class-count">0 clases</div>
+                        <div id="break-count">0 descansos</div>
+                        <div id="total-blocks">0 bloques</div>
+                    </div>
+                </div>
+                
+                <div class="days-header">
+                    <h2><i class="fas fa-calendar-day"></i> Días de Clases</h2>
+                    <button class="btn small" id="select-all-days">
+                        <i class="fas fa-check-double"></i> Seleccionar Todos
+                    </button>
+                </div>
+                
+                <p class="day-info">Seleccione los días de clase activos</p>
+                <div class="days-grid">
+                    <div class="day" data-day="Lunes">Lunes <span class="day-time">-</span></div>
+                    <div class="day" data-day="Martes">Martes <span class="day-time">-</span></div>
+                    <div class="day" data-day="Miércoles">Miércoles <span class="day-time">-</span></div>
+                    <div class="day" data-day="Jueves">Jueves <span class="day-time">-</span></div>
+                    <div class="day" data-day="Viernes">Viernes <span class="day-time">-</span></div>
+                    <div class="day" data-day="Sábado">Sábado <span class="day-time">-</span></div>
+                </div>
+                
+                <div class="block-saved-container">
+                    <div class="block-management">
+                        <h2><i class="fas fa-puzzle-piece"></i> Gestión de Bloques Horarios</h2>
+                        <button class="small" id="add-block-btn">
+                            <i class="fas fa-plus"></i> Agregar Bloque
+                        </button>
+                        
+                        <div class="floating-block-form" id="floating-block-form" style="display: none;">
+                            <h3><i class="fas fa-plus-circle"></i> <span id="block-form-title">Nuevo Bloque</span></h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Día de la Semana</label>
+                                    <select id="block-day">
+                                        <option value="Lunes">Lunes</option>
+                                        <option value="Martes">Martes</option>
+                                        <option value="Miércoles">Miércoles</option>
+                                        <option value="Jueves">Jueves</option>
+                                        <option value="Viernes">Viernes</option>
+                                        <option value="Sábado">Sábado</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo de Bloque</label>
+                                    <select id="block-type">
+                                        <option value="class">Clase</option>
+                                        <option value="break">Descanso</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" id="block-details-row">
+                                <div class="form-group" id="class-details-group">
+                                    <label>Tipo de Clase</label>
+                                    <select id="class-type">
+                                        <option value="single">Clase Simple</option>
+                                        <option value="double">Clase Doble</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="break-details-group" style="display:none;">
+                                    <label>Tipo de Descanso</label>
+                                    <select id="break-type">
+                                        <option value="morning">Descanso de Mañana</option>
+                                        <option value="afternoon">Descanso de Tarde</option>
+                                        <option value="lunch">Almuerzo</option>
+                                        <option value="custom">Personalizado</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row time-row">
+                                <div class="form-group">
+                                    <label>Hora de Inicio</label>
+                                    <input type="time" id="block-start" value="07:00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Hora de Fin</label>
+                                    <input type="time" id="block-end" value="07:45">
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button class="secondary small" id="cancel-block-btn">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                                <button class="small" id="save-block-btn">
+                                    <i class="fas fa-save"></i> <span id="save-block-text">Guardar</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="block-list">
+                            <h3>Bloques Programados <span id="blocks-count">(0)</span></h3>
+                            <div id="blocks-container">
+                                <p style="text-align: center; color: #666; padding: 20px;">
+                                    No hay bloques programados. Agregue el primer bloque.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="saved-schedules">
+                        <h3><i class="fas fa-database"></i> Horarios Guardados en Sistema</h3>
+                        <div class="saved-schedules-list" id="saved-schedules-list">
+                            <p style="text-align: center; color: #666; padding: 20px;">
+                                Cargando horarios...
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="schedule-actions">
+                    <button class="secondary" id="new-schedule-btn">
+                        <i class="fas fa-file"></i> Nuevo Horario
+                    </button>
+                    <button id="save-schedule-btn">
+                        <i class="fas fa-save"></i> Guardar Horario
+                    </button>
+                    <button class="secondary" id="assign-schedule-btn">
+                        <i class="fas fa-tasks"></i> Asignar a Cursos
+                    </button>
+                    <button class="danger" id="delete-schedule-btn" style="display:none;">
+                        <i class="fas fa-trash"></i> Eliminar Horario
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h2 class="table-title"><i class="fas fa-table"></i> Vista Previa del Horario</h2>
+            <div id="schedule-table-container">
+                <p style="text-align: center; color: #666; padding: 40px;">
+                    Configure los bloques horarios para ver la vista previa
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para asignar horario a cursos -->
+    <div class="modal" id="assign-schedule-modal" style="display: none;">
+        <div class="modal-content assign-schedule-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-tasks"></i> Asignar Horario a Cursos</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Seleccionar Horario Guardado</label>
+                <select id="schedule-select">
+                    <option value="">Cargando horarios...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Cursos Disponibles para Asignación</label>
+                <div class="courses-list" id="courses-list">
+                    <p style="text-align: center; color: #666; padding: 20px;">
+                        Cargando cursos...
+                    </p>
+                </div>
+            </div>
+            <div class="form-group">
+                <button id="confirm-assign-btn">
+                    <i class="fas fa-check"></i> Asignar Horario Seleccionado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de carga -->
+    <div class="modal" id="loading-modal" style="display: none;">
+        <div class="modal-content" style="text-align: center; padding: 40px; background: white; border-radius: 10px; max-width: 300px;">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin fa-3x" style="color: #4CAF50;"></i>
+            </div>
+            <p style="margin-top: 20px; font-size: 16px;" id="loading-message">Cargando...</p>
+        </div>
+    </div>
+
+    <!-- Alertas personalizadas -->
+    <div class="custom-alert" id="custom-alert" style="display: none;">
+        <div class="custom-alert-content">
+            <div class="custom-alert-header">
+                <div class="custom-alert-icon" id="alert-icon"></div>
+                <div class="custom-alert-title" id="alert-title">Confirmación</div>
+            </div>
+            <div class="custom-alert-body">
+                <div class="custom-alert-message" id="alert-message">
+                    ¿Está seguro de que desea realizar esta acción?
+                </div>
+            </div>
+            <div class="custom-alert-footer">
+                <button class="secondary" id="alert-cancel">Cancelar</button>
+                <button class="danger" id="alert-confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text">Operación realizada con éxito</span>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/superadmin/Horario.js') }}"></script>
+</body>
+</html>
