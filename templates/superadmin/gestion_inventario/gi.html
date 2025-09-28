@@ -1,158 +1,322 @@
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title></title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/dashboard.css') }}">
-    </head>
-    <body>
- {% extends "base.html" %}
-    {% block content %}
-    <style>
-    /* Variables CSS para una gestión de colores y sombras más sencilla */
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* Variables CSS usando la paleta de colores del diseño anterior */
     :root {
-        --color-primario: #0078ad;
-        --color-primario-oscuro: #00628e;
-        --color-texto-principal: #2c3e50;
-        --color-texto-secundario: #7f8c8d;
-        --color-blanco: #FFFFFF;
-        --color-fondo-seccion: #f8f9fa;
-        --color-borde-suave: #ecf0f1;
+        --accent1: #F95738;
+        --accent2: #EE964B;
+        --accent3: #F4D35E;
+        --accent4: #0D3B66;
+        --light: #FAF0CA;
+        --white: #FFFFFF;
+        --black: #333333;
+        --gray: #666666;
+        --light-gray: #F8F9FA;
+        --border: #E9ECEF;
+        --card-bg: #FFFFFF;
+        --header-bg: #FFFFFF;
+        --main-bg: #F8F9FA;
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+        --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+        --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+        --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+        --gradient-success: linear-gradient(135deg, #28a745, #20c997);
+        --gradient-warning: linear-gradient(135deg, #ffc107, #fd7e14);
+        --gradient-danger: linear-gradient(135deg, #dc3545, #e25563);
     }
 
     /* Estilos Generales */
     body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--color-fondo-seccion);
-        color: var(--color-texto-principal);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
+        color: var(--black);
+        min-height: 100vh;
         margin: 0;
     }
 
     /* Título de la Página */
     .fw-bold {
-        font-weight: 700 !important;
+        font-weight: 800 !important;
+        color: var(--accent4);
+        font-size: 2.5rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+        display: inline-block;
+        margin-bottom: 2rem !important;
     }
 
-    /* Tarjetas de Acceso Rápido */
+    .fw-bold::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 0;
+        width: 80px;
+        height: 4px;
+        background: var(--gradient-accent);
+        border-radius: 2px;
+    }
+
+    /* Tarjetas de Acceso Rápido - Diseño Mejorado */
     .card {
-        border-radius: 1rem;
-        background-color: var(--color-blanco);
-        border: 1px solid var(--color-borde-suave);
+        border-radius: 20px;
+        background: var(--card-bg);
+        border: none;
         text-decoration: none;
-        color: var(--color-texto-principal);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        color: var(--black);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transition: left 0.6s;
+    }
+
+    .card:hover::before {
+        left: 100%;
     }
 
     .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+        transform: translateY(-12px) scale(1.02);
+        box-shadow: var(--shadow-hover);
     }
 
     .card-body {
-        padding: 2rem;
+        padding: 2.5rem;
+        position: relative;
+        z-index: 2;
+        background: transparent;
     }
 
     .card-title {
-        font-weight: 600;
-        color: var(--color-texto-principal);
-        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--accent4);
+        font-size: 1.3rem;
+        margin-bottom: 0;
+        transition: color 0.3s ease;
     }
 
-    /* Contenedor de iconos */
-    .rounded-circle {
-        border-radius: 50% !important;
+    .card:hover .card-title {
+        color: var(--accent1);
+    }
+
+    /* Iconos circulares mejorados */
+    .icon-container {
+        width: 100px;
+        height: 100px;
+        border-radius: 25px;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin: 0 auto 1.5rem auto;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
     }
 
-    .p-4 {
-        padding: 1.5rem !important;
+    .icon-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+        border-radius: 25px;
     }
+
+    .card:hover .icon-container {
+        transform: scale(1.15) rotate(5deg);
+    }
+
+    .icon-container i {
+        font-size: 2.5rem;
+        z-index: 2;
+        position: relative;
+    }
+
+    /* Colores específicos para cada tarjeta */
+    .card:nth-child(1) .icon-container {
+        background: var(--gradient-primary);
+        color: var(--white);
+    }
+    .card:nth-child(2) .icon-container {
+        background: var(--gradient-success);
+        color: var(--white);
+    }
+    .card:nth-child(3) .icon-container {
+        background: var(--gradient-warning);
+        color: var(--black);
+    }
+    .card:nth-child(4) .icon-container {
+        background: var(--gradient-danger);
+        color: var(--white);
+    }
+    .card:nth-child(5) .icon-container {
+        background: var(--gradient-secondary);
+        color: var(--black);
+    }
+
+    /* Efectos hover específicos */
+    .card:nth-child(1):hover {
+        box-shadow: 0 15px 30px rgba(13, 59, 102, 0.2);
+    }
+    .card:nth-child(2):hover {
+        box-shadow: 0 15px 30px rgba(40, 167, 69, 0.2);
+    }
+    .card:nth-child(3):hover {
+        box-shadow: 0 15px 30px rgba(255, 193, 7, 0.2);
+    }
+    .card:nth-child(4):hover {
+        box-shadow: 0 15px 30px rgba(220, 53, 69, 0.2);
+    }
+    .card:nth-child(5):hover {
+        box-shadow: 0 15px 30px rgba(244, 211, 94, 0.2);
+    }
+
+    /* Panel derecho - Bienvenida */
+    .welcome-card {
+        background: var(--gradient-primary) !important;
+        border-radius: 20px;
+        border: none;
+        box-shadow: var(--shadow-hover);
+        position: relative;
+        overflow: hidden;
+    }
+
     
-    .p-3 {
-        padding: 1rem !important;
-    }
 
-    /* Colores para los íconos */
-    .bg-info.bg-opacity-10 {
-        background-color: rgba(0, 120, 173, 0.1) !important;
-    }
-    .text-primary { color: var(--color-primario) !important; }
     
-    .bg-success.bg-opacity-10 {
-        background-color: rgba(40, 167, 69, 0.1) !important;
-    }
-    .text-success { color: #28a745 !important; }
-
-    .bg-warning.bg-opacity-10 {
-        background-color: rgba(255, 193, 7, 0.1) !important;
-    }
-    .text-warning { color: #ffc107 !important; }
-
-    .bg-danger.bg-opacity-10 {
-        background-color: rgba(220, 53, 69, 0.1) !important;
-    }
-    .text-danger { color: #dc3545 !important; }
     
-    .bg-secondary.bg-opacity-10 {
-        background-color: rgba(108, 117, 125, 0.1) !important;
-    }
-    .text-secondary { color: #6c757d !important; }
 
-    /* Sección de Bienvenida */
-    .bg-dark {
-        background-color: var(--color-primario-oscuro) !important;
-    }
-
-    .text-white {
-        color: var(--color-blanco) !important;
-    }
-
-    .illustration-placeholder {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-
-    .illustration-placeholder i {
-        color: rgba(255, 255, 255, 0.5) !important;
-    }
-
+    /* Botones del panel de bienvenida */
     .btn-light {
-        background-color: var(--color-blanco);
-        color: var(--color-primario);
-        border-radius: 50px;
+        background: var(--white);
+        color: var(--accent4);
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
         font-weight: 600;
-        transition: background-color 0.2s ease, color 0.2s ease;
+        transition: all 0.3s ease;
+        margin-bottom: 0.75rem;
     }
-    
+
     .btn-light:hover {
-        background-color: var(--color-fondo-seccion);
-        color: var(--color-primario-oscuro);
+        background: var(--light);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2);
     }
 
     .btn-secondary {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: var(--color-blanco);
-        border-color: rgba(255, 255, 255, 0.2);
-        border-radius: 50px;
+        background: rgba(255, 255, 255, 0.2);
+        color: var(--white);
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
         font-weight: 600;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
     }
-    
+
     .btn-secondary:hover {
-        background-color: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(255, 255, 255, 0.1);
     }
+
+    /* Textos del panel de bienvenida */
+    .welcome-card h4 {
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--white) !important; /* Texto en blanco */
+    }
+
+    .welcome-card .text-white-50 {
+        color: rgba(255, 255, 255, 0.8) !important;
+        line-height: 1.6;
+    }
+
+    /* Efectos de partículas para las tarjetas */
+    .card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.05) 0%, transparent 50%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .card:hover::after {
+        opacity: 1;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .fw-bold {
+            font-size: 2rem;
+        }
+        
+        .card-body {
+            padding: 2rem;
+        }
+        
+        .icon-container {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .icon-container i {
+            font-size: 2rem;
+        }
+        
+        .welcome-card {
+            margin-top: 2rem;
+        }
+    }
+
+    /* Animaciones de entrada */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .card {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .col-md-6:nth-child(1) .card { animation-delay: 0.1s; }
+    .col-md-6:nth-child(2) .card { animation-delay: 0.2s; }
+    .col-md-6:nth-child(3) .card { animation-delay: 0.3s; }
+    .col-md-6:nth-child(4) .card { animation-delay: 0.4s; }
+    .col-md-6:nth-child(5) .card { animation-delay: 0.5s; }
+    .welcome-card { animation-delay: 0.6s; }
 </style>
-<div class="container-fluid">
+
+<div class="container-fluid px-4">
     <div class="row">
         <div class="col-12">
-            <h2 class="fw-bold mb-4">Gestion de Inventario</h2>
+            <h2 class="fw-bold mb-4">Gestión de Inventario</h2>
         </div>
     </div>
 
@@ -161,60 +325,65 @@
         <div class="row">
             <!-- Gestión de Equipos -->
             <div class="col-md-6 mb-4">
-                <a href="{{ url_for('admin.equipos') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
+                <a href="{{ url_for('admin.equipos') }}" class="card text-decoration-none h-100 text-center">
                     <div class="card-body">
-                        <div class="d-inline-block bg-info bg-opacity-10 text-primary rounded-circle p-4 mb-4">
-                            <i class="fas fa-desktop fa-2x"></i>
+                        <div class="icon-container">
+                            <i class="fas fa-desktop"></i>
                         </div>
-                        <h5 class="card-title mb-0">Gestión de Equipos</h5>
+                        <h5 class="card-title">Gestión de Equipos</h5>
+                        <p class="text-muted mt-2 small">Administra computadoras y dispositivos</p>
                     </div>
                 </a>
             </div>
 
             <!-- Gestión de Salones -->
             <div class="col-md-6 mb-4">
-                <a href="{{ url_for('admin.salones') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
+                <a href="{{ url_for('admin.salones') }}" class="card text-decoration-none h-100 text-center">
                     <div class="card-body">
-                        <div class="d-inline-block bg-success bg-opacity-10 text-success rounded-circle p-4 mb-4">
-                            <i class="fas fa-chalkboard fa-2x"></i>
+                        <div class="icon-container">
+                            <i class="fas fa-chalkboard"></i>
                         </div>
-                        <h5 class="card-title mb-0">Gestión de Salones</h5>
+                        <h5 class="card-title">Gestión de Salones</h5>
+                        <p class="text-muted mt-2 small">Controla aulas y espacios</p>
                     </div>
                 </a>
             </div>
 
             <!-- Reportes -->
             <div class="col-md-6 mb-4">
-                <a href="{{ url_for('admin.reportes') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
+                <a href="{{ url_for('admin.reportes') }}" class="card text-decoration-none h-100 text-center">
                     <div class="card-body">
-                        <div class="d-inline-block bg-warning bg-opacity-10 text-warning rounded-circle p-3 mb-3">
-                            <i class="fas fa-chart-line fa-2x"></i>
+                        <div class="icon-container">
+                            <i class="fas fa-chart-line"></i>
                         </div>
-                        <h5 class="card-title mb-0">Reportes</h5>
+                        <h5 class="card-title">Reportes</h5>
+                        <p class="text-muted mt-2 small">Genera informes detallados</p>
                     </div>
                 </a>
             </div>
 
             <!-- Incidentes -->
             <div class="col-md-6 mb-4">
-                <a href="{{ url_for('admin.incidentes') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
+                <a href="{{ url_for('admin.incidentes') }}" class="card text-decoration-none h-100 text-center">
                     <div class="card-body">
-                        <div class="d-inline-block bg-danger bg-opacity-10 text-danger rounded-circle p-3 mb-3">
-                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <div class="icon-container">
+                            <i class="fas fa-exclamation-triangle"></i>
                         </div>
-                        <h5 class="card-title mb-0">Incidentes</h5>
+                        <h5 class="card-title">Incidentes</h5>
+                        <p class="text-muted mt-2 small">Gestiona problemas reportados</p>
                     </div>
                 </a>
             </div>
 
             <!-- Mantenimiento -->
             <div class="col-md-6 mb-4">
-                <a href="{{ url_for('admin.mantenimiento') }}" class="card text-decoration-none h-100 shadow-sm border-0 text-center p-4 hover-lift">
+                <a href="{{ url_for('admin.mantenimiento') }}" class="card text-decoration-none h-100 text-center">
                     <div class="card-body">
-                        <div class="d-inline-block bg-secondary bg-opacity-10 text-secondary rounded-circle p-3 mb-3">
-                            <i class="fas fa-tools fa-2x"></i>
+                        <div class="icon-container">
+                            <i class="fas fa-tools"></i>
                         </div>
-                        <h5 class="card-title mb-0">Mantenimiento</h5>
+                        <h5 class="card-title">Mantenimiento</h5>
+                        <p class="text-muted mt-2 small">Programa reparaciones</p>
                     </div>
                 </a>
             </div>
@@ -223,21 +392,21 @@
 
     <!-- Panel derecho -->
     <div class="col-lg-4 mb-4">
-        <div class="card text-white bg-dark h-100">
+        <div class="card text-white welcome-card h-100">
             <div class="card-body p-4 d-flex flex-column">
-                <div class="illustration-placeholder">
-                    <i class="fas fa-cogs fa-4x text-white-50"></i>
+                <div class="illustration-placeholder mb-3">
+                    <i class="fas fa-cogs"></i>
                 </div>
-                <h4 class="fw-bold mt-4">¡Bienvenido, Admin!</h4>
-                <p class="small text-white-50">
-                    Desde este panel tienes el control total sobre las operaciones del sistema. Usa los accesos directos para navegar rápidamente.
+                <h4 class="fw-bold">¡Bienvenido, Admin!</h4>
+                <p class="small text-white-50 mb-4">
+                    Desde este panel tienes el control total sobre las operaciones del sistema de inventario. Usa los accesos directos para navegar rápidamente.
                 </p>
                 <div class="mt-auto">
                     <a href="#" class="btn btn-light w-100 mb-2">
-                        <i class="fas fa-plus-circle me-2"></i>Registrar una nueva sala
+                        <i class="fas fa-plus-circle me-2"></i>Registrar nueva sala
                     </a>
                     <a href="#" class="btn btn-secondary w-100">
-                        <i class="fas fa-plus-circle me-2"></i>Registrar un nuevo equipo
+                        <i class="fas fa-plus-circle me-2"></i>Registrar nuevo equipo
                     </a>
                 </div>
             </div>
@@ -247,7 +416,3 @@
 
 </div>
 {% endblock %}
-        
-
-    </body>
-</html>

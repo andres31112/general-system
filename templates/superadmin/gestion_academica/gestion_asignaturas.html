@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Asignaturas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --black: #333333;
+            --gray: #666666;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --card-bg: #FFFFFF;
+            --header-bg: #FFFFFF;
+            --main-bg: #F8F9FA;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--main-bg);
+            color: var(--black);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            color: var(--white);
+            padding: 18px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo i {
+            font-size: 32px;
+            color: var(--accent3);
+        }
+        
+        .logo h1 {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, var(--accent3), #e9c440);
+            color: var(--black);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 22px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-top: 4px solid var(--accent4);
+            text-align: center;
+        }
+        
+        .stat-card:nth-child(2) {
+            border-top: 4px solid var(--accent1);
+        }
+        
+        .stat-card:nth-child(3) {
+            border-top: 4px solid var(--accent2);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .stat-card h2 {
+            color: var(--accent4);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .stat-card h2 i {
+            font-size: 22px;
+        }
+        
+        .stat-card:nth-child(2) h2 {
+            color: var(--accent1);
+        }
+        
+        .stat-card:nth-child(3) h2 {
+            color: var(--accent2);
+        }
+        
+        .stat {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--accent4);
+            margin: 15px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--light), #f5e9b8);
+            border-radius: 10px;
+            border: 2px solid var(--accent3);
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 22px;
+            margin-bottom: 30px;
+            border-top: 4px solid var(--accent4);
+        }
+        
+        .card h2 {
+            color: var(--accent4);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--light);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.25rem;
+        }
+        
+        .card h2 i {
+            font-size: 22px;
+            color: var(--accent1);
+            background-color: rgba(249, 87, 56, 0.1);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--accent4);
+        }
+        
+        input, textarea, select {
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            width: 100%;
+            background-color: var(--white);
+            color: var(--black);
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.2);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            color: var(--white);
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, #1a5080, var(--accent4));
+            transform: translateY(-2px);
+        }
+        
+        button.secondary {
+            background: linear-gradient(135deg, var(--accent2), #f0a868);
+        }
+        
+        button.secondary:hover {
+            background: linear-gradient(135deg, #f0a868, var(--accent2));
+        }
+        
+        button.danger {
+            background: linear-gradient(135deg, #dc3545, #e25563);
+        }
+        
+        button.danger:hover {
+            background: linear-gradient(135deg, #e25563, #dc3545);
+        }
+        
+        button.small {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+        }
+        
+        .table-container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 25px;
+            margin-top: 30px;
+            border-top: 4px solid var(--accent3);
+            overflow-x: auto;
+        }
+        
+        .table-title {
+            color: var(--accent4);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.25rem;
+        }
+        
+        .table-title i {
+            font-size: 22px;
+            color: var(--accent3);
+            background-color: rgba(244, 211, 94, 0.1);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th {
+            background-color: var(--accent4);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        
+        tr:hover {
+            background-color: var(--light-gray);
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1001;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-content {
+            background-color: var(--white);
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light);
+        }
+        
+        .modal-header h2 {
+            color: var(--accent4);
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--gray);
+            padding: 0;
+            width: auto;
+        }
+        
+        .close-modal:hover {
+            color: var(--accent1);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 18px 25px;
+            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 400px;
+            border-left: 5px solid var(--accent3);
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            border-left-color: #20c997;
+        }
+        
+        .notification.error {
+            background: linear-gradient(135deg, #dc3545, #e25563);
+            border-left-color: #e25563;
+        }
+        
+        .notification.warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            border-left-color: #fd7e14;
+        }
+        
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .search-container input {
+            flex: 1;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--accent4);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 1100px) {
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 650px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+                padding: 15px;
+            }
+            
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            .search-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-book"></i>
+                <h1>Gestión de Asignaturas</h1>
+            </div>
+            <a href="{{ url_for('admin.gestion_horarios_cursos') }}" class="btn">
+                <i class="fas fa-arrow-left"></i> Volver a Horarios
+            </a>
+        </header>
+        
+        <div class="dashboard">
+            <div class="stat-card">
+                <h2><i class="fas fa-book"></i> Total Asignaturas</h2>
+                <div class="stat" id="total-asignaturas">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <h2><i class="fas fa-chalkboard"></i> Asignaturas Activas</h2>
+                <div class="stat" id="asignaturas-activas">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <h2><i class="fas fa-plus"></i> Acciones</h2>
+                <button class="small" onclick="abrirModalCrear()"><i class="fas fa-plus"></i> Nueva Asignatura</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2><i class="fas fa-search"></i> Buscar Asignaturas</h2>
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Buscar por nombre o descripción..." onkeyup="buscarAsignaturas()">
+                <button class="secondary" onclick="limpiarBusqueda()"><i class="fas fa-times"></i> Limpiar</button>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <h2 class="table-title"><i class="fas fa-list"></i> Lista de Asignaturas</h2>
+            <div id="asignaturas-table-container">
+                <p style="text-align: center; color: #666; padding: 40px;">Cargando asignaturas...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar asignatura -->
+    <div class="modal" id="asignatura-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-book"></i> <span id="modal-title">Nueva Asignatura</span></h2>
+                <button class="close-modal" onclick="cerrarModal()">&times;</button>
+            </div>
+            <form id="asignatura-form">
+                <input type="hidden" id="asignatura-id">
+                
+                <div class="form-group">
+                    <label for="nombre">Nombre de la Asignatura *</label>
+                    <input type="text" id="nombre" required placeholder="Ej: Matemáticas, Lengua, Ciencias...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="descripcion">Descripción</label>
+                    <textarea id="descripcion" placeholder="Descripción detallada de la asignatura..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="color">Color identificativo</label>
+                    <input type="color" id="color" value="#0D3B66">
+                </div>
+                
+                <div class="form-group">
+                    <label for="estado">Estado</label>
+                    <select id="estado">
+                        <option value="activa">Activa</option>
+                        <option value="inactiva">Inactiva</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="secondary" onclick="cerrarModal()">Cancelar</button>
+                    <button type="submit" id="submit-btn">
+                        <i class="fas fa-save"></i> <span id="submit-text">Guardar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación para eliminar -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h2>
+            </div>
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-trash-alt" style="font-size: 48px; color: #dc3545; margin-bottom: 15px;"></i>
+                <p id="confirm-message">¿Está seguro de que desea eliminar esta asignatura?</p>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="secondary" onclick="cerrarConfirmModal()">Cancelar</button>
+                <button class="danger" id="confirm-delete-btn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text">Operación realizada con éxito</span>
+    </div>
+
+    <script>
+        // =============================================
+        // CONFIGURACIÓN Y VARIABLES GLOBALES
+        // =============================================
+        const API_URLS = {
+            asignaturas: '{{ url_for("admin.api_asignaturas") }}',
+            crearAsignatura: '{{ url_for("admin.api_crear_asignatura") }}',
+            actualizarAsignatura: '{{ url_for("admin.api_actualizar_asignatura", asignatura_id=0) }}'.replace('/0', ''),
+            eliminarAsignatura: '{{ url_for("admin.api_eliminar_asignatura", asignatura_id=0) }}'.replace('/0', '')
+        };
+
+        let estado = {
+            asignaturas: [],
+            asignaturaEditando: null,
+            busquedaActual: ''
+        };
+
+        // =============================================
+        // FUNCIONES DE COMUNICACIÓN CON LA API
+        // =============================================
+
+        async function apiRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Error en la petición API:', error);
+                mostrarNotificacion(`Error de conexión: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function cargarAsignaturas() {
+            try {
+                const asignaturas = await apiRequest(API_URLS.asignaturas);
+                estado.asignaturas = asignaturas;
+                actualizarEstadisticas();
+                renderizarTablaAsignaturas();
+            } catch (error) {
+                console.error('Error cargando asignaturas:', error);
+                mostrarNotificacion('Error al cargar las asignaturas', 'error');
+            }
+        }
+
+        async function guardarAsignatura(datos) {
+            const esEdicion = datos.id !== '';
+            const url = esEdicion ? 
+                `${API_URLS.actualizarAsignatura}/${datos.id}` : 
+                API_URLS.crearAsignatura;
+                
+            const method = esEdicion ? 'PUT' : 'POST';
+
+            try {
+                const resultado = await apiRequest(url, {
+                    method: method,
+                    body: JSON.stringify(datos)
+                });
+
+                if (resultado.success) {
+                    mostrarNotificacion(
+                        esEdicion ? 'Asignatura actualizada correctamente' : 'Asignatura creada correctamente', 
+                        'success'
+                    );
+                    await cargarAsignaturas();
+                    cerrarModal();
+                    return true;
+                } else {
+                    throw new Error(resultado.error);
+                }
+            } catch (error) {
+                mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function eliminarAsignatura(id) {
+            try {
+                const resultado = await apiRequest(`${API_URLS.eliminarAsignatura}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (resultado.success) {
+                    mostrarNotificacion('Asignatura eliminada correctamente', 'success');
+                    await cargarAsignaturas();
+                    cerrarConfirmModal();
+                    return true;
+                } else {
+                    throw new Error(resultado.error);
+                }
+            } catch (error) {
+                mostrarNotificacion(`Error al eliminar: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // =============================================
+        // FUNCIONES DE LA INTERFAZ DE USUARIO
+        // =============================================
+
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            
+            notificationText.textContent = mensaje;
+            notification.className = `notification ${tipo} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        function actualizarEstadisticas() {
+            const total = estado.asignaturas.length;
+            const activas = estado.asignaturas.filter(a => a.estado === 'activa').length;
+            
+            document.getElementById('total-asignaturas').textContent = total;
+            document.getElementById('asignaturas-activas').textContent = activas;
+        }
+
+        function renderizarTablaAsignaturas() {
+            const container = document.getElementById('asignaturas-table-container');
+            let asignaturasFiltradas = estado.asignaturas;
+
+            // Aplicar filtro de búsqueda
+            if (estado.busquedaActual) {
+                const busqueda = estado.busquedaActual.toLowerCase();
+                asignaturasFiltradas = estado.asignaturas.filter(asignatura =>
+                    asignatura.nombre.toLowerCase().includes(busqueda) ||
+                    (asignatura.descripcion && asignatura.descripcion.toLowerCase().includes(busqueda))
+                );
+            }
+
+            if (asignaturasFiltradas.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: #666; padding: 40px;">
+                        ${estado.busquedaActual ? 'No se encontraron asignaturas que coincidan con la búsqueda' : 'No hay asignaturas registradas'}
+                    </p>
+                `;
+                return;
+            }
+
+            const tablaHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${asignaturasFiltradas.map(asignatura => `
+                            <tr>
+                                <td>
+                                    <strong>${asignatura.nombre}</strong>
+                                    ${asignatura.color ? `<span style="display: inline-block; width: 12px; height: 12px; background-color: ${asignatura.color}; border-radius: 50%; margin-left: 8px;"></span>` : ''}
+                                </td>
+                                <td>${asignatura.descripcion || '-'}</td>
+                                <td>
+                                    <span style="padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; 
+                                        background-color: ${asignatura.estado === 'activa' ? '#d4edda' : '#f8d7da'}; 
+                                        color: ${asignatura.estado === 'activa' ? '#155724' : '#721c24'};">
+                                        ${asignatura.estado === 'activa' ? 'Activa' : 'Inactiva'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="actions">
+                                        <button class="small secondary" onclick="editarAsignatura(${asignatura.id})">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                        <button class="small danger" onclick="solicitarEliminacion(${asignatura.id}, '${asignatura.nombre.replace(/'/g, "\\'")}')">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tablaHTML;
+        }
+
+        function buscarAsignaturas() {
+            estado.busquedaActual = document.getElementById('search-input').value;
+            renderizarTablaAsignaturas();
+        }
+
+        function limpiarBusqueda() {
+            document.getElementById('search-input').value = '';
+            estado.busquedaActual = '';
+            renderizarTablaAsignaturas();
+        }
+
+        // =============================================
+        // FUNCIONES DE MODALES
+        // =============================================
+
+        function abrirModalCrear() {
+            estado.asignaturaEditando = null;
+            document.getElementById('modal-title').textContent = 'Nueva Asignatura';
+            document.getElementById('submit-text').textContent = 'Crear';
+            document.getElementById('asignatura-form').reset();
+            document.getElementById('asignatura-id').value = '';
+            document.getElementById('color').value = '#0D3B66';
+            document.getElementById('estado').value = 'activa';
+            document.getElementById('asignatura-modal').style.display = 'flex';
+        }
+
+        async function editarAsignatura(id) {
+            const asignatura = estado.asignaturas.find(a => a.id === id);
+            if (!asignatura) return;
+
+            estado.asignaturaEditando = asignatura;
+            document.getElementById('modal-title').textContent = 'Editar Asignatura';
+            document.getElementById('submit-text').textContent = 'Actualizar';
+            document.getElementById('asignatura-id').value = asignatura.id;
+            document.getElementById('nombre').value = asignatura.nombre;
+            document.getElementById('descripcion').value = asignatura.descripcion || '';
+            document.getElementById('color').value = asignatura.color || '#0D3B66';
+            document.getElementById('estado').value = asignatura.estado || 'activa';
+            document.getElementById('asignatura-modal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('asignatura-modal').style.display = 'none';
+        }
+
+        function solicitarEliminacion(id, nombre) {
+            document.getElementById('confirm-message').textContent = 
+                `¿Está seguro de que desea eliminar la asignatura "${nombre}"? Esta acción no se puede deshacer.`;
+            
+            document.getElementById('confirm-delete-btn').onclick = function() {
+                eliminarAsignatura(id);
+            };
+            
+            document.getElementById('confirm-modal').style.display = 'flex';
+        }
+
+        function cerrarConfirmModal() {
+            document.getElementById('confirm-modal').style.display = 'none';
+        }
+
+        // =============================================
+        // MANEJO DE FORMULARIOS
+        // =============================================
+
+        document.getElementById('asignatura-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const datos = {
+                id: document.getElementById('asignatura-id').value,
+                nombre: document.getElementById('nombre').value.trim(),
+                descripcion: document.getElementById('descripcion').value.trim(),
+                color: document.getElementById('color').value,
+                estado: document.getElementById('estado').value
+            };
+
+            if (!datos.nombre) {
+                mostrarNotificacion('El nombre de la asignatura es requerido', 'error');
+                return;
+            }
+
+            guardarAsignatura(datos);
+        });
+
+        // Cerrar modales al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('asignatura-modal');
+            const confirmModal = document.getElementById('confirm-modal');
+            
+            if (event.target === modal) {
+                cerrarModal();
+            }
+            if (event.target === confirmModal) {
+                cerrarConfirmModal();
+            }
+        };
+
+        // =============================================
+        // INICIALIZACIÓN
+        // =============================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarAsignaturas();
+        });
+
+        // Hacer funciones globales
+        window.abrirModalCrear = abrirModalCrear;
+        window.editarAsignatura = editarAsignatura;
+        window.cerrarModal = cerrarModal;
+        window.solicitarEliminacion = solicitarEliminacion;
+        window.cerrarConfirmModal = cerrarConfirmModal;
+        window.buscarAsignaturas = buscarAsignaturas;
+        window.limpiarBusqueda = limpiarBusqueda;
+    </script>
+</body>
+</html>
