@@ -239,7 +239,7 @@ class Equipo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', 'Revisión', name='estado_equipo_enum'), nullable=False, default='Disponible')
-    id_salon_fk = db.Column(db.Integer, db.ForeignKey('Salones.id'), nullable=False)
+    id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id'), nullable=False)
     asignado_a = db.Column(db.String(100))
     id_referencia = db.Column(db.String(50))
     tipo = db.Column(db.String(100))
@@ -295,7 +295,7 @@ class Mantenimiento(db.Model):
     __tablename__ = 'Mantenimiento'
     id = db.Column(db.Integer, primary_key=True)
     equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
-    sede_id = db.Column(db.Integer, db.ForeignKey('Sede.id'), nullable=False)
+    sede_id = db.Column(db.Integer, db.ForeignKey('sede.id'), nullable=False)
     fecha_programada = db.Column(db.Date, nullable=False)
     tipo = db.Column(db.String(50), nullable=False)
     estado = db.Column(db.String(50), default='pendiente')
