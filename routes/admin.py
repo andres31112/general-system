@@ -73,34 +73,61 @@ def crear_equipo():
         form=form
     )
 
-from flask import jsonify  # Asegúrate de que esté importado (ya lo está en el archivo)
-
-@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET'])
+@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 @role_required(1)
 def api_equipo_detalle(equipo_id):
     equipo = Equipo.query.get_or_404(equipo_id)
-    data = equipo.to_dict()  # Usa el método existente en models.py para los campos básicos
     
-    # Agrega historial de incidentes
-    data['incidentes'] = [
-        {
-            'fecha': i.fecha.strftime("%Y-%m-%d"),
-            'descripcion': i.descripcion
-        } for i in equipo.incidentes
-    ]
-    
-    # Agrega historial de mantenimientos (usa 'programaciones' del backref en models.py)
-    data['mantenimientos'] = [
-        {
-            'fecha': m.fecha_programada.strftime("%Y-%m-%d") if m.fecha_programada else (m.fecha_realizada.strftime("%Y-%m-%d") if m.fecha_realizada else ''),
-            'tipo': m.tipo,
-            'estado': m.estado
-        } for m in equipo.programaciones
-    ]
-    
-    return jsonify(data), 200
+    # Lógica de ELIMINACIÓN (DELETE)
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(equipo)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Equipo eliminado exitosamente'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': f'Error al eliminar el equipo: {str(e)}'}), 500
 
+    # Lógica de EDICIÓN (PUT)
+    if request.method == 'PUT':
+        data = request.get_json()
+        
+        try:
+            # Aquí va toda la lógica de actualización (como se indicó previamente)
+            equipo.asignado_a = data.get('asignado_a', equipo.asignado_a)
+            equipo.estado = data.get('estado', equipo.estado)
+            equipo.sistema_operativo = data.get('sistema_operativo', equipo.sistema_operativo)
+            equipo.ram = data.get('ram', equipo.ram)
+            equipo.disco_duro = data.get('disco_duro', equipo.disco_duro)
+            equipo.descripcion = data.get('descripcion', equipo.descripcion)
+            equipo.observaciones = data.get('observaciones', equipo.observaciones)
+            
+            fecha_adquisicion_str = data.get('fecha_adquisicion')
+            if fecha_adquisicion_str:
+                equipo.fecha_adquisicion = datetime.strptime(fecha_adquisicion_str, '%Y-%m-%d').date()
+
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Equipo actualizado exitosamente'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': f'Error al actualizar el equipo: {str(e)}'}), 500
+            
+    # Lógica de VISTA (GET)
+    if request.method == 'GET':
+        # Aquí va la lógica para obtener los detalles del equipo (ya existente)
+        data = equipo.to_dict()
+        data['incidentes'] = [
+            {'fecha': i.fecha.strftime("%Y-%m-%d"), 'descripcion': i.descripcion} 
+            for i in equipo.incidentes
+        ]
+        data['mantenimientos'] = [
+            {'fecha': m.fecha_programada.strftime("%Y-%m-%d"), 'tipo': m.tipo, 'estado': m.estado} 
+            for m in equipo.programaciones
+        ]
+        
+        return jsonify(data), 200
+    
 @admin_bp.route('/salones')
 @login_required
 @role_required(1)
@@ -115,65 +142,137 @@ def salones():
 
 @admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
 @login_required
-@role_required(1)
 def api_sedes():
-    """
-    Endpoint para gestionar sedes (Listar, Crear, Eliminar).
-    GET: Devuelve todas las sedes.
-    POST: Crea una nueva sede.
-    DELETE: Elimina una sede por su ID.
-    """
     if request.method == 'GET':
         sedes = Sede.query.order_by(Sede.nombre).all()
-        return jsonify([{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]), 200
+        sedes_data = [{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]
+        return jsonify(sedes_data), 200
 
     if request.method == 'POST':
         data = request.get_json()
-        nombre = data.get("nombre")
-        direccion = data.get("direccion", "Dirección por defecto")
-
-        if not nombre:
-            return jsonify({"error": "El nombre de la sede es obligatorio"}), 400
-
-        try:
-            nueva_sede = Sede(nombre=nombre, direccion=direccion)
-            db.session.add(nueva_sede)
-            db.session.commit()
-            return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
-        except IntegrityError:
-            db.session.rollback()
-            return jsonify({"error": "Ya existe una sede con ese nombre"}), 409
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": str(e)}), 500
+        form = SedeForm(data=data)
+        
+        if form.validate_on_submit():
+            try:
+                nueva_sede = Sede(
+                    nombre=form.nombre.data,
+                    direccion=form.direccion.data if hasattr(form, 'direccion') else "Dirección por defecto"
+                )
+                
+                db.session.add(nueva_sede)
+                db.session.commit()
+                
+                return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
+            
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({"error": str(e)}), 500
+        else:
+            errors = {}
+            for field, messages in form.errors.items():
+                errors[field] = messages
+            return jsonify({"errors": errors, "error": "Error de validación"}), 400
 
     if request.method == 'DELETE':
         data = request.get_json()
         sede_id = data.get('id')
-
+        
         if not sede_id:
             return jsonify({"error": "ID de sede no proporcionado"}), 400
 
         sede = Sede.query.get(sede_id)
+        
         if not sede:
             return jsonify({"error": "Sede no encontrada"}), 404
-
+            
         try:
             db.session.delete(sede)
             db.session.commit()
             return jsonify({"message": "Sede eliminada exitosamente"}), 200
-        except Exception:
+        except Exception as e:
             db.session.rollback()
-            return jsonify({"error": "No se pudo eliminar la sede"}), 500
+            return jsonify({"error": "No se pudo eliminar la sede."}), 500
 
     return jsonify({"error": "Método no permitido"}), 405
-
 
 @admin_bp.route('/api/sedes/<int:sede_id>/salas')
 def api_salas(sede_id):
     salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
     return jsonify([{"id": s.id, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
 
+@admin_bp.route('/api/salas_todas', methods=['GET'])
+@login_required
+@role_required(1)
+def api_salas_todas():
+    salones = Salon.query.all()
+    result = []
+    for s in salones:
+        sede_nombre = s.sede.nombre if s.sede else 'N/A'
+        total_equipos = Equipo.query.filter_by(id_salon_fk=s.id).count()
+        result.append({
+            'id': s.id,
+            'nombre': s.nombre,
+            'tipo': s.tipo,
+            'capacidad': s.capacidad,
+            'sede_id': s.id_sede_fk,
+            'sede_nombre': sede_nombre,
+            'total_equipos': total_equipos
+        })
+    return jsonify(result)
+
+@admin_bp.route('/api/salones/<int:salon_id>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
+@role_required(1)
+def api_salon_detalle(salon_id):
+    """
+    Endpoint para gestionar un salón específico (Ver, Editar, Eliminar).
+    GET: Devuelve los detalles de un salón.
+    PUT: Actualiza un salón.
+    DELETE: Elimina un salón.
+    """
+    salon = Salon.query.get_or_404(salon_id)
+
+    if request.method == 'GET':
+        sede_nombre = salon.sede.nombre if salon.sede else 'N/A'
+        total_equipos = Equipo.query.filter_by(id_salon_fk=salon_id).count()
+        return jsonify({
+            'id': salon.id,
+            'nombre': salon.nombre,
+            'tipo': salon.tipo,
+            'capacidad': salon.capacidad,
+            'sede_id': salon.id_sede_fk,   # 🔹 unificado con /api/salas_todas
+            'sede_nombre': sede_nombre,
+            'total_equipos': total_equipos,
+            'cantidad_sillas': salon.cantidad_sillas or 0,
+            'cantidad_mesas': salon.cantidad_mesas or 0
+        }), 200
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        try:
+            salon.nombre = data.get('nombre', salon.nombre)
+            salon.tipo = data.get('tipo', salon.tipo)
+            salon.capacidad = data.get('capacidad', salon.capacidad)
+            salon.id_sede_fk = data.get('sede_id', salon.id_sede_fk)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Salón actualizado exitosamente'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': f'Error al actualizar el salón: {str(e)}'}), 500
+
+    if request.method == 'DELETE':
+        # Verificar si hay equipos asociados antes de eliminar
+        equipos_asociados = Equipo.query.filter_by(id_salon_fk=salon_id).first()
+        if equipos_asociados:
+            return jsonify({'success': False, 'error': 'No se puede eliminar el salón porque tiene equipos asociados.'}), 400
+        try:
+            db.session.delete(salon)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Salón eliminado exitosamente'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': f'Error al eliminar el salón: {str(e)}'}), 500
+        
 @admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
 def api_equipos(sede_id, salon_id):
     equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
@@ -188,6 +287,7 @@ def api_equipos(sede_id, salon_id):
     return jsonify(data)
 
 @admin_bp.route('/reportes')
+@login_required # Añadir login_required para consistencia y seguridad
 @role_required(1)
 def reportes():
     """Muestra la página de reportes de inventario."""
@@ -249,8 +349,6 @@ def api_reportes_equipos_por_sede():
     } for r in resultados]
     
     return jsonify(data), 200
-
-# El resto de tu código Python sigue...
 
 @admin_bp.route('/incidentes')
 @role_required(1)
@@ -997,61 +1095,6 @@ def eliminar_usuario(user_id):
 def gestion_sedes():
     form = SedeForm()
     return render_template('superadmin/gestion_academica/sedes.html', form=form)
-
-@admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
-@login_required
-def api_sedes():
-    if request.method == 'GET':
-        sedes = Sede.query.order_by(Sede.nombre).all()
-        sedes_data = [{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]
-        return jsonify(sedes_data), 200
-
-    if request.method == 'POST':
-        data = request.get_json()
-        form = SedeForm(data=data)
-        
-        if form.validate_on_submit():
-            try:
-                nueva_sede = Sede(
-                    nombre=form.nombre.data,
-                    direccion=form.direccion.data if hasattr(form, 'direccion') else "Dirección por defecto"
-                )
-                
-                db.session.add(nueva_sede)
-                db.session.commit()
-                
-                return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
-            
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({"error": str(e)}), 500
-        else:
-            errors = {}
-            for field, messages in form.errors.items():
-                errors[field] = messages
-            return jsonify({"errors": errors, "error": "Error de validación"}), 400
-
-    if request.method == 'DELETE':
-        data = request.get_json()
-        sede_id = data.get('id')
-        
-        if not sede_id:
-            return jsonify({"error": "ID de sede no proporcionado"}), 400
-
-        sede = Sede.query.get(sede_id)
-        
-        if not sede:
-            return jsonify({"error": "Sede no encontrada"}), 404
-            
-        try:
-            db.session.delete(sede)
-            db.session.commit()
-            return jsonify({"message": "Sede eliminada exitosamente"}), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": "No se pudo eliminar la sede."}), 500
-
-    return jsonify({"error": "Método no permitido"}), 405
 
 @admin_bp.route('/gestion_cursos')
 @login_required

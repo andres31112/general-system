@@ -94,6 +94,9 @@
                         <div class="mb-3">
                             <strong>Sede:</strong> <span id="detalle-sede">-</span>
                         </div>
+                        <div class="mb-3">
+                            <strong>Estado:</strong> <span id="detalle-estado">-</span>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
@@ -103,7 +106,10 @@
                             <strong>Capacidad:</strong> <span id="detalle-capacidad">-</span>
                         </div>
                         <div class="mb-3">
-                            <strong>Estado:</strong> <span id="detalle-estado">-</span>
+                            <strong>Cantidad de sillas:</strong> <span id="detalle-sillas">0</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Cantidad de mesas:</strong> <span id="detalle-mesas">0</span>
                         </div>
                     </div>
                 </div>
@@ -150,8 +156,7 @@
     </div>
 </div>
 
-<script>
-    let sedesGlobal = [];
+<script>let sedesGlobal = [];
     let salonesGlobal = [];
 
     // Cargar todas las sedes
@@ -164,11 +169,9 @@
             crearPestanasSedes(sedes);
             await cargarTodosLosSalones();
             
-            // Mostrar primera sede por defecto
             if (sedes.length > 0) {
                 mostrarSalonesDeSede(sedes[0].id);
             }
-            
         } catch (error) {
             console.error('Error cargando sedes:', error);
         }
@@ -179,12 +182,10 @@
         const pestanasContainer = document.getElementById('pestanas-sedes');
         const contenidoContainer = document.getElementById('contenido-sedes');
         
-        // Limpiar contenido existente
         pestanasContainer.innerHTML = '';
         contenidoContainer.innerHTML = '';
         
         sedes.forEach((sede, index) => {
-            // Crear pestaña
             const tabItem = document.createElement('li');
             tabItem.className = 'nav-item';
             
@@ -198,7 +199,6 @@
             tabItem.appendChild(tabButton);
             pestanasContainer.appendChild(tabItem);
             
-            // Crear contenido de la pestaña
             const tabPane = document.createElement('div');
             tabPane.className = `tab-pane fade ${index === 0 ? 'show active' : ''}`;
             tabPane.id = `sede-${sede.id}-pane`;
@@ -216,8 +216,7 @@
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tabla-sede-${sede.id}">
-                                    </tbody>
+                                <tbody id="tabla-sede-${sede.id}"></tbody>
                             </table>
                         </div>
                     </div>
@@ -231,14 +230,10 @@
     // Cargar todos los salones
     async function cargarTodosLosSalones() {
         try {
-            // Usa la nueva API que trae todos los salones con nombre de sede y conteo de equipos.
             const res = await fetch('/admin/api/salas_todas'); 
             const salones = await res.json();
             salonesGlobal = salones;
-            
-            // Actualizar estadísticas
             actualizarEstadisticas(salones);
-            
         } catch (error) {
             console.error('Error cargando salones:', error);
         }
@@ -250,21 +245,13 @@
         if (!tbody) return;
         
         tbody.innerHTML = '';
-        
-        // Filtrar salones por sede. Se usa sede para el filtrado, aunque el backend trae nombre_sede, el salon en sí no trae el ID de sede.
-        // Asumiendo que la API /api/salas_todas trae 'sede_id' (aunque el backend no lo mostró en la respuesta JSON, la consulta sí lo hace)
         const salonesSede = salonesGlobal.filter(salon => salon.sede_id === sedeId); 
         
         if (salonesSede.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center">No hay salones en esta sede</td>
-                </tr>
-            `;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center">No hay salones en esta sede</td></tr>`;
             return;
         }
 
-        // Mostrar salones
         for (const salon of salonesSede) {
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -287,27 +274,19 @@
         }
     }
 
-    // Obtener badge según el tipo de salón
     function obtenerBadgeTipo(tipo) {
         switch (tipo) {
-            case 'sala_computo':
-                return '<span class="badge bg-info">Sala de Cómputo</span>';
-            case 'aula':
-                return '<span class="badge bg-secondary">Aula</span>';
-            case 'laboratorio':
-                return '<span class="badge bg-warning">Laboratorio</span>';
-            case 'auditorio':
-                return '<span class="badge bg-dark">Auditorio</span>';
-            default:
-                return '<span class="badge bg-light text-dark">' + tipo + '</span>';
+            case 'sala_computo': return '<span class="badge bg-info">Sala de Cómputo</span>';
+            case 'aula': return '<span class="badge bg-secondary">Aula</span>';
+            case 'laboratorio': return '<span class="badge bg-warning">Laboratorio</span>';
+            case 'auditorio': return '<span class="badge bg-dark">Auditorio</span>';
+            default: return `<span class="badge bg-light text-dark">${tipo}</span>`;
         }
     }
 
-    // Actualizar estadísticas
     function actualizarEstadisticas(salones) {
         const total = salones.length;
         const salasComputo = salones.filter(s => s.tipo === 'sala_computo').length;
-        // Se asume que cualquier otro tipo es 'General'
         const salasGenerales = total - salasComputo; 
 
         document.getElementById('total-salones').textContent = total;
@@ -315,20 +294,19 @@
         document.getElementById('salas-generales').textContent = salasGenerales;
     }
 
-    // Ver detalles del salón
     async function verSalon(salonId) {
-        // Se usa la API de detalle para obtener la información más completa y el conteo de equipos real
         try {
             const res = await fetch(`/admin/api/salones/${salonId}`);
             const salon = await res.json();
 
-            // Poblar modal con información
             document.getElementById('detalle-nombre').textContent = salon.nombre;
             document.getElementById('detalle-tipo').innerHTML = obtenerBadgeTipo(salon.tipo);
             document.getElementById('detalle-sede').textContent = salon.sede_nombre;
             document.getElementById('detalle-equipos').textContent = salon.total_equipos;
             document.getElementById('detalle-capacidad').textContent = salon.capacidad || 'No especificada';
-            document.getElementById('detalle-estado').textContent = 'Activo'; // Estado fijo
+            document.getElementById('detalle-estado').textContent = 'Activo';
+            document.getElementById('detalle-sillas').textContent = salon.cantidad_sillas || '0';
+            document.getElementById('detalle-mesas').textContent = salon.cantidad_mesas || '0';
 
             new bootstrap.Modal(document.getElementById('verSalonModal')).show();
         } catch(error) {
@@ -337,24 +315,20 @@
         }
     }
 
-    // Editar salón
     async function editarSalon(salonId) {
         const salon = salonesGlobal.find(s => s.id === salonId);
         if (!salon) return;
 
-        // Poblar formulario
         document.getElementById('salonId').value = salon.id;
         document.getElementById('nombreSalon').value = salon.nombre;
         document.getElementById('tipoSalon').value = salon.tipo;
 
-        // Poblar select de sedes
         const sedeSelect = document.getElementById('sedeSalon');
         sedeSelect.innerHTML = '';
         sedesGlobal.forEach(sede => {
             const option = document.createElement('option');
             option.value = sede.id;
             option.textContent = sede.nombre;
-            // Se usa salon.sede_id para seleccionar la sede actual
             option.selected = sede.id === salon.sede_id; 
             sedeSelect.appendChild(option);
         });
@@ -362,32 +336,22 @@
         new bootstrap.Modal(document.getElementById('editarSalonModal')).show();
     }
 
-    // Eliminar salón
     async function eliminarSalon(salonId) {
-        if (!confirm('¿Está seguro de que desea eliminar este salón? Esta acción no se puede deshacer.')) {
-            return;
-        }
+        if (!confirm('¿Está seguro de que desea eliminar este salón? Esta acción no se puede deshacer.')) return;
 
         try {
-            const response = await fetch(`/admin/api/salones/${salonId}`, {
-                method: 'DELETE'
-            });
+            const response = await fetch(`/admin/api/salones/${salonId}`, { method: 'DELETE' });
 
             if (response.ok) {
                 alert('Salón eliminado correctamente.');
                 await cargarTodosLosSalones();
-                
-                // Refrescar la pestaña actual
                 const activeTab = document.querySelector('.nav-link.active');
                 if (activeTab) {
                     const sedeIdMatch = activeTab.getAttribute('data-bs-target').match(/sede-(\d+)-pane/);
-                    if (sedeIdMatch) {
-                        mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
-                    }
+                    if (sedeIdMatch) mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
                 }
             } else {
                 const errorData = await response.json();
-                // El backend envia el mensaje de error: "No se puede eliminar el salón porque tiene equipos asociados."
                 alert('Error al eliminar el salón: ' + (errorData.error || 'Error desconocido'));
             }
         } catch (error) {
@@ -396,43 +360,29 @@
         }
     }
 
-    // Event listener para formulario de editar
     document.getElementById('editarSalonForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        
-        // Se valida que 'sede_id' sea un número
         data.sede_id = parseInt(data.sede_id);
         
         try {
             const response = await fetch(`/admin/api/salones/${data.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
 
             if (response.ok) {
                 alert('Salón actualizado correctamente.');
-                
-                // Refrescar todos los salones y la pestaña actual
                 await cargarTodosLosSalones();
                 const activeTab = document.querySelector('.nav-link.active');
                 if (activeTab) {
                     const sedeIdMatch = activeTab.getAttribute('data-bs-target').match(/sede-(\d+)-pane/);
-                     if (sedeIdMatch) {
-                        mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
-                    }
+                    if (sedeIdMatch) mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
                 }
-                
-                // Ocultar modal
-                const modalElement = document.getElementById('editarSalonModal');
-                const modalInstance = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
-                modalInstance.hide();
-                
+                bootstrap.Modal.getInstance(document.getElementById('editarSalonModal')).hide();
             } else {
                 const errorData = await response.json();
                 alert('Error al actualizar el salón: ' + (errorData.error || 'Error desconocido'));
@@ -443,20 +393,12 @@
         }
     });
 
-    // Función para refrescar pestañas (para integración con creación de sedes)
-    async function refrescarPestanasSalones() {
-        await cargarSedes();
-    }
+    async function refrescarPestanasSalones() { await cargarSedes(); }
 
-    // Inicialización
     document.addEventListener('DOMContentLoaded', async () => {
-        // Asegurarse de que Bootstrap esté cargado si se usa en la función de editar/ver
-        if (typeof bootstrap === 'undefined') {
-            console.error("Bootstrap no está cargado. Los modales podrían no funcionar.");
-        }
+        if (typeof bootstrap === 'undefined') console.error("Bootstrap no está cargado.");
         await cargarSedes();
-    });
-</script>
+    });</script>
 
 <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
 {% endblock %}

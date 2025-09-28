@@ -222,17 +222,32 @@ class Calificacion(db.Model):
     observaciones = db.Column(db.Text)
 
 class Salon(db.Model):
-    __tablename__ = 'salones'  # Mantenido como está
+    __tablename__ = 'salones' 
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
-    tipo = db.Column(db.String(50), nullable=False) # 'sala_computo', 'sala_general', etc.
-    id_sede_fk = db.Column(db.Integer, db.ForeignKey('Sede.id'), nullable=False)
-    
+    tipo = db.Column(db.String(50), nullable=False)
+    capacidad = db.Column(db.Integer, nullable=False)
+    cantidad_sillas = db.Column(db.Integer, nullable=True)
+    cantidad_mesas = db.Column(db.Integer, nullable=True)
+    id_sede_fk = db.Column(db.Integer, db.ForeignKey('sede.id'), nullable=False)
     sede = db.relationship('Sede', backref=db.backref('salones', lazy=True))
 
+    def to_dict(self):
+            return {
+                "id": self.id,
+                "nombre": self.nombre,
+                "tipo": self.tipo,
+                "capacidad": self.capacidad,
+                "id_sede_fk": self.id_sede_fk,
+                "sede_nombre": self.sede.nombre if self.sede else "Sin Sede",
+                "equipos_count": Equipo.query.filter_by(id_salon_fk=self.id).count(),
+                "cantidad_sillas": self.cantidad_sillas or 0,
+                "cantidad_mesas": self.cantidad_mesas or 0
+            }
+    
     def __repr__(self):
         return f"Salon('{self.nombre}', '{self.tipo}')"
-    
+       
 class Equipo(db.Model):
     __tablename__ = 'Equipos'
     id = db.Column(db.Integer, primary_key=True)
@@ -251,24 +266,28 @@ class Equipo(db.Model):
     salon = db.relationship('Salon', backref=db.backref('equipos', lazy=True))
     
     def to_dict(self):
-        return {
+        """Devuelve un diccionario con los datos del equipo para la API y el frontend."""
+        data = {
             "id": self.id,
+            "id_referencia": self.id_referencia,
             "nombre": self.nombre,
+            "tipo": self.tipo,
+            "asignado_a": self.asignado_a,
             "estado": self.estado,
-            "id_salon_fk": self.id_salon_fk,
-            "sala_nombre": self.salon.nombre if self.salon else "",
-            "sede_nombre": self.salon.sede.nombre if self.salon and self.salon.sede else "",
-            "asignado_a": self.asignado_a or "",
-            "id_referencia": self.id_referencia or "",
-            "tipo": self.tipo or "",
-            "sistema_operativo": self.sistema_operativo or "",
-            "ram": self.ram or "",
-            "disco_duro": self.disco_duro or "",
+            "sistema_operativo": self.sistema_operativo,
+            "ram": self.ram,
+            "disco_duro": self.disco_duro,
+            "descripcion": self.descripcion,
+            "observaciones": self.observaciones,
             "fecha_adquisicion": self.fecha_adquisicion.strftime("%Y-%m-%d") if self.fecha_adquisicion else "",
-            "descripcion": self.descripcion or "",
-            "observaciones": self.observaciones or ""
+            "id_salon_fk": self.id_salon_fk, # ID necesario para edición
+            "salon": self.salon.nombre if self.salon else "Sin Salón Asignado",
+            
+            "sede_nombre": self.salon.sede.nombre if self.salon and self.salon.sede else "Sin Sede",
+            "sede_id": self.salon.id_sede_fk if self.salon else None,
         }
-    
+        return data
+        
 class Incidente(db.Model):
     __tablename__ = 'Incidentes'
     id = db.Column(db.Integer, primary_key=True)
