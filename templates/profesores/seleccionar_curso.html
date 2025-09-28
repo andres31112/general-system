@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Seleccionar Curso</h1>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Mis Cursos</h6>
+                </div>
+                <div class="card-body">
+                    {% if cursos %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Curso</th>
+                                    <th>Sede</th>
+                                    <th>Asignaturas</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for curso in cursos %}
+                                <tr>
+                                    <td>{{ curso.nombreCurso }}</td>
+                                    <td>{{ curso.sede.nombre }}</td>
+                                    <td>
+                                        {% for clase in curso.clases %}
+                                            {% if clase.profesorId == current_user.id_usuario %}
+                                                {{ clase.asignatura.nombre }}{% if not loop.last %}, {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <form action="{{ url_for('profesor.guardar_curso_seleccionado') }}" method="POST" class="d-inline">
+                                            <input type="hidden" name="curso_id" value="{{ curso.id }}">
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                Seleccionar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        No tienes cursos asignados.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Información</h6>
+                </div>
+                <div class="card-body">
+                    <p>Selecciona un curso para:</p>
+                    <ul>
+                        <li>Ver lista de estudiantes</li>
+                        <li>Registrar calificaciones</li>
+                        <li>Gestionar asistencias</li>
+                        <li>Ver reportes del curso</li>
+                    </ul>
+                    <p class="text-muted">Puedes cambiar de curso en cualquier momento.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

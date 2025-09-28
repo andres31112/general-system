@@ -26,6 +26,22 @@
         --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
     }
 
+    /* FIX CRÍTICO: Asegurar que los inputs sean interactivos */
+    #nombre {
+        pointer-events: auto !important;
+        user-select: auto !important;
+        -webkit-user-select: auto !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 9999 !important;
+    }
+
+    .form-control {
+        pointer-events: auto !important;
+        user-select: auto !important;
+        background: var(--white) !important;
+    }
+
     /* Estilos Generales */
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -359,7 +375,6 @@
             <h1 class="h4 mb-1">Gestión de Sedes</h1>
             <p class="text-light mb-0 opacity-75">Administra las sedes de la institución</p>
         </div>
-
     </header>
 
     <div class="main-container mt-4">
@@ -523,12 +538,15 @@
             document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
             document.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
             
+            // Obtener los datos del formulario como objeto
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
             
             fetch('{{ url_for("admin.api_sedes") }}', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(data)
             })
             .then(response => {
@@ -540,9 +558,13 @@
                 return response.json();
             })
             .then(result => {
-                form.reset();
-                fetchSedes();
-                showFlashMessage('Sede creada exitosamente.', 'success');
+                if (result.message) {
+                    form.reset();
+                    fetchSedes();
+                    showFlashMessage(result.message, 'success');
+                } else if (result.error) {
+                    showFlashMessage(result.error, 'danger');
+                }
             })
             .catch(error => {
                 console.error('Error al crear sede:', error);
@@ -560,6 +582,7 @@
                         showFlashMessage(errorDetails.error, 'danger');
                     }
                 } catch (parseError) {
+                    console.error('Error parse:', parseError);
                     showFlashMessage('Error de red. No se pudo conectar con el servidor.', 'danger');
                 }
                 fetchSedes();
@@ -588,8 +611,12 @@
                         return response.json();
                     })
                     .then(result => {
-                        showFlashMessage('Sede eliminada exitosamente.', 'success');
-                        fetchSedes();
+                        if (result.message) {
+                            showFlashMessage(result.message, 'success');
+                            fetchSedes();
+                        } else if (result.error) {
+                            showFlashMessage(result.error, 'danger');
+                        }
                     })
                     .catch(error => {
                         console.error('Error al eliminar sede:', error);

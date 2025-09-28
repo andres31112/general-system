@@ -342,7 +342,7 @@
             padding: 25px;
             border-radius: 15px;
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
             max-height: 90vh;
             overflow-y: auto;
@@ -433,9 +433,48 @@
             animation: spin 1s linear infinite;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .profesores-container {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+            background-color: var(--light-gray);
+        }
+        
+        .profesor-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: var(--white);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .profesor-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .profesor-info {
+            flex: 1;
+        }
+        
+        .profesor-nombre {
+            font-weight: 600;
+            color: var(--accent4);
+        }
+        
+        .profesor-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .empty-profesores {
+            text-align: center;
+            color: var(--gray);
+            padding: 20px;
+            font-style: italic;
         }
         
         @media (max-width: 1100px) {
@@ -502,7 +541,7 @@
         <div class="card">
             <h2><i class="fas fa-search"></i> Buscar Asignaturas</h2>
             <div class="search-container">
-                <input type="text" id="search-input" placeholder="Buscar por nombre o descripción..." onkeyup="buscarAsignaturas()">
+                <input type="text" id="search-input" placeholder="Buscar por nombre, descripción o profesor..." onkeyup="buscarAsignaturas()">
                 <button class="secondary" onclick="limpiarBusqueda()"><i class="fas fa-times"></i> Limpiar</button>
             </div>
         </div>
@@ -536,16 +575,28 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="color">Color identificativo</label>
-                    <input type="color" id="color" value="#0D3B66">
-                </div>
-                
-                <div class="form-group">
                     <label for="estado">Estado</label>
                     <select id="estado">
                         <option value="activa">Activa</option>
                         <option value="inactiva">Inactiva</option>
                     </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Profesores Asignados</label>
+                    <div class="profesores-container" id="profesores-container">
+                        <div class="empty-profesores" id="empty-profesores">
+                            No hay profesores asignados
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <select id="profesor-select" style="flex: 1;">
+                            <option value="">Seleccionar profesor...</option>
+                        </select>
+                        <button type="button" class="small secondary" onclick="agregarProfesor()">
+                            <i class="fas fa-plus"></i> Agregar
+                        </button>
+                    </div>
                 </div>
                 
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -588,12 +639,15 @@
             asignaturas: '{{ url_for("admin.api_asignaturas") }}',
             crearAsignatura: '{{ url_for("admin.api_crear_asignatura") }}',
             actualizarAsignatura: '{{ url_for("admin.api_actualizar_asignatura", asignatura_id=0) }}'.replace('/0', ''),
-            eliminarAsignatura: '{{ url_for("admin.api_eliminar_asignatura", asignatura_id=0) }}'.replace('/0', '')
+            eliminarAsignatura: '{{ url_for("admin.api_eliminar_asignatura", asignatura_id=0) }}'.replace('/0', ''),
+            profesores: '{{ url_for("admin.api_profesores") }}'
         };
 
         let estado = {
             asignaturas: [],
+            profesores: [],
             asignaturaEditando: null,
+            profesoresAsignados: [],
             busquedaActual: ''
         };
 
@@ -624,47 +678,74 @@
         }
 
         async function cargarAsignaturas() {
-            try {
-                const asignaturas = await apiRequest(API_URLS.asignaturas);
-                estado.asignaturas = asignaturas;
-                actualizarEstadisticas();
-                renderizarTablaAsignaturas();
-            } catch (error) {
-                console.error('Error cargando asignaturas:', error);
-                mostrarNotificacion('Error al cargar las asignaturas', 'error');
-            }
-        }
+    try {
+        const asignaturas = await apiRequest(API_URLS.asignaturas);
+        estado.asignaturas = asignaturas;
+        console.log("📚 Asignaturas cargadas:", asignaturas);
+        actualizarEstadisticas();
+        renderizarTablaAsignaturas();
+    } catch (error) {
+        console.error('Error cargando asignaturas:', error);
+        mostrarNotificacion('Error al cargar las asignaturas', 'error');
+    }
+}
+
+        async function cargarProfesores() {
+    try {
+        const response = await apiRequest(API_URLS.profesores);
+        estado.profesores = response.data || [];
+        console.log("👨‍🏫 Profesores cargados:", estado.profesores);
+        actualizarSelectProfesores();
+    } catch (error) {
+        console.error('Error cargando profesores:', error);
+        mostrarNotificacion('Error al cargar los profesores', 'error');
+    }
+}
 
         async function guardarAsignatura(datos) {
-            const esEdicion = datos.id !== '';
-            const url = esEdicion ? 
-                `${API_URLS.actualizarAsignatura}/${datos.id}` : 
-                API_URLS.crearAsignatura;
-                
-            const method = esEdicion ? 'PUT' : 'POST';
+    const esEdicion = datos.id !== '';
+    const url = esEdicion ? 
+        `${API_URLS.actualizarAsignatura}/${datos.id}` : 
+        API_URLS.crearAsignatura;
+        
+    const method = esEdicion ? 'PUT' : 'POST';
 
-            try {
-                const resultado = await apiRequest(url, {
-                    method: method,
-                    body: JSON.stringify(datos)
-                });
+    // Preparar datos para enviar
+    const datosEnvio = {
+        nombre: datos.nombre,
+        descripcion: datos.descripcion,
+        estado: datos.estado,
+        profesores: estado.profesoresAsignados.map(p => p.id_usuario)
+    };
 
-                if (resultado.success) {
-                    mostrarNotificacion(
-                        esEdicion ? 'Asignatura actualizada correctamente' : 'Asignatura creada correctamente', 
-                        'success'
-                    );
-                    await cargarAsignaturas();
-                    cerrarModal();
-                    return true;
-                } else {
-                    throw new Error(resultado.error);
-                }
-            } catch (error) {
-                mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
-                return false;
-            }
+    if (esEdicion) {
+        datosEnvio.id = datos.id;
+    }
+
+    console.log("📤 Enviando datos:", datosEnvio);
+
+    try {
+        const resultado = await apiRequest(url, {
+            method: method,
+            body: JSON.stringify(datosEnvio)
+        });
+
+        if (resultado.success) {
+            mostrarNotificacion(
+                esEdicion ? 'Asignatura actualizada correctamente' : 'Asignatura creada correctamente', 
+                'success'
+            );
+            await cargarAsignaturas();
+            cerrarModal();
+            return true;
+        } else {
+            throw new Error(resultado.error);
         }
+    } catch (error) {
+        mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
+        return false;
+    }
+}
 
         async function eliminarAsignatura(id) {
             try {
@@ -685,6 +766,50 @@
                 return false;
             }
         }
+        async function guardarAsignatura(datos) {
+    const esEdicion = datos.id !== '';
+    const url = esEdicion ? 
+        `${API_URLS.actualizarAsignatura}/${datos.id}` : 
+        API_URLS.crearAsignatura;
+        
+    const method = esEdicion ? 'PUT' : 'POST';
+
+    // Preparar datos para enviar
+    const datosEnvio = {
+        nombre: datos.nombre,
+        descripcion: datos.descripcion,
+        estado: datos.estado,
+        profesores: estado.profesoresAsignados.map(p => p.id_usuario)
+    };
+
+    if (esEdicion) {
+        datosEnvio.id = datos.id;
+    }
+
+    console.log("📤 Enviando datos:", datosEnvio);
+
+    try {
+        const resultado = await apiRequest(url, {
+            method: method,
+            body: JSON.stringify(datosEnvio)
+        });
+
+        if (resultado.success) {
+            mostrarNotificacion(
+                esEdicion ? 'Asignatura actualizada correctamente' : 'Asignatura creada correctamente', 
+                'success'
+            );
+            await cargarAsignaturas();
+            cerrarModal();
+            return true;
+        } else {
+            throw new Error(resultado.error);
+        }
+    } catch (error) {
+        mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
+        return false;
+    }
+}
 
         // =============================================
         // FUNCIONES DE LA INTERFAZ DE USUARIO
@@ -710,6 +835,18 @@
             document.getElementById('asignaturas-activas').textContent = activas;
         }
 
+        function actualizarSelectProfesores() {
+            const select = document.getElementById('profesor-select');
+            select.innerHTML = '<option value="">Seleccionar profesor...</option>';
+            
+            estado.profesores.forEach(profesor => {
+                const option = document.createElement('option');
+                option.value = profesor.id_usuario;
+                option.textContent = profesor.nombre_completo;
+                select.appendChild(option);
+            });
+        }
+
         function renderizarTablaAsignaturas() {
             const container = document.getElementById('asignaturas-table-container');
             let asignaturasFiltradas = estado.asignaturas;
@@ -719,7 +856,10 @@
                 const busqueda = estado.busquedaActual.toLowerCase();
                 asignaturasFiltradas = estado.asignaturas.filter(asignatura =>
                     asignatura.nombre.toLowerCase().includes(busqueda) ||
-                    (asignatura.descripcion && asignatura.descripcion.toLowerCase().includes(busqueda))
+                    (asignatura.descripcion && asignatura.descripcion.toLowerCase().includes(busqueda)) ||
+                    (asignatura.profesores && asignatura.profesores.some(p => 
+                        p.nombre_completo.toLowerCase().includes(busqueda)
+                    ))
                 );
             }
 
@@ -738,6 +878,7 @@
                         <tr>
                             <th>Nombre</th>
                             <th>Descripción</th>
+                            <th>Profesores</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
@@ -745,11 +886,18 @@
                     <tbody>
                         ${asignaturasFiltradas.map(asignatura => `
                             <tr>
-                                <td>
-                                    <strong>${asignatura.nombre}</strong>
-                                    ${asignatura.color ? `<span style="display: inline-block; width: 12px; height: 12px; background-color: ${asignatura.color}; border-radius: 50%; margin-left: 8px;"></span>` : ''}
-                                </td>
+                                <td><strong>${asignatura.nombre}</strong></td>
                                 <td>${asignatura.descripcion || '-'}</td>
+                                <td>
+                                    ${asignatura.profesores && asignatura.profesores.length > 0 ? 
+                                        asignatura.profesores.map(p => 
+                                            `<span style="display: inline-block; background: #e9ecef; padding: 4px 8px; border-radius: 12px; margin: 2px; font-size: 0.8rem;">
+                                                ${p.nombre_completo}
+                                            </span>`
+                                        ).join('') : 
+                                        '<span style="color: #666; font-style: italic;">Sin profesores</span>'
+                                    }
+                                </td>
                                 <td>
                                     <span style="padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; 
                                         background-color: ${asignatura.estado === 'activa' ? '#d4edda' : '#f8d7da'}; 
@@ -788,17 +936,77 @@
         }
 
         // =============================================
+        // GESTIÓN DE PROFESORES EN EL FORMULARIO
+        // =============================================
+
+        function agregarProfesor() {
+            const select = document.getElementById('profesor-select');
+            const profesorId = select.value;
+            
+            if (!profesorId) {
+                mostrarNotificacion('Seleccione un profesor', 'warning');
+                return;
+            }
+            
+            const profesor = estado.profesores.find(p => p.id_usuario == profesorId);
+            if (!profesor) return;
+            
+            // Verificar si ya está agregado
+            if (estado.profesoresAsignados.some(p => p.id_usuario == profesorId)) {
+                mostrarNotificacion('Este profesor ya está asignado', 'warning');
+                return;
+            }
+            
+            estado.profesoresAsignados.push(profesor);
+            actualizarListaProfesores();
+            select.value = '';
+        }
+
+        function eliminarProfesor(profesorId) {
+            estado.profesoresAsignados = estado.profesoresAsignados.filter(p => p.id_usuario != profesorId);
+            actualizarListaProfesores();
+        }
+
+        function actualizarListaProfesores() {
+            const container = document.getElementById('profesores-container');
+            const emptyMessage = document.getElementById('empty-profesores');
+            
+            if (estado.profesoresAsignados.length === 0) {
+                container.innerHTML = '<div class="empty-profesores" id="empty-profesores">No hay profesores asignados</div>';
+                return;
+            }
+            
+            emptyMessage.style.display = 'none';
+            
+            const profesoresHTML = estado.profesoresAsignados.map(profesor => `
+                <div class="profesor-item">
+                    <div class="profesor-info">
+                        <div class="profesor-nombre">${profesor.nombre_completo}</div>
+                    </div>
+                    <div class="profesor-actions">
+                        <button type="button" class="small danger" onclick="eliminarProfesor(${profesor.id_usuario})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = profesoresHTML;
+        }
+
+        // =============================================
         // FUNCIONES DE MODALES
         // =============================================
 
         function abrirModalCrear() {
             estado.asignaturaEditando = null;
+            estado.profesoresAsignados = [];
             document.getElementById('modal-title').textContent = 'Nueva Asignatura';
             document.getElementById('submit-text').textContent = 'Crear';
             document.getElementById('asignatura-form').reset();
             document.getElementById('asignatura-id').value = '';
-            document.getElementById('color').value = '#0D3B66';
             document.getElementById('estado').value = 'activa';
+            actualizarListaProfesores();
             document.getElementById('asignatura-modal').style.display = 'flex';
         }
 
@@ -807,13 +1015,16 @@
             if (!asignatura) return;
 
             estado.asignaturaEditando = asignatura;
+            estado.profesoresAsignados = asignatura.profesores || [];
+            
             document.getElementById('modal-title').textContent = 'Editar Asignatura';
             document.getElementById('submit-text').textContent = 'Actualizar';
             document.getElementById('asignatura-id').value = asignatura.id;
             document.getElementById('nombre').value = asignatura.nombre;
             document.getElementById('descripcion').value = asignatura.descripcion || '';
-            document.getElementById('color').value = asignatura.color || '#0D3B66';
             document.getElementById('estado').value = asignatura.estado || 'activa';
+            
+            actualizarListaProfesores();
             document.getElementById('asignatura-modal').style.display = 'flex';
         }
 
@@ -847,8 +1058,8 @@
                 id: document.getElementById('asignatura-id').value,
                 nombre: document.getElementById('nombre').value.trim(),
                 descripcion: document.getElementById('descripcion').value.trim(),
-                color: document.getElementById('color').value,
-                estado: document.getElementById('estado').value
+                estado: document.getElementById('estado').value,
+                profesores: estado.profesoresAsignados.map(p => p.id_usuario)
             };
 
             if (!datos.nombre) {
@@ -878,6 +1089,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             cargarAsignaturas();
+            cargarProfesores();
         });
 
         // Hacer funciones globales
@@ -888,6 +1100,8 @@
         window.cerrarConfirmModal = cerrarConfirmModal;
         window.buscarAsignaturas = buscarAsignaturas;
         window.limpiarBusqueda = limpiarBusqueda;
+        window.agregarProfesor = agregarProfesor;
+        window.eliminarProfesor = eliminarProfesor;
     </script>
 </body>
 </html>
