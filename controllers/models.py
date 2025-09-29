@@ -6,14 +6,20 @@ from datetime import time
 from datetime import datetime
 import json
 
+# Tabla intermedia para relación muchos a muchos entre asignaturas y profesores
+asignatura_profesor = db.Table('asignatura_profesor',
+    db.Column('asignatura_id', db.Integer, db.ForeignKey('asignatura.id'), primary_key=True),
+    db.Column('profesor_id', db.Integer, db.ForeignKey('usuarios.id_usuario'), primary_key=True),
+    db.Column('fecha_asignacion', db.DateTime, default=datetime.utcnow)
+)
+
 # Roles
 class Rol(db.Model):
     __tablename__ = 'roles'
     id_rol = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), unique=True, nullable=False)
-    descripcion = db.Column(db.String(200))  # Campo agregado para consistencia
+    descripcion = db.Column(db.String(200))
     
-    # Relación corregida
     usuarios = db.relationship('Usuario', back_populates='rol')
 
 # Usuarios
@@ -29,10 +35,10 @@ class Usuario(db.Model, UserMixin):
     direccion = db.Column(db.String(200))
     password_hash = db.Column(db.Text, nullable=False)
     id_rol_fk = db.Column(db.Integer, db.ForeignKey('roles.id_rol'), nullable=False)
-    rol = db.relationship('Rol', back_populates='usuarios', lazy='joined')
     estado_cuenta = db.Column(db.Enum('activa', 'inactiva', name='estado_cuenta_enum'), nullable=False, default='activa')
     
     rol = db.relationship('Rol', back_populates='usuarios')
+    asignaturas = db.relationship('Asignatura', secondary=asignatura_profesor, back_populates='profesores')
 
     @property
     def nombre_completo(self):
@@ -57,7 +63,7 @@ class Usuario(db.Model, UserMixin):
 
 # Académico
 class Sede(db.Model):
-    __tablename__ = 'sede'  # Cambiado a minúsculas para consistencia
+    __tablename__ = 'sede'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     direccion = db.Column(db.String(200), nullable=False)
@@ -73,35 +79,40 @@ class Curso(db.Model):
     horario_general = db.relationship('HorarioGeneral', backref=db.backref('cursos_rel', lazy=True))
     
 class Matricula(db.Model):
-    __tablename__ = 'matricula'  # Minúsculas
+    __tablename__ = 'matricula'
     id = db.Column(db.Integer, primary_key=True)
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
-    cursoId = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)  # Referencia corregida
+    cursoId = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
     año = db.Column(db.Integer, nullable=False)
 
 class Asignatura(db.Model):
-    __tablename__ = 'asignatura'  # Minúsculas
+    __tablename__ = 'asignatura'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text)
-    color = db.Column(db.String(7), default='#0D3B66')
     estado = db.Column(db.String(20), default='activa')
+    
+    profesores = db.relationship('Usuario', secondary=asignatura_profesor, back_populates='asignaturas')
     
     def to_dict(self):
         return {
             "id": self.id, 
             "nombre": self.nombre, 
             "descripcion": self.descripcion,
-            "color": self.color,
-            "estado": self.estado
+            "estado": self.estado,
+            "profesores": [{
+                "id_usuario": prof.id_usuario,
+                "nombre_completo": prof.nombre_completo,
+                "correo": prof.correo
+            } for prof in self.profesores]
         }
 
 class Clase(db.Model):
-    __tablename__ = 'clase'  # Minúsculas
+    __tablename__ = 'clase'
     id = db.Column(db.Integer, primary_key=True)
     asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id'), nullable=False)
     profesorId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
-    cursoId = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)  # Referencia corregida
+    cursoId = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
     horarioId = db.Column(db.Integer, db.ForeignKey('horario_general.id'), nullable=False)
     representanteCursoId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'))
 
@@ -118,7 +129,6 @@ class HorarioGeneral(db.Model):
     duracion_descanso = db.Column(db.Integer, default=15)
     activo = db.Column(db.Boolean, default=True)
     
-    # RELACIÓN CORREGIDA - usar nombre consistente
     cursos = db.relationship('Curso', backref='horario_general_rel', lazy=True)
     
     def to_dict(self):
@@ -138,14 +148,14 @@ class HorarioGeneral(db.Model):
             "duracion_clase": self.duracion_clase,
             "duracion_descanso": self.duracion_descanso,
             "activo": self.activo,
-            "totalCursos": len(self.cursos)  # CORREGIDO: ahora sí existe
+            "totalCursos": len(self.cursos)
         }
     
     def get_bloques(self):
         return BloqueHorario.query.filter_by(horario_general_id=self.id).order_by(BloqueHorario.orden).all()
 
 class BloqueHorario(db.Model):
-    __tablename__ = 'bloque_horario'  # Minúsculas y snake_case
+    __tablename__ = 'bloque_horario'
     id = db.Column(db.Integer, primary_key=True)
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id'), nullable=False)
     dia_semana = db.Column(db.String(20), nullable=False)
@@ -176,80 +186,79 @@ class HorarioCurso(db.Model):
     __tablename__ = 'horario_curso'
     
     id = db.Column(db.Integer, primary_key=True)
-    curso_id = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)  # Referencia corregida
-    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id'), nullable=False)  # Referencia corregida
+    curso_id = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id'), nullable=False)
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
-    horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id'))  # Referencia corregida
+    horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id'))
     
-    # Relaciones corregidas
     curso = db.relationship('Curso', backref='horarios_especificos')
     asignatura = db.relationship('Asignatura', backref='horarios_asignados')
-    horario_general = db.relationship('HorarioGeneral', backref='horarios_cursos')  # Nombre cambiado para evitar conflicto
+    horario_general = db.relationship('HorarioGeneral', backref='horarios_cursos')
     
     def __repr__(self):
         return f'<HorarioCurso {self.curso_id} - {self.asignatura_id}>'
 
 class Asistencia(db.Model):
-    __tablename__ = 'asistencia'  # Minúsculas
+    __tablename__ = 'asistencia'
     id = db.Column(db.Integer, primary_key=True)
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
-    claseId = db.Column(db.Integer, db.ForeignKey('clase.id'), nullable=False)  # Referencia corregida
+    claseId = db.Column(db.Integer, db.ForeignKey('clase.id'), nullable=False)
     fecha = db.Column(db.Date, nullable=False)
     estado = db.Column(db.String(20), nullable=False, default='presente')
 
 class ConfiguracionCalificacion(db.Model):
-    __tablename__ = 'configuracion_calificacion'  # Snake_case
+    __tablename__ = 'configuracion_calificacion'
     id = db.Column(db.Integer, primary_key=True)
     notaMinima = db.Column(db.Numeric(5,2), nullable=False)
     notaMaxima = db.Column(db.Numeric(5,2), nullable=False)
     notaMinimaAprobacion = db.Column(db.Numeric(5,2), nullable=False)
 
 class CategoriaCalificacion(db.Model):
-    __tablename__ = 'categoria_calificacion'  # Snake_case
+    __tablename__ = 'categoria_calificacion'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     color = db.Column(db.String(20), nullable=False)
     porcentaje = db.Column(db.Numeric(5,2), nullable=False)
 
 class Calificacion(db.Model):
-    __tablename__ = 'calificacion'  # Minúsculas
+    __tablename__ = 'calificacion'
     id = db.Column(db.Integer, primary_key=True)
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
-    asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id'), nullable=False)  # Referencia corregida
-    categoriaId = db.Column(db.Integer, db.ForeignKey('categoria_calificacion.id'), nullable=False)  # Referencia corregida
+    asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id'), nullable=False)
+    categoriaId = db.Column(db.Integer, db.ForeignKey('categoria_calificacion.id'), nullable=False)
     valor = db.Column(db.Numeric(5,2), nullable=False)
     observaciones = db.Column(db.Text)
 
 class Salon(db.Model):
-    __tablename__ = 'salones' 
+    __tablename__ = 'salones'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
     tipo = db.Column(db.String(50), nullable=False)
-    capacidad = db.Column(db.Integer, nullable=False)
+    capacidad = db.Column(db.Integer, nullable=True, default=0)
     cantidad_sillas = db.Column(db.Integer, nullable=True)
     cantidad_mesas = db.Column(db.Integer, nullable=True)
     id_sede_fk = db.Column(db.Integer, db.ForeignKey('sede.id'), nullable=False)
     sede = db.relationship('Sede', backref=db.backref('salones', lazy=True))
 
     def to_dict(self):
-            return {
-                "id": self.id,
-                "nombre": self.nombre,
-                "tipo": self.tipo,
-                "capacidad": self.capacidad,
-                "id_sede_fk": self.id_sede_fk,
-                "sede_nombre": self.sede.nombre if self.sede else "Sin Sede",
-                "equipos_count": Equipo.query.filter_by(id_salon_fk=self.id).count(),
-                "cantidad_sillas": self.cantidad_sillas or 0,
-                "cantidad_mesas": self.cantidad_mesas or 0
-            }
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "tipo": self.tipo,
+            "capacidad": self.capacidad,
+            "id_sede_fk": self.id_sede_fk,
+            "sede_nombre": self.sede.nombre if self.sede else "Sin Sede",
+            "equipos_count": Equipo.query.filter_by(id_salon_fk=self.id).count(),
+            "cantidad_sillas": self.cantidad_sillas or 0,
+            "cantidad_mesas": self.cantidad_mesas or 0
+        }
     
     def __repr__(self):
         return f"Salon('{self.nombre}', '{self.tipo}')"
-       
+
 class Equipo(db.Model):
-    __tablename__ = 'Equipos'
+    __tablename__ = 'equipos'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', 'Revisión', name='estado_equipo_enum'), nullable=False, default='Disponible')
@@ -280,24 +289,24 @@ class Equipo(db.Model):
             "descripcion": self.descripcion,
             "observaciones": self.observaciones,
             "fecha_adquisicion": self.fecha_adquisicion.strftime("%Y-%m-%d") if self.fecha_adquisicion else "",
-            "id_salon_fk": self.id_salon_fk, # ID necesario para edición
+            "id_salon_fk": self.id_salon_fk,
             "salon": self.salon.nombre if self.salon else "Sin Salón Asignado",
-            
             "sede_nombre": self.salon.sede.nombre if self.salon and self.salon.sede else "Sin Sede",
             "sede_id": self.salon.id_sede_fk if self.salon else None,
         }
         return data
-        
+
 class Incidente(db.Model):
     __tablename__ = 'Incidentes'
     id = db.Column(db.Integer, primary_key=True)
-    equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('equipos.id'), nullable=False)
     usuario_asignado = db.Column(db.String(100), nullable=True)
     sede = db.Column(db.String(100), nullable=False)
     fecha = db.Column(db.Date, nullable=False, default=datetime.utcnow)
     descripcion = db.Column(db.Text, nullable=False)
     estado = db.Column(db.String(50), nullable=True)
     equipo = db.relationship('Equipo', backref=db.backref('incidentes', lazy=True))
+    
     def to_dict(self):
         return {
             "id": self.id,
@@ -313,7 +322,7 @@ class Incidente(db.Model):
 class Mantenimiento(db.Model):
     __tablename__ = 'Mantenimiento'
     id = db.Column(db.Integer, primary_key=True)
-    equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('equipos.id'), nullable=False)
     sede_id = db.Column(db.Integer, db.ForeignKey('sede.id'), nullable=False)
     fecha_programada = db.Column(db.Date, nullable=False)
     tipo = db.Column(db.String(50), nullable=False)
@@ -323,6 +332,7 @@ class Mantenimiento(db.Model):
     tecnico = db.Column(db.String(100), nullable=True)
     equipo = db.relationship('Equipo', backref=db.backref('programaciones', lazy=True))
     sede = db.relationship('Sede', lazy='joined')
+    
     def to_dict(self):
         return {
             "id": self.id,

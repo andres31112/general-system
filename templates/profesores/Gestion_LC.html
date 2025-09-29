@@ -3,261 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Asistencia y Calificaciones</title>
+    <title>Gestión de Listas y Calificaciones</title>
     <!-- Google Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/Gestion_LC.css') }}">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="navbar-container">
-            <a class="navbar-brand" href="#">
-                <div class="logo-circle"></div>
-                <h1>Gestión Académica</h1>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('profesor.dashboard') }}">
+                <i class="fas fa-graduation-cap me-2"></i>
+                Sistema Académico
             </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user me-1"></i>
+                    {{ current_user.nombre_completo }}
+                </span>
+                <a class="nav-link" href="{{ url_for('profesor.seleccionar_curso') }}">
+                    <i class="fas fa-sync-alt me-1"></i>Cambiar Curso
+                </a>
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                    <i class="fas fa-sign-out-alt me-1"></i>Salir
+                </a>
+            </div>
         </div>
     </nav>
-    <div class="page-container">
-        <div class="container">
-            <main>
-                <section class="main-header">
-                    <div class="profile-card">
-                        <div class="avatar-large">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <div class="profile-info">
-                            <h2>{{ current_user.nombre_completo }}</h2>
-                            <p>
-                                {% if curso %}
-                                    {{ curso.sede.nombre }}
-                                {% else %}
-                                    Sede no asignada
-                                {% endif %}
-                            </p>
-                            <p><strong>Rol:</strong> Profesor</p>
-                        </div>
-                    </div>
-                    <div class="info-cards">
-                        <div class="card students-card">
-                            <div class="card-body">
-                                <p class="card-title">Estudiantes</p>
-                                <p class="card-content">{{ estudiantes|length }}</p>
-                                <p class="card-footer mb-0 text-muted small">Total de estudiantes</p>
+
+    <div class="container-fluid py-4">
+        <!-- Header Información -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h4 class="card-title mb-1">
+                                    <i class="fas fa-clipboard-list text-primary me-2"></i>
+                                    Gestión Académica
+                                </h4>
+                                <p class="text-muted mb-0">
+                                    Curso: <strong>{{ curso.nombreCurso if curso else 'No seleccionado' }}</strong> | 
+                                    Sede: <strong>{{ curso.sede.nombre if curso and curso.sede else 'No asignada' }}</strong> | 
+                                    Estudiantes: <strong>{{ estudiantes|length }}</strong>
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="btn-group">
+                                    <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-sync-alt me-1"></i>Cambiar Curso
+                                    </a>
+                                    <a href="{{ url_for('profesor.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-home me-1"></i>Dashboard
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                        <div class="card course-card">
-                             <div class="card-body">
-                                <p class="fw-bold mb-1">Curso</p>
-                                <p class="mb-1">
-                                    {% if curso %}
-                                        {{ curso.nombreCurso }}
-                                    {% else %}
-                                        Curso no seleccionado
-                                    {% endif %}
-                                </p>
-                                <p class="mb-0 text-muted small">
-                                    {% if curso and curso.sede %}
-                                        Sede: {{ curso.sede.nombre }}
-                                    {% endif %}
-                                </p>
-                             </div>
-                        </div>
                     </div>
-                </section>
-
-                <!-- Alerta si no hay curso seleccionado -->
-                {% if not curso %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Primero debes <a href="{{ url_for('profesor.seleccionar_curso') }}" class="alert-link">seleccionar un curso</a> para gestionar asistencias y calificaciones.
                 </div>
-                {% endif %}
+            </div>
+        </div>
 
-                <nav class="content-tabs">
-                    <a id="attendance-tab" class="tab-link active">Asistencia</a>
-                    <a id="grades-tab" class="tab-link">Calificaciones</a>
-                </nav>
+        <!-- Alertas -->
+        {% if not curso %}
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Error:</strong> No se pudo cargar la información del curso. 
+            <a href="{{ url_for('profesor.seleccionar_curso') }}" class="alert-link">
+                Selecciona un curso para continuar
+            </a>
+        </div>
+        {% endif %}
 
-                <div id="attendance-content">
-                    <!-- Monthly List View (Default) -->
-                    <section id="monthly-view" class="content-section">
-                        <div class="attendance-header">
-                            <div class="month-navigation">
-                                <button id="prev-month-btn" class="nav-btn"><i class="fas fa-chevron-left"></i></button>
-                                <h2 id="month-year-display"></h2>
-                                <button id="next-month-btn" class="nav-btn"><i class="fas fa-chevron-right"></i></button>
-                            </div>
-                            <div class="controls">
-                               <button id="go-to-today-btn" class="save-button">Tomar Asistencia de Hoy</button>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Pestañas principales -->
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <ul class="nav nav-tabs card-header-tabs" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
+                            <i class="fas fa-clipboard-check me-2"></i>Asistencia
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades" type="button" role="tab">
+                            <i class="fas fa-chart-bar me-2"></i>Calificaciones
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body">
+                <div class="tab-content" id="mainTabsContent">
+                    
+                    <!-- Pestaña de Asistencia -->
+                    <div class="tab-pane fade show active" id="attendance" role="tabpanel">
+                        {% if curso and estudiantes %}
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                                        Control de Asistencia
+                                    </h5>
+                                    <div class="btn-group">
+                                        <button id="prev-month-btn" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <button class="btn btn-outline-primary disabled" id="month-year-display">
+                                            Cargando...
+                                        </button>
+                                        <button id="next-month-btn" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                        <button id="go-to-today-btn" class="btn btn-primary btn-sm ms-2">
+                                            <i class="fas fa-calendar-day me-1"></i>Hoy
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- Información del curso para JavaScript -->
+
+                        <!-- Vista Mensual -->
+                        <div id="monthly-view">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm" id="monthly-grid-table">
+                                    <thead class="table-light">
+                                        <!-- Cabecera generada por JavaScript -->
+                                    </thead>
+                                    <tbody>
+                                        <!-- Contenido generado por JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Vista Diaria (Oculta inicialmente) -->
+                        <div id="daily-view" style="display: none;">
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 id="daily-view-title" class="mb-0">Asistencia del Día</h5>
+                                        <button id="back-to-monthly-btn" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-arrow-left me-1"></i>Volver al Mes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Resumen de Asistencias -->
+                            <div class="row mb-4">
+                                <div class="col-md-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body text-center py-3">
+                                            <h3 id="present-count" class="mb-0">0</h3>
+                                            <small>Presentes</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-danger text-white">
+                                        <div class="card-body text-center py-3">
+                                            <h3 id="absent-count" class="mb-0">0</h3>
+                                            <small>Ausentes</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-warning text-white">
+                                        <div class="card-body text-center py-3">
+                                            <h3 id="late-count" class="mb-0">0</h3>
+                                            <small>Tardanzas</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card bg-info text-white">
+                                        <div class="card-body text-center py-3">
+                                            <h3 id="justified-count" class="mb-0">0</h3>
+                                            <small>Justificados</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Lista de Estudiantes -->
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Registro de Asistencia</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% for estudiante in estudiantes %}
+                                    <div class="student-row mb-3 p-3 border rounded" data-student-id="{{ estudiante.id_usuario }}">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <h6 class="mb-1">{{ estudiante.nombre }} {{ estudiante.apellido }}</h6>
+                                                <small class="text-muted">ID: {{ estudiante.no_identidad }}</small>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="btn-group btn-group-sm w-100" role="group">
+                                                    <button type="button" class="btn btn-outline-success attendance-btn" data-status="presente">
+                                                        <i class="fas fa-check me-1"></i>Presente
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger attendance-btn" data-status="ausente">
+                                                        <i class="fas fa-times me-1"></i>Ausente
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-warning attendance-btn" data-status="tardanza">
+                                                        <i class="fas fa-clock me-1"></i>Tarde
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-info attendance-btn" data-status="justificado">
+                                                        <i class="fas fa-file-medical me-1"></i>Justificado
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Botón Guardar -->
+                            <div class="text-end mt-4">
+                                <button id="save-daily-attendance-btn" class="btn btn-success btn-lg">
+                                    <i class="fas fa-save me-2"></i>Guardar Asistencia
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Datos del curso para JavaScript -->
                         <div id="course-data" 
-                             data-curso-id="{{ curso.id if curso else '' }}"
+                             data-curso-id="{{ curso.id }}"
                              data-profesor-id="{{ current_user.id_usuario }}"
                              style="display: none;">
                         </div>
 
-                        <div class="monthly-list-container">
-                            <table class="monthly-grid-table">
-                                <thead></thead>
-                                <tbody></tbody>
-                            </table>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">
+                                {% if not curso %}
+                                No hay curso seleccionado
+                                {% else %}
+                                No hay estudiantes en este curso
+                                {% endif %}
+                            </h4>
+                            <p class="text-muted">
+                                {% if not curso %}
+                                <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-primary mt-3">
+                                    Seleccionar Curso
+                                </a>
+                                {% else %}
+                                Contacta con el administrador para agregar estudiantes al curso.
+                                {% endif %}
+                            </p>
                         </div>
-                    </section>
+                        {% endif %}
+                    </div>
 
-                    <!-- Daily Attendance View (Hidden by default) -->
-                    <section id="daily-view" class="content-section" style="display: none;">
-                        <div class="attendance-header">
-                            <h2 id="daily-view-title">Asistencia</h2>
-                            <div class="controls">
-                                <button id="back-to-monthly-btn" class="back-button">Volver al Mes</button>
+                    <!-- Pestaña de Calificaciones -->
+                    <div class="tab-pane fade" id="grades" role="tabpanel">
+                        {% if curso and estudiantes and asignaturas %}
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-bar me-2 text-primary"></i>
+                                    Gestión de Calificaciones
+                                </h5>
                             </div>
                         </div>
 
-                        <div class="summary-cards">
-                            <div class="summary-card present">
-                                <span class="count" id="present-count">0</span>
-                                <span>Presentes</span>
-                            </div>
-                            <div class="summary-card absent">
-                                <span class="count" id="absent-count">0</span>
-                                <span>Ausentes</span>
-                            </div>
-                            <div class="summary-card late">
-                                <span class="count" id="late-count">0</span>
-                                <span>Tardes</span>
-                            </div>
-                        </div>
-
-                        <div class="student-list">
-                            {% if estudiantes %}
-                                {% for estudiante in estudiantes %}
-                                <div class="student-row" data-student-id="{{ estudiante.id_usuario }}">
-                                    <div class="student-info">
-                                        <span class="student-name">{{ estudiante.nombre }} {{ estudiante.apellido }}</span>
-                                        <span class="student-id">{{ estudiante.no_identidad }}</span>
+                        <!-- Estadísticas -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card border-primary">
+                                    <div class="card-body text-center">
+                                        <h2 id="lowest-grade" class="text-primary mb-0">0.0</h2>
+                                        <small class="text-muted">Nota Más Baja</small>
                                     </div>
-                                    <div class="attendance-actions">
-                                        <button class="attendance-btn present" data-status="presente">
-                                            <i class="fas fa-check"></i> Presente
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-success">
+                                    <div class="card-body text-center">
+                                        <h2 id="highest-grade" class="text-success mb-0">0.0</h2>
+                                        <small class="text-muted">Nota Más Alta</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h2 id="average-grade" class="text-info mb-0">0.0</h2>
+                                        <small class="text-muted">Promedio General</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-warning">
+                                    <div class="card-body text-center">
+                                        <h2 id="total-grades" class="text-warning mb-0">0</h2>
+                                        <small class="text-muted">Total Calificaciones</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtros y Acciones -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Asignatura:</label>
+                                        <select id="subject-select" class="form-select">
+                                            <option value="">Todas las asignaturas</option>
+                                            {% for asignatura in asignaturas %}
+                                            <option value="{{ asignatura.id }}">{{ asignatura.nombre }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Categoría:</label>
+                                        <select id="category-select" class="form-select">
+                                            <option value="">Todas las categorías</option>
+                                            {% for categoria in categorias %}
+                                            <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.porcentaje }}%)</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-grid gap-2">
+                                    <button id="add-grade-btn" class="btn btn-primary">
+                                        <i class="fas fa-plus me-1"></i>Nueva Calificación
+                                    </button>
+                                    <div class="btn-group">
+                                        <button id="generate-report-btn" class="btn btn-outline-secondary">
+                                            <i class="fas fa-file-pdf me-1"></i>Reporte
                                         </button>
-                                        <button class="attendance-btn absent" data-status="ausente">
-                                            <i class="fas fa-times"></i> Ausente
-                                        </button>
-                                        <button class="attendance-btn late" data-status="tardanza">
-                                            <i class="fas fa-clock"></i> Tarde
-                                        </button>
-                                        <button class="attendance-btn justified" data-status="justificado">
-                                            <i class="fas fa-file-medical"></i> Justificado
+                                        <button id="export-grades-btn" class="btn btn-outline-secondary">
+                                            <i class="fas fa-download me-1"></i>Exportar
                                         </button>
                                     </div>
                                 </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="no-students">
-                                    <i class="fas fa-users-slash"></i>
-                                    <p>No hay estudiantes en este curso</p>
-                                </div>
-                            {% endif %}
+                            </div>
                         </div>
 
-                        <div class="save-footer">
-                            <button id="save-daily-attendance-btn" class="save-button" 
-                                    {% if not estudiantes %}disabled{% endif %}>
-                                Guardar Asistencia <i class="fas fa-check-circle"></i>
-                            </button>
-                        </div>
-                    </section>
-                </div>
-
-                <div id="grades-content" style="display: none;">
-                    <section class="content-section">
-                        <div class="grades-summary-cards">
-                            <div class="grades-summary-card">
-                                <div id="lowest-grade" class="value">0</div>
-                                <div class="label">Calificación Más Baja</div>
-                            </div>
-                            <div class="grades-summary-card">
-                                <div id="highest-grade" class="value">0</div>
-                                <div class="label">Calificación Más Alta</div>
-                            </div>
-                            <div class="grades-summary-card">
-                                <div id="average-grade" class="value">0</div>
-                                <div class="label">Promedio de Clase</div>
-                            </div>
-                        </div>
-                        
-                        <div class="grades-actions">
-                            <div class="grades-settings">
-                                <label for="subject-select">Asignatura:</label>
-                                <select id="subject-select">
-                                    <option value="">Todas las asignaturas</option>
-                                    {% if asignaturas %}
-                                        {% for asignatura in asignaturas %}
-                                        <option value="{{ asignatura.id }}">{{ asignatura.nombre }}</option>
-                                        {% endfor %}
-                                    {% endif %}
-                                </select>
-                                
-                                <label for="category-select">Categoría:</label>
-                                <select id="category-select">
-                                    <option value="">Todas las categorías</option>
-                                    {% if categorias %}
-                                        {% for categoria in categorias %}
-                                        <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.porcentaje }}%)</option>
-                                        {% endfor %}
-                                    {% endif %}
-                                </select>
-                            </div>
-                            <div>
-                                <button id="generate-report-btn" class="back-button">Generar Reporte</button>
-                                <button id="export-grades-btn" class="back-button">Exportar</button>
-                                <button id="add-grade-btn" class="save-button">Añadir Calificación</button>
-                            </div>
-                        </div>
-                        
-                        <div class="grades-table-container">
-                            {% if estudiantes %}
-                            <table class="grades-table">
-                                <thead>
+                        <!-- Tabla de Calificaciones -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="grades-table">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Estudiante</th>
                                         <th>Identificación</th>
-                                        {% if asignaturas %}
-                                            {% for asignatura in asignaturas %}
-                                            <th>{{ asignatura.nombre }}</th>
-                                            {% endfor %}
-                                        {% endif %}
-                                        <th>Promedio</th>
-                                        <th>Acciones</th>
+                                        {% for asignatura in asignaturas %}
+                                        <th class="text-center">{{ asignatura.nombre }}</th>
+                                        {% endfor %}
+                                        <th class="text-center">Promedio</th>
+                                        <th width="100">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for estudiante in estudiantes %}
                                     <tr data-student-id="{{ estudiante.id_usuario }}">
-                                        <td>{{ estudiante.nombre }} {{ estudiante.apellido }}</td>
-                                        <td>{{ estudiante.no_identidad }}</td>
-                                        {% if asignaturas %}
-                                            {% for asignatura in asignaturas %}
-                                            <td class="grade-cell" data-student-id="{{ estudiante.id_usuario }}" data-subject-id="{{ asignatura.id }}">
-                                                {% set grade_found = false %}
-                                                {% for calificacion in calificaciones %}
-                                                    {% if calificacion.estudianteId == estudiante.id_usuario and calificacion.asignaturaId == asignatura.id %}
-                                                        {{ calificacion.valor }}
-                                                        {% set grade_found = true %}
-                                                    {% endif %}
-                                                {% endfor %}
-                                                {% if not grade_found %}-{% endif %}
-                                            </td>
-                                            {% endfor %}
-                                        {% endif %}
-                                        <td class="average-grade">-</td>
                                         <td>
-                                            <button class="btn-grade-edit" data-student-id="{{ estudiante.id_usuario }}">
+                                            <strong>{{ estudiante.nombre }} {{ estudiante.apellido }}</strong>
+                                        </td>
+                                        <td>{{ estudiante.no_identidad }}</td>
+                                        {% for asignatura in asignaturas %}
+                                        <td class="text-center grade-cell" 
+                                            data-student-id="{{ estudiante.id_usuario }}" 
+                                            data-subject-id="{{ asignatura.id }}">
+                                            {% set grade_found = false %}
+                                            {% for calificacion in calificaciones %}
+                                                {% if calificacion.estudianteId == estudiante.id_usuario and calificacion.asignaturaId == asignatura.id %}
+                                                    <span class="badge bg-primary">{{ calificacion.valor }}</span>
+                                                    {% set grade_found = true %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            {% if not grade_found %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary average-grade">-</span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary btn-grade-edit" 
+                                                    data-student-id="{{ estudiante.id_usuario }}"
+                                                    title="Editar calificaciones">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                         </td>
@@ -265,86 +415,129 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
-                            {% else %}
-                            <div class="no-data">
-                                <i class="fas fa-graduation-cap"></i>
-                                <p>No hay estudiantes en este curso</p>
-                            </div>
-                            {% endif %}
                         </div>
-                    </section>
-                </div>
 
-            </main>
-        </div>
-    </div>
-    
-    <!-- Custom Modals -->
-    <div id="alertModal" class="modal-overlay">
-        <div class="modal-content">
-            <h5 class="modal-title">Notificación</h5>
-            <p id="alertModalBody"></p>
-            <div class="modal-footer">
-                <button id="alertModalAcceptBtn" class="save-button">Aceptar</button>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">
+                                {% if not curso %}
+                                No hay curso seleccionado
+                                {% elif not estudiantes %}
+                                No hay estudiantes en este curso
+                                {% else %}
+                                No hay asignaturas asignadas
+                                {% endif %}
+                            </h4>
+                            <p class="text-muted">
+                                {% if not curso %}
+                                <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-primary mt-3">
+                                    Seleccionar Curso
+                                </a>
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="gradeModal" class="modal-overlay">
-        <div class="modal-content">
-            <h5 id="gradeModalTitle" class="modal-title">Registrar Calificación</h5>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="gradeStudent">Estudiante:</label>
-                    <select id="gradeStudent" class="modal-input">
-                        {% for estudiante in estudiantes %}
-                        <option value="{{ estudiante.id_usuario }}">{{ estudiante.nombre }} {{ estudiante.apellido }}</option>
-                        {% endfor %}
-                    </select>
+    <!-- Modal para Calificaciones -->
+    <div class="modal fade" id="gradeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="gradeModalTitle">
+                        <i class="fas fa-edit me-2"></i>Registrar Calificación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="form-group">
-                    <label for="gradeSubject">Asignatura:</label>
-                    <select id="gradeSubject" class="modal-input">
-                        {% for asignatura in asignaturas %}
-                        <option value="{{ asignatura.id }}">{{ asignatura.nombre }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="modal-body">
+                    <form id="gradeForm">
+                        <div class="mb-3">
+                            <label for="gradeStudent" class="form-label">Estudiante:</label>
+                            <select id="gradeStudent" class="form-select" required>
+                                <option value="">Seleccionar estudiante...</option>
+                                {% for estudiante in estudiantes %}
+                                <option value="{{ estudiante.id_usuario }}">{{ estudiante.nombre }} {{ estudiante.apellido }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="gradeSubject" class="form-label">Asignatura:</label>
+                            <select id="gradeSubject" class="form-select" required>
+                                <option value="">Seleccionar asignatura...</option>
+                                {% for asignatura in asignaturas %}
+                                <option value="{{ asignatura.id }}">{{ asignatura.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="gradeCategory" class="form-label">Categoría:</label>
+                            <select id="gradeCategory" class="form-select" required>
+                                <option value="">Seleccionar categoría...</option>
+                                {% for categoria in categorias %}
+                                <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.porcentaje }}%)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="gradeValue" class="form-label">Calificación:</label>
+                            <input type="number" id="gradeValue" class="form-control" min="0" max="100" step="0.1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="gradeObservations" class="form-label">Observaciones:</label>
+                            <textarea id="gradeObservations" class="form-control" rows="3" placeholder="Observaciones adicionales..."></textarea>
+                        </div>
+                    </form>
                 </div>
-                <div class="form-group">
-                    <label for="gradeCategory">Categoría:</label>
-                    <select id="gradeCategory" class="modal-input">
-                        {% for categoria in categorias %}
-                        <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.porcentaje }}%)</option>
-                        {% endfor %}
-                    </select>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="gradeModalConfirmBtn" class="btn btn-primary">Guardar Calificación</button>
                 </div>
-                <div class="form-group">
-                    <label for="gradeValue">Calificación:</label>
-                    <input type="number" id="gradeValue" class="modal-input" min="0" max="100" step="0.1">
-                </div>
-                <div class="form-group">
-                    <label for="gradeObservations">Observaciones:</label>
-                    <textarea id="gradeObservations" class="modal-input" rows="3"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="gradeModalCancelBtn" class="back-button">Cancelar</button>
-                <button id="gradeModalConfirmBtn" class="save-button">Guardar</button>
             </div>
         </div>
     </div>
 
-    <div id="confirmModal" class="modal-overlay">
-        <div class="modal-content">
-            <h5 class="modal-title">Confirmar Acción</h5>
-            <p id="confirmModalBody"></p>
-            <div class="modal-footer">
-                <button id="confirmModalCancelBtn" class="back-button">Cancelar</button>
-                <button id="confirmModalConfirmBtn" class="save-button">Confirmar</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/profesor/Gestion_LC.js') }}"></script>
+
+    <script>
+        // Inicialización cuando el DOM está listo
+        document.addEventListener('DOMContentLoaded', function() {
+            // Activar pestañas de Bootstrap
+            const triggerTabList = [].slice.call(document.querySelectorAll('#mainTabs button'));
+            triggerTabList.forEach(function (triggerEl) {
+                var tabTrigger = new bootstrap.Tab(triggerEl);
+                triggerEl.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    tabTrigger.show();
+                });
+            });
+
+            // Inicializar modal de calificaciones
+            const gradeModal = new bootstrap.Modal(document.getElementById('gradeModal'));
+            
+            // Botón para abrir modal de calificaciones
+            document.getElementById('add-grade-btn')?.addEventListener('click', function() {
+                document.getElementById('gradeModalTitle').textContent = 'Nueva Calificación';
+                document.getElementById('gradeForm').reset();
+                gradeModal.show();
+            });
+
+            // Botones de edición en la tabla
+            document.querySelectorAll('.btn-grade-edit').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const studentId = this.getAttribute('data-student-id');
+                    document.getElementById('gradeModalTitle').textContent = 'Editar Calificaciones';
+                    document.getElementById('gradeStudent').value = studentId;
+                    gradeModal.show();
+                });
+            });
+        });
+    </script>
 </body>
 </html>

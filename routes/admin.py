@@ -608,32 +608,26 @@ def gestion_academica():
 @login_required
 @role_required(1)
 def gestion_horarios():
-    """Página principal del sistema de horarios"""
     return render_template('superadmin/Horarios/gestion_horarios.html')
 
 @admin_bp.route('/api/horarios/nuevo', methods=['POST'])
 @login_required
 @role_required(1)
 def api_crear_horario_completo():
-    """API para crear un horario completo con bloques"""
     try:
         data = request.get_json()
-        print("📝 Datos recibidos para crear horario:", data)
         
         if not data.get('nombre'):
             return jsonify({'success': False, 'error': 'El nombre del horario es requerido'}), 400
         
-        # Validar días
         dias = data.get('dias', [])
         if not dias:
             return jsonify({'success': False, 'error': 'Seleccione al menos un día'}), 400
         
-        # Validar bloques
         bloques = data.get('bloques', [])
         if not bloques:
             return jsonify({'success': False, 'error': 'Agregue al menos un bloque horario'}), 400
         
-        # Crear horario general
         nuevo_horario = HorarioGeneral(
             nombre=data.get('nombre'),
             periodo=data.get('periodo', 'Primer Semestre'),
@@ -647,9 +641,7 @@ def api_crear_horario_completo():
         db.session.add(nuevo_horario)
         db.session.flush()
         
-        # Crear bloques del horario
         for i, bloque_data in enumerate(bloques):
-            # Validar datos del bloque
             if not all(key in bloque_data for key in ['dia_semana', 'horaInicio', 'horaFin', 'tipo']):
                 continue
                 
@@ -666,8 +658,7 @@ def api_crear_horario_completo():
                     break_type=bloque_data.get('break_type')
                 )
                 db.session.add(nuevo_bloque)
-            except ValueError as e:
-                print(f"⚠️ Error creando bloque {i+1}: {e}")
+            except ValueError:
                 continue
         
         db.session.commit()
@@ -691,16 +682,13 @@ def api_crear_horario_completo():
 @login_required
 @role_required(1)
 def api_obtener_horario(horario_id):
-    """API para obtener un horario específico con sus bloques"""
     try:
         horario = HorarioGeneral.query.get_or_404(horario_id)
         
-        # Obtener bloques ordenados
         bloques = BloqueHorario.query.filter_by(horario_general_id=horario_id)\
                                     .order_by(BloqueHorario.orden)\
                                     .all()
         
-        # Convertir diasSemana de JSON a lista
         try:
             dias_lista = json.loads(horario.diasSemana) if horario.diasSemana else []
         except:
@@ -733,7 +721,6 @@ def api_obtener_horario(horario_id):
 @login_required
 @role_required(1)
 def api_listar_horarios():
-    """API para listar todos los horarios"""
     try:
         horarios = HorarioGeneral.query.all()
         return jsonify([{
@@ -743,7 +730,7 @@ def api_listar_horarios():
             'horaInicio': h.horaInicio.strftime('%H:%M'),
             'horaFin': h.horaFin.strftime('%H:%M'),
             'activo': h.activo,
-            'totalCursos': len(h.cursos)  # Asegúrate de que use el nombre correcto
+            'totalCursos': len(h.cursos)
         } for h in horarios])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -752,14 +739,11 @@ def api_listar_horarios():
 @login_required
 @role_required(1)
 def api_eliminar_horario(horario_id):
-    """API para eliminar un horario"""
     try:
         horario = HorarioGeneral.query.get_or_404(horario_id)
         
-        # Eliminar bloques asociados
         BloqueHorario.query.filter_by(horario_general_id=horario_id).delete()
         
-        # Desasignar de cursos
         Curso.query.filter_by(horario_general_id=horario_id).update({'horario_general_id': None})
         
         db.session.delete(horario)
@@ -775,7 +759,6 @@ def api_eliminar_horario(horario_id):
 @login_required
 @role_required(1)
 def api_asignar_horario_curso():
-    """API para asignar horario a cursos"""
     try:
         data = request.get_json()
         horario_id = data.get('horario_id')
@@ -796,9 +779,11 @@ def api_asignar_horario_curso():
                 cursos_asignados += 1
         
         db.session.commit()
+        
         return jsonify({
             'success': True, 
-            'message': f'Horario "{horario.nombre}" asignado a {cursos_asignados} cursos'
+            'message': f'Horario "{horario.nombre}" asignado a {cursos_asignados} cursos',
+            'cursos_asignados': cursos_asignados
         })
         
     except Exception as e:
@@ -809,7 +794,6 @@ def api_asignar_horario_curso():
 @login_required
 @role_required(1)
 def api_estadisticas_horarios():
-    """API para obtener estadísticas de horarios"""
     try:
         total_cursos = Curso.query.count()
         
@@ -819,7 +803,6 @@ def api_estadisticas_horarios():
         horarios_activos = HorarioGeneral.query.filter_by(activo=True).count()
         total_salones = Salon.query.count()
         
-        # Calcular salones libres
         salones_ocupados = Curso.query.filter(Curso.horario_general_id.isnot(None)).count()
         salones_libres = max(0, total_salones - salones_ocupados)
         
@@ -837,119 +820,130 @@ def api_estadisticas_horarios():
 @login_required
 @role_required(1)
 def gestion_horarios_cursos():
-    """Página para gestionar horarios específicos por curso"""
     return render_template('superadmin/Horarios/gestion_horarios_cursos.html')
-
-# =============================================
-# RUTAS PARA GESTIÓN DE HORARIOS DE CURSOS - CORREGIDAS
-# =============================================
-
-# ELIMINAR LAS RUTAS DUPLICADAS ANTERIORES (líneas 349-380)
-# Y MANTENER SOLO ESTAS:
 
 @admin_bp.route('/api/horario_curso/guardar', methods=['POST'])
 @login_required
 @role_required(1)
 def api_guardar_horario_curso():
-    """API para guardar horario específico de curso - IMPLEMENTACIÓN REAL"""
     try:
         data = request.get_json()
         curso_id = data.get('curso_id')
         horario_general_id = data.get('horario_general_id')
-        asignaciones = data.get('asignaciones', {})
-        
+        asignaciones = data.get('asignaciones', {})  # ahora incluye asignatura_id y salon_id
+
         if not curso_id:
             return jsonify({'success': False, 'error': 'ID de curso requerido'}), 400
-        
-        # Verificar que el curso existe
+
         curso = Curso.query.get(curso_id)
         if not curso:
             return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
-        
-        # Asignar horario general al curso
+
         if horario_general_id:
             horario = HorarioGeneral.query.get(horario_general_id)
             if not horario:
                 return jsonify({'success': False, 'error': 'Horario general no encontrado'}), 404
             curso.horario_general_id = horario_general_id
-        
-        # Guardar asignaciones específicas del curso
-        # Primero eliminar asignaciones existentes para este curso
+
         HorarioCurso.query.filter_by(curso_id=curso_id).delete()
-        
-        # Crear nuevas asignaciones
-        for clave, asignatura_id in asignaciones.items():
+
+        asignaciones_creadas = 0
+        for clave, datos in asignaciones.items():
             try:
-                # La clave es "Dia-Hora" ej: "Lunes-07:00"
                 partes = clave.split('-')
                 if len(partes) >= 2:
                     dia = partes[0]
                     hora = partes[1]
-                    
+
+                    asignatura_id = datos.get("asignatura_id")
+                    salon_id = datos.get("salon_id")
+
+                    if not asignatura_id:
+                        continue
+
                     nueva_asignacion = HorarioCurso(
                         curso_id=curso_id,
                         asignatura_id=asignatura_id,
                         dia_semana=dia,
                         hora_inicio=hora,
-                        horario_general_id=horario_general_id
+                        horario_general_id=horario_general_id,
+                        id_salon_fk=salon_id
                     )
                     db.session.add(nueva_asignacion)
-            except Exception as e:
-                print(f"Error creando asignación {clave}: {e}")
+                    asignaciones_creadas += 1
+
+            except Exception:
                 continue
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
-            'message': 'Horario del curso guardado correctamente'
+            'message': f'Horario del curso guardado correctamente ({asignaciones_creadas} asignaciones)',
+            'asignaciones_creadas': asignaciones_creadas
         })
-        
+
     except Exception as e:
         db.session.rollback()
-        print(f"Error guardando horario de curso: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
+    
 @admin_bp.route('/api/horario_curso/cargar/<int:curso_id>')
 @login_required
 @role_required(1)
 def api_cargar_horario_curso(curso_id):
-    """API para cargar horario específico de curso - IMPLEMENTACIÓN REAL"""
     try:
-        # Obtener asignaciones existentes para este curso
+        curso = Curso.query.get(curso_id)
+        if not curso:
+            return jsonify({'error': 'Curso no encontrado'}), 404
+
         asignaciones_db = HorarioCurso.query.filter_by(curso_id=curso_id).all()
-        
-        # Convertir a formato para el frontend
+
         asignaciones = {}
         for asignacion in asignaciones_db:
             clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
-            asignaciones[clave] = asignacion.asignatura_id
-        
-        # Obtener información del curso
-        curso = Curso.query.get(curso_id)
-        horario_general_id = curso.horario_general_id if curso else None
-        
+            asignaciones[clave] = {
+                "asignatura_id": asignacion.asignatura_id,
+                "salon_id": asignacion.id_salon_fk
+            }
+
+        bloques_horario = []
+        if curso.horario_general_id:
+            bloques = BloqueHorario.query.filter_by(
+                horario_general_id=curso.horario_general_id
+            ).order_by(BloqueHorario.orden).all()
+
+            bloques_horario = [{
+                'id': b.id,
+                'dia_semana': b.dia_semana,
+                'horaInicio': b.horaInicio.strftime('%H:%M'),
+                'horaFin': b.horaFin.strftime('%H:%M'),
+                'tipo': b.tipo,
+                'nombre': b.nombre,
+                'class_type': b.class_type,
+                'break_type': b.break_type
+            } for b in bloques]
+
         return jsonify({
             'curso_id': curso_id,
-            'horario_general_id': horario_general_id,
-            'asignaciones': asignaciones
+            'horario_general_id': curso.horario_general_id,
+            'nombre_curso': curso.nombreCurso,
+            'asignaciones': asignaciones,
+            'bloques_horario': bloques_horario,
+            'tiene_horario_general': curso.horario_general_id is not None
         })
-        
+
     except Exception as e:
-        print(f"Error cargando horario de curso: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/estadisticas/horarios-cursos')
 @login_required
 @role_required(1)
 def api_estadisticas_horarios_cursos():
-    """API para estadísticas de horarios de cursos"""
     try:
         total_cursos = Curso.query.count()
         cursos_con_horario = Curso.query.filter(Curso.horario_general_id.isnot(None)).count()
         total_asignaturas = Asignatura.query.count()
         
-        # Calcular porcentaje de horarios asignados
         porcentaje_asignados = (cursos_con_horario / total_cursos * 100) if total_cursos > 0 else 0
         
         return jsonify({
@@ -961,7 +955,25 @@ def api_estadisticas_horarios_cursos():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# --- Rutas existentes para gestión académica (mantener igual) ---
+@admin_bp.route('/api/cursos/<int:curso_id>')
+@login_required
+@role_required(1)
+def api_obtener_curso(curso_id):
+    try:
+        curso = Curso.query.get_or_404(curso_id)
+        
+        return jsonify({
+            'id': curso.id,
+            'nombreCurso': curso.nombreCurso,
+            'sedeId': curso.sedeId,
+            'horario_general_id': curso.horario_general_id,
+            'sede': curso.sede.nombre if curso.sede else None
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== GESTIÓN DE USUARIOS - FORMULARIOS ====================
 @admin_bp.route('/crear_usuario', methods=['GET', 'POST'])
 @login_required
 @role_required(1)
@@ -1089,6 +1101,7 @@ def eliminar_usuario(user_id):
     flash(f'Usuario "{user.nombre_completo}" eliminado exitosamente.', 'success')
     return redirect(url_for('admin.profesores'))
 
+# ==================== GESTIÓN DE SEDES ====================
 @admin_bp.route('/gestion_sedes')
 @login_required
 @role_required(1)
@@ -1096,6 +1109,21 @@ def gestion_sedes():
     form = SedeForm()
     return render_template('superadmin/gestion_academica/sedes.html', form=form)
 
+@admin_bp.route('/api/salones', methods=['GET'])
+@login_required
+@role_required(1)
+def api_salones():
+    try:
+        salones = Salon.query.order_by(Salon.nombre).all()
+        return jsonify([{
+            'id': s.id,
+            'nombre': s.nombre,
+            'capacidad': s.capacidad
+        } for s in salones])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ==================== GESTIÓN DE CURSOS ====================
 @admin_bp.route('/gestion_cursos')
 @login_required
 @role_required(1)
@@ -1108,13 +1136,18 @@ def gestion_cursos():
 @role_required(1)
 def api_cursos():
     if request.method == 'GET':
-        cursos = db.session.query(Curso, Sede.nombre).join(Sede).all()
-        cursos_list = [{
-            'id': c.id,
-            'nombreCurso': c.nombreCurso,
-            'sede': sede_nombre
-        } for c, sede_nombre in cursos]
-        return jsonify({"data": cursos_list})
+        try:
+            cursos = db.session.query(Curso, Sede.nombre).join(Sede).all()
+            cursos_list = [{
+                'id': c.id,
+                'nombreCurso': c.nombreCurso,
+                'sede': sede_nombre,
+                'horario_general_id': c.horario_general_id,
+                'sedeId': c.sedeId
+            } for c, sede_nombre in cursos]
+            return jsonify({"data": cursos_list})
+        except Exception as e:
+            return jsonify({"error": "Error interno del servidor"}), 500
 
     elif request.method == 'POST':
         form = CursoForm()
@@ -1130,7 +1163,8 @@ def api_cursos():
                 return jsonify({
                     'id': nuevo_curso.id,
                     'nombreCurso': nuevo_curso.nombreCurso,
-                    'sede': sede.nombre if sede else 'N/A'
+                    'sede': sede.nombre if sede else 'N/A',
+                    'horario_general_id': None
                 }), 201
             except IntegrityError:
                 db.session.rollback()
@@ -1163,30 +1197,30 @@ def api_cursos():
             db.session.rollback()
             return jsonify({'error': f'Error interno: {str(e)}'}), 500
 
-# =============================================
-# RUTAS PARA GESTIÓN DE ASIGNATURAS
-# =============================================
-
+# ==================== GESTIÓN DE ASIGNATURAS ====================
 @admin_bp.route('/gestion-asignaturas')
 @login_required
 @role_required(1)
 def gestion_asignaturas():
-    """Página de gestión de asignaturas"""
     return render_template('superadmin/gestion_academica/gestion_asignaturas.html')
 
 @admin_bp.route('/api/asignaturas')
 @login_required
 @role_required(1)
 def api_asignaturas():
-    """API para obtener todas las asignaturas"""
+    """API para obtener todas las asignaturas con sus profesores"""
     try:
         asignaturas = Asignatura.query.order_by(Asignatura.nombre).all()
         return jsonify([{
             'id': a.id,
             'nombre': a.nombre,
             'descripcion': a.descripcion or '',
-            'color': getattr(a, 'color', '#0D3B66'),
-            'estado': getattr(a, 'estado', 'activa')
+            'estado': getattr(a, 'estado', 'activa'),
+            'profesores': [{
+                'id_usuario': prof.id_usuario,
+                'nombre_completo': prof.nombre_completo,
+                'correo': prof.correo
+            } for prof in a.profesores]
         } for a in asignaturas])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1195,9 +1229,10 @@ def api_asignaturas():
 @login_required
 @role_required(1)
 def api_crear_asignatura():
-    """API para crear una nueva asignatura"""
+    """API para crear una nueva asignatura con profesores"""
     try:
         data = request.get_json()
+        print("📝 Datos recibidos para crear asignatura:", data)
         
         if not data.get('nombre'):
             return jsonify({'success': False, 'error': 'El nombre de la asignatura es requerido'}), 400
@@ -1210,15 +1245,27 @@ def api_crear_asignatura():
         nueva_asignatura = Asignatura(
             nombre=data['nombre'],
             descripcion=data.get('descripcion', ''),
-            color=data.get('color', '#0D3B66')
+            estado=data.get('estado', 'activa')
         )
         
-        # Agregar campo estado si no existe en el modelo
-        if hasattr(nueva_asignatura, 'estado'):
-            nueva_asignatura.estado = data.get('estado', 'activa')
-        
         db.session.add(nueva_asignatura)
+        db.session.flush()  # Para obtener el ID
+        
+        # Asignar profesores
+        profesores_ids = data.get('profesores', [])
+        print(f"👨‍🏫 IDs de profesores a asignar: {profesores_ids}")
+        
+        for profesor_id in profesores_ids:
+            profesor = Usuario.query.get(profesor_id)
+            if profesor:
+                print(f"✅ Asignando profesor: {profesor.nombre_completo}")
+                nueva_asignatura.profesores.append(profesor)
+            else:
+                print(f"⚠️ Profesor con ID {profesor_id} no encontrado")
+        
         db.session.commit()
+        
+        print(f"✅ Asignatura creada: {nueva_asignatura.nombre} con {len(profesores_ids)} profesores")
         
         return jsonify({
             'success': True,
@@ -1227,22 +1274,29 @@ def api_crear_asignatura():
                 'id': nueva_asignatura.id,
                 'nombre': nueva_asignatura.nombre,
                 'descripcion': nueva_asignatura.descripcion,
-                'color': getattr(nueva_asignatura, 'color', '#0D3B66'),
-                'estado': getattr(nueva_asignatura, 'estado', 'activa')
+                'estado': nueva_asignatura.estado,
+                'profesores': [{
+                    'id_usuario': prof.id_usuario,
+                    'nombre_completo': prof.nombre_completo,
+                    'correo': prof.correo
+                } for prof in nueva_asignatura.profesores]
             }
         })
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error creando asignatura: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['PUT'])
 @login_required
 @role_required(1)
 def api_actualizar_asignatura(asignatura_id):
-    """API para actualizar una asignatura existente"""
+    """API para actualizar una asignatura existente con profesores"""
     try:
         data = request.get_json()
+        print(f"📝 Datos recibidos para actualizar asignatura {asignatura_id}:", data)
+        
         asignatura = Asignatura.query.get_or_404(asignatura_id)
         
         if not data.get('nombre'):
@@ -1258,14 +1312,27 @@ def api_actualizar_asignatura(asignatura_id):
         
         asignatura.nombre = data['nombre']
         asignatura.descripcion = data.get('descripcion', '')
+        asignatura.estado = data.get('estado', 'activa')
         
-        # Actualizar campos adicionales si existen en el modelo
-        if hasattr(asignatura, 'color'):
-            asignatura.color = data.get('color', '#0D3B66')
-        if hasattr(asignatura, 'estado'):
-            asignatura.estado = data.get('estado', 'activa')
+        # Actualizar profesores - limpiar y agregar nuevos
+        profesores_ids = data.get('profesores', [])
+        print(f"👨‍🏫 IDs de profesores para actualizar: {profesores_ids}")
+        
+        # Limpiar profesores actuales
+        asignatura.profesores.clear()
+        
+        # Agregar nuevos profesores
+        for profesor_id in profesores_ids:
+            profesor = Usuario.query.get(profesor_id)
+            if profesor:
+                print(f"✅ Asignando profesor: {profesor.nombre_completo}")
+                asignatura.profesores.append(profesor)
+            else:
+                print(f"⚠️ Profesor con ID {profesor_id} no encontrado")
         
         db.session.commit()
+        
+        print(f"✅ Asignatura actualizada: {asignatura.nombre} con {len(profesores_ids)} profesores")
         
         return jsonify({
             'success': True,
@@ -1274,24 +1341,27 @@ def api_actualizar_asignatura(asignatura_id):
                 'id': asignatura.id,
                 'nombre': asignatura.nombre,
                 'descripcion': asignatura.descripcion,
-                'color': getattr(asignatura, 'color', '#0D3B66'),
-                'estado': getattr(asignatura, 'estado', 'activa')
+                'estado': asignatura.estado,
+                'profesores': [{
+                    'id_usuario': prof.id_usuario,
+                    'nombre_completo': prof.nombre_completo,
+                    'correo': prof.correo
+                } for prof in asignatura.profesores]
             }
         })
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error actualizando asignatura: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['DELETE'])
 @login_required
 @role_required(1)
 def api_eliminar_asignatura(asignatura_id):
-    """API para eliminar una asignatura"""
     try:
         asignatura = Asignatura.query.get_or_404(asignatura_id)
         
-        # Verificar si la asignatura está siendo utilizada en clases
         clases_con_asignatura = Clase.query.filter_by(asignaturaId=asignatura_id).first()
         if clases_con_asignatura:
             return jsonify({

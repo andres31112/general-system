@@ -56,17 +56,27 @@ def seleccionar_curso():
 @profesor_bp.route('/guardar-curso-seleccionado', methods=['POST'])
 @login_required
 def guardar_curso_seleccionado():
-    """Guarda el curso seleccionado en la sesión"""
+    """Guarda el curso seleccionado en la sesión y redirige a gestión LC"""
     curso_id = request.form.get('curso_id')
     
     if not curso_id:
         flash('Por favor selecciona un curso', 'error')
         return redirect(url_for('profesor.seleccionar_curso'))
     
+    # Verificar que el profesor realmente tenga acceso a este curso
+    cursos_profesor = obtener_cursos_del_profesor(current_user.id_usuario)
+    curso_valido = any(curso.id == int(curso_id) for curso in cursos_profesor)
+    
+    if not curso_valido:
+        flash('No tienes acceso a este curso', 'error')
+        return redirect(url_for('profesor.seleccionar_curso'))
+    
     session['curso_seleccionado'] = int(curso_id)
     curso = Curso.query.get(curso_id)
     flash(f'Curso "{curso.nombreCurso}" seleccionado correctamente', 'success')
-    return redirect(url_for('profesor.dashboard'))
+    
+    # Redirigir a la gestión de listas y calificaciones
+    return redirect(url_for('profesor.gestion_lc'))
 
 # ============================================================================
 # RUTAS ACADÉMICAS (MANTENIDAS POR COMPATIBILIDAD)
@@ -367,15 +377,13 @@ def obtener_estadisticas_calificaciones():
 # ============================================================================
 
 def obtener_cursos_del_profesor(profesor_id):
-    """Obtiene todos los cursos únicos del profesor"""
-    clases = Clase.query.filter_by(profesorId=profesor_id).all()
-    cursos_dict = {}
+    """Obtiene todos los cursos únicos del profesor basado en sus asignaturas asignadas"""
+    # Obtener cursos a través de las clases donde el profesor está asignado
+    cursos = Curso.query.join(Clase, Curso.id == Clase.cursoId)\
+        .filter(Clase.profesorId == profesor_id)\
+        .distinct().all()
     
-    for clase in clases:
-        if clase.curso and clase.curso.id not in cursos_dict:
-            cursos_dict[clase.curso.id] = clase.curso
-    
-    return list(cursos_dict.values())
+    return cursos
 
 def obtener_estudiantes_por_curso(curso_id):
     """Obtiene estudiantes matriculados en un curso"""
