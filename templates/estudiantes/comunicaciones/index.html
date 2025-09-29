@@ -1,32 +1,114 @@
+{# templates/estudiantes/correo.html #}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Correo Institucional</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiantes/comunicaciones.css') }}">
 </head>
-<body>
+<body data-usuario-id="{{ usuario.IdUsuario if usuario is defined else '' }}">
+  <!-- Fondo animado -->
+  <ul class="circles">
+    <li></li><li></li><li></li><li></li><li></li>
+    <li></li><li></li><li></li><li></li><li></li>
+  </ul>
+
+  <!-- HEADER -->
   <header>
-    <h1>Correo Institucional</h1>
-    <p id="usuarioNombre" data-id="{{ usuario.IdUsuario }}">
-      Usuario: {{ usuario.Nombre }} {{ usuario.Apellido }} ({{ usuario.Correo }})
-    </p>
+    <div class="header-left">
+      <div class="header-title">Correo Institucional</div>
+    </div>
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <input id="searchInput" type="search" placeholder="🔎 Buscar correos..." autocomplete="off">
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div id="usuarioNombre" data-id="{{ usuario.IdUsuario if usuario is defined else 0 }}">
+        {{ usuario.Nombre ~ ' ' ~ usuario.Apellido if usuario is defined else 'Usuario' }}
+      </div>
+      <button id="toggleDark" class="btn-ghost" title="Modo oscuro">🌙</button>
+    </div>
   </header>
 
-  <div class="container">
-    <aside>
-      <button onclick="mostrarInbox()">Bandeja de entrada</button>
-      <button onclick="mostrarSent()">Enviados</button>
-      <button onclick="mostrarCompose()">Redactar</button>
-      <button onclick="mostrarDeleted()">Eliminados</button>
-      <h3>Mensajes recientes</h3>
-      <ul id="mensajes-recientes"></ul>
-    </aside>
+  <!-- MAIN -->
+  <main class="dashboard">
+    <!-- SHORTCUTS / CARDS -->
+    <div class="shortcuts">
+      <div class="card" id="cardInbox" onclick="mostrarInbox()">
+        <h3>📥 Bandeja</h3>
+        <p class="meta">Mensajes: <span id="countInbox">{{ bandeja if bandeja is defined else 0 }}</span></p>
+      </div>
+      <div class="card" id="cardSent" onclick="mostrarSent()">
+        <h3>📤 Enviados</h3>
+        <p class="meta">Mensajes: <span id="countSent">{{ enviados if enviados is defined else 0 }}</span></p>
+      </div>
+      <div class="card" id="cardDrafts" onclick="mostrarDrafts()">
+        <h3>📝 Borradores</h3>
+        <p class="meta">Pendientes: <span id="countDrafts">{{ borradores if borradores is defined else 0 }}</span></p>
+      </div>
+      <div class="card" id="cardTrash" onclick="mostrarDeleted()">
+        <h3>🗑️ Eliminados</h3>
+        <p class="meta">Total: <span id="countDeleted">{{ eliminados if eliminados is defined else 0 }}</span></p>
+      </div>
+    </div>
 
-    <main id="contenido"></main>
+    <!-- BOTÓN REDACTAR FIJO -->
+    <div class="compose-bar">
+      <button id="composeBtn" class="btn-primary animate-float">✉️ Redactar</button>
+    </div>
+
+    <!-- CONTENT -->
+    <section class="content" id="contenido">
+      <div id="mailListPlaceholder" class="mail-list-placeholder">
+        <p class="hint">Selecciona una bandeja (Bandeja / Enviados / Borradores / Eliminados) para ver los mensajes.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL REDACTAR -->
+  <div id="composeModal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <button id="closeCompose" class="modal-close" aria-label="Cerrar">&times;</button>
+      <h2 class="modal-title">Mensaje nuevo</h2>
+
+      <form id="composeForm" onsubmit="enviarCorreo(event)">
+        <div class="form-row">
+          <input id="destinatario" type="email" placeholder="Para" required>
+          <div class="cc-buttons">
+            <button type="button" class="mini">CC</button>
+            <button type="button" class="mini">CCO</button>
+          </div>
+        </div>
+
+        <input id="asunto" type="text" placeholder="Asunto">
+        <textarea id="mensaje" placeholder="Escribe tu mensaje..." required></textarea>
+
+        <!-- Adjuntos -->
+        <div class="attachments">
+          <label for="adjunto" class="file-label">📎 Adjuntar</label>
+          <input id="adjunto" type="file" multiple class="file-input" />
+          <div id="attachedList" class="attached-list" aria-live="polite"></div>
+        </div>
+
+        <div class="actions">
+          <div class="left-actions">
+            <button type="submit" class="btn-send">Enviar</button>
+          </div>
+          <div class="right-actions">
+            <button type="button" class="btn-ghost cancelar" onclick="guardarBorrador()">Guardar borrador</button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
+  <!-- FIN MODAL -->
 
-  <script src="{{ url_for('static', filename='estudiantes/comunicaciones.js') }}"></script>
+  <!-- JS -->
+  <script src="{{ url_for('static', filename='js/estudiantes/comunicaciones.js') }}"></script>
+
 </body>
 </html>

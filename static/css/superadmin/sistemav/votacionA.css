@@ -1,86 +1,285 @@
+/* 🌈 Paleta de colores */
 :root {
-  --color-primario: #0078ad;
-  --color-primario-oscuro: #00628e;
-  --color-texto-principal: #2c3e50;
-  --color-texto-secundario: #7f8c8d;
+  --color-azul: #0D3B66;
+  --color-beige: #FAF0CA;
+  --color-mostaza: #F4D35E;
+  --color-naranja: #EE964B;
+  --color-rojo: #F95738;
   --color-blanco: #FFFFFF;
-  --color-fondo-seccion: #f8f9fa;
-  --color-borde-suave: #ecf0f1;
+  --color-gris-claro: #F5F5F5;
 }
 
+/* --- Estilos generales --- */
 body {
-  font-family: Arial, sans-serif;
-  background: var(--color-fondo-seccion);
-  color: var(--color-texto-principal);
+  background: linear-gradient(120deg, var(--color-beige), var(--color-mostaza));
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--color-azul);
   margin: 0;
-  padding: 0;
+  padding: 0 10px 50px 10px;
 }
 
 .container {
-  width: 90%;
-  max-width: 900px;
-  margin: 20px auto;
-  background: var(--color-blanco);
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  max-width: 950px;
+  margin: 30px auto;
+  background-color: var(--color-blanco);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
 }
 
-h1, h2 {
+/* Encabezados */
+h1 {
+  color: var(--color-azul);
   text-align: center;
-  color: var(--color-primario);
+  margin-bottom: 30px;
+  font-size: 2.5rem;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
 }
 
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+h2 {
+  color: var(--color-naranja);
+  margin-top: 30px;
   margin-bottom: 20px;
+  border-bottom: 3px solid var(--color-mostaza);
+  display: inline-block;
+  padding-bottom: 5px;
 }
 
-input, textarea, select, button {
-  padding: 10px;
-  border: 1px solid var(--color-borde-suave);
-  border-radius: 5px;
-  font-size: 14px;
+h3 {
+  color: var(--color-azul);
+  margin-bottom: 5px;
 }
 
-button {
-  background: var(--color-primario);
-  color: var(--color-blanco);
+/* --- Formularios --- */
+form {
+  background-color: var(--color-gris-claro);
+  padding: 25px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+form label {
+  font-weight: bold;
+  color: var(--color-azul);
+  margin-top: 10px;
+  display: block;
+}
+
+form input[type="text"],
+form input[type="time"],
+form input[type="file"],
+form textarea,
+form select {
+  width: 100%;
+  border: 2px solid var(--color-azul);
+  border-radius: 12px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  margin-top: 5px;
+  transition: all 0.3s ease;
+  background-color: var(--color-blanco);
+}
+
+form input:focus,
+form textarea:focus,
+form select:focus {
+  border-color: var(--color-naranja);
+  box-shadow: 0 0 8px rgba(238, 150, 75, 0.4);
+  outline: none;
+}
+
+/* Botones modernos dentro de formularios */
+form button {
+  margin-top: 15px;
+  border-radius: 12px;
+  font-weight: bold;
+  padding: 10px 25px;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.1);
   cursor: pointer;
+}
+
+form .btn-success {
+  background: linear-gradient(45deg, var(--color-mostaza), var(--color-naranja));
   border: none;
+  color: var(--color-azul);
 }
 
-button:hover {
-  background: var(--color-primario-oscuro);
+form .btn-success:hover {
+  background: linear-gradient(45deg, var(--color-naranja), var(--color-mostaza));
+  color: var(--color-blanco);
 }
 
+form .btn-primary {
+  background: linear-gradient(45deg, var(--color-azul), var(--color-naranja));
+  border: none;
+  color: var(--color-blanco);
+}
+
+form .btn-primary:hover {
+  background: linear-gradient(45deg, var(--color-naranja), var(--color-azul));
+  color: var(--color-blanco);
+}
+
+/* Preview de imágenes */
+#foto-preview,
+#foto-preview-editar {
+  border: 2px dashed var(--color-azul);
+  padding: 5px;
+  border-radius: 12px;
+  margin-top: 10px;
+  background-color: var(--color-blanco);
+}
+
+/* Flash messages */
+.alert {
+  border-radius: 12px;
+  font-weight: 500;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Lista de candidatos */
 .candidato {
-  border: 1px solid var(--color-borde-suave);
-  border-radius: 8px;
-  padding: 10px;
-  margin-bottom: 10px;
+  background: linear-gradient(120deg, var(--color-blanco), var(--color-gris-claro));
+  border-left: 6px solid var(--color-naranja);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 15px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  background: var(--color-fondo-seccion);
+  align-items: flex-start;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.candidato:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
 }
 
 .candidato img {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  border-radius: 12px;
+  margin-top: 10px;
+  max-width: 150px;
   object-fit: cover;
-  margin-right: 10px;
 }
 
-.candidato-info {
-  flex: 1;
+/* Botones de la lista de candidatos */
+.btn-editar {
+  background: var(--color-mostaza);
+  color: var(--color-azul);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.eliminar {
-  color: red;
-  cursor: pointer;
-  font-size: 20px;
+.btn-editar:hover {
+  background: var(--color-naranja);
+  color: var(--color-blanco);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.btn-eliminar {
+  background: var(--color-rojo);
+  color: var(--color-blanco);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-eliminar:hover {
+  background: var(--color-naranja);
+  color: var(--color-blanco);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+/* Modal de edición */
+.modal-content {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.modal-header {
+  background: linear-gradient(45deg, var(--color-azul), var(--color-naranja));
+  color: var(--color-blanco);
+}
+
+.modal-footer {
+  background-color: var(--color-beige);
+}
+
+.modal-footer button {
+  min-width: 120px;
+}
+
+/* Resultados */
+#resultados {
+  margin-top: 25px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--color-mostaza), var(--color-naranja));
+  color: var(--color-azul);
+  border-radius: 15px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+  .container {
+    padding: 30px;
+  }
+  form {
+    padding: 20px;
+  }
+  .candidato {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .candidato img {
+    margin-bottom: 10px;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+  }
+  form input, form textarea, form select {
+    font-size: 0.95rem;
+    padding: 8px 12px;
+  }
+  form button {
+    width: 100%;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.8rem;
+  }
+  h2 {
+    font-size: 1.3rem;
+  }
+  .candidato {
+    padding: 15px;
+  }
+  form {
+    padding: 15px;
+  }
 }

@@ -1,117 +1,163 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const categorias = ["personero", "contralor", "cabildante"];
+    const form = document.getElementById("votacionForm");
 
-  // Validar horario de votación según admin
-  const horario = JSON.parse(localStorage.getItem("horarioVotacion")) || {};
-  if (horario.inicio && horario.fin) {
-    const ahora = new Date();
-    const [hi, mi] = horario.inicio.split(":").map(Number);
-    const [hf, mf] = horario.fin.split(":").map(Number);
-    const inicio = new Date(); inicio.setHours(hi, mi, 0);
-    const fin = new Date(); fin.setHours(hf, mf, 0);
-
-    if (ahora < inicio || ahora > fin) {
-      alert("La votación no está abierta en este momento.");
-      window.location.href = "menu.html";
-      return;
-    }
-  }
-
-  // Verificar si ya votó en cualquier categoría
-  const yaVotoGlobal = categorias.some(cat => localStorage.getItem("yaVoto_" + cat) === "true");
-  if (yaVotoGlobal) {
-    alert("Ya realizaste tu voto. Serás redirigido al menú.");
-    window.location.href = "menu.html";
-    return;
-  }
-
-  categorias.forEach(cat => {
-    const contenedor = document.getElementById("opciones-" + cat);
-    const candidatos = JSON.parse(localStorage.getItem("candidatos_" + cat)) || [];
-
-    if (candidatos.length === 0) {
-      contenedor.innerHTML = "<p>No hay candidatos registrados en esta categoría.</p>";
-      return;
+    function parseHorarioString(s) {
+        if (!s) return null;
+        const parts = s.split(":").map(Number);
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0] || 0, parts[1] || 0, parts[2] || 0);
     }
 
-    const form = document.createElement("form");
+    async function verificarEstado() {
+        try {
+            const res = await fetch(`/estudiante/estado/${usuarioId}`);
+            const data = await res.json();
 
-    candidatos.forEach((candidato, index) => {
-      const div = document.createElement("div");
-      div.className = "col-md-4 mb-3";
-      div.innerHTML = `
-        <input type="radio" name="voto-${cat}" id="${cat}-${index}" value="${index}">
-        <label for="${cat}-${index}">
-          <div class="card-opcion">
-            <img src="${candidato.foto}" alt="Foto de ${candidato.nombre}">
-            <h5>${candidato.nombre}</h5>
-            <p><strong>Tarjetón:</strong> ${candidato.tarjeton}</p>
-            <p>${candidato.propuesta}</p>
-          </div>
-        </label>
-      `;
-      form.appendChild(div);
-    });
+            if (data.error) {
+                alert("❌ Error al verificar el estado.");
+                window.location.href = "/estudiante/dashboard";
+                return;
+            }
 
-    // Opción voto en blanco
-    const divBlank = document.createElement("div");
-    divBlank.className = "col-md-4 mb-3";
-    divBlank.innerHTML = `
-      <input type="radio" name="voto-${cat}" id="${cat}-blank" value="blanco">
-      <label for="${cat}-blank">
-        <div class="voto-blanco">Voto en blanco</div>
-      </label>
-    `;
-    form.appendChild(divBlank);
+            if (data.ya_voto) {
+                alert("⚠️ Ya realizaste tu voto.");
+                window.location.href = "/estudiante/dashboard";
+                return;
+            }
 
-    contenedor.appendChild(form);
+            const inicio = parseHorarioString(data.inicio);
+            const fin = parseHorarioString(data.fin);
+            const ahora = new Date();
+            let abierta = false;
+            if (inicio && fin) {
+                abierta = inicio <= fin ? (ahora >= inicio && ahora <= fin) : (ahora >= inicio || ahora <= fin);
+            }
 
-    // Resaltar selección visual
-    form.addEventListener("change", () => {
-      const radios = form.querySelectorAll('input[type="radio"]');
-      radios.forEach(r => {
-        const card = r.nextElementSibling.querySelector('.card-opcion, .voto-blanco');
-        if (r.checked) {
-          card.style.backgroundColor = "rgba(0, 120, 173, 0.2)";
-          card.style.borderColor = "#00628e";
-        } else {
-          card.style.backgroundColor = "";
-          card.style.borderColor = "transparent";
+            if (!abierta) {
+                alert(`⚠️ La votación está cerrada.\nHorario: ${data.inicio} - ${data.fin}`);
+                window.location.href = "/estudiante/dashboard";
+                return;
+            }
+
+            form.style.display = "block";
+            cargarCandidatos();
+
+        } catch (err) {
+            console.error(err);
+            alert("❌ Error al verificar el estado de la votación.");
+            window.location.href = "/estudiante/dashboard";
         }
-      });
-    });
-  });
-
-  // Botón de votar
-  const formGeneral = document.getElementById("votacionForm");
-  formGeneral.addEventListener("submit", e => {
-    e.preventDefault();
-
-    // Validar que todas las categorías tengan selección
-    let todasSeleccionadas = true;
-    categorias.forEach(cat => {
-      const seleccion = document.querySelector(`input[name="voto-${cat}"]:checked`);
-      if (!seleccion) todasSeleccionadas = false;
-    });
-
-    if (!todasSeleccionadas) {
-      alert("Debes seleccionar una opción en todas las categorías antes de votar.");
-      return;
     }
 
-    // Registrar votos
-    categorias.forEach(cat => {
-      const candidatos = JSON.parse(localStorage.getItem("candidatos_" + cat)) || [];
-      const seleccion = document.querySelector(`input[name="voto-${cat}"]:checked`);
-      if (seleccion.value !== "blanco") {
-        const index = seleccion.value;
-        candidatos[index].votos = (candidatos[index].votos || 0) + 1;
-        localStorage.setItem("candidatos_" + cat, JSON.stringify(candidatos));
-      }
-      localStorage.setItem("yaVoto_" + cat, "true");
+    function cargarCandidatos() {
+        fetch("/estudiante/candidatos")
+            .then(res => res.json())
+            .then(data => {
+                renderCandidatos("personero", data.personero || []);
+                renderCandidatos("contralor", data.contralor || []);
+                renderCandidatos("cabildante", data.cabildante || []);
+            });
+    }
+
+    function renderCandidatos(categoria, lista) {
+        const contenedor = document.getElementById(`opciones-${categoria}`);
+        contenedor.innerHTML = "";
+
+        lista.forEach(c => {
+            const fotoURL = `/static/images/candidatos/${c.foto || 'default.png'}`;
+            const col = document.createElement("div");
+            col.classList.add("col-md-4", "mb-3");
+            col.innerHTML = `
+                <div class="card h-100 candidate-card" data-categoria="${categoria}" data-id="${c.id}">
+                    <img src="${fotoURL}" class="card-img-top" alt="Foto de ${c.nombre}">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">${c.nombre}</h5>
+                        <p class="card-text"><strong>Tarjetón:</strong> ${c.tarjeton}</p>
+                        <p class="card-text">${c.propuesta || ''}</p>
+                        <input class="form-check-input d-none" type="radio" 
+                               name="${categoria}" value="${c.id}" id="${categoria}-${c.id}">
+                    </div>
+                </div>
+            `;
+            contenedor.appendChild(col);
+        });
+
+        // Voto en blanco más pequeño
+        const blanco = document.createElement("div");
+        blanco.classList.add("col-12", "mb-3");
+        blanco.innerHTML = `
+            <div class="card h-100 border-secondary candidate-card d-flex justify-content-center align-items-center" 
+                 data-categoria="${categoria}" data-id="blanco" style="height: 120px; max-width: 150px; margin: 0 auto;">
+                <div class="card-body text-center">
+                    <h5 class="fw-bold">Voto en Blanco</h5>
+                    <input class="form-check-input d-none" type="radio" 
+                           name="${categoria}" value="blanco" id="${categoria}-blanco">
+                </div>
+            </div>
+        `;
+        contenedor.appendChild(blanco);
+
+        contenedor.querySelectorAll(".candidate-card").forEach(card => {
+            card.addEventListener("click", () => {
+                contenedor.querySelectorAll(".candidate-card").forEach(c => c.classList.remove("selected-card"));
+                card.classList.add("selected-card");
+                const input = card.querySelector("input[type=radio]");
+                if (input) input.checked = true;
+            });
+        });
+    }
+
+    // Submit actualizado con validación robusta
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const categorias = ["personero", "contralor", "cabildante"];
+        const votos = {};
+
+        // Validar selección en cada categoría
+        for (const cat of categorias) {
+            const radios = form.querySelectorAll(`input[name="${cat}"]`);
+            let seleccionado = false;
+            radios.forEach(r => {
+                if (r.checked) seleccionado = true;
+            });
+
+            if (!seleccionado) {
+                alert(`⚠️ Debes seleccionar una opción en ${cat}.`);
+                return;
+            }
+
+            const checked = form.querySelector(`input[name="${cat}"]:checked`);
+            votos[cat] = checked ? checked.value : null;
+        }
+
+        // Enviar votos al backend
+        try {
+            const res = await fetch("/estudiante/votar", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ estudiante_id: usuarioId, votos })
+            });
+
+            const resp = await res.json();
+
+            if (resp.error) {
+                alert("❌ " + resp.error);
+                window.location.href = "/estudiante/dashboard";
+                return;
+            }
+
+            if (resp.mensaje) {
+                alert("✅ " + resp.mensaje);
+                window.location.href = "/estudiante/dashboard";
+                return;
+            }
+
+            alert("Respuesta inesperada del servidor.");
+        } catch (err) {
+            console.error(err);
+            alert("❌ Error al registrar tu voto.");
+        }
     });
 
-    alert("Tu voto fue registrado correctamente.");
-    window.location.href = "menu.html";
-  });
+    verificarEstado();
 });

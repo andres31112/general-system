@@ -1470,7 +1470,7 @@ def api_eliminar_asignatura(asignatura_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
     
-    # --- Rutas del Sistema de Votación ---
+# --- Rutas del Sistema de Votación ---
 @admin_bp.route('/sistema-votaciones')
 @login_required
 @role_required(1)  # Solo el rol Super Admin 

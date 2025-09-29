@@ -28,7 +28,7 @@ function createCalendar() {
 }
 
 function loadEvents() {
-    fetch("/eventos")
+    fetch("/admin/eventos")   // ✅ cambio aquí
         .then(r => {
             if (!r.ok) throw new Error("Error al cargar eventos");
             return r.json();
@@ -36,17 +36,21 @@ function loadEvents() {
         .then(data => {
             console.log("✅ Eventos recibidos:", data);
             events = data.map(e => ({
-                id: e.IdEvento,
-                title: e.Nombre,
-                description: e.Descripcion,
-                date: e.Fecha,
-                time: (e.Hora || '').slice(0,5),
-                role: e.RolDestino
+                id: e.IdEvento || e.id,
+                title: e.Nombre || e.nombre,
+                description: e.Descripcion || e.descripcion,
+                date: e.Fecha || e.fecha,
+                time: (e.Hora || e.hora || '').slice(0,5),
+                role: e.RolDestino || e.rol_destino
             }));
             renderEvents();
         })
-        .catch(err => console.error("❌ Error cargando eventos:", err));
+        .catch(err => {
+            console.error("❌ Error cargando eventos:", err);
+            alert("No se pudieron cargar los eventos");
+        });
 }
+
 
 function addEvent() {
     const title = document.getElementById("title").value;
@@ -56,42 +60,44 @@ function addEvent() {
     const role = document.getElementById("roleSelect").value;
 
     if (!title || !description || !date || !time || !role) {
-        alert("Rellena todos los campos");
+        alert("⚠️ Rellena todos los campos");
         return;
     }
 
-    // ❌ Restricción de un solo evento por fecha
+    // ❌ Evitar duplicados en la misma fecha
     if (events.some(ev => ev.date === date)) {
-        alert("Ya existe un evento en esta fecha");
+        alert("⚠️ Ya existe un evento en esta fecha");
         return;
     }
 
-    fetch("/eventos", {
+    fetch("/admin/eventos", {    // 👈 CORREGIDO
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            Nombre: title,
-            Descripcion: description,
-            Fecha: date,
-            Hora: time,
-            RolDestino: role
+            nombre: title,
+            descripcion: description,
+            fecha: date,   // YYYY-MM-DD
+            hora: time,    // HH:MM
+            rol_destino: role
         })
     })
-    .then(r => {
-        if (!r.ok) throw new Error("Error al crear el evento");
-        return r.json();
+    .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            throw new Error(data.error || "❌ No se pudo crear el evento");
+        }
+        return data;
     })
     .then(data => {
         console.log("✅ Evento creado:", data);
         loadEvents();
-        alert("Evento agregado con éxito");
+        alert("🎉 Evento agregado con éxito");
     })
     .catch(err => {
         console.error("❌ Error creando evento:", err);
-        alert("No se pudo crear el evento");
+        alert("⚠️ No se pudo crear el evento:\n" + err.message);
     });
 }
-
 function renderEvents() {
     document.querySelectorAll(".day").forEach(dayDiv => {
         const dayEventsDiv = dayDiv.querySelector(".events");
@@ -99,16 +105,18 @@ function renderEvents() {
         const date = dayDiv.dataset.date;
 
         events
-            .filter(ev => ev.date === date && ev.role === currentUser.role)
+            .filter(ev => ev.date === date)   // ✅ ahora muestra TODOS los eventos sin filtrar rol
             .forEach((ev, index) => {
                 const evDiv = document.createElement("div");
                 evDiv.classList.add("event");
-                evDiv.textContent = `${ev.time} - ${ev.title}`;
+                evDiv.textContent = `${ev.time} - ${ev.title} (${ev.role})`; // ✅ muestro también el rol
                 evDiv.onclick = () => showEventDetails(ev, index);
                 dayEventsDiv.appendChild(evDiv);
             });
     });
 }
+
+
 
 function showEventDetails(ev, index) {
     selectedEventIndex = index;
@@ -125,7 +133,7 @@ function closeModal() {
 }
 
 function deleteEvent(id) {
-    fetch(`/eventos/${id}`, { method: "DELETE" })
+    fetch(`/admin/eventos/${id}`, { method: "DELETE" })   // 👈 CORREGIDO
         .then(r => {
             if (!r.ok) throw new Error("Error al eliminar");
             return r.json();
@@ -137,7 +145,7 @@ function deleteEvent(id) {
         })
         .catch(err => {
             console.error("❌ Error eliminando evento:", err);
-            alert("No se pudo eliminar el evento");
+            alert("⚠️ No se pudo eliminar el evento");
         });
 }
 

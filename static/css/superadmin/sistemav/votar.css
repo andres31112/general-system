@@ -1,65 +1,136 @@
 :root {
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-blanco: #FFFFFF;
-    --color-borde-suave: #ecf0f1;
+  --color-azul: #0D3B66;
+  --color-beige: #FAF0CA;
+  --color-mostaza: #F4D35E;
+  --color-naranja: #EE964B;
+  --color-rojo: #F95738;
+  --color-blanco: #FFFFFF;
+  --color-gris-claro: #F5F5F5;
 }
+
+/* Body y contenedor */
 body {
-    background: linear-gradient(to right, var(--color-primario-oscuro), #f8ffffff);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+  background-color: var(--color-gris-claro);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--color-azul);
 }
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+}
+
+/* Títulos de categoría */
 .categoria-titulo {
-    background-color: var(--color-primario-oscuro);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    font-weight: bold;
-    text-align: center;
+  color: var(--color-azul);
+  font-weight: 600;
+  border-bottom: 3px solid var(--color-mostaza);
+  padding-bottom: 5px;
+  margin-bottom: 20px;
+  transition: 0.3s;
 }
-.card-opcion {
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
-    padding: 10px;
-    border: 2px solid transparent;
+
+.categoria-titulo:hover {
+  color: var(--color-naranja);
+  transform: scale(1.05);
 }
-.card-opcion img {
-    width: 100%;
-    height: 120px;
-    object-fit: cover;
-    border-radius: 10px;
+
+/* Tarjetas de candidatos */
+.candidate-card {
+  cursor: pointer;
+  border-radius: 12px;
+  background-color: var(--color-blanco);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+  transition: all 0.3s ease-in-out;
+  overflow: hidden;
 }
-.voto-blanco {
-    height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 16px;
-    border: 2px solid var(--color-borde-suave);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+
+.candidate-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
 }
-input[type="radio"] {
-    display: none;
+
+.candidate-card.selected-card {
+  border: 3px solid var(--color-naranja);
+  box-shadow: 0 0 20px rgba(238, 150, 75, 0.5);
 }
-label .card-opcion,
-label .voto-blanco {
-    transition: all 0.3s ease;
+
+/* Imagen de candidato */
+.candidate-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--color-gris-claro);
+  transition: transform 0.3s;
 }
-input[type="radio"]:checked + label .card-opcion,
-input[type="radio"]:checked + label .voto-blanco {
-    border-color: var(--color-primario-oscuro);
-    background-color: rgba(0, 120, 173, 0.2);
+
+.candidate-card:hover img {
+  transform: scale(1.05);
 }
-.btn{
-    background-color: var(--color-primario);
-    color: var(--color-blanco);
+
+/* Card body */
+.candidate-card .card-body {
+  padding: 0.8rem;
+  text-align: center;
+}
+
+.candidate-card h5 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.candidate-card p {
+  font-size: 0.9rem;
+  margin: 0.3rem 0;
+}
+
+/* Voto en blanco */
+.candidate-card[data-id="blanco"] {
+  height: 120px;
+  max-width: 150px;
+  margin: 0 auto;
+  font-size: 0.9rem;
+  background-color: var(--color-beige);
+  border: 2px dashed var(--color-azul);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.candidate-card[data-id="blanco"]:hover {
+  background-color: var(--color-mostaza);
+  border-color: var(--color-naranja);
+  transform: scale(1.05);
+}
+
+/* Botón de votar */
+button[type="submit"] {
+  background-color: var(--color-azul);
+  color: var(--color-blanco);
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 25px;
+  transition: all 0.3s ease;
+}
+
+button[type="submit"]:hover {
+  background-color: var(--color-naranja);
+  color: var(--color-azul);
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(238, 150, 75, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .candidate-card img {
+    height: 140px;
+  }
+  .candidate-card[data-id="blanco"] {
+    height: 100px;
+    max-width: 120px;
+    font-size: 0.8rem;
+  }
 }

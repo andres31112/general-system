@@ -1,12 +1,11 @@
-{% extends "/estudiantes/base.html" %}
+{% extends "/profesores/base.html" %}
 
 {% block title %}Calendario de Eventos{% endblock %}
 
 {% block content %}
 <div class="container my-4">
-    <h2 class="mb-4 text-center">📅 Calendario de Eventos</h2>
+    <h2 class="mb-4 text-center">Calendario de Eventos</h2>
 
-    <!-- Contenedor del calendario -->
     <div id="calendar" class="calendar-grid"></div>
 
     <!-- Modal de detalles -->
@@ -43,14 +42,13 @@
         font-size: 12px;
     }
     .event {
-        background: #0d6efd;
+        background: #198754;
         color: white;
         padding: 2px 4px;
         margin-bottom: 3px;
         border-radius: 4px;
         cursor: pointer;
     }
-    /* Modal */
     .modal {
         position: fixed;
         top: 0; left: 0;
@@ -83,13 +81,11 @@ function createCalendar() {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // espacios vacíos hasta el primer día
     for (let i = 0; i < firstDay; i++) {
         const empty = document.createElement("div");
         calendar.appendChild(empty);
     }
 
-    // días del mes
     for (let day = 1; day <= daysInMonth; day++) {
         const dayDiv = document.createElement("div");
         dayDiv.classList.add("day");
@@ -102,7 +98,7 @@ function createCalendar() {
 }
 
 function loadEvents() {
-    fetch("/estudiante/api/eventos")
+    fetch("/profesor/api/eventos")
         .then(r => {
             if (!r.ok) throw new Error("Error al cargar eventos");
             return r.json();
