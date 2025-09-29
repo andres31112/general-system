@@ -1,27 +1,32 @@
 from flask import Blueprint, render_template, session, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from controllers.models import db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Asistencia, CategoriaCalificacion
+from controllers.models import db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Asistencia, CategoriaCalificacion, HorarioCompartido, HorarioCurso, HorarioGeneral, Salon
 from datetime import datetime, date
 import json
 
 profesor_bp = Blueprint('profesor', __name__, url_prefix='/profesor')
 
 # ============================================================================
-# RUTAS PRINCIPALES
+# RUTAS PRINCIPALES - ACTUALIZADAS
 # ============================================================================
 
 @profesor_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Panel principal del profesor"""
+    """Panel principal del profesor con horarios compartidos"""
     curso_id = session.get('curso_seleccionado')
     curso_actual = Curso.query.get(curso_id) if curso_id else None
     
+    # Obtener horarios compartidos detallados del profesor
+    horarios_detallados = obtener_horarios_detallados_profesor(current_user.id_usuario)
+    
+    # Obtener clases (para compatibilidad)
     clases = Clase.query.filter_by(profesorId=current_user.id_usuario).all()
     
     return render_template('profesores/dashboard.html', 
                          clases=clases, 
-                         curso_actual=curso_actual)
+                         curso_actual=curso_actual,
+                         horarios_detallados=horarios_detallados)
 
 @profesor_bp.route('/gestion-lc')
 @login_required
@@ -31,6 +36,13 @@ def gestion_lc():
     
     if not curso_id:
         flash('Primero debes seleccionar un curso', 'warning')
+        return redirect(url_for('profesor.seleccionar_curso'))
+    
+    # Verificar que el profesor tenga acceso a este curso a través de horarios compartidos
+    tiene_acceso = verificar_acceso_curso_profesor(current_user.id_usuario, curso_id)
+    
+    if not tiene_acceso:
+        flash('No tienes acceso a este curso', 'error')
         return redirect(url_for('profesor.seleccionar_curso'))
     
     curso = Curso.query.get(curso_id)
@@ -63,11 +75,10 @@ def guardar_curso_seleccionado():
         flash('Por favor selecciona un curso', 'error')
         return redirect(url_for('profesor.seleccionar_curso'))
     
-    # Verificar que el profesor realmente tenga acceso a este curso
-    cursos_profesor = obtener_cursos_del_profesor(current_user.id_usuario)
-    curso_valido = any(curso.id == int(curso_id) for curso in cursos_profesor)
+    # Verificar que el profesor tenga acceso a este curso a través de horarios compartidos
+    tiene_acceso = verificar_acceso_curso_profesor(current_user.id_usuario, int(curso_id))
     
-    if not curso_valido:
+    if not tiene_acceso:
         flash('No tienes acceso a este curso', 'error')
         return redirect(url_for('profesor.seleccionar_curso'))
     
@@ -92,6 +103,11 @@ def ver_lista_estudiantes():
         flash('Primero debes seleccionar un curso', 'warning')
         return redirect(url_for('profesor.seleccionar_curso'))
     
+    # Verificar acceso
+    if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+        flash('No tienes acceso a este curso', 'error')
+        return redirect(url_for('profesor.seleccionar_curso'))
+    
     estudiantes = obtener_estudiantes_por_curso(curso_id)
     curso = Curso.query.get(curso_id)
     
@@ -107,6 +123,11 @@ def registrar_calificaciones():
     
     if not curso_id:
         flash('Primero debes seleccionar un curso', 'warning')
+        return redirect(url_for('profesor.seleccionar_curso'))
+    
+    # Verificar acceso
+    if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+        flash('No tienes acceso a este curso', 'error')
         return redirect(url_for('profesor.seleccionar_curso'))
     
     estudiantes = obtener_estudiantes_por_curso(curso_id)
@@ -132,6 +153,11 @@ def asistencia():
         flash('Primero debes seleccionar un curso', 'warning')
         return redirect(url_for('profesor.seleccionar_curso'))
     
+    # Verificar acceso
+    if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+        flash('No tienes acceso a este curso', 'error')
+        return redirect(url_for('profesor.seleccionar_curso'))
+    
     estudiantes = obtener_estudiantes_por_curso(curso_id)
     clases = Clase.query.filter_by(cursoId=curso_id, profesorId=current_user.id_usuario).all()
     asistencias = obtener_asistencias_por_curso(curso_id)
@@ -144,15 +170,22 @@ def asistencia():
                          curso=curso)
 
 # ============================================================================
-# RUTAS SECUNDARIAS
+# RUTAS SECUNDARIAS - ACTUALIZADAS
 # ============================================================================
 
 @profesor_bp.route('/ver_horario_clases')
 @login_required
 def ver_horario_clases():
-    """Muestra el horario de clases del profesor"""
+    """Muestra el horario de clases del profesor (incluye horarios compartidos)"""
+    # Obtener horarios compartidos con detalles
+    horarios_detallados = obtener_horarios_detallados_profesor(current_user.id_usuario)
+    
+    # Obtener clases (para compatibilidad)
     clases = Clase.query.filter_by(profesorId=current_user.id_usuario).all()
-    return render_template('profesor/ver_horario_clases.html', clases=clases)
+    
+    return render_template('profesores/HorarioC.html', 
+                         horarios_detallados=horarios_detallados,
+                         clases=clases)
 
 @profesor_bp.route('/comunicaciones')
 @login_required
@@ -178,13 +211,65 @@ def asignaturas():
 @login_required
 def perfil():
     """Página para que el profesor gestione la información de su perfil"""
-    return render_template('profesor/perfil.html')
+    # Obtener estadísticas del profesor
+    total_cursos = len(obtener_cursos_del_profesor(current_user.id_usuario))
+    total_asignaturas = len(obtener_asignaturas_del_profesor(current_user.id_usuario))
+    horarios_compartidos = len(obtener_horarios_compartidos_profesor(current_user.id_usuario))
+    
+    return render_template('profesor/perfil.html',
+                         total_cursos=total_cursos,
+                         total_asignaturas=total_asignaturas,
+                         total_horarios=horarios_compartidos)
 
 @profesor_bp.route('/soporte')
 @login_required
 def soporte():
     """Página de soporte para el profesor"""
     return render_template('profesor/soporte.html')
+
+# ============================================================================
+# APIs - HORARIOS COMPARTIDOS
+# ============================================================================
+
+@profesor_bp.route('/api/mis-horarios')
+@login_required
+def api_mis_horarios():
+    """API para obtener los horarios compartidos del profesor con detalles completos"""
+    try:
+        horarios_detallados = obtener_horarios_detallados_profesor(current_user.id_usuario)
+        
+        return jsonify({
+            'success': True, 
+            'horarios': horarios_detallados,
+            'total': len(horarios_detallados)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@profesor_bp.route('/api/mis-cursos')
+@login_required
+def api_mis_cursos():
+    """API para obtener los cursos del profesor"""
+    try:
+        cursos = obtener_cursos_del_profesor(current_user.id_usuario)
+        
+        cursos_data = [{
+            'id': curso.id,
+            'nombre': curso.nombreCurso,
+            'sede': curso.sede.nombre if curso.sede else 'N/A',
+            'horario_general': curso.horario_general.nombre if curso.horario_general else 'No asignado',
+            'total_estudiantes': len(obtener_estudiantes_por_curso(curso.id))
+        } for curso in cursos]
+        
+        return jsonify({
+            'success': True, 
+            'cursos': cursos_data,
+            'total': len(cursos_data)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ============================================================================
 # APIs - ASISTENCIAS
@@ -202,6 +287,10 @@ def guardar_asistencia():
         
         if not curso_id:
             return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+        
+        # Verificar acceso al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
         
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
         clase_id = obtener_clase_para_asistencia(curso_id, current_user.id_usuario)
@@ -235,6 +324,10 @@ def obtener_asistencias():
         
         if not curso_id:
             return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+        
+        # Verificar acceso al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
         
         asistencias = Asistencia.query\
             .join(Clase, Asistencia.claseId == Clase.id)\
@@ -276,8 +369,19 @@ def guardar_calificacion():
         observaciones = data.get('observaciones', '')
         curso_id = session.get('curso_seleccionado')
         
+        if not curso_id:
+            return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+        
+        # Verificar acceso al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+        
         if not validar_estudiante_en_curso(estudiante_id, curso_id):
             return jsonify({'success': False, 'message': 'El estudiante no pertenece a este curso'}), 400
+        
+        # Verificar que el profesor tenga esta asignatura en el curso
+        if not verificar_asignatura_profesor_en_curso(asignatura_id, current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes esta asignatura en el curso'}), 403
         
         calificacion_existente = Calificacion.query.filter_by(
             estudianteId=estudiante_id,
@@ -315,6 +419,10 @@ def obtener_calificaciones_api():
         if not curso_id:
             return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
         
+        # Verificar acceso al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+        
         calificaciones = obtener_calificaciones_por_curso(curso_id)
         
         calificaciones_data = [
@@ -347,6 +455,10 @@ def obtener_estadisticas_calificaciones():
         if not curso_id:
             return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
         
+        # Verificar acceso al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+        
         calificaciones = obtener_calificaciones_por_curso(curso_id)
         
         if not calificaciones:
@@ -373,17 +485,100 @@ def obtener_estadisticas_calificaciones():
         return jsonify({'success': False, 'message': f'Error al obtener estadísticas: {str(e)}'}), 500
 
 # ============================================================================
-# FUNCIONES AUXILIARES
+# FUNCIONES AUXILIARES - ACTUALIZADAS
 # ============================================================================
 
 def obtener_cursos_del_profesor(profesor_id):
-    """Obtiene todos los cursos únicos del profesor basado en sus asignaturas asignadas"""
-    # Obtener cursos a través de las clases donde el profesor está asignado
-    cursos = Curso.query.join(Clase, Curso.id == Clase.cursoId)\
+    """Obtiene todos los cursos únicos del profesor basado en horarios compartidos Y clases"""
+    # Cursos a través de horarios compartidos (nuevo sistema)
+    cursos_horarios = Curso.query.join(HorarioCompartido, Curso.id == HorarioCompartido.curso_id)\
+        .filter(HorarioCompartido.profesor_id == profesor_id)\
+        .distinct().all()
+    
+    # Cursos a través de clases (sistema antiguo - para compatibilidad)
+    cursos_clases = Curso.query.join(Clase, Curso.id == Clase.cursoId)\
         .filter(Clase.profesorId == profesor_id)\
         .distinct().all()
     
-    return cursos
+    # Combinar y eliminar duplicados
+    todos_cursos = list(set(cursos_horarios + cursos_clases))
+    
+    return todos_cursos
+
+def obtener_horarios_compartidos_profesor(profesor_id):
+    """Obtiene los horarios compartidos del profesor"""
+    return HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
+
+def obtener_horarios_detallados_profesor(profesor_id):
+    """Obtiene horarios compartidos con detalles completos"""
+    horarios_compartidos = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
+    
+    horarios_detallados = []
+    for hc in horarios_compartidos:
+        # Obtener detalles del horario específico
+        horarios_curso = HorarioCurso.query.filter_by(
+            curso_id=hc.curso_id,
+            asignatura_id=hc.asignatura_id,
+            horario_general_id=hc.horario_general_id
+        ).all()
+        
+        for horario_curso in horarios_curso:
+            horarios_detallados.append({
+                'curso_nombre': hc.curso.nombreCurso,
+                'asignatura_nombre': hc.asignatura.nombre,
+                'horario_general_nombre': hc.horario_general.nombre if hc.horario_general else 'Sin nombre',
+                'fecha_compartido': hc.fecha_compartido.strftime('%d/%m/%Y'),
+                'dia_semana': horario_curso.dia_semana,
+                'hora_inicio': horario_curso.hora_inicio,
+                'hora_fin': obtener_hora_fin_horario(horario_curso),
+                'salon': horario_curso.salon.nombre if horario_curso.salon else 'No asignado',
+                'sede': hc.curso.sede.nombre if hc.curso.sede else 'N/A'
+            })
+    
+    return horarios_detallados
+
+def obtener_hora_fin_horario(horario_curso):
+    """Obtiene la hora de fin basada en el horario general"""
+    if horario_curso.horario_general:
+        # Buscar el bloque correspondiente en el horario general
+        bloque = HorarioGeneral.query.get(horario_curso.horario_general_id)
+        if bloque:
+            return bloque.horaFin.strftime('%H:%M')
+    return '--:--'
+
+def verificar_acceso_curso_profesor(profesor_id, curso_id):
+    """Verifica si el profesor tiene acceso a un curso específico"""
+    # Verificar en horarios compartidos
+    acceso_horarios = HorarioCompartido.query.filter_by(
+        profesor_id=profesor_id,
+        curso_id=curso_id
+    ).first()
+    
+    # Verificar en clases tradicionales
+    acceso_clases = Clase.query.filter_by(
+        profesorId=profesor_id,
+        cursoId=curso_id
+    ).first()
+    
+    return acceso_horarios is not None or acceso_clases is not None
+
+def verificar_asignatura_profesor_en_curso(asignatura_id, profesor_id, curso_id):
+    """Verifica si el profesor tiene una asignatura específica en un curso"""
+    # Verificar en horarios compartidos
+    acceso_horarios = HorarioCompartido.query.filter_by(
+        profesor_id=profesor_id,
+        curso_id=curso_id,
+        asignatura_id=asignatura_id
+    ).first()
+    
+    # Verificar en clases tradicionales
+    acceso_clases = Clase.query.filter_by(
+        profesorId=profesor_id,
+        cursoId=curso_id,
+        asignaturaId=asignatura_id
+    ).first()
+    
+    return acceso_horarios is not None or acceso_clases is not None
 
 def obtener_estudiantes_por_curso(curso_id):
     """Obtiene estudiantes matriculados en un curso"""
@@ -391,15 +586,39 @@ def obtener_estudiantes_por_curso(curso_id):
         .filter(Matricula.cursoId == curso_id, Usuario.rol.has(nombre='Estudiante')).all()
 
 def obtener_asignaturas_por_curso_y_profesor(curso_id, profesor_id):
-    """Obtiene asignaturas del profesor en un curso específico"""
-    return Asignatura.query.join(Clase)\
+    """Obtiene asignaturas del profesor en un curso específico (de horarios compartidos Y clases)"""
+    # De horarios compartidos
+    asignaturas_horarios = Asignatura.query.join(HorarioCompartido)\
+        .filter(
+            HorarioCompartido.curso_id == curso_id, 
+            HorarioCompartido.profesor_id == profesor_id
+        ).all()
+    
+    # De clases (sistema antiguo)
+    asignaturas_clases = Asignatura.query.join(Clase)\
         .filter(Clase.cursoId == curso_id, Clase.profesorId == profesor_id).all()
+    
+    # Combinar y eliminar duplicados
+    todas_asignaturas = list(set(asignaturas_horarios + asignaturas_clases))
+    
+    return todas_asignaturas
 
 def obtener_asignaturas_del_profesor(profesor_id):
     """Obtiene todas las asignaturas del profesor"""
-    return Asignatura.query.join(Clase)\
+    # De horarios compartidos
+    asignaturas_horarios = Asignatura.query.join(HorarioCompartido)\
+        .filter(HorarioCompartido.profesor_id == profesor_id)\
+        .distinct().all()
+    
+    # De clases (sistema antiguo)
+    asignaturas_clases = Asignatura.query.join(Clase)\
         .filter(Clase.profesorId == profesor_id)\
         .distinct().all()
+    
+    # Combinar y eliminar duplicados
+    todas_asignaturas = list(set(asignaturas_horarios + asignaturas_clases))
+    
+    return todas_asignaturas
 
 def obtener_calificaciones_por_curso(curso_id):
     """Obtiene calificaciones de estudiantes de un curso"""

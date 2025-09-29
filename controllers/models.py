@@ -191,13 +191,31 @@ class HorarioCurso(db.Model):
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id'))
+    id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id'), nullable=True)  
     
     curso = db.relationship('Curso', backref='horarios_especificos')
     asignatura = db.relationship('Asignatura', backref='horarios_asignados')
     horario_general = db.relationship('HorarioGeneral', backref='horarios_cursos')
+    salon = db.relationship('Salon', backref='horarios_asignados')  
     
     def __repr__(self):
         return f'<HorarioCurso {self.curso_id} - {self.asignatura_id}>'
+    
+class HorarioCompartido(db.Model):
+    __tablename__ = 'horario_compartido'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
+    curso_id = db.Column(db.Integer, db.ForeignKey('curso.id'), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id'), nullable=False)
+    horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id'))
+    fecha_compartido = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    profesor = db.relationship('Usuario', backref='horarios_compartidos')
+    curso = db.relationship('Curso', backref='horarios_compartidos_profesores')
+    asignatura = db.relationship('Asignatura', backref='horarios_compartidos')
+    horario_general = db.relationship('HorarioGeneral', backref='horarios_compartidos')
+
 
 class Asistencia(db.Model):
     __tablename__ = 'asistencia'

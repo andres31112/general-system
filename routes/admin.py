@@ -4,7 +4,7 @@ from controllers.decorators import role_required
 from extensions import db
 from datetime import datetime, timedelta, time, date
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
-from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento
+from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento
 from sqlalchemy.exc import IntegrityError
 import json
 
@@ -830,7 +830,8 @@ def api_guardar_horario_curso():
         data = request.get_json()
         curso_id = data.get('curso_id')
         horario_general_id = data.get('horario_general_id')
-        asignaciones = data.get('asignaciones', {})  # ahora incluye asignatura_id y salon_id
+        asignaciones = data.get('asignaciones', {})
+        salones_asignaciones = data.get('salones_asignaciones', {}) 
 
         if not curso_id:
             return jsonify({'success': False, 'error': 'ID de curso requerido'}), 400
@@ -845,21 +846,23 @@ def api_guardar_horario_curso():
                 return jsonify({'success': False, 'error': 'Horario general no encontrado'}), 404
             curso.horario_general_id = horario_general_id
 
+        # Eliminar asignaciones existentes
         HorarioCurso.query.filter_by(curso_id=curso_id).delete()
 
         asignaciones_creadas = 0
-        for clave, datos in asignaciones.items():
+        # Procesar asignaciones de materias
+        for clave, asignatura_id in asignaciones.items():
             try:
                 partes = clave.split('-')
                 if len(partes) >= 2:
                     dia = partes[0]
                     hora = partes[1]
 
-                    asignatura_id = datos.get("asignatura_id")
-                    salon_id = datos.get("salon_id")
-
                     if not asignatura_id:
                         continue
+
+                    # Obtener el salon_id correspondiente
+                    salon_id = salones_asignaciones.get(clave)
 
                     nueva_asignacion = HorarioCurso(
                         curso_id=curso_id,
@@ -867,12 +870,13 @@ def api_guardar_horario_curso():
                         dia_semana=dia,
                         hora_inicio=hora,
                         horario_general_id=horario_general_id,
-                        id_salon_fk=salon_id
+                        id_salon_fk=salon_id  # ← ASIGNAR EL SALÓN
                     )
                     db.session.add(nueva_asignacion)
                     asignaciones_creadas += 1
 
-            except Exception:
+            except Exception as e:
+                print(f"❌ Error procesando asignación {clave}: {str(e)}")
                 continue
 
         db.session.commit()
@@ -885,6 +889,7 @@ def api_guardar_horario_curso():
 
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error guardando horario del curso: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
     
 @admin_bp.route('/api/horario_curso/cargar/<int:curso_id>')
@@ -899,12 +904,13 @@ def api_cargar_horario_curso(curso_id):
         asignaciones_db = HorarioCurso.query.filter_by(curso_id=curso_id).all()
 
         asignaciones = {}
+        salones_asignaciones = {}  # ← AGREGAR ESTO
+        
         for asignacion in asignaciones_db:
             clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
-            asignaciones[clave] = {
-                "asignatura_id": asignacion.asignatura_id,
-                "salon_id": asignacion.id_salon_fk
-            }
+            asignaciones[clave] = asignacion.asignatura_id
+            if asignacion.id_salon_fk:  # ← AGREGAR SALÓN SI EXISTE
+                salones_asignaciones[clave] = asignacion.id_salon_fk
 
         bloques_horario = []
         if curso.horario_general_id:
@@ -928,12 +934,90 @@ def api_cargar_horario_curso(curso_id):
             'horario_general_id': curso.horario_general_id,
             'nombre_curso': curso.nombreCurso,
             'asignaciones': asignaciones,
+            'salones_asignaciones': salones_asignaciones,  # ← INCLUIR SALONES
             'bloques_horario': bloques_horario,
             'tiene_horario_general': curso.horario_general_id is not None
         })
 
     except Exception as e:
+        print(f"❌ Error cargando horario del curso: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/horario_curso/compartir', methods=['POST'])
+@login_required
+@role_required(1)
+def api_compartir_horario():
+    try:
+        data = request.get_json()
+        curso_id = data.get('curso_id')
+        destinatario = data.get('destinatario')
+        horario_general_id = data.get('horario_general_id')
+        asignaciones = data.get('asignaciones', {})
+        salones_asignaciones = data.get('salones_asignaciones', {})
+
+        if not curso_id or not destinatario:
+            return jsonify({'success': False, 'error': 'Datos incompletos'}), 400
+
+        curso = Curso.query.get(curso_id)
+        if not curso:
+            return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+        if destinatario == 'profesores':
+            # Identificar profesores asignados en el horario
+            profesores_asignados = set()
+            
+            for clave, asignatura_id in asignaciones.items():
+                if asignatura_id:
+                    # Obtener profesores de esta asignatura
+                    asignatura = Asignatura.query.get(asignatura_id)
+                    if asignatura and asignatura.profesores:
+                        for profesor in asignatura.profesores:
+                            profesores_asignados.add(profesor)
+            
+            # Guardar relaciones profesor-curso-horario
+            for profesor in profesores_asignados:
+                # Para cada asignatura que el profesor tiene en este horario
+                for clave, asignatura_id in asignaciones.items():
+                    if asignatura_id:
+                        asignatura = Asignatura.query.get(asignatura_id)
+                        if asignatura and profesor in asignatura.profesores:
+                            # Verificar si ya existe esta relación
+                            existe = HorarioCompartido.query.filter_by(
+                                profesor_id=profesor.id_usuario,
+                                curso_id=curso_id,
+                                asignatura_id=asignatura_id
+                            ).first()
+                            
+                            if not existe:
+                                nuevo_horario_compartido = HorarioCompartido(
+                                    profesor_id=profesor.id_usuario,
+                                    curso_id=curso_id,
+                                    asignatura_id=asignatura_id,
+                                    horario_general_id=horario_general_id
+                                )
+                                db.session.add(nuevo_horario_compartido)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Horario compartido con {len(profesores_asignados)} profesores correctamente',
+                'profesores_asignados': len(profesores_asignados)
+            })
+            
+        elif destinatario == 'estudiantes':
+            # Lógica para estudiantes (si es necesario)
+            return jsonify({
+                'success': True,
+                'message': 'Horario compartido con estudiantes correctamente'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Destinatario no válido'}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error compartiendo horario: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/estadisticas/horarios-cursos')
 @login_required

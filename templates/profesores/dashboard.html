@@ -89,27 +89,96 @@
         <div class="col-lg-6">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Mis Clases Próximas</h5>
+                    <h5 class="card-title mb-0">Mis Horarios Compartidos</h5>
                 </div>
                 <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            <p class="fw-semibold mb-1">Matemáticas Básicas</p>
-                            <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> Lunes, 8:00 AM - 9:30 AM</small>
-                            <small><i class="fas fa-map-marker-alt me-1"></i> Salón 101</small>
-                        </li>
-                        <li class="list-group-item">
-                            <p class="fw-semibold mb-1">Ciencias Naturales</p>
-                            <small class="text-muted d-block"><i class="fas fa-calendar-alt me-1"></i> Lunes, 9:45 AM - 11:15 AM</small>
-                            <small><i class="fas fa-map-marker-alt me-1"></i> Laboratorio C</small>
-                        </li>
-                    </ul>
+                    {% if horarios_detallados %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Curso</th>
+                                    <th>Asignatura</th>
+                                    <th>Día</th>
+                                    <th>Hora</th>
+                                    <th>Salón</th>
+                                    <th>Sede</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for horario in horarios_detallados %}
+                                <tr>
+                                    <td>{{ horario.curso_nombre }}</td>
+                                    <td>{{ horario.asignatura_nombre }}</td>
+                                    <td>{{ horario.dia_semana }}</td>
+                                    <td>{{ horario.hora_inicio }} - {{ horario.hora_fin }}</td>
+                                    <td>{{ horario.salon }}</td>
+                                    <td>{{ horario.sede }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No hay horarios compartidos disponibles.</p>
+                    {% endif %}
                 </div>
                 <div class="card-footer bg-white text-end">
-                    <a href="" class="btn btn-sm btn-outline-secondary">Ver horario completo</a>
+                    <a href="{{ url_for('profesor.ver_horario_clases') }}" class="btn btn-sm btn-outline-secondary">Ver horario completo</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    cargarHorarios();
+
+    function cargarHorarios() {
+        const container = document.querySelector('.table-responsive');
+        fetch('/profesor/api/mis-horarios')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.horarios.length > 0) {
+                    let tablaHTML = `
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Curso</th>
+                                    <th>Asignatura</th>
+                                    <th>Día</th>
+                                    <th>Hora</th>
+                                    <th>Salón</th>
+                                    <th>Sede</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.horarios.forEach(horario => {
+                        tablaHTML += `
+                            <tr>
+                                <td>${horario.curso_nombre}</td>
+                                <td>${horario.asignatura_nombre}</td>
+                                <td>${horario.dia_semana}</td>
+                                <td>${horario.hora_inicio} - ${horario.hora_fin}</td>
+                                <td>${horario.salon}</td>
+                                <td>${horario.sede}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tablaHTML += '</tbody></table>';
+                    container.innerHTML = tablaHTML;
+                } else {
+                    container.innerHTML = '<p class="text-muted text-center">No hay horarios compartidos disponibles.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando horarios:', error);
+                container.innerHTML = '<p class="text-muted text-center">Error al cargar los horarios.</p>';
+            });
+    }
+});
+</script>
 {% endblock %}
