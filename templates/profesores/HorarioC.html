@@ -1,24 +1,93 @@
-{% extends "layout_profesor.html" %}
-{% block contenido %}
-<div class="container mt-3">
-    <h3 class="text-principal mb-3">Horario de Clases</h3>
-    <div class="table-responsive">
-        <table id="tabla-horario" class="table schedule-grid">
-            <thead>
-                <tr>
-                    <th>Hora / Día</th>
-                    <th>Lunes</th>
-                    <th>Martes</th>
-                    <th>Miércoles</th>
-                    <th>Jueves</th>
-                    <th>Viernes</th>
-                </tr>
-            </thead>
-            <tbody id="cuerpo-horario">
-                <!-- Las filas se generan con JS -->
-            </tbody>
-        </table>
+{% extends "profesores/base.html" %}
+
+{% block title %}Horario de Clases{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Horario de Clases</h2>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Mis Horarios Compartidos</h5>
+                </div>
+                <div class="card-body">
+                    {% if horarios_detallados %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Curso</th>
+                                    <th>Asignatura</th>
+                                    <th>Día</th>
+                                    <th>Hora</th>
+                                    <th>Salón</th>
+                                    <th>Sede</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for horario in horarios_detallados %}
+                                <tr>
+                                    <td>{{ horario.curso_nombre }}</td>
+                                    <td>{{ horario.asignatura_nombre }}</td>
+                                    <td>{{ horario.dia_semana }}</td>
+                                    <td>{{ horario.hora_inicio }} - {{ horario.hora_fin }}</td>
+                                    <td>{{ horario.salon }}</td>
+                                    <td>{{ horario.sede }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">No hay horarios compartidos disponibles.</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-white text-end">
+                    <a href="{{ url_for('profesor.dashboard') }}" class="btn btn-sm btn-outline-secondary">Volver al Dashboard</a>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Sección para clases tradicionales (por compatibilidad) -->
+    {% if clases %}
+    <div class="row g-4 mt-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Mis Clases (Sistema Antiguo)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Curso</th>
+                                    <th>Asignatura</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for clase in clases %}
+                                <tr>
+                                    <td>{{ clase.curso.nombreCurso }}</td>
+                                    <td>{{ clase.asignatura.nombre }}</td>
+                                    <td>
+                                        <a href="{{ url_for('profesor.gestion_lc') }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit"></i> Gestionar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
-<script src="{{ url_for('static', filename='js/profesor/horario.js') }}"></script>
 {% endblock %}
