@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administrador</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/sistemav/votacionA.css') }}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+
+    <!-- 🔔 Mensajes flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h1>Panel de Administrador</h1>
+
+    <!-- Horario de votación -->
+<h2>Horario de votación</h2>
+<form id="form-horario" action="{{ url_for('admin.guardar_horario') }}" method="POST" class="my-3">
+  <label for="inicio">Hora de inicio:</label>
+  <input type="time" id="inicio" name="inicio" class="form-control my-2" required>
+
+  <label for="fin">Hora de fin:</label>
+  <input type="time" id="fin" name="fin" class="form-control my-2" required>
+
+  <button type="submit" class="btn btn-success">Guardar Horario</button>
+</form>
+
+<p id="horario-actual"><strong>Horario actual:</strong> No hay horario configurado</p>
+
+<!-- Formulario para agregar candidatos -->
+<h2>Agregar candidato</h2>
+<form id="form-candidato" action="{{ url_for('admin.crear_candidato') }}" method="POST" enctype="multipart/form-data">
+  <input type="text" id="nombre" class="form-control my-2" name="nombre" placeholder="Nombre del candidato" required>
+  <input type="text" id="tarjeton" class="form-control my-2" name="tarjeton" placeholder="Número de tarjetón" required>
+  <textarea id="propuesta" class="form-control my-2" name="propuesta" placeholder="Propuesta" required></textarea>
+  <select id="categoria" class="form-control my-2" name="categoria" required>
+    <option value="">Seleccione categoría</option>
+    <option value="personero">Personero</option>
+    <option value="contralor">Contralor</option>
+    <option value="cabildante">Cabildante</option>
+  </select>
+  <input type="file" id="foto" class="form-control my-2" name="foto" accept="image/*" required>
+  <img id="foto-preview" src="" width="150" style="display:block; margin-top:10px;">
+  <button type="submit" class="btn btn-primary">Agregar Candidato</button>
+</form>
+
+    <!-- Lista de candidatos -->
+    <h2>Lista de Candidatos</h2>
+    <div id="lista-candidatos">
+      {% if candidatos %}
+        {% for candidato in candidatos %}
+          <div class="candidato border rounded p-3 my-2 d-flex justify-content-between align-items-start">
+            <div>
+              <h3>{{ candidato.nombre }}</h3>
+              <p><strong>Categoría:</strong> {{ candidato.categoria }}</p>
+              <p><strong>Tarjetón:</strong> {{ candidato.tarjeton }}</p>
+              <p><strong>Propuesta:</strong> {{ candidato.propuesta }}</p>
+              {% if candidato.foto %}
+                <img src="{{ url_for('static', filename='images/candidatos/' ~ candidato.foto) }}" alt="{{ candidato.nombre }}" width="150">
+              {% endif %}
+            </div>
+            <div>
+              <button class="btn btn-warning btn-editar" data-id="{{ candidato.id }}">Editar</button>
+              <button class="btn btn-danger btn-eliminar" data-id="{{ candidato.id }}">Eliminar</button>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p>No hay candidatos aún.</p>
+      {% endif %}
+    </div>
+
+    <!-- Resultados -->
+    <h2>Resultados</h2>
+    <div id="resultados"></div>
+  </div>
+
+ <!-- Modal de edición -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+
+  <div class="modal-dialog">
+    <form id="form-editar" enctype="multipart/form-data">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Editar Candidato</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-id" name="id">
+          <input type="text" id="edit-nombre" class="form-control my-2" name="nombre" placeholder="Nombre" required>
+          <input type="text" id="edit-tarjeton" class="form-control my-2" name="tarjeton" placeholder="Número de tarjetón" required>
+          <textarea id="edit-propuesta" class="form-control my-2" name="propuesta" placeholder="Propuesta" required></textarea>
+          <select id="edit-categoria" class="form-control my-2" name="categoria" required>
+            <option value="personero">Personero</option>
+            <option value="contralor">Contralor</option>
+            <option value="cabildante">Cabildante</option>
+          </select>
+          <input type="file" id="edit-foto" class="form-control my-2" name="foto" accept="image/*">
+          <img id="foto-preview-editar" src="" width="150" style="display:block; margin-top:10px;">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Guardar cambios</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/superadmin/votacionA.js') }}"></script>
+</body>
+</html>

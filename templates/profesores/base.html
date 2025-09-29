@@ -158,7 +158,9 @@
             <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
                 <i class="fas fa-bullhorn fa-fw me-2"></i>Comunicaciones
             </a>
-
+            <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded my-1">
+                <i class="fas fa-calendar-alt fa-fw me-2"></i>Eventos
+            </a>
             <!-- Perfil y Soporte -->
             <div class="mt-auto">
                 <a href="{{ url_for('profesor.perfil') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.perfil' %}active{% endif %}">

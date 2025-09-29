@@ -4,7 +4,8 @@ ROLE_PERMISSIONS = {
     'Super Admin': [
         'gestion_usuarios', 'gestion_asignaturas', 'registro_calificaciones',
         'gestion_comunicados', 'gestion_inventario', 'gestion_matriculas',
-        'gestion_electoral', 'crear_roles', 'ver_roles', 'editar_roles', 'eliminar_roles'
+        'gestion_electoral', 'crear_roles', 'ver_roles', 'editar_roles', 'eliminar_roles',
+        'gestion_eventos','jornada_electoral'
     ],
     # permisos para el rol profesor
     'Profesor': [
@@ -20,6 +21,6 @@ ROLE_PERMISSIONS = {
     # permisos para el rol padre
     'Padre': [
         'ver_calificaciones_hijo', 'ver_horario_hijo', 'ver_comunicaciones_padre',
-        'acceso_soporte'
+        'acceso_soporte','eleccion_electoral','ver.eventos'
     ]
 }

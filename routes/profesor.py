@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, session, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from controllers.models import db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Asistencia, CategoriaCalificacion, HorarioCompartido, HorarioCurso, HorarioGeneral, Salon
+from controllers.models import db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Asistencia, CategoriaCalificacion, HorarioCompartido, HorarioCurso, HorarioGeneral, Salon,Evento
 from datetime import datetime, date
 import json
 
@@ -664,3 +664,31 @@ def validar_estudiante_en_curso(estudiante_id, curso_id):
         estudianteId=estudiante_id,
         cursoId=curso_id
     ).first() is not None
+
+
+@profesor_bp.route("/calendario")
+@login_required
+def ver_eventos():
+    return render_template("profesores/calendario.html")
+# 📌 API: listar eventos SOLO del rol del profesor
+@profesor_bp.route("/api/eventos", methods=["GET"])
+@login_required
+def api_eventos_profesor():
+    try:
+        # Filtrar por rol del usuario logueado
+        eventos = Evento.query.filter_by(rol_destino="Profesor").all()
+
+        resultado = []
+        for ev in eventos:
+            resultado.append({
+                "IdEvento": ev.id,
+                "Nombre": ev.nombre,
+                "Descripcion": ev.descripcion,
+                "Fecha": ev.fecha.strftime("%Y-%m-%d"),
+                "Hora": ev.hora.strftime("%H:%M:%S"),
+                "RolDestino": ev.rol_destino
+            })
+
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

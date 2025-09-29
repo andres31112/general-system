@@ -364,3 +364,100 @@ class Mantenimiento(db.Model):
             "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else "",
             "tecnico": self.tecnico or ""
         }
+    
+
+#eventos 
+class Evento(db.Model):
+    __tablename__ = "eventos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    descripcion = db.Column(db.Text, nullable=False)
+    fecha = db.Column(db.Date, nullable=False)
+    hora = db.Column(db.Time, nullable=False)
+    rol_destino = db.Column(db.String(50), nullable=False)
+
+    def to_dict(self):
+        return {
+            "IdEvento": self.id,
+            "Nombre": self.nombre,
+            "Descripcion": self.descripcion,
+            "Fecha": self.fecha.isoformat(),
+            "Hora": self.hora.strftime("%H:%M"),
+            "RolDestino": self.rol_destino
+        }
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------
+# Comunicaciones
+class Comunicacion(db.Model):
+    __tablename__ = "comunicaciones"
+
+    id = db.Column(db.Integer, primary_key=True)
+    remitente_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    destinatario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    asunto = db.Column(db.String(200), nullable=False)
+    mensaje = db.Column(db.Text, nullable=False)
+    fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
+    estado = db.Column(
+        db.Enum("inbox", "sent", "draft", "deleted", name="estado_comunicacion_enum"),
+        default="inbox",
+        nullable=False
+    )
+
+    # Relaciones
+    remitente = db.relationship(
+        "Usuario",
+        foreign_keys=[remitente_id],
+        backref="mensajes_enviados"
+    )
+    destinatario = db.relationship(
+        "Usuario",
+        foreign_keys=[destinatario_id],
+        backref="mensajes_recibidos"
+    )
+
+    def __repr__(self):
+        return f"<Comunicacion {self.id} de {self.remitente_id} a {self.destinatario_id}>"
+    
+
+
+# 📌 Tabla de Candidatos
+class Candidato(db.Model):
+    __tablename__ = "candidatos"
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    tarjeton = db.Column(db.String(20), unique=True, nullable=False)
+    propuesta = db.Column(db.Text, nullable=False)
+    categoria = db.Column(db.String(50), nullable=False)
+    foto = db.Column(db.String(200), nullable=False)
+    votos = db.Column(db.Integer, default=0)  # <- ESTE CAMPO
+    # 👇 Agregamos este método
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "tarjeton": self.tarjeton,
+            "propuesta": self.propuesta,
+            "categoria": self.categoria,
+            "foto": self.foto
+        }
+
+
+
+# 📌 Tabla de Votos
+class Voto(db.Model):
+    __tablename__ = "votos"
+    id = db.Column(db.Integer, primary_key=True)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    candidato_id = db.Column(db.Integer, db.ForeignKey("candidatos.id"), nullable=False)
+
+    estudiante = db.relationship("Usuario", backref="votos_realizados")
+    candidato = db.relationship("Candidato", backref="votos_registrados")
+
+
+# 📌 Tabla de Horarios de Votación
+class HorarioVotacion(db.Model):
+    __tablename__ = "horarios_votacion"
+    id = db.Column(db.Integer, primary_key=True)
+    inicio = db.Column(db.Time, nullable=False)
+    fin = db.Column(db.Time, nullable=False)

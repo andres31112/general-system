@@ -2,11 +2,16 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from controllers.decorators import role_required
 from extensions import db
+from flask import current_app
 from datetime import datetime, timedelta, time, date
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
-from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento
+from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento,Comunicacion,Evento ,Candidato, HorarioVotacion
 from sqlalchemy.exc import IntegrityError
 import json
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash,jsonify
+from werkzeug.utils import secure_filename
+import os
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -1464,3 +1469,325 @@ def api_eliminar_asignatura(asignatura_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+    # --- Rutas del Sistema de Votación ---
+@admin_bp.route('/sistema-votaciones')
+@login_required
+@role_required(1)  # Solo el rol Super Admin 
+def sistema_votaciones():
+    """Vista principal del sistema de votación."""
+    return render_template('superadmin/sistema_votaciones/admin.html')
+
+@admin_bp.route('/sistema-votaciones/votar')
+@login_required
+def votar():
+    return render_template('superadmin/sistema_votaciones/votar.html')
+
+
+# 📌 Vista del calendario de eventos (HTML)
+@admin_bp.route("/eventos/calendario", methods=["GET"])
+@login_required
+def calendario_eventos():
+    return render_template("superadmin/calendario_admin/index.html")
+
+# 📌 API: Eliminar evento
+@admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
+@login_required
+def eliminar_evento(evento_id):
+    try:
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            return jsonify({"error": "Evento no encontrado"}), 404
+
+        db.session.delete(evento)
+        db.session.commit()
+        return jsonify({"mensaje": "Evento eliminado correctamente ✅"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# 📌 API: Listar todos los eventos (JSON)
+@admin_bp.route("/eventos", methods=["GET"])
+@login_required
+def listar_eventos():
+    try:
+        eventos = Evento.query.all()
+        resultado = []
+        for ev in eventos:
+            resultado.append({
+                "IdEvento": ev.id,
+                "Nombre": ev.nombre,
+                "Descripcion": ev.descripcion,
+                "Fecha": ev.fecha.strftime("%Y-%m-%d"),
+                "Hora": ev.hora.strftime("%H:%M:%S"),
+                "RolDestino": ev.rol_destino
+            })
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# 📌 API: Crear un nuevo evento
+@admin_bp.route("/eventos", methods=["POST"])
+@login_required
+def crear_evento():
+    data = request.get_json()
+    print("📥 Payload recibido:", data)  # Debug en consola
+
+    try:
+        # Leer valores (aceptando minúsculas o mayúsculas)
+        nombre = data.get("nombre") or data.get("Nombre")
+        descripcion = data.get("descripcion") or data.get("Descripcion")
+        fecha_str = data.get("fecha") or data.get("Fecha")
+        hora_str = data.get("hora") or data.get("Hora")
+        rol_destino = data.get("rol_destino") or data.get("RolDestino")
+
+        if not fecha_str or not hora_str:
+            return jsonify({"error": "Faltan fecha u hora"}), 400
+
+        # 🕒 Normalizar hora: quitar "a. m." / "p. m." y convertir a 24h
+        hora_str = hora_str.replace("a. m.", "AM").replace("p. m.", "PM").strip()
+
+        try:
+            hora_dt = datetime.strptime(hora_str, "%I:%M %p")  # 12h → 24h
+        except ValueError:
+            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")  # fallback
+
+        nuevo_evento = Evento(
+            nombre=nombre,
+            descripcion=descripcion,
+            fecha=datetime.strptime(fecha_str, "%Y-%m-%d").date(),
+            hora=hora_dt.time(),
+            rol_destino=rol_destino
+        )
+
+        db.session.add(nuevo_evento)
+        db.session.commit()
+        return jsonify({"mensaje": "Evento creado correctamente ✅"}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print("❌ Error creando evento:", str(e))  # Debug en consola
+        return jsonify({"error": str(e)}), 400
+
+
+
+
+
+# -------------------------
+# 📌 Listar candidatos
+@admin_bp.route("/listar-candidatos", methods=["GET"])
+@login_required
+def listar_candidatos():
+    candidatos = Candidato.query.all()
+    lista = []
+    for c in candidatos:
+        lista.append({
+            "id": c.id,
+            "nombre": c.nombre,
+            "categoria": c.categoria,
+            "tarjeton": c.tarjeton,
+            "propuesta": c.propuesta,
+            "foto": c.foto
+        })
+    return jsonify(lista)
+
+
+
+
+
+@admin_bp.route("/crear-candidato", methods=["POST"])
+@login_required
+def crear_candidato():
+    try:
+        nombre = request.form.get("nombre")
+        tarjeton = request.form.get("tarjeton")
+        propuesta = request.form.get("propuesta")
+        categoria = request.form.get("categoria")
+        foto = request.files.get("foto")
+
+        if not nombre or not tarjeton or not propuesta or not categoria:
+            return jsonify({"ok": False, "error": "Todos los campos son obligatorios"}), 400
+
+        filename = None
+        if foto:
+            filename = secure_filename(foto.filename)
+            path = os.path.join(current_app.static_folder, "images/candidatos", filename)
+            foto.save(path)
+
+        nuevo = Candidato(
+            nombre=nombre,
+            tarjeton=tarjeton,
+            propuesta=propuesta,
+            categoria=categoria,
+            foto=filename
+        )
+        db.session.add(nuevo)
+        db.session.commit()
+
+        # devolver lista actualizada
+        candidatos = Candidato.query.all()
+        return jsonify({
+            "ok": True,
+            "candidatos": [c.to_dict() for c in candidatos]
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
+
+
+@admin_bp.route("/candidatos/<int:candidato_id>", methods=["PUT", "POST"])
+def editar_candidato(candidato_id):
+    try:
+        candidato = Candidato.query.get(candidato_id)
+        if not candidato:
+            return jsonify({"ok": False, "error": "Candidato no encontrado"}), 404
+
+        nombre = request.form.get("nombre", "").strip()
+        propuesta = request.form.get("propuesta", "").strip()
+        categoria = request.form.get("categoria", "").strip()
+        tarjeton = request.form.get("tarjeton", "").strip()
+        file = request.files.get("foto")
+
+        # ✅ Validar obligatorios (excepto foto, que puede quedar igual)
+        if not nombre or not propuesta or not categoria or not tarjeton:
+            return jsonify({"ok": False, "error": "Todos los campos son obligatorios"}), 400
+
+        # ✅ Validar tarjetón único (ignora el del propio candidato)
+        existe_tarjeton = Candidato.query.filter(
+            Candidato.tarjeton == tarjeton,
+            Candidato.id != candidato.id
+        ).first()
+        if existe_tarjeton:
+            return jsonify({"ok": False, "error": "⚠️ Ese número de tarjetón ya existe"}), 400
+
+        # ✅ Validar nombre único
+        existe_nombre = Candidato.query.filter(
+            Candidato.nombre == nombre,
+            Candidato.id != candidato.id
+        ).first()
+        if existe_nombre:
+            return jsonify({"ok": False, "error": "⚠️ Ya existe un candidato con ese nombre"}), 400
+
+        # ✅ Si subió nueva foto, guardarla
+        if file:
+            ext_permitidas = {"png", "jpg", "jpeg", "gif"}
+            if "." not in file.filename or file.filename.rsplit(".", 1)[1].lower() not in ext_permitidas:
+                return jsonify({"ok": False, "error": "Formato de imagen inválido"}), 400
+
+            ext = file.filename.rsplit(".", 1)[1].lower()
+            foto_filename = f"{secure_filename(nombre)}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
+            path = os.path.join(current_app.config["UPLOAD_FOLDER"], foto_filename)
+            file.save(path)
+            candidato.foto = foto_filename  # 👈 actualiza foto
+
+        # ✅ Actualizar campos
+        candidato.nombre = nombre
+        candidato.propuesta = propuesta
+        candidato.categoria = categoria
+        candidato.tarjeton = tarjeton
+
+        db.session.commit()
+
+        # ✅ Retornar candidatos actualizados
+        candidatos = Candidato.query.all()
+        candidatos_json = [
+            {
+                "id": c.id,
+                "nombre": c.nombre,
+                "propuesta": c.propuesta,
+                "categoria": c.categoria,
+                "tarjeton": c.tarjeton,
+                "foto": c.foto,
+                "votos": c.votos if hasattr(c, "votos") else 0
+            }
+            for c in candidatos
+        ]
+
+        return jsonify({"ok": True, "mensaje": "Candidato actualizado correctamente", "candidatos": candidatos_json}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print("❌ Error al editar candidato:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@admin_bp.route("/candidatos/<int:candidato_id>", methods=["DELETE"])
+@login_required
+def eliminar_candidato(candidato_id):
+    try:
+        candidato = Candidato.query.get(candidato_id)
+        if not candidato:
+            return jsonify({"ok": False, "error": "Candidato no encontrado"}), 404
+
+        db.session.delete(candidato)
+        db.session.commit()
+
+        # Devolver la lista actualizada de candidatos para refrescar resultados
+        candidatos = Candidato.query.all()
+        candidatos_data = [
+            {
+                "id": c.id,
+                "nombre": c.nombre,
+                "categoria": c.categoria,
+                "tarjeton": c.tarjeton,
+                "propuesta": c.propuesta,
+                "votos": c.votos
+            }
+            for c in candidatos
+        ]
+
+        return jsonify({"ok": True, "candidatos": candidatos_data}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+
+@admin_bp.route("/guardar-horario", methods=["POST"])
+@login_required
+def guardar_horario():
+    try:
+        inicio = request.form.get("inicio")
+        fin = request.form.get("fin")
+
+        if not inicio or not fin:
+            flash("Debe ingresar inicio y fin del horario", "danger")
+            return redirect(url_for("admin.admin_panel"))
+
+        # Guardar nuevo horario (sobrescribe anterior)
+        horario = HorarioVotacion.query.first()
+        if horario:
+            horario.inicio = datetime.strptime(inicio, "%H:%M").time()
+            horario.fin = datetime.strptime(fin, "%H:%M").time()
+        else:
+            nuevo = HorarioVotacion(
+                inicio=datetime.strptime(inicio, "%H:%M").time(),
+                fin=datetime.strptime(fin, "%H:%M").time()
+            )
+            db.session.add(nuevo)
+
+        db.session.commit()
+        flash("✅ Horario de votación guardado correctamente", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Error al guardar horario: {str(e)}", "danger")
+
+    return redirect(url_for("admin.admin_panel"))
+
+# 📌 Obtener último horario en JSON
+@admin_bp.route("/ultimo-horario", methods=["GET"])
+@login_required
+def ultimo_horario():
+    horario = HorarioVotacion.query.order_by(HorarioVotacion.id.desc()).first()
+    if horario:
+        return jsonify({
+            "inicio": horario.inicio.strftime("%H:%M"),
+            "fin": horario.fin.strftime("%H:%M")
+        })
+    return jsonify({})

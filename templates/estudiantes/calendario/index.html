@@ -1,0 +1,158 @@
+{% extends "/estudiantes/base.html" %}
+
+{% block title %}Calendario de Eventos{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4 text-center">Calendario de Eventos</h2>
+
+    <!-- Contenedor del calendario -->
+    <div id="calendar" class="calendar-grid"></div>
+
+    <!-- Modal de detalles -->
+    <div id="eventDetails" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="detailTitle"></h3>
+            <p><strong>Fecha:</strong> <span id="detailDate"></span></p>
+            <p id="detailDescription"></p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 10px;
+    }
+    .day {
+        border: 1px solid #ddd;
+        padding: 8px;
+        min-height: 80px;
+        position: relative;
+        border-radius: 6px;
+        background: #f9f9f9;
+    }
+    .day strong {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 5px;
+    }
+    .events {
+        font-size: 12px;
+    }
+    .event {
+        background: #0d6efd;
+        color: white;
+        padding: 2px 4px;
+        margin-bottom: 3px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex; justify-content: center; align-items: center;
+    }
+    .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 400px;
+    }
+    .close {
+        float: right;
+        font-size: 20px;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+let events = [];
+const calendar = document.getElementById("calendar");
+
+function createCalendar() {
+    calendar.innerHTML = '';
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // espacios vacíos hasta el primer día
+    for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement("div");
+        calendar.appendChild(empty);
+    }
+
+    // días del mes
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayDiv = document.createElement("div");
+        dayDiv.classList.add("day");
+        dayDiv.dataset.date = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        dayDiv.innerHTML = `<strong>${day}</strong><div class="events"></div>`;
+        calendar.appendChild(dayDiv);
+    }
+
+    renderEvents();
+}
+
+function loadEvents() {
+    fetch("/estudiante/api/eventos")
+        .then(r => {
+            if (!r.ok) throw new Error("Error al cargar eventos");
+            return r.json();
+        })
+        .then(data => {
+            console.log("✅ Eventos recibidos:", data);
+            events = data.map(e => ({
+                id: e.IdEvento,
+                title: e.Nombre,
+                description: e.Descripcion,
+                date: e.Fecha,
+                time: (e.Hora || '').slice(0,5),
+                role: e.RolDestino
+            }));
+            renderEvents();
+        })
+        .catch(err => console.error("❌ Error cargando eventos:", err));
+}
+
+function renderEvents() {
+    document.querySelectorAll(".day").forEach(dayDiv => {
+        const dayEventsDiv = dayDiv.querySelector(".events");
+        dayEventsDiv.innerHTML = '';
+        const date = dayDiv.dataset.date;
+
+        events
+            .filter(ev => ev.date === date)
+            .forEach((ev, index) => {
+                const evDiv = document.createElement("div");
+                evDiv.classList.add("event");
+                evDiv.textContent = `${ev.time} - ${ev.title}`;
+                evDiv.onclick = () => showEventDetails(ev, index);
+                dayEventsDiv.appendChild(evDiv);
+            });
+    });
+}
+
+function showEventDetails(ev, index) {
+    document.getElementById("detailTitle").textContent = ev.title;
+    document.getElementById("detailDate").textContent = `${ev.date} ${ev.time}`;
+    document.getElementById("detailDescription").textContent = ev.description;
+    document.getElementById("eventDetails").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("eventDetails").style.display = "none";
+}
+
+// inicializar
+createCalendar();
+loadEvents();
+</script>
+{% endblock %}

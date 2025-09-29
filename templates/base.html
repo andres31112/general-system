@@ -46,6 +46,20 @@
             <a href="#" class="nav-link rounded my-1">
                 <i class="fas fa-bullhorn fa-fw me-2"></i>Gestión de Comunicaciones
             </a>
+
+                    {% endif %}
+            {% if current_user.has_permission('gestion_electoral') %}
+            <a href="{{ url_for('admin.sistema_votaciones') }}" class="nav-link rounded my-1 {% if 'gestion_electoral' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-vote-yea fa-fw me-2"></i>Sistema de Votación
+            </a>
+             </a>
+
+            {% if current_user.has_permission('gestion_eventos') %}
+            <a href="{{ url_for('admin.calendario_eventos') }}" class="nav-link rounded my-1 {% if 'calendario_eventos' in request.endpoint %}active{% endif %}">
+                <i class="fas fa-calendar fa-fw me-2"></i>Calendario
+            </a>
+            {% endif %}
+    
             {% endif %}
             {% if current_user.has_permission('gestion_mantenimientos') %}
             <a href="#" class="nav-link rounded my-1">
