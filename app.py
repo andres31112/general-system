@@ -10,7 +10,8 @@ from routes.profesor import profesor_bp
 from routes.padres import padre_bp
 from config import Config
 from extensions import init_app 
-
+from flask import Flask
+import os
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -61,6 +62,9 @@ def create_initial_data():
             else:
                 print("Rol 'Super Admin' no encontrado. No se pudo crear el usuario superadmin.")
 
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "static", "images", "candidatos")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 app.register_blueprint(main_bp)
 app.register_blueprint(auth_bp)
