@@ -5,13 +5,11 @@ from extensions import db
 from flask import current_app
 from datetime import datetime, timedelta, time, date
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
-from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento,Comunicacion,Evento ,Candidato, HorarioVotacion
+from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, Evento, Candidato, HorarioVotacion
 from sqlalchemy.exc import IntegrityError
 import json
-import os
-from flask import Flask, render_template, request, redirect, url_for, flash,jsonify
 from werkzeug.utils import secure_filename
-import os
+
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')

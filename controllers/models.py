@@ -364,7 +364,11 @@ class Mantenimiento(db.Model):
             "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else "",
             "tecnico": self.tecnico or ""
         }
-    
+        
+#==========================================================================================================#
+#Eventos y votaciones
+#==========================================================================================================#
+
 
 #eventos 
 class Evento(db.Model):
