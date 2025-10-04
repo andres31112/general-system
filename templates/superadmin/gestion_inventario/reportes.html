@@ -228,11 +228,13 @@
     async function cargarDatosReportes() {
         try {
             const resEquipos = await fetch('/admin/api/reportes/estado_equipos');
+            if (!resEquipos.ok) throw new Error(`HTTP error! status: ${resEquipos.status}`);
             const dataEquipos = await resEquipos.json();
             actualizarMetricas(dataEquipos);
             crearEstadosChart(dataEquipos.estados);
 
             const resSedes = await fetch('/admin/api/reportes/equipos_por_sede');
+            if (!resSedes.ok) throw new Error(`HTTP error! status: ${resSedes.status}`);
             const dataSedes = await resSedes.json();
             crearSedesChart(dataSedes);
 
@@ -243,16 +245,28 @@
             renderizarEquipos();
         } catch (error) {
             console.error('Error general al cargar los reportes:', error);
+            // Mostrar un mensaje de error en la UI si es posible
         }
     }
 
+    // MODIFICADA: cargarSalonesData para usar /admin/api/salas_todas
     async function cargarSalonesData() {
         const loadingSalones = document.getElementById('loadingSalones');
         loadingSalones.style.display = 'block';
         try {
-            const res = await fetch('/admin/api/salones'); 
+            const res = await fetch('/admin/api/salas_todas'); 
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const data = await res.json();
-            salonesData = data;
+            
+            salonesData = data.map(salon => ({
+                id: salon.id,
+                nombre: salon.nombre || 'Sin nombre',
+                tipo: salon.tipo || 'N/A',
+                sede: salon.sede_nombre || 'Sin sede',     
+                capacidad: salon.capacidad || 'N/A',
+                total_equipos: salon.total_equipos || 0
+            }));
+            
         } catch (error) {
             console.error('Error cargando datos de salones:', error);
             salonesData = [];
@@ -261,13 +275,24 @@
         }
     }
 
+    // MODIFICADA: cargarEquiposData para usar /admin/api/equipos
     async function cargarEquiposData() {
         const loadingEquipos = document.getElementById('loadingEquipos');
         loadingEquipos.style.display = 'block';
         try {
-            const res = await fetch('/admin/api/equipos'); 
+            const res = await fetch('/admin/api/equipos'); // Usar la API general de equipos
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             const data = await res.json();
-            equiposData = data;
+            
+            equiposData = data.map(equipo => ({
+                id: equipo.id,
+                nombre: equipo.nombre || 'Sin nombre',
+                estado: equipo.estado || 'Desconocido',
+                sala: equipo.salon_nombre || 'Sin salón',  
+                sede: equipo.sede_nombre || 'Sin sede',    
+                asignado_a: equipo.asignado_a || 'N/A'
+            }));
+            
         } catch (error) {
             console.error('Error cargando datos de equipos:', error);
             equiposData = [];
@@ -281,13 +306,13 @@
         const tbody = document.querySelector('#tablaSalones tbody');
         tbody.innerHTML = '';
         
-        let limite = limiteSalones === 'all' ? salonesData.length : limiteSalones;
+        let limite = limiteSalones === 'all' ? salonesData.length : parseInt(limiteSalones);
         const inicio = (paginaSalonesActual - 1) * limite;
         const fin = inicio + limite;
         const salonesPagina = salonesData.slice(inicio, fin);
 
         if (salonesPagina.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">No hay salones para mostrar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted py-3">No hay salones para mostrar.</td></tr>';
         }
 
         salonesPagina.forEach(salon => {
@@ -314,13 +339,13 @@
         const tbody = document.querySelector('#tablaEquipos tbody');
         tbody.innerHTML = '';
 
-        let limite = limiteEquipos === 'all' ? equiposData.length : limiteEquipos;
+        let limite = limiteEquipos === 'all' ? equiposData.length : parseInt(limiteEquipos);
         const inicio = (paginaEquiposActual - 1) * limite;
         const fin = inicio + limite;
         const equiposPagina = equiposData.slice(inicio, fin);
 
         if (equiposPagina.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">No hay equipos para mostrar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted py-3">No hay equipos para mostrar.</td></tr>';
         }
 
         equiposPagina.forEach(equipo => {
@@ -515,7 +540,7 @@
         }
     });
     document.getElementById('nextSalones').addEventListener('click', () => {
-        const limite = limiteSalones === 'all' ? salonesData.length : limiteSalones;
+        const limite = limiteSalones === 'all' ? salonesData.length : parseInt(limiteSalones);
         const totalPaginas = Math.ceil(salonesData.length / limite);
         if (paginaSalonesActual < totalPaginas) {
             paginaSalonesActual++;
@@ -523,7 +548,7 @@
         }
     });
     document.getElementById('limiteSalones').addEventListener('change', (e) => {
-        limiteSalones = e.target.value === 'all' ? 'all' : parseInt(e.target.value);
+        limiteSalones = e.target.value; // Mantener como string si es 'all'
         paginaSalonesActual = 1;
         renderizarSalones();
     });
@@ -537,7 +562,7 @@
         }
     });
     document.getElementById('nextEquipos').addEventListener('click', () => {
-        const limite = limiteEquipos === 'all' ? equiposData.length : limiteEquipos;
+        const limite = limiteEquipos === 'all' ? equiposData.length : parseInt(limiteEquipos);
         const totalPaginas = Math.ceil(equiposData.length / limite);
         if (paginaEquiposActual < totalPaginas) {
             paginaEquiposActual++;
@@ -545,7 +570,7 @@
         }
     });
     document.getElementById('limiteEquipos').addEventListener('change', (e) => {
-        limiteEquipos = e.target.value === 'all' ? 'all' : parseInt(e.target.value);
+        limiteEquipos = e.target.value; // Mantener como string si es 'all'
         paginaEquiposActual = 1;
         renderizarEquipos();
     });
@@ -554,6 +579,13 @@
     });
     // Inicializar carga de datos al cargar la página
     window.onload = cargarDatosReportes;
+    // Estas dos líneas ya no son necesarias aquí, ya que cargarDatosReportes las llama
+    window.cargarEquiposData = cargarEquiposData;
+    window.cargarSalonesData = cargarSalonesData;
+
+    // Recargar los datos con el mapeo corregido (estas llamadas se hacen dentro de cargarDatosReportes)
+    cargarEquiposData().then(() => renderizarEquipos());
+    cargarSalonesData().then(() => renderizarSalones());
 </script>
 {% endblock %}
 </body>

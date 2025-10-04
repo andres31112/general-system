@@ -249,37 +249,36 @@ class Calificacion(db.Model):
     observaciones = db.Column(db.Text)
 
 class Salon(db.Model):
-    __tablename__ = 'salones'
+    __tablename__ = 'salones' 
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False, unique=True)
     tipo = db.Column(db.String(50), nullable=False)
-    capacidad = db.Column(db.Integer, nullable=True, default=0)
+    capacidad = db.Column(db.Integer, nullable=False)
     cantidad_sillas = db.Column(db.Integer, nullable=True)
     cantidad_mesas = db.Column(db.Integer, nullable=True)
     id_sede_fk = db.Column(db.Integer, db.ForeignKey('sede.id'), nullable=False)
     sede = db.relationship('Sede', backref=db.backref('salones', lazy=True))
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "nombre": self.nombre,
-            "tipo": self.tipo,
-            "capacidad": self.capacidad,
-            "id_sede_fk": self.id_sede_fk,
-            "sede_nombre": self.sede.nombre if self.sede else "Sin Sede",
-            "equipos_count": Equipo.query.filter_by(id_salon_fk=self.id).count(),
-            "cantidad_sillas": self.cantidad_sillas or 0,
-            "cantidad_mesas": self.cantidad_mesas or 0
-        }
+            return {
+                "id": self.id,
+                "nombre": self.nombre,
+                "tipo": self.tipo,
+                "capacidad": self.capacidad,
+                "id_sede_fk": self.id_sede_fk,
+                "sede_nombre": self.sede.nombre if self.sede else "Sin Sede",
+                "equipos_count": Equipo.query.filter_by(id_salon_fk=self.id).count(),
+                "cantidad_sillas": self.cantidad_sillas or 0,
+                "cantidad_mesas": self.cantidad_mesas or 0
+            }
     
     def __repr__(self):
         return f"Salon('{self.nombre}', '{self.tipo}')"
-
 class Equipo(db.Model):
-    __tablename__ = 'equipos'
+    __tablename__ = 'Equipos'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
-    estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', 'Revisión', name='estado_equipo_enum'), nullable=False, default='Disponible')
+    estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', name='estado_equipo_enum'), nullable=False, default='Disponible')
     id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id'), nullable=False)
     asignado_a = db.Column(db.String(100))
     id_referencia = db.Column(db.String(50))
@@ -309,6 +308,7 @@ class Equipo(db.Model):
             "fecha_adquisicion": self.fecha_adquisicion.strftime("%Y-%m-%d") if self.fecha_adquisicion else "",
             "id_salon_fk": self.id_salon_fk,
             "salon": self.salon.nombre if self.salon else "Sin Salón Asignado",
+            
             "sede_nombre": self.salon.sede.nombre if self.salon and self.salon.sede else "Sin Sede",
             "sede_id": self.salon.id_sede_fk if self.salon else None,
         }
@@ -317,30 +317,34 @@ class Equipo(db.Model):
 class Incidente(db.Model):
     __tablename__ = 'Incidentes'
     id = db.Column(db.Integer, primary_key=True)
-    equipo_id = db.Column(db.Integer, db.ForeignKey('equipos.id'), nullable=False)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
     usuario_asignado = db.Column(db.String(100), nullable=True)
     sede = db.Column(db.String(100), nullable=False)
-    fecha = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+    fecha = db.Column(db.DateTime, nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     estado = db.Column(db.String(50), nullable=True)
+    prioridad = db.Column(db.String(20), nullable=False, default='media')
+    solucion_propuesta = db.Column(db.Text, nullable=True)
     equipo = db.relationship('Equipo', backref=db.backref('incidentes', lazy=True))
-    
+
     def to_dict(self):
         return {
             "id": self.id,
             "equipo_id": self.equipo_id,
             "equipo_nombre": self.equipo.nombre if self.equipo else "",
-            "usuario_asignado": self.usuario_asignado or "",
+            "usuario_reporte": self.usuario_asignado or "",
             "sede": self.sede,
             "fecha": self.fecha.strftime("%Y-%m-%d"),
             "descripcion": self.descripcion,
-            "estado": self.estado or ""
+            "estado": self.estado or "",
+            "prioridad": self.prioridad or "media", # Incluir prioridad
+            "solucion_propuesta": self.solucion_propuesta or "" # Incluir solución propuesta
         }
 
 class Mantenimiento(db.Model):
     __tablename__ = 'Mantenimiento'
     id = db.Column(db.Integer, primary_key=True)
-    equipo_id = db.Column(db.Integer, db.ForeignKey('equipos.id'), nullable=False)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('Equipos.id'), nullable=False)
     sede_id = db.Column(db.Integer, db.ForeignKey('sede.id'), nullable=False)
     fecha_programada = db.Column(db.Date, nullable=False)
     tipo = db.Column(db.String(50), nullable=False)
@@ -350,7 +354,6 @@ class Mantenimiento(db.Model):
     tecnico = db.Column(db.String(100), nullable=True)
     equipo = db.relationship('Equipo', backref=db.backref('programaciones', lazy=True))
     sede = db.relationship('Sede', lazy='joined')
-    
     def to_dict(self):
         return {
             "id": self.id,

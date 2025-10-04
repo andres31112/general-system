@@ -74,22 +74,14 @@
                             {% endfor %}
                         </div>
                         <div class="col-md-6">
-                            <label for="{{ form.estado.id }}" class="form-label">Estado del Equipo *</label>
-                            {{ form.estado(class="form-select") }}
-                            {% for error in form.estado.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
                             <label for="{{ form.salon.id }}" class="form-label">Sala *</label>
                             {{ form.salon(class="form-select") }}
                             {% for error in form.salon.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
+                    </div>
+                    <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="{{ form.asignado_a.id }}" class="form-label">Asignado a</label>
                             {{ form.asignado_a(class="form-control", placeholder="Nombre del usuario asignado") }}

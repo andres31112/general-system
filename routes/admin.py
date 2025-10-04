@@ -9,6 +9,7 @@ from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Sal
 from sqlalchemy.exc import IntegrityError
 import json
 from werkzeug.utils import secure_filename
+import os
 
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -50,11 +51,17 @@ def equipos():
 def crear_equipo():
     form = EquipoForm()
     if form.validate_on_submit():
+        
+        if form.asignado_a.data:
+            estado_inicial = 'Asignado'
+        else:
+            estado_inicial = 'Disponible'
+        
         nuevo_equipo = Equipo(
             id_referencia=form.id_referencia.data,
             nombre=form.nombre.data,
             tipo=form.tipo.data,
-            estado=form.estado.data,
+            estado=estado_inicial, 
             id_salon_fk=form.salon.data.id if form.salon.data else None,
             asignado_a=form.asignado_a.data,
             sistema_operativo=form.sistema_operativo.data,
@@ -75,6 +82,78 @@ def crear_equipo():
         title='Crear Nuevo Equipo',
         form=form
     )
+
+@admin_bp.route('/api/equipos', methods=['GET']) # Cambiado a /api/equipos para ser más general
+@login_required
+@role_required(1)
+def api_equipos_todos():
+    """API para listar todos los equipos con información de salón y sede."""
+    try:
+        equipos_db = db.session.query(
+            Equipo.id,
+            Equipo.id_referencia,
+            Equipo.nombre,
+            Equipo.tipo,
+            Equipo.estado,
+            Equipo.asignado_a,
+            Equipo.sistema_operativo,
+            Equipo.ram,
+            Equipo.disco_duro,
+            Equipo.fecha_adquisicion,
+            Equipo.descripcion,
+            Equipo.observaciones,
+            Equipo.id_salon_fk,
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+         .all()
+        
+        equipos = []
+        for eq in equipos_db:
+            equipos.append({
+                'id': eq.id,
+                'id_referencia': eq.id_referencia,
+                'nombre': eq.nombre,
+                'tipo': eq.tipo,
+                'estado': eq.estado,
+                'asignado_a': eq.asignado_a or "N/A",
+                'sistema_operativo': eq.sistema_operativo or "N/A",
+                'ram': eq.ram or "N/A",
+                'disco_duro': eq.disco_duro or "N/A",
+                'fecha_adquisicion': eq.fecha_adquisicion.strftime('%Y-%m-%d') if eq.fecha_adquisicion else "N/A",
+                'descripcion': eq.descripcion or "N/A",
+                'observaciones': eq.observaciones or "N/A",
+                'id_salon_fk': eq.id_salon_fk,
+                'salon_nombre': eq.salon_nombre or "Sin Salón",
+                'sede_nombre': eq.sede_nombre or "Sin Sede"
+            })
+
+        return jsonify(equipos), 200 # Retorna directamente la lista de equipos
+    except Exception as e:
+        print(f"Error al listar equipos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+@admin_bp.route('/api/equipos/con-incidentes', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipos_con_incidentes():
+    """
+    Retorna los IDs de equipos que tienen incidentes activos (no resueltos/cerrados).
+    """
+    try:
+        equipos_con_incidentes = db.session.query(Incidente.equipo_id)\
+            .filter(Incidente.estado.in_(['reportado', 'en_proceso']))\
+            .distinct()\
+            .all()
+        
+        ids = [eq[0] for eq in equipos_con_incidentes]
+        
+        return jsonify({'equipos_con_incidentes': ids}), 200
+        
+    except Exception as e:
+        print(f"Error al obtener equipos con incidentes: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
@@ -97,7 +176,6 @@ def api_equipo_detalle(equipo_id):
         data = request.get_json()
         
         try:
-            # Aquí va toda la lógica de actualización (como se indicó previamente)
             equipo.asignado_a = data.get('asignado_a', equipo.asignado_a)
             equipo.estado = data.get('estado', equipo.estado)
             equipo.sistema_operativo = data.get('sistema_operativo', equipo.sistema_operativo)
@@ -109,6 +187,17 @@ def api_equipo_detalle(equipo_id):
             fecha_adquisicion_str = data.get('fecha_adquisicion')
             if fecha_adquisicion_str:
                 equipo.fecha_adquisicion = datetime.strptime(fecha_adquisicion_str, '%Y-%m-%d').date()
+            else:
+                equipo.fecha_adquisicion = None # Permitir que la fecha sea nula si se envía vacío
+
+            # Actualizar id_salon_fk si se proporciona
+            id_salon_fk = data.get('id_salon_fk')
+            if id_salon_fk is not None: # Permitir 0 o null si es necesario, aunque el formulario lo hace readonly
+                salon = Salon.query.get(id_salon_fk)
+                if salon:
+                    equipo.id_salon_fk = id_salon_fk
+                else:
+                    return jsonify({'success': False, 'error': 'Salón no encontrado para la actualización.'}), 400
 
             db.session.commit()
             return jsonify({'success': True, 'message': 'Equipo actualizado exitosamente'}), 200
@@ -118,8 +207,11 @@ def api_equipo_detalle(equipo_id):
             
     # Lógica de VISTA (GET)
     if request.method == 'GET':
-        # Aquí va la lógica para obtener los detalles del equipo (ya existente)
         data = equipo.to_dict()
+        # Asegurarse de que salon_nombre y sede_nombre estén presentes
+        data['salon_nombre'] = equipo.salon.nombre if equipo.salon else "Sin Salón"
+        data['sede_nombre'] = equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else "Sin Sede"
+
         data['incidentes'] = [
             {'fecha': i.fecha.strftime("%Y-%m-%d"), 'descripcion': i.descripcion} 
             for i in equipo.incidentes
@@ -136,8 +228,8 @@ def api_equipo_detalle(equipo_id):
 @role_required(1)
 def salones():
     """Muestra la lista de todos los salones."""
-    salones = db.session.query(Salon).all()
-    return render_template('superadmin/gestion_inventario/salones.html', salones=salones)
+    # Esta ruta renderiza el HTML, la API /api/salas_todas es la que alimenta los datos
+    return render_template('superadmin/gestion_inventario/salones.html')
 
 # ===============================
 # API Sedes, Salas y Equipos
@@ -199,7 +291,7 @@ def api_sedes():
     return jsonify({"error": "Método no permitido"}), 405
 
 @admin_bp.route('/api/sedes/<int:sede_id>/salas')
-def api_salas(sede_id):
+def api_salas_por_sede(sede_id): # Renombrada para evitar conflicto con api_salas_todas
     salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
     return jsonify([{"id": s.id, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
 
@@ -243,7 +335,7 @@ def api_salon_detalle(salon_id):
             'nombre': salon.nombre,
             'tipo': salon.tipo,
             'capacidad': salon.capacidad,
-            'sede_id': salon.id_sede_fk,   # 🔹 unificado con /api/salas_todas
+            'sede_id': salon.id_sede_fk,
             'sede_nombre': sede_nombre,
             'total_equipos': total_equipos,
             'cantidad_sillas': salon.cantidad_sillas or 0,
@@ -277,7 +369,7 @@ def api_salon_detalle(salon_id):
             return jsonify({'success': False, 'error': f'Error al eliminar el salón: {str(e)}'}), 500
         
 @admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
-def api_equipos(sede_id, salon_id):
+def api_equipos_por_sala(sede_id, salon_id): # Renombrada para evitar conflicto
     equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
     data = []
     for eq in equipos:
@@ -320,8 +412,9 @@ def api_reportes_estado_equipos():
             'Mantenimiento': estados.get('Mantenimiento', 0),
             'Incidente': estados.get('Incidente', 0),
             'Asignado': estados.get('Asignado', 0),
-            # Incluye todos los demás estados
-            **estados 
+            'Revisión': estados.get('Revisión', 0), # Asegurarse de incluir 'Revisión'
+            # Incluye todos los demás estados que puedan existir
+            **{k: v for k, v in estados.items() if k not in ['Disponible', 'Mantenimiento', 'Incidente', 'Asignado', 'Revisión']}
         }
     }
     
@@ -359,6 +452,297 @@ def incidentes():
     """Muestra la página de gestión de incidentes."""
     return render_template('superadmin/gestion_inventario/incidentes.html')
 
+# 1. API: OBTENER EQUIPOS CON ESTADO "INCIDENTE"
+@admin_bp.route('/api/equipos_para_incidente', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipos_para_incidente():
+    """
+    Retorna solo los equipos con estado 'Incidente' para poder registrar incidentes.
+    Endpoint exclusivo que no interfiere con /api/equipos/todos
+    """
+    try:
+        equipos_db = db.session.query(
+            Equipo.id,
+            Equipo.nombre,
+            Equipo.estado,
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+         .order_by(Equipo.nombre)\
+         .all()
+        
+        equipos = []
+        for eq in equipos_db:
+            equipos.append({
+                'id': eq.id,
+                'nombre': eq.nombre,
+                'estado': eq.estado,
+                'salon_nombre': eq.salon_nombre or "Sin Salón",
+                'sede_nombre': eq.sede_nombre or "Sin Sede"
+            })
+
+        return jsonify(equipos), 200
+
+    except Exception as e:
+        print(f"Error al listar equipos para incidente: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+
+# 2. API: LISTAR TODOS LOS INCIDENTES (GET)
+@admin_bp.route('/api/incidentes', methods=['GET'])
+@login_required
+@role_required(1)
+def api_listar_incidentes():
+    """
+    Lista todos los incidentes con información completa de equipo, salón y sede.
+    """
+    try:
+        incidentes_db = db.session.query(
+            Incidente.id,
+            Incidente.equipo_id,
+            Incidente.usuario_asignado.label('usuario_reporte'),
+            Incidente.fecha,
+            Incidente.descripcion,
+            Incidente.estado,
+            Incidente.prioridad,
+            Incidente.solucion_propuesta,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Incidente.equipo_id == Equipo.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+         .order_by(Incidente.fecha.desc())\
+         .all()
+        
+        incidentes = []
+        for inc in incidentes_db:
+            incidentes.append({
+                'id': inc.id,
+                'equipo_id': inc.equipo_id,
+                'usuario_reporte': inc.usuario_reporte or '',
+                'fecha': inc.fecha.strftime('%Y-%m-%d %H:%M:%S') if inc.fecha else None,
+                'descripcion': inc.descripcion or '',
+                'estado': inc.estado or 'reportado',
+                'prioridad': inc.prioridad or 'media',
+                'solucion_propuesta': inc.solucion_propuesta or '',
+                'equipo_nombre': inc.equipo_nombre or "",
+                'salon_nombre': inc.salon_nombre or "Sin Salón",
+                'sede_nombre': inc.sede_nombre or "Sin Sede"
+            })
+
+        return jsonify(incidentes), 200
+        
+    except Exception as e:
+        print(f"Error al listar incidentes: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+# 3. API: CREAR NUEVO INCIDENTE (POST)
+@admin_bp.route('/api/incidentes', methods=['POST'])
+@login_required
+@role_required(1)
+def api_crear_incidente():
+    """
+    Crea un nuevo incidente SIN cambiar el estado del equipo.
+    """
+    try:
+        data = request.get_json()
+        
+        # Validación de datos obligatorios
+        equipo_id = data.get('equipo_id')
+        descripcion = data.get('descripcion', '').strip()
+        prioridad = data.get('prioridad', 'media')
+        usuario_reporte = data.get('usuario_reporte', '').strip()
+        
+        if not equipo_id:
+            return jsonify({
+                'success': False, 
+                'error': 'El equipo es obligatorio.'
+            }), 400
+            
+        if not descripcion:
+            return jsonify({
+                'success': False, 
+                'error': 'La descripción del problema es obligatoria.'
+            }), 400
+        
+        if not usuario_reporte:
+            return jsonify({
+                'success': False, 
+                'error': 'El usuario que reporta es obligatorio.'
+            }), 400
+
+        # Verificar que el equipo exista
+        equipo = Equipo.query.get(equipo_id)
+        if not equipo:
+            return jsonify({
+                'success': False, 
+                'error': f'El equipo con ID {equipo_id} no existe.'
+            }), 404
+            
+        # ❌ ELIMINAR ESTA LÍNEA: equipo.estado = 'Incidente'
+
+        # Obtener sede del equipo
+        sede_nombre = "Sin Sede"
+        if equipo.salon and equipo.salon.sede:
+            sede_nombre = equipo.salon.sede.nombre
+
+        # Crear el incidente
+        nuevo_incidente = Incidente(
+            equipo_id=equipo_id,
+            usuario_asignado=usuario_reporte,
+            sede=sede_nombre,
+            fecha=datetime.now(),
+            descripcion=descripcion,
+            estado='reportado',
+            prioridad=prioridad,
+            solucion_propuesta=data.get('solucion_propuesta', '')
+        )
+        
+        db.session.add(nuevo_incidente)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Incidente creado exitosamente',
+            'incidente': {
+                'id': nuevo_incidente.id,
+                'equipo_nombre': equipo.nombre,
+                'usuario_reporte': usuario_reporte,
+                'fecha': nuevo_incidente.fecha.strftime('%Y-%m-%d %H:%M:%S'),
+                'estado': nuevo_incidente.estado,
+                'prioridad': nuevo_incidente.prioridad
+            }
+        }), 201
+
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False, 
+            'error': 'Error de integridad de datos. Verifique la información.'
+        }), 400
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al crear incidente: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+# 4. API: CAMBIAR ESTADO DE INCIDENTE (PUT)
+@admin_bp.route('/api/incidentes/<int:incidente_id>/estado', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_estado_incidente(incidente_id):
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        incidente = Incidente.query.get_or_404(incidente_id)
+        
+        if not nuevo_estado or nuevo_estado not in ['reportado', 'en_proceso', 'resuelto', 'cerrado']:
+             return jsonify({'success': False, 'error': 'Estado inválido.'}), 400
+
+        # 1. Actualizar el estado del incidente
+        incidente.estado = nuevo_estado
+        incidente.fecha_actualizacion = datetime.now() # O campo similar
+        
+        # 2. Lógica adicional (ej: actualizar estado del Equipo si es 'cerrado/resuelto')
+        if nuevo_estado in ['resuelto', 'cerrado'] and incidente.equipo:
+            incidente.equipo.estado = 'Disponible' # O estado apropiado
+        elif nuevo_estado == 'reportado' and incidente.equipo:
+             incidente.equipo.estado = 'Incidente'
+        
+        db.session.commit()
+
+        # 3. DEVOLVER EL INCIDENTE ACTUALIZADO COMPLETO (¡CRUCIAL!)
+        return jsonify({ 
+            'success': True, 
+            'message': 'Estado actualizado con éxito',
+            # Debes implementar una función para serializar el objeto Incidente a un diccionario
+            'incidente_actualizado': incidente.to_dict() 
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al actualizar estado: {e}")
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+
+
+# 5. API: ELIMINAR INCIDENTE (DELETE)
+@admin_bp.route('api/incidentes/<int:incidente_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_incidente(incidente_id):
+    """
+    Elimina un incidente por su ID.
+    """
+    try:
+        incidente = Incidente.query.get(incidente_id)
+        
+        if not incidente:
+            return jsonify({'success': False, 'error': 'Incidente no encontrado.'}), 404
+        
+        db.session.delete(incidente)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': f'Incidente {incidente_id} eliminado exitosamente.'})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al eliminar incidente: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+
+# 6. API: OBTENER DETALLE DE UN INCIDENTE (GET - OPCIONAL)
+@admin_bp.route('/admin/api/incidentes/<int:incidente_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_detalle_incidente(incidente_id):
+    """
+    Obtiene el detalle completo de un incidente específico.
+    """
+    try:
+        incidente_db = db.session.query(
+            Incidente.id,
+            Incidente.equipo_id,
+            Incidente.usuario_asignado.label('usuario_reporte'),
+            Incidente.fecha,
+            Incidente.descripcion,
+            Incidente.estado,
+            Incidente.prioridad,
+            Incidente.solucion_propuesta,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Incidente.equipo_id == Equipo.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+         .filter(Incidente.id == incidente_id)\
+         .first()
+        
+        if not incidente_db:
+            return jsonify({'success': False, 'error': 'Incidente no encontrado.'}), 404
+        
+        incidente = {
+            'id': incidente_db.id,
+            'equipo_id': incidente_db.equipo_id,
+            'usuario_reporte': incidente_db.usuario_reporte or '',
+            'fecha': incidente_db.fecha.strftime('%Y-%m-%d %H:%M:%S') if incidente_db.fecha else None,
+            'descripcion': incidente_db.descripcion or '',
+            'estado': incidente_db.estado or 'reportado',
+            'prioridad': incidente_db.prioridad or 'media',
+            'solucion_propuesta': incidente_db.solucion_propuesta or '',
+            'equipo_nombre': incidente_db.equipo_nombre or "",
+            'salon_nombre': incidente_db.salon_nombre or "Sin Salón",
+            'sede_nombre': incidente_db.sede_nombre or "Sin Sede"
+        }
+
+        return jsonify(incidente), 200
+        
+    except Exception as e:
+        print(f"Error al obtener detalle del incidente: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
 @admin_bp.route('/mantenimiento')
 @role_required(1)
 def mantenimiento():
@@ -368,21 +752,9 @@ def mantenimiento():
 @admin_bp.route('/gestion-salones')
 def gestion_salones():
     """Muestra la página de gestión de salones con estadísticas."""
-    salones = db.session.query(Salon).all()
-    total_salones = db.session.query(Salon).count()
-    salas_computo = db.session.query(Salon).filter_by(tipo='sala_computo').count()
-    aulas = db.session.query(Salon).filter_by(tipo='aula').count()
-    laboratorios = db.session.query(Salon).filter_by(tipo='laboratorio').count()
-    auditorios = db.session.query(Salon).filter_by(tipo='auditorio').count()
-
+    # Esta ruta renderiza el HTML, la API /api/salas_todas es la que alimenta los datos
     return render_template(
-        'superadmin/gestion_inventario/salones.html',
-        salones=salones,
-        total_salones=total_salones,
-        salas_computo=salas_computo,
-        aulas=aulas,
-        laboratorios=laboratorios,
-        auditorios=auditorios
+        'superadmin/gestion_inventario/salones.html'
     )
 
 @admin_bp.route('/registro_salon', methods=['GET', 'POST'])
@@ -396,7 +768,10 @@ def registro_salon():
         nuevo_salon = Salon(
             nombre=form.nombre_salon.data,
             tipo=form.tipo.data,
-            id_sede_fk=form.sede.data.id
+            id_sede_fk=form.sede.data.id,
+            capacidad=form.capacidad.data,
+            cantidad_sillas=form.cantidad_sillas.data,
+            cantidad_mesas=form.cantidad_mesas.data
         )
         db.session.add(nuevo_salon)
         db.session.commit()

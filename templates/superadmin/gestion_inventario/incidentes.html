@@ -1,258 +1,964 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gestión de Mantenimientos TIC</title>
-  <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/equipos.css') }}" />
-  <style>
-    .table-controls { margin-bottom: 15px; }
-    .paginacion {
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .badge { padding: 5px 10px; border-radius: 5px; font-size: 0.85em; }
-    .incidente { background: #dc3545; color: white; }
-    .mantenimiento { background: #ffc107; color: black; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Incidentes TIC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/incidentes.css') }}">
 </head>
-
 <body>
-  {% extends "base.html" %}
-  {% block content %}
+    <!-- Contenedor global para alertas -->
+<div id="alertaGlobal" class="position-fixed top-0 start-50 translate-middle-x mt-3" 
+     style="z-index: 1055; max-width: 400px;"></div>
+{% extends "base.html" %}
+{% block content %}
 
-  <header class="main-header">
+<header class="main-header">
     <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
-      <i class="fa-solid fa-arrow-left"></i>
+        <i class="fa-solid fa-arrow-left"></i>
     </a>
-    <h1>Gestión de Mantenimientos TIC</h1>
+    <h1>Gestión Inventario</h1>
     <div class="header-icons">
-      <i class="fa-solid fa-bell"></i>
-      <i class="fa-solid fa-user"></i>
+        <i class="fa-solid fa-bell"></i>
+        <i class="fa-solid fa-user"></i>
     </div>
-  </header>
-
-  <main class="content-area">
-
-    <!-- Controles -->
-    <div class="table-controls d-flex gap-2 justify-content-between">
-      <input type="text" id="buscarMantenimiento"
-        placeholder="Buscar por equipo, sede, fecha o tipo"
-        class="form-control w-auto" />
-      <button class="btn btn-success" data-bs-toggle="modal"
-        data-bs-target="#programarModal">
-        <i class="fas fa-plus me-1"></i>Programar Mantenimiento
-      </button>
+</header>
+<br>
+<div class="container-fluid px-4">
+    <!-- Tarjetas de estadísticas -->
+        <div class="d-flex justify-content-between flex-wrap mb-4">
+            <div class="stat-card flex-fill me-3" style="max-width: 22%;">
+                <div class="stat-number" id="totalIncidentes">0</div>
+                <div class="stat-label">
+                    <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                    Total Incidentes
+                </div>
+            </div>
+            <div class="stat-card pendientes flex-fill me-3" style="max-width: 22%;">
+                <div class="stat-number" id="incidentesPendientes">0</div>
+                <div class="stat-label">
+                    <i class="fa-solid fa-clock me-2"></i>
+                    Reportados
+                </div>
+            </div>
+            <div class="stat-card resueltos flex-fill me-3" style="max-width: 22%;">
+                <div class="stat-number" id="incidentesResueltos">0</div>
+                <div class="stat-label">
+                    <i class="fa-solid fa-check-circle me-2"></i>
+                    Resueltos
+                </div>
+            </div>
+            <div class="stat-card criticos flex-fill" style="max-width: 22%;">
+                <div class="stat-number" id="incidentesCriticos">0</div>
+                <div class="stat-label">
+                    <i class="fa-solid fa-fire me-2"></i>
+                    Críticos
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Tabla -->
-    <section class="table-container">
-      <table class="table table-striped table-hover" id="tablaMantenimientos">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Equipo</th>
-            <th>Sede</th>
-            <th>Fecha</th>
-            <th>Tipo</th>
-            <th>Descripción</th>
-            <th>Estado</th>
-            <th>Origen</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="mantenimientosBody">
-          <!-- Registros dinámicos -->
-        </tbody>
-      </table>
+    <!-- Contenido principal -->
+    <div class="content-card">
+        <div class="card-header-custom">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5>
+                    <i class="fa-solid fa-list me-2"></i>
+                    Lista de Incidentes
+                </h5>
+                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#nuevoIncidenteModal">
+                    <i class="fa-solid fa-plus me-1"></i>
+                    Nuevo Incidente
+                </button>
+            </div>
+        </div>
 
-      <!-- Paginación -->
-      <div class="paginacion">
-        <button id="prevMantenimientos" class="btn btn-secondary btn-sm">Anterior</button>
-        <span id="paginaMantenimientos">Página 1</span>
-        <button id="nextMantenimientos" class="btn btn-secondary btn-sm">Siguiente</button>
-      </div>
-    </section>
-  </main>
+        <!-- Controles de tabla -->
+        <div class="table-controls d-flex flex-wrap gap-2 align-items-center mb-3">
+            <input type="text" id="buscarIncidentes" class="form-control search-input" 
+                placeholder="Buscar por equipo, descripción, usuario..." style="flex-grow: 1;">
+            
+            <select id="filtroEstado" class="form-select filter-select" style="width: 150px;">
+                <option value="">Todos los estados</option>
+                <option value="reportado">Reportados</option>
+                <option value="en_proceso">En proceso</option>
+                <option value="resuelto">Resueltos</option>
+                <option value="cerrado">Cerrados</option>
+            </select>
 
-  <!-- Modal Programar -->
-  <div class="modal fade" id="programarModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <form id="formProgramar" class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Programar Mantenimiento</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <select id="filtroPrioridad" class="form-select filter-select" style="width: 150px;">
+                <option value="">Todas las prioridades</option>
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+                <option value="critica">Crítica</option>
+            </select>
+
+            <button class="btn btn-outline-primary btn-sm" onclick="recargarIncidentes()">
+                <i class="fa-solid fa-refresh me-1"></i>
+                Actualizar
+            </button>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="equipoSelect" class="form-label">Equipo</label>
-            <select id="equipoSelect" class="form-select" required></select>
-          </div>
-          <div class="mb-3">
-            <label for="fechaProgramacion" class="form-label">Fecha Programada</label>
-            <input type="date" id="fechaProgramacion" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label for="tipoProgramacion" class="form-label">Tipo</label>
-            <input type="text" id="tipoProgramacion" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label for="descripcionInput" class="form-label">Descripción</label>
-            <textarea id="descripcionInput" class="form-control" required></textarea>
-          </div>
+
+        <!-- Spinner de carga -->
+        <div class="loading-spinner" id="loadingSpinner" style="display:none;">
+            <div class="spinner-border text-danger" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando incidentes...</p>
         </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-success">Guardar</button>
-          <button type="button" class="btn btn-secondary"
-            data-bs-dismiss="modal">Cancelar</button>
+
+        <!-- Tabla de incidentes -->
+        <div class="table-responsive">
+            <table class="table table-hover" id="tablaIncidentes">
+                <thead>
+                    <tr>
+                        <th>Equipo</th>
+                        <th>Descripción</th>
+                        <th>Usuario</th>
+                        <th>Prioridad</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="incidentesBody">
+                    <!-- Contenido dinámico -->
+                </tbody>
+            </table>
         </div>
-      </form>
+
+        <!-- Controles de paginación -->
+        <div class="pagination-controls">
+            <div>
+                <select id="itemsPorPagina" class="form-select form-select-sm" style="width: auto;">
+                    <option value="10">10 por página</option>
+                    <option value="25">25 por página</option>
+                    <option value="50">50 por página</option>
+                </select>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2">
+                <button id="prevPage" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    Anterior
+                </button>
+                <span id="paginaInfo" class="text-muted">Página 1 de 1</span>
+                <button id="nextPage" class="btn btn-outline-secondary btn-sm">
+                    Siguiente
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
-  </div>
+</div>
 
-  <script>
-    let currentPage = 1;
-    let todosLosMantenimientos = [];
+<!-- Modal Nuevo Incidente -->
+<div class="modal fade" id="nuevoIncidenteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-plus me-2"></i>
+                    Registrar Nuevo Incidente
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Alerta para mensajes -->
+                <div id="alertaIncidente" class="alert d-none" role="alert"></div>
+                
+                <form id="formNuevoIncidente">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="sede_id" class="form-label">Sede <span class="text-danger">*</span></label>
+                            <select class="form-select" id="sede_id" required>
+                                <option value="" selected disabled>Seleccione una Sede...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="salon_id" class="form-label">Salón <span class="text-danger">*</span></label>
+                            <select class="form-select" id="salon_id" required disabled>
+                                <option value="" selected disabled>Seleccione un Salón...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="equipo_id" class="form-label">Equipo a reportar <span class="text-danger">*</span></label>
+                            <select class="form-select" id="equipo_id" name="equipo_id" required disabled>
+                                <option value="" selected disabled>Seleccione un Equipo...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="prioridadSelect" class="form-label">Prioridad *</label>
+                            <select id="prioridadSelect" class="form-select" required>
+                                <option value="baja">Baja</option>
+                                <option value="media" selected>Media</option>
+                                <option value="alta">Alta</option>
+                                <option value="critica">Crítica</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="usuarioReporte" class="form-label">Usuario que Reporta *</label>
+                        <input type="text" id="usuarioReporte" class="form-control" required 
+                               placeholder="Nombre del usuario que reporta el incidente">
+                    </div>
+                    <div class="mb-3">
+                        <label for="descripcionIncidente" class="form-label">Descripción del Problema *</label>
+                        <textarea id="descripcionIncidente" class="form-control" rows="4" required
+                                  placeholder="Describa detalladamente el problema del equipo"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="solucionPropuesta" class="form-label">Solución Propuesta (Opcional)</label>
+                        <textarea id="solucionPropuesta" class="form-control" rows="3"
+                                  placeholder="Si tiene alguna sugerencia de solución, descríbala aquí"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <button type="submit" form="formNuevoIncidente" class="btn btn-danger">
+                    <i class="fa-solid fa-save me-1"></i>
+                    Registrar Incidente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    // Cargar equipos
-    async function cargarEquipos() {
-      const res = await fetch('/admin/api/equipos_todos');
-      const equipos = await res.json();
-      const select = document.getElementById('equipoSelect');
-      select.innerHTML = '';
-      equipos.forEach(eq => {
-        const option = document.createElement('option');
-        option.value = eq.id;
-        option.textContent = `${eq.nombre} (${eq.sede_nombre})`;
-        select.appendChild(option);
-      });
+<!-- Modal Detalle de Incidente -->
+<div class="modal fade" id="detalleIncidenteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-info-circle me-2"></i>
+                    Detalle del Incidente #<span id="detalleIncidenteId"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <!-- Información principal -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Información del Incidente</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <p><strong>Equipo:</strong> <span id="detalleEquipo"></span></p>
+                                        <p><strong>Sede:</strong> <span id="detalleSede"></span></p>
+                                        <p><strong>Salón:</strong> <span id="detalleSalon"></span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Usuario que reporta:</strong> <span id="detalleUsuario"></span></p>
+                                        <p><strong>Fecha:</strong> <span id="detalleFecha"></span></p>
+                                        <p><strong>Prioridad:</strong> <span id="detallePrioridad"></span></p>
+                                        <p><strong>Estado:</strong> <span id="detalleEstado"></span></p>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="mb-3">
+                                    <strong>Descripción del Problema:</strong>
+                                    <p id="detalleDescripcion" class="mt-2 p-3 bg-light rounded"></p>
+                                </div>
+                                <div>
+                                    <strong>Solución Propuesta:</strong>
+                                    <p id="detalleSolucion" class="mt-2 p-3 bg-light rounded"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <!-- Acciones rápidas -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Acciones</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-warning btn-sm" onclick="cambiarEstado('en_proceso')">
+                                        <i class="fa-solid fa-play me-1"></i>
+                                        Iniciar Trabajo
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="cambiarEstado('resuelto')">
+                                        <i class="fa-solid fa-check me-1"></i>
+                                        Marcar Resuelto
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="cambiarEstado('cerrado')">
+                                        <i class="fa-solid fa-lock me-1"></i>
+                                        Cerrar Incidente
+                                    </button>
+                                    <hr>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="eliminarIncidenteActual()">
+                                        <i class="fa-solid fa-trash me-1"></i>
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ========================================
+// VARIABLES GLOBALES
+// ========================================
+let incidentesData = [];
+let incidentesFiltrados = [];
+let paginaActual = 1;
+let itemsPorPagina = 10;
+let incidenteSeleccionado = null;
+
+// ========================================
+// INICIALIZACIÓN
+// ========================================
+document.addEventListener('DOMContentLoaded', function() {
+    configurarEventListeners();
+    cargarEquipos();
+    cargarIncidentes();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const selectSede = document.getElementById('sede_id');
+    const selectSalon = document.getElementById('salon_id');
+    const selectEquipo = document.getElementById('equipo_id');
+
+    // Inicializar la carga de Sedes
+    cargarSedes();
+
+    // ------------------------------------------
+    // 1. Cargar SEDES
+    // ------------------------------------------
+    async function cargarSedes() {
+        try {
+            const response = await fetch('/admin/api/sedes');
+            const result = await response.json();
+
+            // Resetear y añadir la opción por defecto
+            selectSede.innerHTML = '<option value="" selected disabled>Seleccione una Sede...</option>';
+
+            if (result && result.length > 0) {
+                result.forEach(sede => {
+                    const option = document.createElement('option');
+                    option.value = sede.id;
+                    option.textContent = sede.nombre;
+                    selectSede.appendChild(option);
+                });
+                selectSede.disabled = false;
+            } else {
+                console.warn('No se encontraron sedes.');
+            }
+        } catch (error) {
+            console.error('Error cargando sedes:', error);
+        }
     }
 
-    // Cargar mantenimientos/incidentes
-    async function cargarMantenimientos() {
-      const res = await fetch('/admin/api/incidentes'); // trae incidentes + equipos en mantenimiento
-      todosLosMantenimientos = await res.json();
-      const tbody = document.getElementById('mantenimientosBody');
-      tbody.innerHTML = '';
+    // ------------------------------------------
+    // 2. Evento al cambiar SEDE -> Cargar SALONES
+    // ------------------------------------------
+    selectSede.addEventListener('change', (event) => {
+        const sedeId = event.target.value;
+        selectSalon.disabled = true;
+        selectEquipo.disabled = true;
+        selectSalon.innerHTML = '<option value="" selected disabled>Cargando Salones...</option>';
+        selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
 
-      todosLosMantenimientos.forEach(m => {
-        const origen = m.id ? "Incidente" : "Mantenimiento";
-        const badgeClass = m.estado === "Mantenimiento" ? "mantenimiento" : "incidente";
+        if (sedeId) {
+            cargarSalones(sedeId);
+        }
+    });
 
+    // ------------------------------------------
+    // 3. Cargar SALONES (filtrados por Sede)
+    // ------------------------------------------
+    async function cargarSalones(sedeId) {
+        try {
+            const response = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+            const result = await response.json();
+
+            selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
+
+            if (result && result.length > 0) {
+                result.forEach(salon => {
+                    const option = document.createElement('option');
+                    option.value = salon.id;
+                    option.textContent = salon.nombre;
+                    selectSalon.appendChild(option);
+                });
+                selectSalon.disabled = false;
+            } else {
+                selectSalon.innerHTML = '<option value="" selected disabled>No hay Salones disponibles.</option>';
+            }
+        } catch (error) {
+            console.error('Error cargando salones:', error);
+            selectSalon.innerHTML = '<option value="" selected disabled>Error al cargar Salones.</option>';
+        }
+    }
+
+    // ------------------------------------------
+    // 4. Evento al cambiar SALÓN -> Cargar EQUIPOS
+    // ------------------------------------------
+    selectSalon.addEventListener('change', (event) => {
+        const salonId = event.target.value;
+        const sedeId = selectSede.value;
+        selectEquipo.disabled = true;
+        selectEquipo.innerHTML = '<option value="" selected disabled>Cargando Equipos...</option>';
+
+        if (salonId) {
+            cargarEquipos(sedeId, salonId);
+        }
+    });
+
+    // ------------------------------------------
+    // 5. Cargar EQUIPOS (filtrados por Salón)
+    // ------------------------------------------
+    async function cargarEquipos(sedeId, salonId) {
+        try {
+            const response = await fetch(`/admin/api/sedes/${sedeId}/salas/${salonId}/equipos`);
+            const result = await response.json();
+
+            selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
+
+            if (result && result.length > 0) {
+                result.forEach(equipo => {
+                    const option = document.createElement('option');
+                    option.value = equipo.id;
+                    option.textContent = `${equipo.nombre} - ${equipo.estado}`;
+                    selectEquipo.appendChild(option);
+                });
+                selectEquipo.disabled = false;
+            } else {
+                selectEquipo.innerHTML = '<option value="" selected disabled>No hay Equipos en este Salón.</option>';
+            }
+        } catch (error) {
+            console.error('Error cargando equipos:', error);
+            selectEquipo.innerHTML = '<option value="" selected disabled>Error al cargar Equipos.</option>';
+        }
+    }
+
+    // ------------------------------------------
+    // 6. Resetear selects al cerrar modal
+    // ------------------------------------------
+    const modalCrearIncidente = document.getElementById('crearIncidenteModal');
+    if (modalCrearIncidente) {
+        modalCrearIncidente.addEventListener('hidden.bs.modal', function () {
+            selectSede.value = '';
+            selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
+            selectSalon.disabled = true;
+            selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
+            selectEquipo.disabled = true;
+            document.getElementById('formCrearIncidente').reset();
+        });
+    }
+});
+
+// ========================================
+// CONFIGURACIÓN DE EVENT LISTENERS
+// ========================================
+function configurarEventListeners() {
+    document.getElementById('buscarIncidentes').addEventListener('input', filtrarIncidentes);
+    document.getElementById('filtroEstado').addEventListener('change', filtrarIncidentes);
+    document.getElementById('filtroPrioridad').addEventListener('change', filtrarIncidentes);
+    document.getElementById('prevPage').addEventListener('click', paginaAnterior);
+    document.getElementById('nextPage').addEventListener('click', paginaSiguiente);
+    document.getElementById('itemsPorPagina').addEventListener('change', cambiarItemsPorPagina);
+    document.getElementById('formNuevoIncidente').addEventListener('submit', guardarIncidente);
+}
+
+// ========================================
+// FUNCIONES DE CARGA DE DATOS
+// ========================================
+async function cargarEquipos() {
+    try {
+        const response = await fetch('/admin/api/equipos_para_incidente');
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+
+        const equipos = await response.json();
+        const selectEquipos = document.getElementById('equipoSelect');
+        
+        if (equipos.length === 0) {
+            selectEquipos.innerHTML = '<option value="">No hay equipos con estado "Incidente"</option>';
+            return;
+        }
+        
+        selectEquipos.innerHTML = '<option value="">Seleccione un equipo...</option>';
+        
+        equipos.forEach(equipo => {
+            const option = document.createElement('option');
+            option.value = equipo.id;
+            option.textContent = `${equipo.nombre} - ${equipo.salon_nombre} (${equipo.sede_nombre})`;
+            selectEquipos.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error al cargar equipos:', error);
+        const selectEquipos = document.getElementById('equipoSelect');
+        selectEquipos.innerHTML = '<option value="">Error al cargar equipos</option>';
+    }
+}
+
+async function cargarIncidentes() {
+    mostrarSpinner(true);
+    try {
+        const response = await fetch('/admin/api/incidentes');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        incidentesData = await response.json();
+        console.log('Incidentes cargados:', incidentesData);
+        
+        actualizarEstadisticas();
+        filtrarIncidentes();
+        
+    } catch (error) {
+        console.error('Error cargando incidentes:', error);
+        mostrarAlerta('Error al cargar los incidentes: ' + error.message, 'danger');
+        incidentesData = [];
+    } finally {
+        mostrarSpinner(false);
+    }
+}
+
+// ========================================
+// ESTADÍSTICAS
+// ========================================
+function actualizarEstadisticas() {
+    const total = incidentesData.length;
+    const reportados = incidentesData.filter(i => i.estado === 'reportado').length;
+    const resueltos = incidentesData.filter(i => i.estado === 'resuelto').length;
+    const criticos = incidentesData.filter(i => i.prioridad === 'critica').length;
+    
+    document.getElementById('totalIncidentes').textContent = total;
+    document.getElementById('incidentesPendientes').textContent = reportados;
+    document.getElementById('incidentesResueltos').textContent = resueltos;
+    document.getElementById('incidentesCriticos').textContent = criticos;
+}
+
+// ========================================
+// FILTRADO Y BÚSQUEDA
+// ========================================
+function filtrarIncidentes() {
+    const busqueda = document.getElementById('buscarIncidentes').value.toLowerCase();
+    const filtroEstado = document.getElementById('filtroEstado').value;
+    const filtroPrioridad = document.getElementById('filtroPrioridad').value;
+    
+    incidentesFiltrados = incidentesData.filter(incidente => {
+        const coincideBusqueda = !busqueda || 
+            incidente.equipo_nombre.toLowerCase().includes(busqueda) ||
+            incidente.descripcion.toLowerCase().includes(busqueda) ||
+            (incidente.usuario_reporte && incidente.usuario_reporte.toLowerCase().includes(busqueda));
+        
+        const coincideEstado = !filtroEstado || incidente.estado === filtroEstado;
+        const coincidePrioridad = !filtroPrioridad || incidente.prioridad === filtroPrioridad;
+        
+        return coincideBusqueda && coincideEstado && coincidePrioridad;
+    });
+    
+    paginaActual = 1;
+    renderizarTabla();
+}
+
+// En incidentes.html (o archivo JS asociado)
+
+async function cambiarEstadoIncidente(incidenteId, nuevoEstado) {
+    try {
+        const response = await fetch(`/api/incidentes/${incidenteId}/estado`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado: nuevoEstado })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta('Estado actualizado exitosamente', 'success');
+            
+            // 💡 PASO CLAVE: ACTUALIZAR LA FILA ESPECÍFICA
+            const incidenteActualizado = result.incidente_actualizado;
+            
+            // 1. En la tabla principal (incidentes.html)
+            actualizarFilaIncidente(incidenteActualizado); 
+            
+        } else {
+            mostrarAlerta('Error al cambiar el estado: ' + result.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error cambiando estado del incidente:', error);
+        mostrarAlerta('Error al cambiar el estado del incidente: ' + error.message, 'danger');
+    }
+}
+
+// 💡 Nueva función para actualizar solo la fila afectada
+function actualizarFilaIncidente(incidente) {
+    const fila = document.getElementById(`incidente-fila-${incidente.id}`);
+    if (fila) {
+        // Asumiendo que tienes una función para generar la celda de estado con estilo
+        const nuevaCeldaEstado = generarCeldaEstado(incidente.estado); 
+        
+        // Asume que la columna de estado es la quinta columna (index 4)
+        // Deberás adaptar los índices a la estructura real de tu tabla.
+        fila.cells[4].innerHTML = nuevaCeldaEstado; 
+        
+        // Actualiza el objeto incidenteSeleccionado si está siendo usado
+        if (typeof incidenteSeleccionado !== 'undefined' && incidenteSeleccionado.id === incidente.id) {
+             incidenteSeleccionado = incidente;
+        }
+    }
+}
+
+// ========================================
+// RENDERIZADO DE TABLA
+// ========================================
+function renderizarTabla() {
+    const tbody = document.getElementById('incidentesBody');
+    tbody.innerHTML = '';
+    
+    if (incidentesFiltrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-5">
+                    <i class="fa-solid fa-search fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No se encontraron incidentes con los criterios de búsqueda</p>
+                </td>
+            </tr>
+        `;
+        actualizarPaginacion(0);
+        return;
+    }
+    
+    const inicio = (paginaActual - 1) * itemsPorPagina;
+    const fin = Math.min(inicio + itemsPorPagina, incidentesFiltrados.length);
+    const incidentesPagina = incidentesFiltrados.slice(inicio, fin);
+    
+    incidentesPagina.forEach(incidente => {
         const row = document.createElement('tr');
-        row.dataset.equipo = m.equipo_nombre.toLowerCase();
-        row.dataset.sede = (m.sede || "").toLowerCase();
-        row.dataset.fecha = m.fecha || "";
-        row.dataset.tipo = (m.tipo || "").toLowerCase();
-
         row.innerHTML = `
-          <td>${m.id || "-"}</td>
-          <td>${m.equipo_nombre}</td>
-          <td>${m.sede || "-"}</td>
-          <td>${m.fecha}</td>
-          <td>${m.tipo || "-"}</td>
-          <td>${m.descripcion}</td>
-          <td><span class="badge ${badgeClass}">${m.estado}</span></td>
-          <td>${origen}</td>
-          <td>
-            ${origen === "Incidente" ? `
-              <button class="btn btn-danger btn-sm cancelar-btn" data-id="${m.id}">
-                <i class="fas fa-times"></i> Cancelar
-              </button>` : "-"}
-          </td>
+            <td>
+                <div><strong>${incidente.equipo_nombre}</strong></div>
+                <small class="text-muted">${incidente.sede_nombre}</small>
+            </td>
+            <td>
+                <div class="text-truncate" style="max-width: 200px;" title="${incidente.descripcion}">
+                    ${incidente.descripcion}
+                </div>
+            </td>
+            <td>${incidente.usuario_reporte || 'N/A'}</td>
+            <td>
+                <span class="badge bg-${obtenerColorPrioridad(incidente.prioridad)}">
+                    ${capitalizar(incidente.prioridad)}
+                </span>
+            </td>
+            <td>
+                <span class="badge bg-${obtenerColorEstado(incidente.estado)}">
+                    ${formatearEstado(incidente.estado)}
+                </span>
+            </td>
+            <td>${formatearFecha(incidente.fecha)}</td>
+            <td>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-outline-info" 
+                            onclick="verDetalleIncidente(${incidente.id})" 
+                            title="Ver Detalle">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" 
+                            onclick="eliminarIncidente(${incidente.id})" 
+                            title="Eliminar">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </td>
         `;
         tbody.appendChild(row);
-      });
-      mostrarFilas(1);
-      agregarEventosBotones();
+    });
+    
+    actualizarPaginacion(incidentesFiltrados.length);
+}
+
+function obtenerColorPrioridad(prioridad) {
+    const colores = { 'baja': 'success', 'media': 'primary', 'alta': 'warning', 'critica': 'danger' };
+    return colores[prioridad] || 'secondary';
+}
+
+function obtenerColorEstado(estado) {
+    const colores = { 'reportado': 'warning', 'en_proceso': 'info', 'resuelto': 'success', 'cerrado': 'secondary' };
+    return colores[estado] || 'dark';
+}
+
+function formatearEstado(estado) {
+    const estados = { 'reportado': 'Reportado', 'en_proceso': 'En Proceso', 'resuelto': 'Resuelto', 'cerrado': 'Cerrado' };
+    return estados[estado] || estado;
+}
+
+function formatearFecha(fechaStr) {
+    const fecha = new Date(fechaStr);
+    return fecha.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function capitalizar(texto) {
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+// ========================================
+// PAGINACIÓN
+// ========================================
+function actualizarPaginacion(totalItems) {
+    const totalPaginas = Math.ceil(totalItems / itemsPorPagina) || 1;
+    document.getElementById('paginaInfo').textContent = `Página ${paginaActual} de ${totalPaginas}`;
+    document.getElementById('prevPage').disabled = paginaActual === 1;
+    document.getElementById('nextPage').disabled = paginaActual === totalPaginas;
+}
+
+function paginaAnterior() {
+    if (paginaActual > 1) {
+        paginaActual--;
+        renderizarTabla();
     }
+}
 
-    // Mostrar filas con paginación
-    function mostrarFilas(pagina) {
-      const filas = document.querySelectorAll('#tablaMantenimientos tbody tr');
-      const limit = 5;
-      const start = (pagina - 1) * limit;
-      const end = start + limit;
-      filas.forEach((f, i) => f.style.display = (i >= start && i < end) ? "" : "none");
-      const totalPaginas = Math.ceil(filas.length / limit) || 1;
-      document.getElementById('paginaMantenimientos').innerText = `Página ${pagina} de ${totalPaginas}`;
+function paginaSiguiente() {
+    const totalPaginas = Math.ceil(incidentesFiltrados.length / itemsPorPagina);
+    if (paginaActual < totalPaginas) {
+        paginaActual++;
+        renderizarTabla();
     }
+}
 
-    // Eventos de paginación
-    document.getElementById('prevMantenimientos').addEventListener('click', () => {
-      if (currentPage > 1) {
-        currentPage--;
-        mostrarFilas(currentPage);
-      }
-    });
+function cambiarItemsPorPagina() {
+    itemsPorPagina = parseInt(document.getElementById('itemsPorPagina').value, 10);
+    paginaActual = 1;
+    renderizarTabla();
+}
 
-    document.getElementById('nextMantenimientos').addEventListener('click', () => {
-      const filas = document.querySelectorAll('#tablaMantenimientos tbody tr');
-      const totalPaginas = Math.ceil(filas.length / 5);
-      if (currentPage < totalPaginas) {
-        currentPage++;
-        mostrarFilas(currentPage);
-      }
-    });
+function recargarIncidentes() {
+    cargarIncidentes();
+}
 
-    // Buscar
-    document.getElementById('buscarMantenimiento').addEventListener('input', function () {
-      const valor = this.value.toLowerCase();
-      const filas = document.querySelectorAll('#tablaMantenimientos tbody tr');
-      filas.forEach(f => {
-        const texto = (f.dataset.equipo + f.dataset.sede + f.dataset.fecha + f.dataset.tipo).toLowerCase();
-        f.style.display = texto.includes(valor) ? "" : "none";
-      });
-      currentPage = 1;
-      mostrarFilas(currentPage);
-    });
+function mostrarSpinner(mostrar) {
+    document.getElementById('loadingSpinner').style.display = mostrar ? 'flex' : 'none';
+}
 
-    // Eventos botones
-    function agregarEventosBotones() {
-      document.querySelectorAll('.cancelar-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.id;
-          if (confirm('¿Cancelar mantenimiento?')) {
-            await fetch(`/admin/api/mantenimientos/${id}/cancelar`, { method: 'PUT' });
-            cargarMantenimientos();
-          }
+function mostrarAlerta(mensaje, tipo='info') {
+    const alerta = document.getElementById('alertaIncidente');
+    alerta.textContent = mensaje;
+    alerta.className = `alert alert-${tipo}`;
+    alerta.classList.remove('d-none');
+    setTimeout(() => alerta.classList.add('d-none'), 5000);
+}
+
+// ========================================
+// GESTIÓN DE INCIDENTES
+// ========================================
+async function guardarIncidente(event) {
+    event.preventDefault();
+    
+    const equipoId = document.getElementById('equipo_id').value; // ojo: en tu HTML es equipo_id, no equipoSelect
+    const prioridad = document.getElementById('prioridadSelect').value;
+    const usuarioReporte = document.getElementById('usuarioReporte').value.trim();
+    const descripcion = document.getElementById('descripcionIncidente').value.trim();
+    const solucionPropuesta = document.getElementById('solucionPropuesta').value.trim();
+    
+    if (!equipoId || !prioridad || !usuarioReporte || !descripcion) {
+        mostrarAlerta('Por favor, complete todos los campos obligatorios (*)', 'warning');
+        return;
+    }
+    
+    const nuevoIncidente = {
+        equipo_id: equipoId,
+        prioridad: prioridad,
+        usuario_reporte: usuarioReporte,
+        descripcion: descripcion,
+        solucion_propuesta: solucionPropuesta
+    };
+    
+    try {
+        const response = await fetch('/admin/api/incidentes', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoIncidente)
         });
-      });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta(result.message || 'Incidente registrado exitosamente', 'success');
+            
+            // Cerrar el modal
+            const modalEl = document.getElementById('nuevoIncidenteModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            // Limpieza forzada del backdrop
+            document.body.classList.remove('modal-open');
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+
+            // Resetear el formulario
+            document.getElementById('formNuevoIncidente').reset();
+            
+            // Resetear los selects en cascada
+            const selectSede = document.getElementById('sede_id');
+            const selectSalon = document.getElementById('salon_id');
+            const selectEquipo = document.getElementById('equipo_id');
+            
+            selectSede.value = '';
+            selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
+            selectSalon.disabled = true;
+            selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
+            selectEquipo.disabled = true;
+            
+            // ✅ ACTUALIZAR LA TABLA AUTOMÁTICAMENTE
+            await cargarIncidentes();
+        }
+    } catch (error) {
+        console.error('Error al guardar incidente:', error);
+        mostrarAlerta('Error al registrar el incidente: ' + error.message, 'danger');
     }
+}
 
-    // Guardar nuevo
-    document.getElementById('formProgramar').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const data = {
-        equipo_id: document.getElementById('equipoSelect').value,
-        fecha_programada: document.getElementById('fechaProgramacion').value,
-        tipo: document.getElementById('tipoProgramacion').value,
-        descripcion: document.getElementById('descripcionInput').value,
-      };
-      await fetch('/admin/api/mantenimientos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const modal = bootstrap.Modal.getInstance(document.getElementById('programarModal'));
-      modal.hide();
-      e.target.reset();
-      cargarMantenimientos();
+// ✅ conectar al formulario
+document.getElementById('formNuevoIncidente')
+        .addEventListener('submit', guardarIncidente);
+
+function verDetalleIncidente(incidenteId) {
+    const incidente = incidentesData.find(i => i.id === incidenteId);
+    if (!incidente) {
+        mostrarAlerta('Incidente no encontrado', 'warning');
+        return;
+    }
+    
+    incidenteSeleccionado = incidente;
+    
+    document.getElementById('detalleIncidenteId').textContent = incidente.id;
+    document.getElementById('detalleEquipo').textContent = incidente.equipo_nombre;
+    document.getElementById('detalleSede').textContent = incidente.sede_nombre;
+    document.getElementById('detalleSalon').textContent = incidente.salon_nombre;
+    document.getElementById('detalleUsuario').textContent = incidente.usuario_reporte || 'N/A';
+    document.getElementById('detalleFecha').textContent = formatearFecha(incidente.fecha);
+    document.getElementById('detallePrioridad').innerHTML = `<span class="badge bg-${obtenerColorPrioridad(incidente.prioridad)}">${capitalizar(incidente.prioridad)}</span>`;
+    document.getElementById('detalleEstado').innerHTML = `<span class="badge bg-${obtenerColorEstado(incidente.estado)}">${formatearEstado(incidente.estado)}</span>`;
+    document.getElementById('detalleDescripcion').textContent = incidente.descripcion;
+    document.getElementById('detalleSolucion').textContent = incidente.solucion_propuesta || 'No se ha propuesto solución';
+    
+    const modal = new bootstrap.Modal(document.getElementById('detalleIncidenteModal'));
+    modal.show();
+}
+
+async function cambiarEstado(nuevoEstado) {
+    if (!incidenteSeleccionado) {
+        mostrarAlerta('No hay un incidente seleccionado', 'warning');
+        return;
+    }
+    
+    if (incidenteSeleccionado.estado === nuevoEstado) {
+        mostrarAlerta(`El incidente ya está en estado "${formatearEstado(nuevoEstado)}"`, 'info');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/incidentes/${incidenteSeleccionado.id}/estado`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado: nuevoEstado })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta(`Estado cambiado a "${formatearEstado(nuevoEstado)}"`, 'success');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('detalleIncidenteModal'));
+            modal.hide();
+            cargarIncidentes();
+        } else {
+            mostrarAlerta('Error al cambiar el estado: ' + result.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error al cambiar estado:', error);
+        mostrarAlerta('Error al cambiar el estado: ' + error.message, 'danger');
+    }
+}
+
+async function eliminarIncidente(incidenteId) {
+    if (!confirm('¿Está seguro de que desea eliminar este incidente? Esta acción no se puede deshacer.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/incidentes/${incidenteId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            mostrarAlerta('Incidente eliminado exitosamente', 'success');
+            cargarIncidentes();
+        } else {
+            mostrarAlerta('Error al eliminar: ' + result.error, 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Error al eliminar incidente:', error);
+        mostrarAlerta('Error al eliminar el incidente: ' + error.message, 'danger');
+    }
+}
+
+function mostrarAlerta(mensaje, tipo='success') {
+    const alertaGlobal = document.getElementById('alertaGlobal');
+
+    alertaGlobal.innerHTML = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensaje}
+        </div>
+    `;
+
+    alertaGlobal.classList.remove('d-none');
+
+    const alertElement = alertaGlobal.querySelector('.alert');
+
+    alertElement.addEventListener('closed.bs.alert', () => {
+        alertaGlobal.classList.add('d-none');
     });
 
-    // Inicializar
-    window.addEventListener('DOMContentLoaded', () => {
-      cargarEquipos();
-      cargarMantenimientos();
-    });
-  </script>
-  {% endblock %}
+    setTimeout(() => {
+        if (alertElement) {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+            bsAlert.close();
+        }
+    }, 5000); // ⏳ 5 segundos en lugar de 500ms
+}
+
+function eliminarIncidenteActual() {
+    if (incidenteSeleccionado) {
+        eliminarIncidente(incidenteSeleccionado.id);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('detalleIncidenteModal'));
+        modal.hide();
+    } else {
+        mostrarAlerta('No hay un incidente seleccionado', 'warning');
+    }
+}
+</script>
+{% endblock %}
 </body>
 </html>
