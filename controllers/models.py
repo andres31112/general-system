@@ -76,7 +76,7 @@ class Curso(db.Model):
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id'))
     
     sede = db.relationship('Sede', backref=db.backref('cursos', lazy=True))
-    horario_general = db.relationship('HorarioGeneral', backref=db.backref('cursos_rel', lazy=True))
+    horario_general = db.relationship('HorarioGeneral', backref=db.backref('cursos', lazy=True))
     
 class Matricula(db.Model):
     __tablename__ = 'matricula'
@@ -129,7 +129,6 @@ class HorarioGeneral(db.Model):
     duracion_descanso = db.Column(db.Integer, default=15)
     activo = db.Column(db.Boolean, default=True)
     
-    cursos = db.relationship('Curso', backref='horario_general_rel', lazy=True)
     
     def to_dict(self):
         try:
@@ -148,7 +147,7 @@ class HorarioGeneral(db.Model):
             "duracion_clase": self.duracion_clase,
             "duracion_descanso": self.duracion_descanso,
             "activo": self.activo,
-            "totalCursos": len(self.cursos)
+            "totalCursos": len(self.cursos)  
         }
     
     def get_bloques(self):
