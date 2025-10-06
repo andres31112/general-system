@@ -1,14 +1,14 @@
 <!-- templates/emails/welcome_verification.html -->
 {% extends "emails/layout/email_base.html" %}
 
-{% block title %}Verifica tu Email - Sistema Académico{% endblock %}
+{% block title %}Verifica tu Email - AcentraX{% endblock %}
 
-{% block header_title %}¡Bienvenido al Sistema Académico!{% endblock %}
+{% block header_title %}¡Bienvenido a AcentraX!{% endblock %}
 
 {% block content %}
 <h2 style="color: #0D3B66; margin-bottom: 20px;">Hola {{ usuario.nombre }},</h2>
 
-<p>Te damos la bienvenida al Sistema Académico. Para comenzar a utilizar tu cuenta, necesitamos verificar tu dirección de correo electrónico.</p>
+<p>Te damos la bienvenida a AcentraX. Para comenzar a utilizar tu cuenta, necesitamos verificar tu dirección de correo electrónico.</p>
 
 <div class="info-box">
     <p><strong>Tu código de verificación es:</strong></p>
@@ -41,6 +41,6 @@
 
 <p style="margin-top: 30px;">
     Saludos cordiales,<br>
-    <strong>Equipo del Sistema Académico</strong>
+    <strong>Equipo AcentraX</strong>
 </p>
 {% endblock %}
