@@ -807,6 +807,7 @@
                     </div>
                 </div>
 
+                <!-- Sección de campos de profesor eliminada de la lógica de visualización -->
                 <div id="professor-fields" class="role-fields" style="display: none;">
                     <h3 class="section-title">
                         <i class="fas fa-chalkboard-teacher"></i>
@@ -903,12 +904,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const professorFields = document.getElementById('professor-fields');
 
     function toggleFieldsBasedOnRole(roleValue, roleText = null) {
+        // Ocultar todos los campos específicos primero
         studentFields.style.display = 'none';
         professorFields.style.display = 'none';
 
         if (roleValue || roleText) {
             let roleToCheck = roleText;
             
+            // Si no tenemos el texto del rol, obtenerlo del select
             if (!roleText && roleValue && rolSelect) {
                 const option = rolSelect.querySelector(`option[value="${roleValue}"]`);
                 if (option) {
@@ -916,12 +919,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Mostrar solo los campos correspondientes al rol
             if (roleToCheck) {
                 if (roleToCheck.includes('estudiante')) {
                     studentFields.style.display = 'block';
-                } else if (roleToCheck.includes('profesor')) {
-                    professorFields.style.display = 'block';
                 }
+                // Los campos de profesor nunca se muestran, independientemente del rol
             }
         }
     }
@@ -939,9 +942,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const predefinedRoleName = '{{ rol_predefinido }}'.toLowerCase();
         if (predefinedRoleName.includes('estudiante')) {
             studentFields.style.display = 'block';
-        } else if (predefinedRoleName.includes('profesor')) {
-            professorFields.style.display = 'block';
         }
+        // Los campos de profesor nunca se muestran, incluso si el rol está predefinido
     {% else %}
         if (rolSelect) {
             rolSelect.addEventListener('change', function() {
@@ -950,6 +952,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleFieldsBasedOnRole(selectedValue, selectedOption.textContent.toLowerCase());
             });
 
+            // Ejecutar al cargar la página si ya hay un valor seleccionado
             if (rolSelect.value) {
                 const selectedOption = rolSelect.options[rolSelect.selectedIndex];
                 toggleFieldsBasedOnRole(rolSelect.value, selectedOption.textContent.toLowerCase());

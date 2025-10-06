@@ -1,0 +1,42 @@
+<!-- templates/emails/verification_success.html -->
+{% extends "emails/layout/email_base.html" %}
+
+{% block title %}Verificación Exitosa - Sistema Académico{% endblock %}
+
+{% block header_title %}✅ Verificación Completada{% endblock %}
+
+{% block content %}
+<h2 style="color: #28a745; margin-bottom: 20px;">¡Felicidades {{ usuario.nombre }}!</h2>
+
+<p>Tu dirección de correo electrónico ha sido verificada exitosamente. Ya puedes acceder a todas las funciones del Sistema Académico.</p>
+
+<div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0;">
+    <h3 style="color: #155724; margin-bottom: 15px;">🎉 ¡Cuenta Activada!</h3>
+    <p style="color: #155724; margin: 0;">Tu cuenta está lista para usar.</p>
+</div>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{ login_url }}" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997);">
+        Iniciar Sesión Ahora
+    </a>
+</div>
+
+<div style="background: #e8f4fd; padding: 15px; border-radius: 6px; margin: 20px 0;">
+    <h4 style="color: #0D3B66; margin-bottom: 10px;">📋 Próximos pasos:</h4>
+    <ul style="margin: 0; padding-left: 20px;">
+        <li>Inicia sesión con tu correo y contraseña</li>
+        <li>Explora las funciones disponibles según tu rol</li>
+        <li>Configura tu perfil personal</li>
+        <li>Revisa el calendario académico</li>
+    </ul>
+</div>
+
+<p style="color: #666; font-size: 14px; margin-top: 25px;">
+    Si experimentas problemas para iniciar sesión, contacta al administrador del sistema.
+</p>
+
+<p style="margin-top: 30px;">
+    Saludos cordiales,<br>
+    <strong>Equipo del Sistema Académico</strong>
+</p>
+{% endblock %}

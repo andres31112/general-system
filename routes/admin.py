@@ -1,23 +1,30 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+# routes/admin.py
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
-from controllers.decorators import role_required
-from extensions import db
-from flask import current_app
-from datetime import datetime, timedelta, time, date
-from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
-from controllers.models import Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, Evento, Candidato, HorarioVotacion
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import or_
+from datetime import datetime, date
 import os
 import json
 from werkzeug.utils import secure_filename
 
+from controllers.decorators import role_required
+from extensions import db
+from services.email_service import send_welcome_email, send_verification_success_email, generate_verification_code
+from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
+from controllers.models import (
+    Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
+    HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
+    HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, 
+    Evento, Candidato, HorarioVotacion
+)
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-# ==================== GESTIÓN DE USUARIOS ====================
+# ==================== DASHBOARD Y PÁGINAS PRINCIPALES ====================
 
-# --- Rutas principales ---
 @admin_bp.route('/dashboard')
 @login_required 
 @role_required(1) 
@@ -32,14 +39,16 @@ def inicio():
     """Página de inicio del panel de superadmin."""
     return render_template('superadmin/inicio/inicio.html')
 
+# ==================== GESTIÓN DE USUARIOS ====================
+
 # --- Búsqueda de usuarios ---
 @admin_bp.route('/buscar-usuario')
 @login_required
 @role_required(1)
 def buscar_usuario():
+    """API para búsqueda global de usuarios"""
     identificacion = request.args.get('identificacion', '')
     
-    # Buscar en todas las tablas de usuarios
     usuarios_encontrados = []
     
     # Buscar en profesores
@@ -141,9 +150,10 @@ def profesores():
 @login_required
 @role_required(1)
 def api_profesores():
+    """API para obtener la lista de profesores"""
     try:
         filter_id = request.args.get('filter_id', '')
-        rol_profesor = db.session.query(Rol).filter_by(nombre='Profesor').first()
+        rol_profesor = Rol.query.filter_by(nombre='Profesor').first()
         
         if filter_id:
             profesores = Usuario.query.filter_by(id_rol_fk=rol_profesor.id_rol, no_identidad=filter_id).all() if rol_profesor else []
@@ -159,13 +169,13 @@ def api_profesores():
             
             if clases:
                 for clase in clases:
-                    curso = Curso.query.filter_by(id=clase.cursoId).first()
+                    curso = Curso.query.filter_by(id_curso=clase.cursoId).first()
                     if curso:
                         cursos_asignados.add(curso.nombreCurso)
-                        sede = Sede.query.filter_by(id=curso.sedeId).first()
+                        sede = Sede.query.filter_by(id_sede=curso.sedeId).first()
                         if sede:
                             sedes_asignadas.add(sede.nombre)
-                    asignatura = Asignatura.query.filter_by(id=clase.asignaturaId).first()
+                    asignatura = Asignatura.query.filter_by(id_asignatura=clase.asignaturaId).first()
                     if asignatura:
                         materias_asignadas.add(asignatura.nombre)
             
@@ -196,14 +206,294 @@ def api_profesores():
 def estudiantes():
     """Muestra la página con la lista de estudiantes."""
     filter_id = request.args.get('filter_id', '')
-    rol_estudiante = db.session.query(Rol).filter_by(nombre='Estudiante').first()
+    rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
     
+    # Cargar estudiantes
     if filter_id:
-        estudiantes = db.session.query(Usuario).filter_by(id_rol_fk=rol_estudiante.id_rol, no_identidad=filter_id).all() if rol_estudiante else []
+        estudiantes = Usuario.query.filter_by(
+            id_rol_fk=rol_estudiante.id_rol, 
+            no_identidad=filter_id
+        ).all() if rol_estudiante else []
     else:
-        estudiantes = db.session.query(Usuario).filter_by(id_rol_fk=rol_estudiante.id_rol).all() if rol_estudiante else []
+        estudiantes = Usuario.query.filter_by(
+            id_rol_fk=rol_estudiante.id_rol
+        ).all() if rol_estudiante else []
+    
+    # Pre-cargar matrículas y padres para evitar consultas N+1
+    estudiante_ids = [est.id_usuario for est in estudiantes]
+    
+    if estudiante_ids:
+        # Obtener todas las matrículas
+        matriculas = Matricula.query.filter(
+            Matricula.estudianteId.in_(estudiante_ids)
+        ).all()
         
-    return render_template('superadmin/gestion_usuarios/estudiantes.html', estudiantes=estudiantes)
+        # Obtener cursos relacionados
+        curso_ids = [mat.cursoId for mat in matriculas]
+        cursos_dict = {curso.id_curso: curso for curso in Curso.query.filter(Curso.id_curso.in_(curso_ids)).all()}
+        
+        # Obtener padres usando SQL directo
+        padres_dict = {}
+        try:
+            from sqlalchemy import text
+            result = db.session.execute(text("""
+                SELECT ep.estudiante_id, u.id_usuario, u.nombre, u.apellido 
+                FROM estudiante_padre ep 
+                JOIN usuarios u ON ep.padre_id = u.id_usuario 
+                WHERE ep.estudiante_id IN :estudiante_ids
+            """), {'estudiante_ids': tuple(estudiante_ids)})
+            
+            for row in result:
+                estudiante_id = row[0]
+                if estudiante_id not in padres_dict:
+                    padres_dict[estudiante_id] = []
+                padres_dict[estudiante_id].append(f"{row[2]} {row[3]}")
+        except Exception as e:
+            print(f"Error cargando padres: {e}")
+            padres_dict = {}
+        
+        # Organizar matrículas por estudiante
+        matriculas_por_estudiante = {}
+        for matricula in matriculas:
+            if matricula.estudianteId not in matriculas_por_estudiante:
+                matriculas_por_estudiante[matricula.estudianteId] = []
+            matriculas_por_estudiante[matricula.estudianteId].append(matricula)
+        
+        # Asignar datos a cada estudiante
+        for estudiante in estudiantes:
+            estudiante._matriculas = matriculas_por_estudiante.get(estudiante.id_usuario, [])
+            estudiante._cursos_dict = cursos_dict
+            estudiante._padres = padres_dict.get(estudiante.id_usuario, [])
+    else:
+        for estudiante in estudiantes:
+            estudiante._matriculas = []
+            estudiante._cursos_dict = {}
+            estudiante._padres = []
+    
+    # Crear el formulario y configurar el rol predefinido como Estudiante
+    form = RegistrationForm()
+    
+    # Configurar el rol como Estudiante
+    rol_estudiante_obj = Rol.query.filter_by(nombre='Estudiante').first()
+    if rol_estudiante_obj:
+        form.rol.choices = [(str(rol_estudiante_obj.id_rol), rol_estudiante_obj.nombre)]
+        form.rol.data = str(rol_estudiante_obj.id_rol)
+    
+    # Obtener cursos para el formulario
+    cursos = Curso.query.all()
+    
+    return render_template(
+        'superadmin/gestion_usuarios/estudiantes.html', 
+        estudiantes=estudiantes,
+        form=form,  
+        cursos=cursos,
+        rol_predefinido='Estudiante',
+        rol_predefinido_id=str(rol_estudiante_obj.id_rol) if rol_estudiante_obj else None,
+        now=date.today
+    )
+
+# API para estudiantes
+@admin_bp.route('/api/estudiantes')
+@login_required
+@role_required(1)
+def api_estudiantes():
+    """API para obtener la lista de estudiantes con información completa"""
+    try:
+        filter_id = request.args.get('filter_id', '')
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+        
+        if filter_id:
+            estudiantes = Usuario.query.filter_by(id_rol_fk=rol_estudiante.id_rol, no_identidad=filter_id).all() if rol_estudiante else []
+        else:
+            estudiantes = Usuario.query.filter_by(id_rol_fk=rol_estudiante.id_rol).all() if rol_estudiante else []
+            
+        lista_estudiantes = []
+        for estudiante in estudiantes:
+            # Obtener información de matrícula actual
+            matricula_actual = Matricula.query.filter_by(estudianteId=estudiante.id_usuario)\
+                                            .order_by(Matricula.año.desc())\
+                                            .first()
+            
+            curso_nombre = "Sin asignar"
+            anio_matricula = "N/A"
+            padre_acudiente = "Sin asignar"
+            
+            if matricula_actual:
+                curso = Curso.query.get(matricula_actual.cursoId)
+                if curso:
+                    curso_nombre = curso.nombreCurso
+                anio_matricula = matricula_actual.año
+
+            lista_estudiantes.append({
+                'id_usuario': estudiante.id_usuario,
+                'no_identidad': estudiante.no_identidad,
+                'nombre_completo': f"{estudiante.nombre} {estudiante.apellido}",
+                'correo': estudiante.correo,
+                'curso': curso_nombre,
+                'anio_matricula': anio_matricula,
+                'padre_acudiente': padre_acudiente,
+                'estado_cuenta': estudiante.estado_cuenta
+            })
+            
+        return jsonify({"data": lista_estudiantes})
+    except Exception as e:
+        print(f"Error en la API de estudiantes: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+@admin_bp.route('/estudiantes/crear', methods=['GET', 'POST'])
+@login_required
+@role_required(1)
+def crear_estudiante():
+    """Crear nuevo estudiante - Ruta específica para estudiantes"""
+    form = RegistrationForm()
+    
+    # Obtener el rol de Estudiante
+    rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+    if not rol_estudiante:
+        flash('Error: Rol de Estudiante no encontrado', 'error')
+        return redirect(url_for('admin.estudiantes'))
+    
+    # Configurar el formulario para estudiantes
+    form.rol.choices = [(str(rol_estudiante.id_rol), rol_estudiante.nombre)]
+    form.rol.data = str(rol_estudiante.id_rol)
+    
+    # Obtener cursos para el formulario
+    cursos = Curso.query.all()
+    form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
+    
+    if form.validate_on_submit():
+        try:
+            from datetime import datetime, timedelta
+            verification_code = generate_verification_code()# Crear usuario estudiante con verificación de email
+            new_user = Usuario(
+                tipo_doc=form.tipo_doc.data,
+                no_identidad=form.no_identidad.data,
+                nombre=form.nombre.data,
+                apellido=form.apellido.data,
+                direccion=form.direccion.data,
+                correo=form.correo.data,
+                telefono=form.telefono.data,
+                id_rol_fk=rol_estudiante.id_rol,
+                estado_cuenta='activa',
+                email_verified=False,
+                verification_code=verification_code, verification_code_expires=datetime.utcnow() + timedelta(hours=24)
+            )
+            new_user.set_password(form.password.data)
+            
+            db.session.add(new_user)
+            db.session.flush()  # Para obtener el ID del estudiante
+            
+            # Crear matrícula si se proporcionó curso y año
+            if form.curso_id.data and form.anio_matricula.data:
+                nueva_matricula = Matricula(
+                    estudianteId=new_user.id_usuario,
+                    cursoId=int(form.curso_id.data),
+                    año=int(form.anio_matricula.data)
+                )
+                db.session.add(nueva_matricula)
+            
+            # Asignar padre si se seleccionó uno
+            parent_id = request.form.get('parent_id')
+            if parent_id:
+                try:
+                    padre_id_int = int(parent_id)
+                    # Verificar que el padre existe
+                    padre = Usuario.query.get(padre_id_int)
+                    if padre:
+                        # Crear la relación en la tabla estudiante_padre
+                        from sqlalchemy import text
+                        db.session.execute(
+                            text("INSERT INTO estudiante_padre (estudiante_id, padre_id) VALUES (:estudiante_id, :padre_id)"),
+                            {'estudiante_id': new_user.id_usuario, 'padre_id': padre_id_int}
+                        )
+                        flash(f'Padre "{padre.nombre_completo}" asignado correctamente al estudiante', 'success')
+                    else:
+                        flash('El padre seleccionado no existe', 'warning')
+                except (ValueError, Exception) as e:
+                    flash(f'Error al asignar padre: {str(e)}', 'warning')
+            
+            db.session.commit()
+            
+            # Enviar correo de bienvenida con código de verificación
+            email_sent = send_welcome_email(new_user, new_user.verification_code)
+            
+            if email_sent:
+                flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
+            else:
+                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
+            
+            return redirect(url_for('admin.estudiantes'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al crear estudiante: {str(e)}', 'error')
+    
+    return render_template(
+        'superadmin/gestion_usuarios/crear_estudiante.html',
+        title='Crear Estudiante',
+        form=form,
+        cursos=cursos,
+        now=date.today,
+        rol_predefinido='Estudiante',
+        rol_predefinido_id=str(rol_estudiante.id_rol)
+    )
+
+# Rutas específicas para estudiantes
+@admin_bp.route('/estudiantes/<int:id>/eliminar', methods=['DELETE'])
+@login_required
+@role_required(1)
+def eliminar_estudiante(id):
+    """Eliminar un estudiante específico"""
+    try:
+        estudiante = Usuario.query.get_or_404(id)
+        
+        # Verificar que sea un estudiante
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+        if estudiante.id_rol_fk != rol_estudiante.id_rol:
+            return jsonify({'success': False, 'error': 'El usuario no es un estudiante'}), 400
+        
+        # Eliminar matrículas asociadas
+        Matricula.query.filter_by(estudianteId=id).delete()
+        
+        # Eliminar el estudiante
+        db.session.delete(estudiante)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Estudiante eliminado correctamente'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error eliminando estudiante: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/estudiantes/<int:id>/editar')
+@login_required
+@role_required(1)
+def editar_estudiante(id):
+    """Redirigir a la página de edición de estudiante"""
+    return redirect(url_for('admin.editar_usuario', user_id=id))
+
+@admin_bp.route('/estudiantes/<int:id>/detalles')
+@login_required
+@role_required(1)
+def detalles_estudiante(id):
+    """Página de detalles del estudiante"""
+    estudiante = Usuario.query.get_or_404(id)
+    
+    # Verificar que sea un estudiante
+    rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+    if estudiante.id_rol_fk != rol_estudiante.id_rol:
+        flash('El usuario no es un estudiante', 'error')
+        return redirect(url_for('admin.estudiantes'))
+    
+    # Obtener información adicional del estudiante
+    matricula_actual = Matricula.query.filter_by(estudianteId=id)\
+                                    .order_by(Matricula.año.desc())\
+                                    .first()
+    
+    return render_template('superadmin/gestion_usuarios/detalles_estudiante.html', 
+                         estudiante=estudiante, 
+                         matricula=matricula_actual)
 
 @admin_bp.route('/api/directorio/estudiantes', methods=['GET'])
 @login_required
@@ -214,7 +504,7 @@ def api_estudiantes_directorio():
         search_query = request.args.get('q', '')
         filter_id = request.args.get('filter_id', '')
         
-        rol_estudiante = db.session.query(Rol).filter_by(nombre='Estudiante').first()
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
         if not rol_estudiante:
             return jsonify({"data": [], "message": "Rol de estudiante no encontrado"}), 404
 
@@ -235,9 +525,9 @@ def api_estudiantes_directorio():
             Matricula,
             (Matricula.estudianteId == subquery.c.estudianteId) & (Matricula.año == subquery.c.max_year)
         ).outerjoin(
-            Curso, Curso.id == Matricula.cursoId
+            Curso, Curso.id_curso == Matricula.cursoId
         ).outerjoin(
-            Sede, Sede.id == Curso.sedeId
+            Sede, Sede.id_sede == Curso.sedeId
         )
         
         if filter_id:
@@ -285,9 +575,10 @@ def padres():
 @login_required
 @role_required(1)
 def api_padres():
+    """API para obtener la lista de padres"""
     try:
         filter_id = request.args.get('filter_id', '')
-        rol_padre = db.session.query(Rol).filter_by(nombre='Padre').first()
+        rol_padre = Rol.query.filter_by(nombre='Padre').first()
         
         if filter_id:
             padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol, no_identidad=filter_id).all() if rol_padre else []
@@ -296,8 +587,6 @@ def api_padres():
             
         lista_padres = []
         for padre in padres:
-            hijos_asignados = []
-    
             lista_padres.append({
                 'id_usuario': padre.id_usuario,
                 'no_identidad': padre.no_identidad,
@@ -305,7 +594,7 @@ def api_padres():
                 'correo': padre.correo,
                 'rol': padre.rol.nombre if padre.rol else 'N/A',
                 'estado_cuenta': padre.estado_cuenta,
-                'hijos_asignados': hijos_asignados # Placeholder
+                'hijos_asignados': []  # Placeholder
             })
         return jsonify({"data": lista_padres})
     except Exception as e:
@@ -316,6 +605,7 @@ def api_padres():
 @login_required
 @role_required(1)
 def superadmins():
+    """Muestra la página con la lista de administradores"""
     filter_id = request.args.get('filter_id', '')
     return render_template('superadmin/gestion_usuarios/administrativos.html', filter_id=filter_id)
 
@@ -323,6 +613,7 @@ def superadmins():
 @login_required
 @role_required(1)
 def api_superadmins():
+    """API para obtener la lista de administradores"""
     try:
         filter_id = request.args.get('filter_id', '')
         
@@ -351,13 +642,14 @@ def api_superadmins():
 @login_required
 @role_required(1)
 def crear_usuario():
+    """Crear nuevo usuario con rol específico"""
     form = RegistrationForm()
     
     # Obtener el rol predefinido desde la URL
     rol_predefinido = request.args.get('rol')
     
-    roles = db.session.query(Rol).all()
-    cursos = db.session.query(Curso).all()
+    roles = Rol.query.all()
+    cursos = Curso.query.all()
     form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles]
 
     # Si hay rol predefinido, establecerlo en el formulario
@@ -365,13 +657,13 @@ def crear_usuario():
     if rol_predefinido and request.method == 'GET':
         # Buscar el ID del rol correspondiente al nombre
         if rol_predefinido.lower() == 'estudiante':
-            rol_obj = db.session.query(Rol).filter_by(nombre='Estudiante').first()
+            rol_obj = Rol.query.filter_by(nombre='Estudiante').first()
         elif rol_predefinido.lower() == 'profesor':
-            rol_obj = db.session.query(Rol).filter_by(nombre='Profesor').first()
+            rol_obj = Rol.query.filter_by(nombre='Profesor').first()
         elif rol_predefinido.lower() == 'padre':
-            rol_obj = db.session.query(Rol).filter_by(nombre='Padre').first()
+            rol_obj = Rol.query.filter_by(nombre='Padre').first()
         elif rol_predefinido.lower() == 'administrador_institucional':
-            rol_obj = db.session.query(Rol).filter_by(nombre='Administrador Institucional').first()
+            rol_obj = Rol.query.filter_by(nombre='Administrador Institucional').first()
         else:
             rol_obj = None
             
@@ -382,10 +674,10 @@ def crear_usuario():
     if form.validate_on_submit():
         selected_role_id = int(form.rol.data)
         
-        rol_estudiante = db.session.query(Rol).filter_by(nombre='Estudiante').first()
-        rol_profesor = db.session.query(Rol).filter_by(nombre='Profesor').first()
-        rol_padre = db.session.query(Rol).filter_by(nombre='Padre').first()
-        rol_admin = db.session.query(Rol).filter_by(nombre='Administrador Institucional').first()
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+        rol_profesor = Rol.query.filter_by(nombre='Profesor').first()
+        rol_padre = Rol.query.filter_by(nombre='Padre').first()
+        rol_admin = Rol.query.filter_by(nombre='Administrador Institucional').first()
 
         is_student = (rol_estudiante and selected_role_id == rol_estudiante.id_rol)
         is_professor = (rol_profesor and selected_role_id == rol_profesor.id_rol)
@@ -395,6 +687,7 @@ def crear_usuario():
             no_identidad=form.no_identidad.data,
             nombre=form.nombre.data,
             apellido=form.apellido.data,
+            direccion=form.direccion.data,
             correo=form.correo.data,
             telefono=form.telefono.data,
             id_rol_fk=selected_role_id,
@@ -410,7 +703,7 @@ def crear_usuario():
                 if form.curso_id.data and form.anio_matricula.data:
                     nueva_matricula = Matricula(
                         estudianteId=new_user.id_usuario,
-                        cursoId=form.curso_id.data.id,
+                        cursoId=int(form.curso_id.data),
                         año=int(form.anio_matricula.data)
                     )
                     db.session.add(nueva_matricula)
@@ -420,21 +713,6 @@ def crear_usuario():
                     db.session.rollback()
                     return redirect(url_for('admin.crear_usuario'))
 
-            elif is_professor:
-                if form.asignatura_id.data and form.curso_asignacion_id.data:
-                    new_clase = Clase(
-                        profesorId=new_user.id_usuario,
-                        asignaturaId=form.asignatura_id.data.id,
-                        cursoId=form.curso_asignacion_id.data.id,
-                        horarioId=1
-                    )
-                    db.session.add(new_clase)
-                    db.session.commit()
-                else:
-                    flash('Se requiere asignatura y curso para un profesor.', 'warning')
-                    db.session.rollback()
-                    return redirect(url_for('admin.crear_usuario'))
-            
             flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente!', 'success')
             
             # Redirigir según el rol creado
@@ -461,14 +739,15 @@ def crear_usuario():
         cursos=cursos,
         now=date.today,
         rol_predefinido=rol_predefinido,
-        rol_predefinido_id=rol_predefinido_id  # Pasar el ID también
+        rol_predefinido_id=rol_predefinido_id
     )
 
 @admin_bp.route('/editar_usuario/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @role_required(1)
 def editar_usuario(user_id):
-    user = db.session.query(Usuario).get_or_404(user_id)
+    """Editar usuario existente"""
+    user = Usuario.query.get_or_404(user_id)
     form = UserEditForm(original_no_identidad=user.no_identidad, original_correo=user.correo)
 
     if request.method == 'GET':
@@ -501,7 +780,8 @@ def editar_usuario(user_id):
 @login_required
 @role_required(1)
 def eliminar_usuario(user_id):
-    user = db.session.query(Usuario).get_or_404(user_id)
+    """Eliminar usuario"""
+    user = Usuario.query.get_or_404(user_id)
     if current_user.id_usuario == user.id_usuario or user.has_role('administrador'):
         flash('No puedes eliminar tu propia cuenta o la de otro administrador.', 'danger')
         return redirect(url_for('admin.profesores'))
@@ -511,12 +791,118 @@ def eliminar_usuario(user_id):
     flash(f'Usuario "{user.nombre_completo}" eliminado exitosamente.', 'success')
     return redirect(url_for('admin.profesores'))
 
+# ==================== API PARA PADRES - ESTUDIANTES ====================
+
+@admin_bp.route('/api/buscar-padres')
+@login_required
+@role_required(1)
+def api_buscar_padres():
+    """API para buscar padres/acudientes existentes"""
+    try:
+        search_query = request.args.get('q', '')
+        
+        rol_padre = Rol.query.filter_by(nombre='Padre').first()
+        if not rol_padre:
+            return jsonify([])
+        
+        query = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol)
+        
+        if search_query:
+            query = query.filter(
+                or_(
+                    Usuario.nombre.ilike(f'%{search_query}%'),
+                    Usuario.apellido.ilike(f'%{search_query}%'),
+                    Usuario.no_identidad.ilike(f'%{search_query}%'),
+                    Usuario.correo.ilike(f'%{search_query}%')
+                )
+            )
+        
+        padres = query.limit(10).all()
+        
+        resultados = []
+        for padre in padres:
+            resultados.append({
+                'id_usuario': padre.id_usuario,
+                'nombre_completo': padre.nombre_completo,
+                'correo': padre.correo,
+                'no_identidad': padre.no_identidad,
+                'telefono': padre.telefono or ''
+            })
+        
+        return jsonify(resultados)
+        
+    except Exception as e:
+        print(f"Error buscando padres: {e}")
+        return jsonify([])
+
+@admin_bp.route('/api/crear-padre', methods=['POST'])
+@login_required
+@role_required(1)
+def api_crear_padre():
+    """API para crear un nuevo padre/acudiente"""
+    try:
+        data = request.get_json()
+        
+        # Validar datos requeridos
+        required_fields = ['no_identidad', 'tipo_doc', 'nombre', 'apellido', 'correo', 'password']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'El campo {field} es requerido'}), 400
+        
+        # Verificar si ya existe un usuario con ese número de identidad
+        usuario_existente = Usuario.query.filter_by(no_identidad=data['no_identidad']).first()
+        if usuario_existente:
+            return jsonify({'success': False, 'error': 'Ya existe un usuario con ese número de identidad'}), 400
+        
+        # Verificar si ya existe un usuario con ese correo
+        correo_existente = Usuario.query.filter_by(correo=data['correo']).first()
+        if correo_existente:
+            return jsonify({'success': False, 'error': 'Ya existe un usuario con ese correo electrónico'}), 400
+        
+        # Obtener el rol de Padre
+        rol_padre = Rol.query.filter_by(nombre='Padre').first()
+        if not rol_padre:
+            return jsonify({'success': False, 'error': 'Rol de Padre no encontrado'}), 500
+        
+        # Crear nuevo padre
+        nuevo_padre = Usuario(
+            tipo_doc=data['tipo_doc'],
+            no_identidad=data['no_identidad'],
+            nombre=data['nombre'],
+            apellido=data['apellido'],
+            correo=data['correo'],
+            telefono=data.get('telefono', ''),
+            id_rol_fk=rol_padre.id_rol,
+            estado_cuenta='activa'
+        )
+        nuevo_padre.set_password(data['password'])
+        
+        db.session.add(nuevo_padre)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Padre/acudiente creado exitosamente',
+            'padre': {
+                'id_usuario': nuevo_padre.id_usuario,
+                'nombre_completo': nuevo_padre.nombre_completo,
+                'correo': nuevo_padre.correo,
+                'no_identidad': nuevo_padre.no_identidad
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creando padre: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
 # ==================== GESTIÓN ACADÉMICA ====================
 
 @admin_bp.route('/gestion-academica')
 @login_required
 @role_required(1)
 def gestion_academica():
+    """Página principal de gestión académica"""
     return render_template('superadmin/gestion_academica/dashboard.html')
 
 # --- Gestión de Sedes ---
@@ -524,15 +910,18 @@ def gestion_academica():
 @login_required
 @role_required(1)
 def gestion_sedes():
+    """Gestión de sedes"""
     form = SedeForm()
     return render_template('superadmin/gestion_academica/sedes.html', form=form)
 
 @admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
 @login_required
+@role_required(1)
 def api_sedes():
+    """API para gestión de sedes"""
     if request.method == 'GET':
         sedes = Sede.query.order_by(Sede.nombre).all()
-        sedes_data = [{"id": sede.id, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]
+        sedes_data = [{"id_sede": sede.id_sede, "nombre": sede.nombre, "direccion": sede.direccion} for sede in sedes]
         return jsonify(sedes_data), 200
 
     if request.method == 'POST':
@@ -549,7 +938,7 @@ def api_sedes():
                 db.session.add(nueva_sede)
                 db.session.commit()
                 
-                return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id}), 201
+                return jsonify({"message": "Sede creada exitosamente", "sede_id": nueva_sede.id_sede}), 201
             
             except Exception as e:
                 db.session.rollback()
@@ -562,7 +951,7 @@ def api_sedes():
 
     if request.method == 'DELETE':
         data = request.get_json()
-        sede_id = data.get('id')
+        sede_id = data.get('id_sede')
         
         if not sede_id:
             return jsonify({"error": "ID de sede no proporcionado"}), 400
@@ -587,6 +976,7 @@ def api_sedes():
 @login_required
 @role_required(1)
 def gestion_cursos():
+    """Gestión de cursos"""
     form = CursoForm()
     return render_template('superadmin/gestion_academica/cursos.html', form=form)
 
@@ -594,11 +984,12 @@ def gestion_cursos():
 @login_required
 @role_required(1)
 def api_cursos():
+    """API para gestión de cursos"""
     if request.method == 'GET':
         try:
             cursos = db.session.query(Curso, Sede.nombre).join(Sede).all()
             cursos_list = [{
-                'id': c.id,
+                'id_curso': c.id_curso,
                 'nombreCurso': c.nombreCurso,
                 'sede': sede_nombre,
                 'horario_general_id': c.horario_general_id,
@@ -615,12 +1006,12 @@ def api_cursos():
                 sede = form.sedeId.data
                 nuevo_curso = Curso(
                     nombreCurso=form.nombreCurso.data,
-                    sedeId=sede.id if sede else None
+                    sedeId=sede.id_sede if sede else None
                 )
                 db.session.add(nuevo_curso)
                 db.session.commit()
                 return jsonify({
-                    'id': nuevo_curso.id,
+                    'id_curso': nuevo_curso.id_curso,
                     'nombreCurso': nuevo_curso.nombreCurso,
                     'sede': sede.nombre if sede else 'N/A',
                     'horario_general_id': None
@@ -637,7 +1028,7 @@ def api_cursos():
 
     elif request.method == 'DELETE':
         data = request.get_json()
-        curso_id = data.get('id')
+        curso_id = data.get('id_curso')
         if not curso_id:
             return jsonify({'error': 'ID del curso no proporcionado'}), 400
         
@@ -660,11 +1051,12 @@ def api_cursos():
 @login_required
 @role_required(1)
 def api_obtener_curso(curso_id):
+    """API para obtener información de un curso específico"""
     try:
         curso = Curso.query.get_or_404(curso_id)
         
         return jsonify({
-            'id': curso.id,
+            'id_curso': curso.id_curso,
             'nombreCurso': curso.nombreCurso,
             'sedeId': curso.sedeId,
             'horario_general_id': curso.horario_general_id,
@@ -679,6 +1071,7 @@ def api_obtener_curso(curso_id):
 @login_required
 @role_required(1)
 def gestion_asignaturas():
+    """Gestión de asignaturas"""
     return render_template('superadmin/gestion_academica/gestion_asignaturas.html')
 
 @admin_bp.route('/api/asignaturas')
@@ -689,7 +1082,7 @@ def api_asignaturas():
     try:
         asignaturas = Asignatura.query.order_by(Asignatura.nombre).all()
         return jsonify([{
-            'id': a.id,
+            'id_asignatura': a.id_asignatura,
             'nombre': a.nombre,
             'descripcion': a.descripcion or '',
             'estado': getattr(a, 'estado', 'activa'),
@@ -709,7 +1102,6 @@ def api_crear_asignatura():
     """API para crear una nueva asignatura con profesores"""
     try:
         data = request.get_json()
-        print("📝 Datos recibidos para crear asignatura:", data)
         
         if not data.get('nombre'):
             return jsonify({'success': False, 'error': 'El nombre de la asignatura es requerido'}), 400
@@ -730,25 +1122,19 @@ def api_crear_asignatura():
         
         # Asignar profesores
         profesores_ids = data.get('profesores', [])
-        print(f"👨‍🏫 IDs de profesores a asignar: {profesores_ids}")
         
         for profesor_id in profesores_ids:
             profesor = Usuario.query.get(profesor_id)
             if profesor:
-                print(f"✅ Asignando profesor: {profesor.nombre_completo}")
                 nueva_asignatura.profesores.append(profesor)
-            else:
-                print(f"⚠️ Profesor con ID {profesor_id} no encontrado")
         
         db.session.commit()
-        
-        print(f"✅ Asignatura creada: {nueva_asignatura.nombre} con {len(profesores_ids)} profesores")
         
         return jsonify({
             'success': True,
             'message': 'Asignatura creada correctamente',
             'asignatura': {
-                'id': nueva_asignatura.id,
+                'id_asignatura': nueva_asignatura.id_asignatura,
                 'nombre': nueva_asignatura.nombre,
                 'descripcion': nueva_asignatura.descripcion,
                 'estado': nueva_asignatura.estado,
@@ -762,7 +1148,7 @@ def api_crear_asignatura():
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error creando asignatura: {str(e)}")
+        print(f"Error creando asignatura: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['PUT'])
@@ -772,7 +1158,6 @@ def api_actualizar_asignatura(asignatura_id):
     """API para actualizar una asignatura existente con profesores"""
     try:
         data = request.get_json()
-        print(f"📝 Datos recibidos para actualizar asignatura {asignatura_id}:", data)
         
         asignatura = Asignatura.query.get_or_404(asignatura_id)
         
@@ -782,7 +1167,7 @@ def api_actualizar_asignatura(asignatura_id):
         # Verificar si ya existe otra asignatura con el mismo nombre
         existe = Asignatura.query.filter(
             Asignatura.nombre == data['nombre'],
-            Asignatura.id != asignatura_id
+            Asignatura.id_asignatura != asignatura_id
         ).first()
         if existe:
             return jsonify({'success': False, 'error': 'Ya existe otra asignatura con ese nombre'}), 400
@@ -793,7 +1178,6 @@ def api_actualizar_asignatura(asignatura_id):
         
         # Actualizar profesores - limpiar y agregar nuevos
         profesores_ids = data.get('profesores', [])
-        print(f"👨‍🏫 IDs de profesores para actualizar: {profesores_ids}")
         
         # Limpiar profesores actuales
         asignatura.profesores.clear()
@@ -802,20 +1186,15 @@ def api_actualizar_asignatura(asignatura_id):
         for profesor_id in profesores_ids:
             profesor = Usuario.query.get(profesor_id)
             if profesor:
-                print(f"✅ Asignando profesor: {profesor.nombre_completo}")
                 asignatura.profesores.append(profesor)
-            else:
-                print(f"⚠️ Profesor con ID {profesor_id} no encontrado")
         
         db.session.commit()
-        
-        print(f"✅ Asignatura actualizada: {asignatura.nombre} con {len(profesores_ids)} profesores")
         
         return jsonify({
             'success': True,
             'message': 'Asignatura actualizada correctamente',
             'asignatura': {
-                'id': asignatura.id,
+                'id_asignatura': asignatura.id_asignatura,
                 'nombre': asignatura.nombre,
                 'descripcion': asignatura.descripcion,
                 'estado': asignatura.estado,
@@ -829,13 +1208,14 @@ def api_actualizar_asignatura(asignatura_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error actualizando asignatura: {str(e)}")
+        print(f"Error actualizando asignatura: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['DELETE'])
 @login_required
 @role_required(1)
 def api_eliminar_asignatura(asignatura_id):
+    """API para eliminar una asignatura"""
     try:
         asignatura = Asignatura.query.get_or_404(asignatura_id)
         
@@ -864,12 +1244,14 @@ def api_eliminar_asignatura(asignatura_id):
 @login_required
 @role_required(1)
 def gestion_horarios():
+    """Gestión de horarios generales"""
     return render_template('superadmin/Horarios/gestion_horarios.html')
 
 @admin_bp.route('/api/horarios/nuevo', methods=['POST'])
 @login_required
 @role_required(1)
 def api_crear_horario_completo():
+    """API para crear un nuevo horario general"""
     try:
         data = request.get_json()
         
@@ -903,7 +1285,7 @@ def api_crear_horario_completo():
                 
             try:
                 nuevo_bloque = BloqueHorario(
-                    horario_general_id=nuevo_horario.id,
+                    horario_general_id=nuevo_horario.id_horario,
                     dia_semana=bloque_data['dia_semana'],
                     horaInicio=datetime.strptime(bloque_data['horaInicio'], '%H:%M').time(),
                     horaFin=datetime.strptime(bloque_data['horaFin'], '%H:%M').time(),
@@ -923,7 +1305,7 @@ def api_crear_horario_completo():
             'success': True,
             'message': 'Horario creado correctamente',
             'horario': {
-                'id': nuevo_horario.id,
+                'id_horario': nuevo_horario.id_horario,
                 'nombre': nuevo_horario.nombre,
                 'periodo': nuevo_horario.periodo
             }
@@ -931,13 +1313,14 @@ def api_crear_horario_completo():
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error creating schedule: {str(e)}")
+        print(f"Error creando horario: {str(e)}")
         return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
 
 @admin_bp.route('/api/horarios/<int:horario_id>', methods=['GET'])
 @login_required
 @role_required(1)
 def api_obtener_horario(horario_id):
+    """API para obtener un horario específico"""
     try:
         horario = HorarioGeneral.query.get_or_404(horario_id)
         
@@ -951,14 +1334,14 @@ def api_obtener_horario(horario_id):
             dias_lista = []
         
         return jsonify({
-            'id': horario.id,
+            'id_horario': horario.id_horario,
             'nombre': horario.nombre,
             'periodo': horario.periodo,
             'horaInicio': horario.horaInicio.strftime('%H:%M'),
             'horaFin': horario.horaFin.strftime('%H:%M'),
             'dias': dias_lista,
             'bloques': [{
-                'id': b.id,
+                'id_bloque': b.id_bloque,
                 'dia_semana': b.dia_semana,
                 'horaInicio': b.horaInicio.strftime('%H:%M'),
                 'horaFin': b.horaFin.strftime('%H:%M'),
@@ -970,17 +1353,18 @@ def api_obtener_horario(horario_id):
         })
         
     except Exception as e:
-        print(f"❌ Error getting schedule: {str(e)}")
+        print(f"Error obteniendo horario: {str(e)}")
         return jsonify({'error': f'Error al obtener horario: {str(e)}'}), 500
 
 @admin_bp.route('/api/horarios', methods=['GET'])
 @login_required
 @role_required(1)
 def api_listar_horarios():
+    """API para listar todos los horarios"""
     try:
         horarios = HorarioGeneral.query.all()
         return jsonify([{
-            'id': h.id,
+            'id_horario': h.id_horario,
             'nombre': h.nombre,
             'periodo': h.periodo,
             'horaInicio': h.horaInicio.strftime('%H:%M'),
@@ -995,6 +1379,7 @@ def api_listar_horarios():
 @login_required
 @role_required(1)
 def api_eliminar_horario(horario_id):
+    """API para eliminar un horario"""
     try:
         horario = HorarioGeneral.query.get_or_404(horario_id)
         
@@ -1015,6 +1400,7 @@ def api_eliminar_horario(horario_id):
 @login_required
 @role_required(1)
 def api_asignar_horario_curso():
+    """API para asignar horario a cursos"""
     try:
         data = request.get_json()
         horario_id = data.get('horario_id')
@@ -1050,6 +1436,7 @@ def api_asignar_horario_curso():
 @login_required
 @role_required(1)
 def api_estadisticas_horarios():
+    """API para estadísticas de horarios"""
     try:
         total_cursos = Curso.query.count()
         
@@ -1076,18 +1463,20 @@ def api_estadisticas_horarios():
 @login_required
 @role_required(1)
 def gestion_horarios_cursos():
+    """Gestión de horarios por curso"""
     return render_template('superadmin/Horarios/gestion_horarios_cursos.html')
 
 @admin_bp.route('/api/horario_curso/guardar', methods=['POST'])
 @login_required
 @role_required(1)
 def api_guardar_horario_curso():
+    """API para guardar horario de curso"""
     try:
         data = request.get_json()
         curso_id = data.get('curso_id')
         horario_general_id = data.get('horario_general_id')
         asignaciones = data.get('asignaciones', {})
-        salones_asignaciones = data.get('salones_asignaciones', {}) 
+        salones_asignaciones = data.get('salones_asignaciones', {})
 
         if not curso_id:
             return jsonify({'success': False, 'error': 'ID de curso requerido'}), 400
@@ -1126,13 +1515,13 @@ def api_guardar_horario_curso():
                         dia_semana=dia,
                         hora_inicio=hora,
                         horario_general_id=horario_general_id,
-                        id_salon_fk=salon_id  # ← ASIGNAR EL SALÓN
+                        id_salon_fk=salon_id
                     )
                     db.session.add(nueva_asignacion)
                     asignaciones_creadas += 1
 
             except Exception as e:
-                print(f"❌ Error procesando asignación {clave}: {str(e)}")
+                print(f"Error procesando asignación {clave}: {str(e)}")
                 continue
 
         db.session.commit()
@@ -1145,13 +1534,14 @@ def api_guardar_horario_curso():
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error guardando horario del curso: {str(e)}")
+        print(f"Error guardando horario del curso: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
     
 @admin_bp.route('/api/horario_curso/cargar/<int:curso_id>')
 @login_required
 @role_required(1)
 def api_cargar_horario_curso(curso_id):
+    """API para cargar horario de curso"""
     try:
         curso = Curso.query.get(curso_id)
         if not curso:
@@ -1160,12 +1550,12 @@ def api_cargar_horario_curso(curso_id):
         asignaciones_db = HorarioCurso.query.filter_by(curso_id=curso_id).all()
 
         asignaciones = {}
-        salones_asignaciones = {}  # ← AGREGAR ESTO
+        salones_asignaciones = {}
         
         for asignacion in asignaciones_db:
             clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
             asignaciones[clave] = asignacion.asignatura_id
-            if asignacion.id_salon_fk:  # ← AGREGAR SALÓN SI EXISTE
+            if asignacion.id_salon_fk:
                 salones_asignaciones[clave] = asignacion.id_salon_fk
 
         bloques_horario = []
@@ -1175,7 +1565,7 @@ def api_cargar_horario_curso(curso_id):
             ).order_by(BloqueHorario.orden).all()
 
             bloques_horario = [{
-                'id': b.id,
+                'id_bloque': b.id_bloque,
                 'dia_semana': b.dia_semana,
                 'horaInicio': b.horaInicio.strftime('%H:%M'),
                 'horaFin': b.horaFin.strftime('%H:%M'),
@@ -1190,19 +1580,20 @@ def api_cargar_horario_curso(curso_id):
             'horario_general_id': curso.horario_general_id,
             'nombre_curso': curso.nombreCurso,
             'asignaciones': asignaciones,
-            'salones_asignaciones': salones_asignaciones,  # ← INCLUIR SALONES
+            'salones_asignaciones': salones_asignaciones,
             'bloques_horario': bloques_horario,
             'tiene_horario_general': curso.horario_general_id is not None
         })
 
     except Exception as e:
-        print(f"❌ Error cargando horario del curso: {str(e)}")
+        print(f"Error cargando horario del curso: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/horario_curso/compartir', methods=['POST'])
 @login_required
 @role_required(1)
 def api_compartir_horario():
+    """API para compartir horario con profesores"""
     try:
         data = request.get_json()
         curso_id = data.get('curso_id')
@@ -1272,13 +1663,14 @@ def api_compartir_horario():
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error compartiendo horario: {str(e)}")
+        print(f"Error compartiendo horario: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/estadisticas/horarios-cursos')
 @login_required
 @role_required(1)
 def api_estadisticas_horarios_cursos():
+    """API para estadísticas de horarios de cursos"""
     try:
         total_cursos = Curso.query.count()
         cursos_con_horario = Curso.query.filter(Curso.horario_general_id.isnot(None)).count()
@@ -1315,6 +1707,7 @@ def equipos():
 @login_required
 @role_required(1)
 def crear_equipo():
+    """Registro de nuevo equipo"""
     form = EquipoForm()
     if form.validate_on_submit():
         
@@ -1328,7 +1721,7 @@ def crear_equipo():
             nombre=form.nombre.data,
             tipo=form.tipo.data,
             estado=estado_inicial, 
-            id_salon_fk=form.salon.data.id if form.salon.data else None,
+            id_salon_fk=form.salon.data.id_salon if form.salon.data else None,
             asignado_a=form.asignado_a.data,
             sistema_operativo=form.sistema_operativo.data,
             ram=form.ram.data,
@@ -1349,14 +1742,14 @@ def crear_equipo():
         form=form
     )
     
-@admin_bp.route('/api/equipos', methods=['GET']) # Cambiado a /api/equipos para ser más general
+@admin_bp.route('/api/equipos', methods=['GET'])
 @login_required
 @role_required(1)
 def api_equipos_todos():
     """API para listar todos los equipos con información de salón y sede."""
     try:
         equipos_db = db.session.query(
-            Equipo.id,
+            Equipo.id_equipo,
             Equipo.id_referencia,
             Equipo.nombre,
             Equipo.tipo,
@@ -1371,14 +1764,14 @@ def api_equipos_todos():
             Equipo.id_salon_fk,
             Salon.nombre.label('salon_nombre'),
             Sede.nombre.label('sede_nombre')
-        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
-         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
          .all()
         
         equipos = []
         for eq in equipos_db:
             equipos.append({
-                'id': eq.id,
+                'id_equipo': eq.id_equipo,
                 'id_referencia': eq.id_referencia,
                 'nombre': eq.nombre,
                 'tipo': eq.tipo,
@@ -1395,7 +1788,7 @@ def api_equipos_todos():
                 'sede_nombre': eq.sede_nombre or "Sin Sede"
             })
 
-        return jsonify(equipos), 200 # Retorna directamente la lista de equipos
+        return jsonify(equipos), 200
     except Exception as e:
         print(f"Error al listar equipos: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
@@ -1421,11 +1814,11 @@ def api_equipos_con_incidentes():
         print(f"Error al obtener equipos con incidentes: {e}")
         return jsonify({'error': str(e)}), 500
 
-
 @admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 @role_required(1)
 def api_equipo_detalle(equipo_id):
+    """API para gestión detallada de equipos"""
     equipo = Equipo.query.get_or_404(equipo_id)
     
     # Lógica de ELIMINACIÓN (DELETE)
@@ -1443,7 +1836,6 @@ def api_equipo_detalle(equipo_id):
         data = request.get_json()
         
         try:
-            # Aquí va toda la lógica de actualización (como se indicó previamente)
             equipo.asignado_a = data.get('asignado_a', equipo.asignado_a)
             equipo.estado = data.get('estado', equipo.estado)
             equipo.sistema_operativo = data.get('sistema_operativo', equipo.sistema_operativo)
@@ -1455,19 +1847,17 @@ def api_equipo_detalle(equipo_id):
             fecha_adquisicion_str = data.get('fecha_adquisicion')
             if fecha_adquisicion_str:
                 equipo.fecha_adquisicion = datetime.strptime(fecha_adquisicion_str, '%Y-%m-%d').date()
-
             else:
-                equipo.fecha_adquisicion = None # Permitir que la fecha sea nula si se envía vacío
+                equipo.fecha_adquisicion = None
 
             # Actualizar id_salon_fk si se proporciona
             id_salon_fk = data.get('id_salon_fk')
-            if id_salon_fk is not None: # Permitir 0 o null si es necesario, aunque el formulario lo hace readonly
+            if id_salon_fk is not None:
                 salon = Salon.query.get(id_salon_fk)
                 if salon:
                     equipo.id_salon_fk = id_salon_fk
                 else:
                     return jsonify({'success': False, 'error': 'Salón no encontrado para la actualización.'}), 400
-
 
             db.session.commit()
             return jsonify({'success': True, 'message': 'Equipo actualizado exitosamente'}), 200
@@ -1477,9 +1867,7 @@ def api_equipo_detalle(equipo_id):
             
     # Lógica de VISTA (GET)
     if request.method == 'GET':
-        # Aquí va la lógica para obtener los detalles del equipo (ya existente)
         data = equipo.to_dict()
-        # Asegurarse de que salon_nombre y sede_nombre estén presentes
         data['salon_nombre'] = equipo.salon.nombre if equipo.salon else "Sin Salón"
         data['sede_nombre'] = equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else "Sin Sede"
 
@@ -1493,13 +1881,13 @@ def api_equipo_detalle(equipo_id):
         ]
         
         return jsonify(data), 200
-    
+
 @admin_bp.route('/salones')
 @login_required
 @role_required(1)
 def salones():
     """Muestra la lista de todos los salones."""
-    salones = db.session.query(Salon).all()
+    salones = Salon.query.all()
     return render_template('superadmin/gestion_inventario/salones.html', salones=salones)
 
 # ===============================
@@ -1507,21 +1895,25 @@ def salones():
 # ===============================
 
 @admin_bp.route('/api/sedes/<int:sede_id>/salas')
+@login_required
+@role_required(1)
 def api_salas_por_sede(sede_id):
+    """API para obtener salas por sede"""
     salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
-    return jsonify([{"id": s.id, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
+    return jsonify([{"id_salon": s.id_salon, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
 
 @admin_bp.route('/api/salas_todas', methods=['GET'])
 @login_required
 @role_required(1)
 def api_salas_todas():
+    """API para obtener todas las salas"""
     salones = Salon.query.all()
     result = []
     for s in salones:
         sede_nombre = s.sede.nombre if s.sede else 'N/A'
-        total_equipos = Equipo.query.filter_by(id_salon_fk=s.id).count()
+        total_equipos = Equipo.query.filter_by(id_salon_fk=s.id_salon).count()
         result.append({
-            'id': s.id,
+            'id_salon': s.id_salon,
             'nombre': s.nombre,
             'tipo': s.tipo,
             'capacidad': s.capacidad,
@@ -1537,9 +1929,6 @@ def api_salas_todas():
 def api_salon_detalle(salon_id):
     """
     Endpoint para gestionar un salón específico (Ver, Editar, Eliminar).
-    GET: Devuelve los detalles de un salón.
-    PUT: Actualiza un salón.
-    DELETE: Elimina un salón.
     """
     salon = Salon.query.get_or_404(salon_id)
 
@@ -1547,11 +1936,11 @@ def api_salon_detalle(salon_id):
         sede_nombre = salon.sede.nombre if salon.sede else 'N/A'
         total_equipos = Equipo.query.filter_by(id_salon_fk=salon_id).count()
         return jsonify({
-            'id': salon.id,
+            'id_salon': salon.id_salon,
             'nombre': salon.nombre,
             'tipo': salon.tipo,
             'capacidad': salon.capacidad,
-            'sede_id': salon.id_sede_fk,   # 🔹 unificado con /api/salas_todas
+            'sede_id': salon.id_sede_fk,
             'sede_nombre': sede_nombre,
             'total_equipos': total_equipos,
             'cantidad_sillas': salon.cantidad_sillas or 0,
@@ -1585,12 +1974,15 @@ def api_salon_detalle(salon_id):
             return jsonify({'success': False, 'error': f'Error al eliminar el salón: {str(e)}'}), 500
         
 @admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
+@login_required
+@role_required(1)
 def api_equipos_por_sala(sede_id, salon_id):
+    """API para obtener equipos por sala"""
     equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
     data = []
     for eq in equipos:
         data.append({
-            "id": eq.id,
+            "id_equipo": eq.id_equipo,
             "nombre": eq.nombre,
             "estado": eq.estado,
             "asignado_a": eq.asignado_a or ""
@@ -1598,7 +1990,7 @@ def api_equipos_por_sala(sede_id, salon_id):
     return jsonify(data)
 
 @admin_bp.route('/reportes')
-@login_required # Añadir login_required para consistencia y seguridad
+@login_required
 @role_required(1)
 def reportes():
     """Muestra la página de reportes de inventario."""
@@ -1611,13 +2003,10 @@ def api_reportes_estado_equipos():
     """
     Proporciona datos para el gráfico de estado de equipos y las métricas principales.
     """
-    from controllers.models import Equipo, db
-    
     # 1. Total de equipos
     total = db.session.query(Equipo).count()
     
     # 2. Conteo por estado
-    # Incluye cualquier estado que exista en la base de datos
     estados_raw = db.session.query(Equipo.estado, db.func.count(Equipo.estado)).group_by(Equipo.estado).all()
     estados = {e[0]: e[1] for e in estados_raw}
     
@@ -1629,7 +2018,6 @@ def api_reportes_estado_equipos():
             'Incidente': estados.get('Incidente', 0),
             'Asignado': estados.get('Asignado', 0),
             'Revisión': estados.get('Revisión', 0),
-            # Incluye todos los demás estados
             **{k: v for k, v in estados.items() if k not in ['Disponible', 'Mantenimiento', 'Incidente', 'Asignado', 'Revisión']}
         }
     }
@@ -1643,16 +2031,14 @@ def api_reportes_equipos_por_sede():
     """
     Proporciona datos para el gráfico de equipos por sede.
     """
-    from controllers.models import Equipo, Salon, Sede, db
-    
     # Consulta: Contar equipos agrupados por el nombre de su Sede
     resultados = db.session.query(
         Sede.nombre.label('sede_nombre'),
-        db.func.count(Equipo.id).label('total')
-    ).join(Salon, Salon.id_sede_fk == Sede.id)\
-    .join(Equipo, Equipo.id_salon_fk == Salon.id)\
+        db.func.count(Equipo.id_equipo).label('total')
+    ).join(Salon, Salon.id_sede_fk == Sede.id_sede)\
+    .join(Equipo, Equipo.id_salon_fk == Salon.id_salon)\
     .group_by(Sede.nombre)\
-    .order_by(db.func.count(Equipo.id).desc())\
+    .order_by(db.func.count(Equipo.id_equipo).desc())\
     .all()
     
     data = [{
@@ -1663,23 +2049,25 @@ def api_reportes_equipos_por_sede():
     return jsonify(data), 200
 
 @admin_bp.route('/incidentes')
+@login_required
 @role_required(1)
 def incidentes():
     """Muestra la página de gestión de incidentes."""
     return render_template('superadmin/gestion_inventario/incidentes.html')
 
 @admin_bp.route('/mantenimiento')
+@login_required
 @role_required(1)
 def mantenimiento():
     """Muestra la página de mantenimiento de equipos."""
     return render_template('superadmin/gestion_inventario/mantenimiento.html')
 
 @admin_bp.route('/gestion-salones')
+@login_required
+@role_required(1)
 def gestion_salones():
     """Muestra la página de gestión de salones con estadísticas."""
-    return render_template(
-        'superadmin/gestion_inventario/salones.html'
-    )
+    return render_template('superadmin/gestion_inventario/salones.html')
 
 @admin_bp.route('/registro_salon', methods=['GET', 'POST'])
 @login_required
@@ -1692,7 +2080,7 @@ def registro_salon():
         nuevo_salon = Salon(
             nombre=form.nombre_salon.data,
             tipo=form.tipo.data,
-            id_sede_fk=form.sede.data.id,
+            id_sede_fk=form.sede.data.id_sede,
             capacidad=form.capacidad.data,
             cantidad_sillas=form.cantidad_sillas.data,
             cantidad_mesas=form.cantidad_mesas.data
@@ -1705,7 +2093,7 @@ def registro_salon():
 
 @admin_bp.route('/registro_incidente', methods=['GET', 'POST'])
 @login_required
-@role_required('administrador')
+@role_required(1)
 def registro_incidente():
     """Muestra la página para registrar un incidente."""
     return render_template('superadmin/gestion_inventario/registro_incidente.html')
@@ -1714,10 +2102,11 @@ def registro_incidente():
 @login_required
 @role_required(1)
 def api_salones():
+    """API para obtener todos los salones"""
     try:
         salones = Salon.query.order_by(Salon.nombre).all()
         return jsonify([{
-            'id': s.id,
+            'id_salon': s.id_salon,
             'nombre': s.nombre,
             'capacidad': s.capacidad
         } for s in salones])
@@ -1731,24 +2120,23 @@ def api_salones():
 def api_equipos_para_incidente():
     """
     Retorna solo los equipos con estado 'Incidente' para poder registrar incidentes.
-    Endpoint exclusivo que no interfiere con /api/equipos/todos
     """
     try:
         equipos_db = db.session.query(
-            Equipo.id,
+            Equipo.id_equipo,
             Equipo.nombre,
             Equipo.estado,
             Salon.nombre.label('salon_nombre'),
             Sede.nombre.label('sede_nombre')
-        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
-         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
          .order_by(Equipo.nombre)\
          .all()
         
         equipos = []
         for eq in equipos_db:
             equipos.append({
-                'id': eq.id,
+                'id_equipo': eq.id_equipo,
                 'nombre': eq.nombre,
                 'estado': eq.estado,
                 'salon_nombre': eq.salon_nombre or "Sin Salón",
@@ -1761,7 +2149,6 @@ def api_equipos_para_incidente():
         print(f"Error al listar equipos para incidente: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
-
 # 2. API: LISTAR TODOS LOS INCIDENTES (GET)
 @admin_bp.route('/api/incidentes', methods=['GET'])
 @login_required
@@ -1772,7 +2159,7 @@ def api_listar_incidentes():
     """
     try:
         incidentes_db = db.session.query(
-            Incidente.id,
+            Incidente.id_incidente,
             Incidente.equipo_id,
             Incidente.usuario_asignado.label('usuario_reporte'),
             Incidente.fecha,
@@ -1783,16 +2170,16 @@ def api_listar_incidentes():
             Equipo.nombre.label('equipo_nombre'),
             Salon.nombre.label('salon_nombre'),
             Sede.nombre.label('sede_nombre')
-        ).join(Equipo, Incidente.equipo_id == Equipo.id)\
-         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
-         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+        ).join(Equipo, Incidente.equipo_id == Equipo.id_equipo)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
          .order_by(Incidente.fecha.desc())\
          .all()
         
         incidentes = []
         for inc in incidentes_db:
             incidentes.append({
-                'id': inc.id,
+                'id_incidente': inc.id_incidente,
                 'equipo_id': inc.equipo_id,
                 'usuario_reporte': inc.usuario_reporte or '',
                 'fecha': inc.fecha.strftime('%Y-%m-%d %H:%M:%S') if inc.fecha else None,
@@ -1854,8 +2241,6 @@ def api_crear_incidente():
                 'error': f'El equipo con ID {equipo_id} no existe.'
             }), 404
             
-        # ❌ ELIMINAR ESTA LÍNEA: equipo.estado = 'Incidente'
-
         # Obtener sede del equipo
         sede_nombre = "Sin Sede"
         if equipo.salon and equipo.salon.sede:
@@ -1880,7 +2265,7 @@ def api_crear_incidente():
             'success': True, 
             'message': 'Incidente creado exitosamente',
             'incidente': {
-                'id': nuevo_incidente.id,
+                'id_incidente': nuevo_incidente.id_incidente,
                 'equipo_nombre': equipo.nombre,
                 'usuario_reporte': usuario_reporte,
                 'fecha': nuevo_incidente.fecha.strftime('%Y-%m-%d %H:%M:%S'),
@@ -1905,6 +2290,7 @@ def api_crear_incidente():
 @login_required
 @role_required(1)
 def api_actualizar_estado_incidente(incidente_id):
+    """API para actualizar estado de incidente"""
     try:
         data = request.get_json()
         nuevo_estado = data.get('estado')
@@ -1916,21 +2302,18 @@ def api_actualizar_estado_incidente(incidente_id):
 
         # 1. Actualizar el estado del incidente
         incidente.estado = nuevo_estado
-        incidente.fecha_actualizacion = datetime.now() # O campo similar
         
         # 2. Lógica adicional (ej: actualizar estado del Equipo si es 'cerrado/resuelto')
         if nuevo_estado in ['resuelto', 'cerrado'] and incidente.equipo:
-            incidente.equipo.estado = 'Disponible' # O estado apropiado
+            incidente.equipo.estado = 'Disponible'
         elif nuevo_estado == 'reportado' and incidente.equipo:
              incidente.equipo.estado = 'Incidente'
         
         db.session.commit()
 
-        # 3. DEVOLVER EL INCIDENTE ACTUALIZADO COMPLETO (¡CRUCIAL!)
         return jsonify({ 
             'success': True, 
             'message': 'Estado actualizado con éxito',
-            # Debes implementar una función para serializar el objeto Incidente a un diccionario
             'incidente_actualizado': incidente.to_dict() 
         }), 200
 
@@ -1939,9 +2322,8 @@ def api_actualizar_estado_incidente(incidente_id):
         print(f"Error al actualizar estado: {e}")
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
-
 # 5. API: ELIMINAR INCIDENTE (DELETE)
-@admin_bp.route('api/incidentes/<int:incidente_id>', methods=['DELETE'])
+@admin_bp.route('/api/incidentes/<int:incidente_id>', methods=['DELETE'])
 @login_required
 @role_required(1)
 def api_eliminar_incidente(incidente_id):
@@ -1964,9 +2346,8 @@ def api_eliminar_incidente(incidente_id):
         print(f"Error al eliminar incidente: {e}")
         return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
 
-
 # 6. API: OBTENER DETALLE DE UN INCIDENTE (GET - OPCIONAL)
-@admin_bp.route('/admin/api/incidentes/<int:incidente_id>', methods=['GET'])
+@admin_bp.route('/api/incidentes/<int:incidente_id>', methods=['GET'])
 @login_required
 @role_required(1)
 def api_detalle_incidente(incidente_id):
@@ -1975,7 +2356,7 @@ def api_detalle_incidente(incidente_id):
     """
     try:
         incidente_db = db.session.query(
-            Incidente.id,
+            Incidente.id_incidente,
             Incidente.equipo_id,
             Incidente.usuario_asignado.label('usuario_reporte'),
             Incidente.fecha,
@@ -1986,17 +2367,17 @@ def api_detalle_incidente(incidente_id):
             Equipo.nombre.label('equipo_nombre'),
             Salon.nombre.label('salon_nombre'),
             Sede.nombre.label('sede_nombre')
-        ).join(Equipo, Incidente.equipo_id == Equipo.id)\
-         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
-         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
-         .filter(Incidente.id == incidente_id)\
+        ).join(Equipo, Incidente.equipo_id == Equipo.id_equipo)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
+         .filter(Incidente.id_incidente == incidente_id)\
          .first()
         
         if not incidente_db:
             return jsonify({'success': False, 'error': 'Incidente no encontrado.'}), 404
         
         incidente = {
-            'id': incidente_db.id,
+            'id_incidente': incidente_db.id_incidente,
             'equipo_id': incidente_db.equipo_id,
             'usuario_reporte': incidente_db.usuario_reporte or '',
             'fecha': incidente_db.fecha.strftime('%Y-%m-%d %H:%M:%S') if incidente_db.fecha else None,
@@ -2019,7 +2400,7 @@ def api_detalle_incidente(incidente_id):
 
 @admin_bp.route('/sistema-votaciones')
 @login_required
-@role_required(1)  # Solo el rol Super Admin 
+@role_required(1)
 def sistema_votaciones():
     """Vista principal del sistema de votación."""
     return render_template('superadmin/sistema_votaciones/admin.html')
@@ -2027,11 +2408,14 @@ def sistema_votaciones():
 @admin_bp.route('/sistema-votaciones/votar')
 @login_required
 def votar():
+    """Página para votar"""
     return render_template('superadmin/sistema_votaciones/votar.html')
 
 @admin_bp.route("/guardar-horario", methods=['POST'])
 @login_required
+@role_required(1)
 def guardar_horario():
+    """Guardar horario de votación"""
     try:
         inicio = request.form.get("inicio")
         fin = request.form.get("fin")
@@ -2064,8 +2448,10 @@ def guardar_horario():
 # 📌 Obtener último horario en JSON
 @admin_bp.route("/ultimo-horario", methods=["GET"])
 @login_required
+@role_required(1)
 def ultimo_horario():
-    horario = HorarioVotacion.query.order_by(HorarioVotacion.id.desc()).first()
+    """Obtener último horario de votación"""
+    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
     if horario:
         return jsonify({
             "inicio": horario.inicio.strftime("%H:%M"),
@@ -2075,16 +2461,18 @@ def ultimo_horario():
 
 # ==================== CALENDARIO Y EVENTOS ====================
 
-# 📌 Vista del calendario de eventos (HTML)
 @admin_bp.route("/eventos/calendario", methods=["GET"])
 @login_required
+@role_required(1)
 def calendario_eventos():
+    """Vista del calendario de eventos"""
     return render_template("superadmin/calendario_admin/index.html")
 
-# 📌 API: Eliminar evento
 @admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
 @login_required
+@role_required(1)
 def eliminar_evento(evento_id):
+    """API para eliminar evento"""
     try:
         evento = Evento.query.get(evento_id)
         if not evento:
@@ -2097,16 +2485,17 @@ def eliminar_evento(evento_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
-# 📌 API: Listar todos los eventos (JSON)
 @admin_bp.route("/eventos", methods=["GET"])
 @login_required
+@role_required(1)
 def listar_eventos():
+    """API para listar todos los eventos"""
     try:
         eventos = Evento.query.all()
         resultado = []
         for ev in eventos:
             resultado.append({
-                "IdEvento": ev.id,
+                "id_evento": ev.id_evento,
                 "Nombre": ev.nombre,
                 "Descripcion": ev.descripcion,
                 "Fecha": ev.fecha.strftime("%Y-%m-%d"),
@@ -2117,12 +2506,12 @@ def listar_eventos():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 📌 API: Crear un nuevo evento
 @admin_bp.route("/eventos", methods=["POST"])
 @login_required
+@role_required(1)
 def crear_evento():
+    """API para crear un nuevo evento"""
     data = request.get_json()
-    print("📥 Payload recibido:", data)  # Debug en consola
 
     try:
         # Leer valores (aceptando minúsculas o mayúsculas)
@@ -2157,21 +2546,21 @@ def crear_evento():
 
     except Exception as e:
         db.session.rollback()
-        print("❌ Error creando evento:", str(e))  # Debug en consola
+        print("❌ Error creando evento:", str(e))
         return jsonify({"error": str(e)}), 400
 
 # ==================== GESTIÓN DE CANDIDATOS ====================
 
-# -------------------------
-# 📌 Listar candidatos
 @admin_bp.route("/listar-candidatos", methods=["GET"])
 @login_required
+@role_required(1)
 def listar_candidatos():
+    """API para listar candidatos"""
     candidatos = Candidato.query.all()
     lista = []
     for c in candidatos:
         lista.append({
-            "id": c.id,
+            "id_candidato": c.id_candidato,
             "nombre": c.nombre,
             "categoria": c.categoria,
             "tarjeton": c.tarjeton,
@@ -2182,7 +2571,9 @@ def listar_candidatos():
 
 @admin_bp.route("/crear-candidato", methods=["POST"])
 @login_required
+@role_required(1)
 def crear_candidato():
+    """API para crear candidato"""
     try:
         nombre = request.form.get("nombre")
         tarjeton = request.form.get("tarjeton")
@@ -2221,7 +2612,10 @@ def crear_candidato():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["PUT", "POST"])
+@login_required
+@role_required(1)
 def editar_candidato(candidato_id):
+    """API para editar candidato"""
     try:
         candidato = Candidato.query.get(candidato_id)
         if not candidato:
@@ -2240,7 +2634,7 @@ def editar_candidato(candidato_id):
         # ✅ Validar tarjetón único (ignora el del propio candidato)
         existe_tarjeton = Candidato.query.filter(
             Candidato.tarjeton == tarjeton,
-            Candidato.id != candidato.id
+            Candidato.id_candidato != candidato.id_candidato
         ).first()
         if existe_tarjeton:
             return jsonify({"ok": False, "error": "⚠️ Ese número de tarjetón ya existe"}), 400
@@ -2248,7 +2642,7 @@ def editar_candidato(candidato_id):
         # ✅ Validar nombre único
         existe_nombre = Candidato.query.filter(
             Candidato.nombre == nombre,
-            Candidato.id != candidato.id
+            Candidato.id_candidato != candidato.id_candidato
         ).first()
         if existe_nombre:
             return jsonify({"ok": False, "error": "⚠️ Ya existe un candidato con ese nombre"}), 400
@@ -2263,7 +2657,7 @@ def editar_candidato(candidato_id):
             foto_filename = f"{secure_filename(nombre)}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}"
             path = os.path.join(current_app.config["UPLOAD_FOLDER"], foto_filename)
             file.save(path)
-            candidato.foto = foto_filename  # 👈 actualiza foto
+            candidato.foto = foto_filename
 
         # ✅ Actualizar campos
         candidato.nombre = nombre
@@ -2277,7 +2671,7 @@ def editar_candidato(candidato_id):
         candidatos = Candidato.query.all()
         candidatos_json = [
             {
-                "id": c.id,
+                "id_candidato": c.id_candidato,
                 "nombre": c.nombre,
                 "propuesta": c.propuesta,
                 "categoria": c.categoria,
@@ -2297,7 +2691,9 @@ def editar_candidato(candidato_id):
 
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["DELETE"])
 @login_required
+@role_required(1)
 def eliminar_candidato(candidato_id):
+    """API para eliminar candidato"""
     try:
         candidato = Candidato.query.get(candidato_id)
         if not candidato:
@@ -2310,7 +2706,7 @@ def eliminar_candidato(candidato_id):
         candidatos = Candidato.query.all()
         candidatos_data = [
             {
-                "id": c.id,
+                "id_candidato": c.id_candidato,
                 "nombre": c.nombre,
                 "categoria": c.categoria,
                 "tarjeton": c.tarjeton,

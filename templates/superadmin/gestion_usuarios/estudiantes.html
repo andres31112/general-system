@@ -3,948 +3,581 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Estudiante - Sistema Académico</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <title>Lista de Estudiantes</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Variables CSS con paleta completa */
+        /* Variables CSS usando la paleta de colores del diseño anterior */
         :root {
-            --primary: #0D3B66;
-            --primary-light: #1a5080;
-            --secondary: #F4D35E;
-            --accent: #F95738;
-            --accent-light: #EE964B;
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
             --light: #FAF0CA;
             --white: #FFFFFF;
-            --dark: #2C3E50;
-            --gray: #7F8C8D;
+            --black: #333333;
+            --gray: #666666;
             --light-gray: #F8F9FA;
             --border: #E9ECEF;
-            --success: #28A745;
-            --error: #DC3545;
-            --warning: #FFC107;
-            
-            --shadow-sm: 0 2px 8px rgba(13, 59, 102, 0.08);
-            --shadow-md: 0 4px 16px rgba(13, 59, 102, 0.12);
-            --shadow-lg: 0 8px 32px rgba(13, 59, 102, 0.15);
-            
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --card-bg: #FFFFFF;
+            --header-bg: #FFFFFF;
+            --main-bg: #F8F9FA;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+            --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+            --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+            --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
         }
 
-        /* Estilos Base */
+        /* Estilos Generales */
         body {
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, var(--light) 0%, var(--light-gray) 100%);
-            color: var(--dark);
-            line-height: 1.6;
-            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--main-bg);
+            color: var(--black);
             margin: 0;
+            min-height: 100vh;
         }
 
-        /* Layout Principal */
-        .admin-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* Header con Gradiente */
+        /* Encabezado Principal */
         .main-header {
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border-radius: var(--radius-lg);
-            padding: 1.5rem 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-lg);
+            background: var(--gradient-primary);
+            color: var(--white);
+            padding: 18px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .main-header h1 {
             color: var(--white);
             font-weight: 700;
-            font-size: 1.75rem;
+            font-size: 1.8rem;
             margin: 0;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .header-icons {
             display: flex;
-            gap: 1rem;
-            align-items: center;
+            gap: 20px;
         }
 
-        .header-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--secondary);
-            text-decoration: none;
-            transition: var(--transition);
-            position: relative;
-        }
-
-        .header-icon:hover {
-            background: var(--secondary);
-            color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(244, 211, 94, 0.3);
-        }
-
-        /* Panel de Formulario */
-        .form-panel {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
-            box-shadow: var(--shadow-md);
-            border-top: 4px solid var(--primary);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .form-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
-        }
-
-        .form-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--light);
-        }
-
-        .form-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: var(--radius-md);
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--white);
+        .header-icons i {
             font-size: 1.5rem;
-            box-shadow: var(--shadow-sm);
+            color: var(--accent3);
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        .form-title {
-            color: var(--primary);
+        .header-icons i:hover {
+            transform: scale(1.1);
+            color: var(--white);
+        }
+
+        /* Área de Contenido */
+        .content-area {
+            padding: 0 20px;
+        }
+
+        /* Encabezado de Página */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border-top: 4px solid var(--accent4);
+        }
+
+        .title-action {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .page-title {
+            color: var(--accent4);
             font-weight: 700;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             margin: 0;
         }
 
-        .form-subtitle {
-            color: var(--gray);
-            margin: 0;
-            font-size: 0.9rem;
-        }
-
-        /* Grupos de Formulario */
-        .form-section {
-            margin-bottom: 2rem;
-            background: var(--white);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            border: 1px solid var(--border);
-            transition: var(--transition);
-        }
-
-        .form-section:hover {
-            border-color: var(--primary-light);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .section-title {
-            color: var(--primary);
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--secondary);
-            display: flex;
+        .btn-create {
+            background: var(--gradient-secondary);
+            color: var(--black);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-
-        /* Campos de Formulario */
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-label {
-            color: var(--primary);
+            gap: 8px;
             font-weight: 600;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+            width: fit-content;
         }
 
-        .form-control, .form-select {
-            border: 2px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 0.875rem 1rem;
-            font-size: 0.95rem;
-            transition: var(--transition);
-            background: var(--white);
+        .btn-create:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
         }
 
-        .form-control:focus, .form-select:focus {
-            border-color: var(--accent-light);
-            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.1);
-            outline: none;
-        }
-
-        .form-control:hover, .form-select:hover {
-            border-color: var(--accent-light);
-        }
-
-        /* Sección de Padre/Acudiente */
-        .parent-section {
-            background: linear-gradient(135deg, var(--light) 0%, rgba(244, 211, 94, 0.1) 100%);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            margin-top: 1rem;
-            border-left: 4px solid var(--secondary);
-            border: 1px solid rgba(244, 211, 94, 0.3);
-        }
-
-        .parent-options {
-            display: flex;
-            gap: 1rem;
-            align-items: stretch;
-            margin-bottom: 1.5rem;
-        }
-
-        .parent-search-container {
-            flex: 2;
-        }
-
-        .parent-register-btn {
-            flex: 1;
+        .placeholder-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--gradient-accent);
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, var(--accent-light), var(--accent));
             color: var(--white);
-            border: none;
-            border-radius: var(--radius-sm);
-            padding: 0.875rem 1rem;
-            font-weight: 600;
-            transition: var(--transition);
-            cursor: pointer;
-            text-decoration: none;
+            font-size: 2rem;
         }
 
-        .parent-register-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
-        }
-
-        /* Formulario de Padre (Acordeón) */
-        .parent-form-container {
-            max-height: 0;
+        /* Contenedor de Tabla */
+        .table-container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 25px;
+            border-top: 4px solid var(--accent3);
             overflow: hidden;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            background: var(--white);
-            border-radius: var(--radius-md);
-            margin-top: 1rem;
-            border: 2px solid transparent;
         }
 
-        .parent-form-container.active {
-            max-height: 1000px;
-            border-color: var(--secondary);
-            padding: 2rem;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .parent-form-header {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--light);
-        }
-
-        .parent-form-title {
-            color: var(--primary);
-            font-weight: 600;
-            font-size: 1.2rem;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .close-parent-form {
-            background: none;
-            border: none;
-            color: var(--gray);
-            font-size: 1.5rem;
-            cursor: pointer;
-            transition: var(--transition);
-            padding: 0.5rem;
-            border-radius: var(--radius-sm);
-        }
-
-        .close-parent-form:hover {
-            color: var(--accent);
-            background: rgba(249, 87, 56, 0.1);
-        }
-
-        /* Resultados de búsqueda */
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--white);
-            border: 2px solid var(--border);
-            border-top: none;
-            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: var(--shadow-md);
-            display: none;
-        }
-
-        .search-results.active {
-            display: block;
-        }
-
-        .search-result-item {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .search-result-item:hover {
-            background: var(--light);
-        }
-
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-
-        .parent-info {
+        /* Controles de Tabla */
+        .table-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
-        .parent-name {
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .parent-email {
-            color: var(--gray);
-            font-size: 0.9rem;
-        }
-
-        /* Badge para padre seleccionado */
-        .selected-parent {
-            background: linear-gradient(135deg, var(--success), #20c997);
-            color: var(--white);
-            padding: 0.5rem 1rem;
-            border-radius: var(--radius-sm);
-            margin-top: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .selected-parent .remove-parent {
-            background: none;
-            border: none;
-            color: var(--white);
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-            transition: var(--transition);
-        }
-
-        .selected-parent .remove-parent:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Botones */
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border: none;
-            color: var(--white);
-            padding: 1rem 2rem;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            width: 100%;
-            margin-top: 1rem;
-            box-shadow: var(--shadow-md);
+        .search-bar {
             position: relative;
+            display: flex;
+            align-items: center;
+            background: var(--white);
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.2);
+        }
+
+        .search-bar i {
+            color: var(--gray);
+            margin-right: 10px;
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 250px;
+            color: var(--black);
+            font-weight: 500;
+        }
+
+        /* Tabla de Usuarios */
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
             overflow: hidden;
         }
 
-        .btn-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            background: linear-gradient(135deg, var(--primary-light), var(--primary));
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--white), var(--light-gray));
-            border: 2px solid var(--secondary);
-            color: var(--dark);
-            padding: 0.875rem 2rem;
-            border-radius: var(--radius-md);
+        .user-table th {
+            background-color: var(--accent4);
+            color: var(--white);
+            padding: 15px 12px;
+            text-align: left;
             font-weight: 600;
-            transition: var(--transition);
+            border-bottom: 2px solid var(--accent3);
+        }
+
+        .user-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .user-table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .user-table tbody tr:hover {
+            background-color: var(--light);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Celdas de Acciones */
+        .actions-cell {
+            white-space: nowrap;
+        }
+
+        .btn-action {
+            margin-right: 8px;
+            color: var(--gray);
+            text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            padding: 6px;
+            border-radius: 4px;
+        }
+
+        .btn-action:hover {
+            color: var(--accent4);
+            background-color: rgba(13, 59, 102, 0.1);
+            transform: scale(1.1);
+        }
+
+        .btn-action.delete {
+            color: var(--accent1);
+        }
+
+        .btn-action.delete:hover {
+            background-color: rgba(249, 87, 56, 0.1);
+        }
+
+        /* Estilos para badges */
+        .badge {
+            padding: 0.35em 0.65em;
+            border-radius: 0.5rem;
+            color: var(--white);
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .badge-danger {
+            background: linear-gradient(135deg, #dc3545, #e25563);
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, #ffc107, #ffca2c);
+        }
+
+        /* Avatar */
+        .avatar-cell {
+            width: 50px;
+            height: 50px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-secondary);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            width: 100%;
-            text-decoration: none;
-            margin-top: 1rem;
-            box-shadow: var(--shadow-sm);
+            justify-content: center;
+            color: var(--black);
+            font-weight: bold;
+            margin: 0 auto;
         }
 
-        .btn-secondary:hover {
-            border-color: var(--accent-light);
-            background: var(--light);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-            color: var(--primary);
-        }
-
-        /* Animaciones */
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .form-panel {
-            animation: slideIn 0.6s ease-out;
+        /* Checkbox */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent4);
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            .admin-container {
-                padding: 1rem;
-            }
-            
-            .form-panel {
-                padding: 1.5rem;
-            }
-            
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .parent-options {
+        @media (max-width: 1100px) {
+            .table-controls {
                 flex-direction: column;
+                align-items: stretch;
             }
             
-            .parent-search-container,
-            .parent-register-btn {
-                flex: none;
+            .search-bar {
+                width: 100%;
+            }
+            
+            .search-bar input {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .title-action {
+                align-items: center;
+            }
+            
+            .user-table {
+                display: block;
+                overflow-x: auto;
             }
         }
     </style>
 </head>
-<body>
-{% extends "base.html" %}
 
-{% block content %}
-<div class="admin-container">
+<body>
+    {% extends "base.html" %}
+    {% block content %}
+
     <header class="main-header">
-        <h1>Gestión de Usuarios / Roles</h1>
+        <h1>Gestión de Estudiantes</h1>
         <div class="header-icons">
-            <a href="#" class="header-icon">
-                <i class="fas fa-bell"></i>
-            </a>
-            <a href="#" class="header-icon">
-                <i class="fas fa-user-circle"></i>
-            </a>
+            <i class="fa-solid fa-bell"></i>
+            <i class="fa-solid fa-user"></i>
         </div>
     </header>
 
-    <div class="form-panel">
-        <div class="form-header">
-            <div class="form-icon">
-                <i class="fas fa-user-graduate"></i>
+    <main class="content-area">
+        <section class="page-header">
+            <div class="title-action">
+                <h2 class="page-title">Lista de Estudiantes</h2>
+                <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                    <i class="fas fa-user-plus"></i> Registrar Nuevo Estudiante
+                </a>
             </div>
-            <div>
-                <h2 class="form-title">Crear Nuevo Estudiante</h2>
-                <p class="form-subtitle">Complete la información del estudiante y asocie un padre/acudiente</p>
+            <div class="placeholder-image">
+                <i class="fa-solid fa-user-graduate"></i>
             </div>
-        </div>
+        </section>
 
-        <form method="POST" action="{{ url_for('admin.crear_usuario') }}" id="studentForm">
-            {{ form.hidden_tag() }}
-
-            <!-- Información Personal del Estudiante -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fas fa-id-card"></i>
-                    Información Personal del Estudiante
-                </h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="{{ form.no_identidad.id }}" class="form-label">
-                            <i class="fas fa-fingerprint"></i>
-                            Número de Identidad
-                        </label>
-                        {{ form.no_identidad(class="form-control", placeholder="Ej: 1234567890") }}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="{{ form.tipo_doc.id }}" class="form-label">
-                            <i class="fas fa-file-alt"></i>
-                            Tipo de Documento
-                        </label>
-                        {{ form.tipo_doc(class="form-select") }}
-                    </div>
+        <section class="table-container">
+            <div class="table-controls">
+                <div class="search-bar">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="search" id="searchInput" placeholder="Buscar estudiantes por nombre, identidad o correo...">
                 </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="{{ form.nombre.id }}" class="form-label">
-                            <i class="fas fa-user"></i>
-                            Nombre
-                        </label>
-                        {{ form.nombre(class="form-control", placeholder="Nombre del estudiante") }}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="{{ form.apellido.id }}" class="form-label">
-                            <i class="fas fa-user"></i>
-                            Apellido
-                        </label>
-                        {{ form.apellido(class="form-control", placeholder="Apellido del estudiante") }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Información de Contacto del Estudiante -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fas fa-address-book"></i>
-                    Información de Contacto
-                </h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="{{ form.correo.id }}" class="form-label">
-                            <i class="fas fa-envelope"></i>
-                            Correo Electrónico
-                        </label>
-                        {{ form.correo(class="form-control", placeholder="correo@ejemplo.com") }}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="{{ form.telefono.id }}" class="form-label">
-                            <i class="fas fa-phone"></i>
-                            Teléfono Celular
-                        </label>
-                        {{ form.telefono(class="form-control", placeholder="+57 300 123 4567") }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Asociación con Padre/Acudiente -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fas fa-users"></i>
-                    Padre/Acudiente
-                </h3>
-                
-                <div class="parent-section">
-                    <div class="parent-options">
-                        <div class="parent-search-container">
-                            <label class="form-label">
-                                <i class="fas fa-search"></i>
-                                Buscar Padre/Acudiente Existente
-                            </label>
-                            <div style="position: relative;">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="parentSearch" 
-                                       placeholder="Buscar por nombre, identidad o correo..."
-                                       autocomplete="off">
-                                <div class="search-results" id="searchResults"></div>
-                            </div>
-                        </div>
-                        
-                        <button type="button" class="parent-register-btn" id="registerParentBtn">
-                            <i class="fas fa-user-plus me-2"></i>
-                            Registrar Nuevo Padre
-                        </button>
-                    </div>
-
-                    <!-- Padre Seleccionado -->
-                    <div id="selectedParentContainer" style="display: none;">
-                        <div class="selected-parent">
-                            <div>
-                                <strong id="selectedParentName"></strong>
-                                <div id="selectedParentInfo" class="parent-email"></div>
-                            </div>
-                            <button type="button" class="remove-parent" id="removeParentBtn">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <input type="hidden" name="parent_id" id="selectedParentId">
-                    </div>
-                </div>
-
-                <!-- Formulario de Padre (Acordeón) -->
-                <div class="parent-form-container" id="parentFormContainer">
-                    <div class="parent-form-header">
-                        <h4 class="parent-form-title">
-                            <i class="fas fa-user-plus"></i>
-                            Registrar Nuevo Padre/Acudiente
-                        </h4>
-                        <button type="button" class="close-parent-form" id="closeParentForm">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-fingerprint"></i>
-                                Número de Identidad
-                            </label>
-                            <input type="text" class="form-control" id="parentNoIdentidad" placeholder="Número de identidad">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-file-alt"></i>
-                                Tipo de Documento
-                            </label>
-                            <select class="form-select" id="parentTipoDoc">
-                                <option value="CC">Cédula de Ciudadanía</option>
-                                <option value="CE">Cédula de Extranjería</option>
-                                <option value="TI">Tarjeta de Identidad</option>
-                                <option value="PAS">Pasaporte</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-user"></i>
-                                Nombre
-                            </label>
-                            <input type="text" class="form-control" id="parentNombre" placeholder="Nombre del padre/acudiente">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-user"></i>
-                                Apellido
-                            </label>
-                            <input type="text" class="form-control" id="parentApellido" placeholder="Apellido del padre/acudiente">
-                        </div>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-envelope"></i>
-                                Correo Electrónico
-                            </label>
-                            <input type="email" class="form-control" id="parentCorreo" placeholder="correo@ejemplo.com">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-phone"></i>
-                                Teléfono Celular
-                            </label>
-                            <input type="tel" class="form-control" id="parentTelefono" placeholder="+57 300 123 4567">
-                        </div>
-                    </div>
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-lock"></i>
-                                Contraseña
-                            </label>
-                            <input type="password" class="form-control" id="parentPassword" placeholder="Contraseña segura">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                <i class="fas fa-lock"></i>
-                                Confirmar Contraseña
-                            </label>
-                            <input type="password" class="form-control" id="parentConfirmPassword" placeholder="Repetir contraseña">
-                        </div>
-                    </div>
-
-                    <button type="button" class="btn-primary" id="saveParentBtn">
-                        <i class="fas fa-save me-2"></i>
-                        Guardar Padre/Acudiente
+                <div class="table-actions">
+                    <button class="btn-action" id="refreshBtn" title="Actualizar lista">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Detalles de Matrícula -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <i class="fas fa-graduation-cap"></i>
-                    Detalles de Matrícula
-                </h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="{{ form.curso_id.id }}" class="form-label">Curso</label>
-                        {{ form.curso_id(class="form-select") }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.anio_matricula.id }}" class="form-label">Año de Matrícula</label>
-                        {{ form.anio_matricula(class="form-control", value=now().year) }}
-                    </div>
-                </div>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllCheckbox"></th>
+                        <th>No. Identidad</th>
+                        <th>Avatar</th>
+                        <th>Nombre completo</th>
+                        <th>Correo</th>
+                        <th>Curso</th>
+                        <th>Año Matrícula</th>
+                        <th>Padre/Acudiente</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="estudiantes-table-body">
+    <!-- Los datos se cargarán desde la base de datos -->
+    {% for estudiante in estudiantes %}
+    <tr>
+        <td><input type="checkbox" class="student-checkbox" value="{{ estudiante.id_usuario }}"></td>
+        <td>{{ estudiante.no_identidad }}</td>
+        <td class="avatar-cell">
+            <div class="avatar">
+                {{ estudiante.nombre[0] }}{{ estudiante.apellido[0] }}
             </div>
-
-            <button type="submit" class="btn-primary">
-                <i class="fas fa-user-plus me-2"></i>
-                Crear Estudiante
+        </td>
+        <td>{{ estudiante.nombre }} {{ estudiante.apellido }}</td>
+        <td>{{ estudiante.correo }}</td>
+        <td>
+            {% if estudiante._matriculas %}
+                {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
+                {% set curso = estudiante._cursos_dict.get(matricula_reciente.cursoId) %}
+                {{ curso.nombreCurso if curso else "Sin asignar" }}
+            {% else %}
+                Sin asignar
+            {% endif %}
+        </td>
+        <td>
+            {% if estudiante._matriculas %}
+                {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
+                {{ matricula_reciente.año }}
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
+        <td>
+            {% if estudiante._padres %}
+                {{ estudiante._padres|join(', ') }}
+            {% else %}
+                Sin asignar
+            {% endif %}
+        </td>
+        <td>
+            <span class="badge {% if estudiante.estado_cuenta == 'activa' %}badge-success{% else %}badge-danger{% endif %}">
+                {{ estudiante.estado_cuenta }}
+            </span>
+        </td>
+        <td class="actions-cell">
+            <button class="btn-action" onclick="editarEstudiante({{ estudiante.id_usuario }})" title="Editar">
+                <i class="fas fa-edit"></i>
             </button>
-        </form>
+            <button class="btn-action" onclick="verDetalles({{ estudiante.id_usuario }})" title="Ver detalles">
+                <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn-action delete" onclick="eliminarEstudiante({{ estudiante.id_usuario }})" title="Eliminar">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>
+    {% endfor %}
+</tbody>
+            </table>
 
-        <a href="{{ url_for('admin.estudiantes') }}" class="btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>
-            Volver a la Lista
-        </a>
-    </div>
-</div>
+            <!-- Mensaje cuando no hay estudiantes -->
+            <div id="no-students-message" style="display: {% if estudiantes %}none{% else %}block{% endif %}; text-align: center; padding: 40px;">
+                <i class="fas fa-user-graduate" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                <h3 style="color: var(--gray); margin-bottom: 10px;">No hay estudiantes registrados</h3>
+                <p style="color: var(--gray); margin-bottom: 20px;">Comienza registrando el primer estudiante en el sistema</p>
+                <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                    <i class="fas fa-user-plus"></i> Registrar Primer Estudiante
+                </a>
+            </div>
+        </section>
+    </main>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const parentSearch = document.getElementById('parentSearch');
-    const searchResults = document.getElementById('searchResults');
-    const registerParentBtn = document.getElementById('registerParentBtn');
-    const parentFormContainer = document.getElementById('parentFormContainer');
-    const closeParentForm = document.getElementById('closeParentForm');
-    const saveParentBtn = document.getElementById('saveParentBtn');
-    const selectedParentContainer = document.getElementById('selectedParentContainer');
-    const selectedParentName = document.getElementById('selectedParentName');
-    const selectedParentInfo = document.getElementById('selectedParentInfo');
-    const selectedParentId = document.getElementById('selectedParentId');
-    const removeParentBtn = document.getElementById('removeParentBtn');
-    const studentForm = document.getElementById('studentForm');
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const estudiantesTableBody = document.getElementById('estudiantes-table-body');
+            const noStudentsMessage = document.getElementById('no-students-message');
+            const searchInput = document.getElementById('searchInput');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
-    // Datos de ejemplo para simulación (en producción vendrían de la BD)
-    const parentsData = [
-        { id: 1, nombre: 'Juan Pérez', email: 'juan.perez@email.com', identidad: '123456789' },
-        { id: 2, nombre: 'María González', email: 'maria.gonzalez@email.com', identidad: '987654321' },
-        { id: 3, nombre: 'Carlos López', email: 'carlos.lopez@email.com', identidad: '456789123' },
-        { id: 4, nombre: 'Ana Rodríguez', email: 'ana.rodriguez@email.com', identidad: '321654987' }
-    ];
+            // Función para filtrar estudiantes
+            function filtrarEstudiantes() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                const filas = estudiantesTableBody.getElementsByTagName('tr');
+                let estudiantesVisibles = 0;
 
-    // Búsqueda de padres
-    parentSearch.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        if (searchTerm.length < 2) {
-            searchResults.classList.remove('active');
-            return;
-        }
+                for (let fila of filas) {
+                    const textoFila = fila.textContent.toLowerCase();
+                    if (textoFila.includes(searchTerm)) {
+                        fila.style.display = '';
+                        estudiantesVisibles++;
+                    } else {
+                        fila.style.display = 'none';
+                    }
+                }
 
-        const filteredParents = parentsData.filter(parent => 
-            parent.nombre.toLowerCase().includes(searchTerm) ||
-            parent.email.toLowerCase().includes(searchTerm) ||
-            parent.identidad.includes(searchTerm)
-        );
-
-        displaySearchResults(filteredParents);
-    });
-
-    function displaySearchResults(parents) {
-        searchResults.innerHTML = '';
-        
-        if (parents.length === 0) {
-            searchResults.innerHTML = '<div class="search-result-item">No se encontraron padres/acudientes</div>';
-        } else {
-            parents.forEach(parent => {
-                const resultItem = document.createElement('div');
-                resultItem.className = 'search-result-item';
-                resultItem.innerHTML = `
-                    <div class="parent-info">
-                        <div>
-                            <div class="parent-name">${parent.nombre}</div>
-                            <div class="parent-email">${parent.email} • ${parent.identidad}</div>
-                        </div>
-                        <i class="fas fa-plus" style="color: var(--success);"></i>
-                    </div>
-                `;
-                resultItem.addEventListener('click', () => selectParent(parent));
-                searchResults.appendChild(resultItem);
-            });
-        }
-        
-        searchResults.classList.add('active');
-    }
-
-    // Seleccionar padre
-    function selectParent(parent) {
-        selectedParentName.textContent = parent.nombre;
-        selectedParentInfo.textContent = `${parent.email} • ${parent.identidad}`;
-        selectedParentId.value = parent.id;
-        selectedParentContainer.style.display = 'block';
-        searchResults.classList.remove('active');
-        parentSearch.value = '';
-        
-        // Cerrar formulario de registro si está abierto
-        parentFormContainer.classList.remove('active');
-    }
-
-    // Remover padre seleccionado
-    removeParentBtn.addEventListener('click', function() {
-        selectedParentContainer.style.display = 'none';
-        selectedParentId.value = '';
-    });
-
-    // Mostrar formulario de registro de padre
-    registerParentBtn.addEventListener('click', function() {
-        parentFormContainer.classList.add('active');
-        // Ocultar resultados de búsqueda si están visibles
-        searchResults.classList.remove('active');
-    });
-
-    // Cerrar formulario de registro de padre
-    closeParentForm.addEventListener('click', function() {
-        parentFormContainer.classList.remove('active');
-    });
-
-    // Guardar nuevo padre
-    saveParentBtn.addEventListener('click', function() {
-        // Validar formulario de padre
-        const parentData = {
-            no_identidad: document.getElementById('parentNoIdentidad').value,
-            tipo_doc: document.getElementById('parentTipoDoc').value,
-            nombre: document.getElementById('parentNombre').value,
-            apellido: document.getElementById('parentApellido').value,
-            correo: document.getElementById('parentCorreo').value,
-            telefono: document.getElementById('parentTelefono').value,
-            password: document.getElementById('parentPassword').value
-        };
-
-        // Validaciones básicas
-        if (!parentData.no_identidad || !parentData.nombre || !parentData.apellido || !parentData.correo) {
-            alert('Por favor complete todos los campos obligatorios del padre/acudiente');
-            return;
-        }
-
-        if (parentData.password !== document.getElementById('parentConfirmPassword').value) {
-            alert('Las contraseñas no coinciden');
-            return;
-        }
-
-        // Simular guardado en BD (en producción sería una llamada AJAX)
-        const newParentId = parentsData.length + 1;
-        const newParent = {
-            id: newParentId,
-            nombre: `${parentData.nombre} ${parentData.apellido}`,
-            email: parentData.correo,
-            identidad: parentData.no_identidad
-        };
-
-        // Agregar a la lista de padres (simulación)
-        parentsData.push(newParent);
-
-        // Seleccionar automáticamente el nuevo padre
-        selectParent(newParent);
-
-        // Limpiar formulario de padre
-        document.getElementById('parentNoIdentidad').value = '';
-        document.getElementById('parentNombre').value = '';
-        document.getElementById('parentApellido').value = '';
-        document.getElementById('parentCorreo').value = '';
-        document.getElementById('parentTelefono').value = '';
-        document.getElementById('parentPassword').value = '';
-        document.getElementById('parentConfirmPassword').value = '';
-
-        // Cerrar formulario de padre
-        parentFormContainer.classList.remove('active');
-
-        alert('Padre/acudiente registrado exitosamente y asociado al estudiante');
-    });
-
-    // Cerrar resultados de búsqueda al hacer click fuera
-    document.addEventListener('click', function(e) {
-        if (!parentSearch.contains(e.target) && !searchResults.contains(e.target)) {
-            searchResults.classList.remove('active');
-        }
-    });
-
-    // Prevenir envío del formulario si no hay padre seleccionado (opcional)
-    studentForm.addEventListener('submit', function(e) {
-        if (!selectedParentId.value) {
-            if (!confirm('¿Está seguro de crear el estudiante sin asociar un padre/acudiente?')) {
-                e.preventDefault();
+                // Mostrar mensaje si no hay resultados
+                if (estudiantesVisibles === 0 && searchTerm !== '') {
+                    noStudentsMessage.style.display = 'block';
+                    noStudentsMessage.innerHTML = `
+                        <i class="fas fa-search" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                        <h3 style="color: var(--gray); margin-bottom: 10px;">No se encontraron estudiantes</h3>
+                        <p style="color: var(--gray); margin-bottom: 20px;">No hay estudiantes que coincidan con "${searchTerm}"</p>
+                        <button class="btn-create" onclick="limpiarBusqueda()">
+                            <i class="fas fa-times"></i> Limpiar búsqueda
+                        </button>
+                    `;
+                } else if (estudiantesVisibles === 0) {
+                    noStudentsMessage.style.display = 'block';
+                } else {
+                    noStudentsMessage.style.display = 'none';
+                }
             }
-        }
-    });
-});
-</script>
 
-{% endblock %}
+            // Función para limpiar búsqueda
+            window.limpiarBusqueda = function() {
+                searchInput.value = '';
+                filtrarEstudiantes();
+                noStudentsMessage.innerHTML = `
+                    <i class="fas fa-user-graduate" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                    <h3 style="color: var(--gray); margin-bottom: 10px;">No hay estudiantes registrados</h3>
+                    <p style="color: var(--gray); margin-bottom: 20px;">Comienza registrando el primer estudiante en el sistema</p>
+                    <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                        <i class="fas fa-user-plus"></i> Registrar Primer Estudiante
+                    </a>
+                `;
+            }
+
+            // Event listener para búsqueda
+            searchInput.addEventListener('input', filtrarEstudiantes);
+
+            // Botón de actualizar
+            refreshBtn.addEventListener('click', function() {
+                // Recargar la página para obtener datos actualizados
+                window.location.reload();
+                
+                // Efecto visual de actualización
+                refreshBtn.style.transform = 'rotate(360deg)';
+                setTimeout(() => {
+                    refreshBtn.style.transform = 'rotate(0deg)';
+                }, 500);
+            });
+
+            // Checkbox para seleccionar todos
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.student-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+
+            // Funciones de acción
+            window.editarEstudiante = function(id) {
+                window.location.href = "{{ url_for('admin.editar_estudiante', id=0) }}".replace('0', id);
+            };
+
+            window.verDetalles = function(id) {
+                window.location.href = "{{ url_for('admin.detalles_estudiante', id=0) }}".replace('0', id);
+            };
+
+            window.eliminarEstudiante = function(id) {
+                if (confirm('¿Está seguro de que desea eliminar este estudiante?')) {
+                    fetch("{{ url_for('admin.eliminar_estudiante', id=0) }}".replace('0', id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                            // Se eliminó X-CSRFToken ya que no está disponible
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Estudiante eliminado correctamente');
+                            window.location.reload();
+                        } else {
+                            alert('Error al eliminar el estudiante: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al eliminar el estudiante');
+                    });
+                }
+            };
+        });
+    </script>
+    {% endblock %}
 </body>
 </html>
