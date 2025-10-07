@@ -55,6 +55,7 @@ class Usuario(db.Model, UserMixin):
     estado_cuenta = db.Column(db.Enum('activa', 'inactiva', name='estado_cuenta_enum'), nullable=False, default='activa')
     
     # Nuevos campos para verificación de email
+    temp_password = db.Column(db.String(100), nullable=True)
     email_verified = db.Column(db.Boolean, default=False)
     verification_code = db.Column(db.String(8), nullable=True)
     verification_code_expires = db.Column(db.DateTime, nullable=True)

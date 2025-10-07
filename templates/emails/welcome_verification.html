@@ -1,46 +1,45 @@
 <!-- templates/emails/welcome_verification.html -->
-{% extends "emails/layout/email_base.html" %}
-
-{% block title %}Verifica tu Email - AcentraX{% endblock %}
-
-{% block header_title %}¡Bienvenido a AcentraX!{% endblock %}
-
-{% block content %}
-<h2 style="color: #0D3B66; margin-bottom: 20px;">Hola {{ usuario.nombre }},</h2>
-
-<p>Te damos la bienvenida a AcentraX. Para comenzar a utilizar tu cuenta, necesitamos verificar tu dirección de correo electrónico.</p>
-
-<div class="info-box">
-    <p><strong>Tu código de verificación es:</strong></p>
-    <div class="verification-code">{{ verification_code }}</div>
-    <p><small>Este código expirará en 24 horas</small></p>
-</div>
-
-<p><strong>O haz clic en el siguiente botón para verificar automáticamente:</strong></p>
-<div style="text-align: center;">
-    <a href="{{ verification_url }}" class="btn">Verificar Mi Email</a>
-</div>
-
-<p style="margin-top: 25px; color: #666;">
-    Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
-    <code style="background: #f4f4f4; padding: 8px; border-radius: 4px; word-break: break-all;">{{ verification_url }}</code>
-</p>
-
-<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0;">
-    <strong>💡 Importante:</strong>
-    <ul style="margin: 10px 0; padding-left: 20px;">
-        <li>Guarda esta información en un lugar seguro</li>
-        <li>No compartas tu código con nadie</li>
-        <li>Si no solicitaste esta cuenta, ignora este mensaje</li>
-    </ul>
-</div>
-
-<p style="margin-top: 25px;">
-    Si tienes alguna pregunta, no dudes en contactar al administrador del sistema.
-</p>
-
-<p style="margin-top: 30px;">
-    Saludos cordiales,<br>
-    <strong>Equipo AcentraX</strong>
-</p>
-{% endblock %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #0D3B66; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9f9f9; padding: 20px; }
+        .code-box { background: #ffffff; border: 2px dashed #F95738; padding: 15px; text-align: center; margin: 20px 0; font-size: 24px; font-weight: bold; }
+        .footer { background: #ddd; padding: 10px; text-align: center; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>¡Bienvenido al Sistema Académico!</h1>
+        </div>
+        <div class="content">
+            <p>Hola <strong>{{ usuario.nombre_completo }}</strong>,</p>
+            <p>Tu cuenta ha sido creada exitosamente. Para activarla, necesitas verificar tu dirección de correo electrónico.</p>
+            
+            <p><strong>Tu código de verificación es:</strong></p>
+            <div class="code-box">
+                {{ verification_code }}
+            </div>
+            
+            <p>También puedes verificar tu cuenta haciendo clic en el siguiente enlace:</p>
+            <p style="text-align: center;">
+                <a href="{{ verification_url }}" style="background: #F95738; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                    Verificar Mi Cuenta
+                </a>
+            </p>
+            
+            <p><strong>Este código expirará en 24 horas.</strong></p>
+            
+            <p>Si no solicitaste esta cuenta, puedes ignorar este mensaje.</p>
+        </div>
+        <div class="footer">
+            <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+        </div>
+    </div>
+</body>
+</html>

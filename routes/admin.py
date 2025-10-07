@@ -1,5 +1,3 @@
-# routes/admin.py
-
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
@@ -8,10 +6,9 @@ from datetime import datetime, date
 import os
 import json
 from werkzeug.utils import secure_filename
-
 from controllers.decorators import role_required
 from extensions import db
-from services.email_service import send_welcome_email, send_verification_success_email, generate_verification_code
+from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
 from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
@@ -364,7 +361,11 @@ def crear_estudiante():
     if form.validate_on_submit():
         try:
             from datetime import datetime, timedelta
-            verification_code = generate_verification_code()# Crear usuario estudiante con verificación de email
+            verification_code = generate_verification_code()
+            
+            print(f"DEBUG: Creando estudiante - Contraseña del formulario: {form.password.data}")
+            
+            # Crear usuario estudiante con verificación de email
             new_user = Usuario(
                 tipo_doc=form.tipo_doc.data,
                 no_identidad=form.no_identidad.data,
@@ -376,12 +377,18 @@ def crear_estudiante():
                 id_rol_fk=rol_estudiante.id_rol,
                 estado_cuenta='activa',
                 email_verified=False,
-                verification_code=verification_code, verification_code_expires=datetime.utcnow() + timedelta(hours=24)
+                verification_code=verification_code, 
+                verification_code_expires=datetime.utcnow() + timedelta(hours=24),
+                verification_attempts=0,
+                temp_password=form.password.data  # ✅ GUARDAR CONTRASEÑA TEMPORAL
             )
-            new_user.set_password(form.password.data)
+            new_user.set_password(form.password.data)  # Esto hashea la contraseña
             
             db.session.add(new_user)
             db.session.flush()  # Para obtener el ID del estudiante
+            
+            print(f"DEBUG: Estudiante creado con ID: {new_user.id_usuario}")
+            print(f"DEBUG: Contraseña temporal guardada: {new_user.temp_password}")
             
             # Crear matrícula si se proporcionó curso y año
             if form.curso_id.data and form.anio_matricula.data:
@@ -397,10 +404,8 @@ def crear_estudiante():
             if parent_id:
                 try:
                     padre_id_int = int(parent_id)
-                    # Verificar que el padre existe
                     padre = Usuario.query.get(padre_id_int)
                     if padre:
-                        # Crear la relación en la tabla estudiante_padre
                         from sqlalchemy import text
                         db.session.execute(
                             text("INSERT INTO estudiante_padre (estudiante_id, padre_id) VALUES (:estudiante_id, :padre_id)"),
@@ -414,18 +419,23 @@ def crear_estudiante():
             
             db.session.commit()
             
+            print(f"DEBUG: Enviando correo de verificación a {new_user.correo}")
+            
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, new_user.verification_code)
+            email_sent = send_welcome_email(new_user, verification_code)
             
             if email_sent:
                 flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
+                print(f"DEBUG: Correo enviado exitosamente")
             else:
                 flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
+                print(f"DEBUG: Error enviando correo")
             
             return redirect(url_for('admin.estudiantes'))
             
         except Exception as e:
             db.session.rollback()
+            print(f"ERROR en crear_estudiante: {str(e)}")
             flash(f'Error al crear estudiante: {str(e)}', 'error')
     
     return render_template(
@@ -437,6 +447,27 @@ def crear_estudiante():
         rol_predefinido='Estudiante',
         rol_predefinido_id=str(rol_estudiante.id_rol)
     )
+
+@admin_bp.route('/debug/usuarios/<int:user_id>')
+@login_required
+@role_required(1)
+def debug_usuario(user_id):
+    """Endpoint para debug de usuario"""
+    usuario = Usuario.query.get_or_404(user_id)
+    
+    debug_info = {
+        'id_usuario': usuario.id_usuario,
+        'nombre_completo': usuario.nombre_completo,
+        'correo': usuario.correo,
+        'email_verified': usuario.email_verified,
+        'verification_code': usuario.verification_code,
+        'verification_code_expires': usuario.verification_code_expires,
+        'verification_attempts': usuario.verification_attempts,
+        'estado_cuenta': usuario.estado_cuenta,
+        'rol': usuario.rol.nombre if usuario.rol else 'N/A'
+    }
+    
+    return jsonify(debug_info)
 
 # Rutas específicas para estudiantes
 @admin_bp.route('/estudiantes/<int:id>/eliminar', methods=['DELETE'])
@@ -642,7 +673,7 @@ def api_superadmins():
 @login_required
 @role_required(1)
 def crear_usuario():
-    """Crear nuevo usuario con rol específico"""
+    """Crear nuevo usuario con rol específico y verificación de email"""
     form = RegistrationForm()
     
     # Obtener el rol predefinido desde la URL
@@ -682,6 +713,11 @@ def crear_usuario():
         is_student = (rol_estudiante and selected_role_id == rol_estudiante.id_rol)
         is_professor = (rol_profesor and selected_role_id == rol_profesor.id_rol)
 
+        # Generar código de verificación
+        from datetime import datetime, timedelta
+        verification_code = generate_verification_code()
+        print(f"DEBUG: Creando usuario - Contraseña del formulario:{form.password.data}")
+        # Crear usuario con verificación de email
         new_user = Usuario(
             tipo_doc=form.tipo_doc.data,
             no_identidad=form.no_identidad.data,
@@ -691,29 +727,37 @@ def crear_usuario():
             correo=form.correo.data,
             telefono=form.telefono.data,
             id_rol_fk=selected_role_id,
-            estado_cuenta='activa'
+            estado_cuenta='activa',
+            email_verified=False,
+            verification_code=verification_code,
+            verification_code_expires=datetime.utcnow() + timedelta(hours=24),
+            verification_attempts=0,
+            temp_password=form.password.data
         )
         new_user.set_password(form.password.data)
         
         try:
             db.session.add(new_user)
-            db.session.commit()
+            db.session.flush()  # Para obtener el ID del usuario
             
-            if is_student:
-                if form.curso_id.data and form.anio_matricula.data:
-                    nueva_matricula = Matricula(
-                        estudianteId=new_user.id_usuario,
-                        cursoId=int(form.curso_id.data),
-                        año=int(form.anio_matricula.data)
-                    )
-                    db.session.add(nueva_matricula)
-                    db.session.commit()
-                else:
-                    flash('Se requiere curso y año de matrícula para un estudiante.', 'warning')
-                    db.session.rollback()
-                    return redirect(url_for('admin.crear_usuario'))
-
-            flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente!', 'success')
+            # Crear matrícula si es estudiante y se proporcionó curso y año
+            if is_student and form.curso_id.data and form.anio_matricula.data:
+                nueva_matricula = Matricula(
+                    estudianteId=new_user.id_usuario,
+                    cursoId=int(form.curso_id.data),
+                    año=int(form.anio_matricula.data)
+                )
+                db.session.add(nueva_matricula)
+            
+            db.session.commit()
+            print(f"DEBUG: Usuario creado - Contraseña temporal: {new_user.temp_password}")
+            # Enviar correo de bienvenida con código de verificación
+            email_sent = send_welcome_email(new_user, new_user.verification_code)
+            
+            if email_sent:
+                flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
+            else:
+                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
             
             # Redirigir según el rol creado
             if is_student:
@@ -741,6 +785,26 @@ def crear_usuario():
         rol_predefinido=rol_predefinido,
         rol_predefinido_id=rol_predefinido_id
     )
+
+@admin_bp.route('/api/verificar-correo')
+@login_required
+@role_required(1)
+def api_verificar_correo():
+    """API para verificar si un correo ya está registrado"""
+    try:
+        email = request.args.get('email', '')
+        
+        if not email:
+            return jsonify({'exists': False})
+        
+        # Verificar si el correo existe
+        usuario = Usuario.query.filter_by(correo=email).first()
+        
+        return jsonify({'exists': usuario is not None})
+        
+    except Exception as e:
+        print(f"Error verificando correo: {e}")
+        return jsonify({'exists': False})
 
 @admin_bp.route('/editar_usuario/<int:user_id>', methods=['GET', 'POST'])
 @login_required

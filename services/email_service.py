@@ -4,6 +4,7 @@ import string
 from flask_mail import Message
 from flask import current_app, render_template, url_for
 from extensions import mail
+from itsdangerous import URLSafeTimedSerializer  # ✅ AGREGAR ESTA IMPORTACIÓN
 
 
 def generate_verification_code():
@@ -12,12 +13,11 @@ def generate_verification_code():
     return ''.join(secrets.choice(characters) for _ in range(8))
 
 def get_serializer():
-    
-    from itsdangerous import URLSafeTimedSerializer
+    """✅ FUNCIÓN CORREGIDA: Obtiene el serializador de forma consistente"""
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
 
 def generate_verification_token(user_id, code, email):
-    """Genera token de verificación consistente"""
+    """✅ FUNCIÓN CORREGIDA: Genera token de verificación consistente"""
     s = get_serializer() 
     return s.dumps({
         'user_id': user_id,
@@ -28,7 +28,7 @@ def generate_verification_token(user_id, code, email):
 def send_welcome_email(usuario, verification_code):
     """Envía correo de bienvenida con código de verificación y link directo"""
     try:
-        # Usar el mismo serializador consistente
+        # ✅ CORREGIDO: Ahora generate_verification_token está definida
         verification_token = generate_verification_token(
             usuario.id_usuario, 
             verification_code, 
@@ -84,6 +84,7 @@ def send_verification_success_email(usuario, password=None):
         )
         
         mail.send(msg)
+        print(f"DEBUG: Correo de verificación exitosa enviado a {usuario.correo}")
         return True
     except Exception as e:
         print(f"Error enviando correo de verificación exitosa: {str(e)}")

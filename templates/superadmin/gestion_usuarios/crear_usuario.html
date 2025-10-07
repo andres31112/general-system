@@ -255,6 +255,42 @@
             border-color: var(--accent-light);
         }
 
+        /* Campo de dirección */
+        .address-field {
+            grid-column: 1 / -1;
+        }
+
+        /* Contraseña generada */
+        .password-generated {
+            background-color: var(--light);
+            border: 2px dashed var(--secondary);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .password-text {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .copy-password {
+            background: var(--secondary);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .copy-password:hover {
+            background: var(--accent-light);
+        }
+
         /* Campos Específicos por Rol */
         .role-fields {
             background: linear-gradient(135deg, var(--light) 0%, rgba(244, 211, 94, 0.1) 100%);
@@ -598,7 +634,7 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ url_for('admin.crear_usuario') }}">
+            <form method="POST" action="{{ url_for('admin.crear_usuario') }}" id="userForm">
                 {{ form.hidden_tag() }}
 
                 <!-- Información Personal -->
@@ -683,6 +719,7 @@
                                 Correo Electrónico
                             </label>
                             {{ form.correo(class="form-control", placeholder="correo@ejemplo.com") }}
+                            <div class="error-message" id="emailError" style="display: none;"></div>
                             {% for error in form.correo.errors %}
                                 <div class="error-message">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -705,6 +742,22 @@
                             {% endfor %}
                         </div>
                     </div>
+
+                    <!-- Nuevo campo de dirección -->
+                    <div class="form-group address-field">
+                        <label for="{{ form.direccion.id }}" class="form-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            Dirección
+                            <span class="required-badge">OBLIGATORIO</span>
+                        </label>
+                        {{ form.direccion(class="form-control", placeholder="Dirección completa del usuario") }}
+                        {% for error in form.direccion.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
                 </div>
 
                 <!-- Seguridad -->
@@ -714,13 +767,26 @@
                         Seguridad
                         <span class="required-badge">OBLIGATORIO</span>
                     </h3>
+                    
+                    <!-- Contraseña generada automáticamente -->
+                    <div class="password-generated" id="passwordContainer" style="display: none;">
+                        <div>
+                            <strong>Contraseña generada automáticamente:</strong>
+                            <div class="password-text" id="generatedPassword"></div>
+                        </div>
+                        <button type="button" class="copy-password" id="copyPasswordBtn">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="{{ form.password.id }}" class="form-label">
                                 <i class="fas fa-lock"></i>
                                 Contraseña
                             </label>
-                            {{ form.password(class="form-control", placeholder="Contraseña segura") }}
+                            {{ form.password(class="form-control", placeholder="Contraseña segura", readonly=true) }}
+                            <small class="text-muted">La contraseña se genera automáticamente con el nombre y documento</small>
                             {% for error in form.password.errors %}
                                 <div class="error-message">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -734,7 +800,7 @@
                                 <i class="fas fa-lock"></i>
                                 Confirmar Contraseña
                             </label>
-                            {{ form.confirm_password(class="form-control", placeholder="Repetir contraseña") }}
+                            {{ form.confirm_password(class="form-control", placeholder="Repetir contraseña", readonly=true) }}
                             {% for error in form.confirm_password.errors %}
                                 <div class="error-message">
                                     <i class="fas fa-exclamation-circle"></i>
@@ -831,7 +897,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-primary depth-2">
+                <button type="submit" class="btn-primary depth-2" id="submitBtn">
                     <i class="fas fa-user-plus"></i>
                     Crear Usuario
                 </button>
@@ -890,6 +956,15 @@
                         <p>El usuario recibirá un correo de confirmación con sus credenciales</p>
                     </div>
                 </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Dirección</h4>
+                        <p>La dirección es requerida para completar el registro del usuario</p>
+                    </div>
+                </li>
             </ul>
         </div>
     </div>
@@ -902,6 +977,112 @@ document.addEventListener('DOMContentLoaded', function() {
     const rolSelect = document.getElementById('{{ form.rol.id }}');
     const studentFields = document.getElementById('student-fields');
     const professorFields = document.getElementById('professor-fields');
+    const userForm = document.getElementById('userForm');
+    const passwordContainer = document.getElementById('passwordContainer');
+    const generatedPassword = document.getElementById('generatedPassword');
+    const copyPasswordBtn = document.getElementById('copyPasswordBtn');
+    const emailInput = document.getElementById('{{ form.correo.id }}');
+    const nombreInput = document.getElementById('{{ form.nombre.id }}');
+    const apellidoInput = document.getElementById('{{ form.apellido.id }}');
+    const noIdentidadInput = document.getElementById('{{ form.no_identidad.id }}');
+    const passwordInput = document.getElementById('{{ form.password.id }}');
+    const confirmPasswordInput = document.getElementById('{{ form.confirm_password.id }}');
+    const submitBtn = document.getElementById('submitBtn');
+    const emailError = document.getElementById('emailError');
+
+    // Función para generar contraseña automática
+    function generatePassword() {
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        const noIdentidad = noIdentidadInput.value.trim();
+        
+        if (nombre && noIdentidad) {
+            // Capitalizar primera letra del nombre
+            const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+            
+            // Tomar solo el primer nombre
+            const primerNombre = nombreCapitalized.split(' ')[0];
+            
+            // Tomar primera letra del apellido en mayúscula
+            const primeraLetraApellido = apellido.charAt(0).toUpperCase();
+            
+            // Lista de caracteres especiales
+            const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
+            
+            // Seleccionar un carácter especial aleatorio
+            const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
+            
+            // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
+            const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
+            
+            // Mostrar contraseña generada
+            generatedPassword.textContent = password;
+            passwordContainer.style.display = 'flex';
+            
+            // Llenar campos de contraseña
+            passwordInput.value = password;
+            confirmPasswordInput.value = password;
+        } else {
+            passwordContainer.style.display = 'none';
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+        }
+    }
+
+    // Escuchar cambios en nombre y número de identidad
+    nombreInput.addEventListener('input', generatePassword);
+    apellidoInput.addEventListener('input', generatePassword);
+    noIdentidadInput.addEventListener('input', generatePassword);
+
+    // Copiar contraseña al portapapeles
+    copyPasswordBtn.addEventListener('click', function() {
+        const password = generatedPassword.textContent;
+        navigator.clipboard.writeText(password).then(function() {
+            showAlert('Contraseña copiada al portapapeles', 'success');
+        });
+    });
+
+    // Validar existencia de correo electrónico
+    emailInput.addEventListener('blur', function() {
+        const email = this.value.trim();
+        
+        if (!email) {
+            hideEmailError();
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showEmailError('El formato del correo electrónico no es válido');
+            return;
+        }
+
+        // Verificar si el correo existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showEmailError('Este correo electrónico ya está registrado en el sistema');
+                } else {
+                    hideEmailError();
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando correo:', error);
+            });
+    });
+
+    function showEmailError(message) {
+        emailError.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        emailError.style.display = 'flex';
+        emailInput.classList.add('is-invalid');
+    }
+
+    function hideEmailError() {
+        emailError.style.display = 'none';
+        emailInput.classList.remove('is-invalid');
+    }
 
     function toggleFieldsBasedOnRole(roleValue, roleText = null) {
         // Ocultar todos los campos específicos primero
@@ -959,6 +1140,79 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     {% endif %}
+
+    // Función para mostrar alertas
+    function showAlert(message, type) {
+        // Crear elemento de alerta
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        alertDiv.style.marginBottom = '1rem';
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar después del header del formulario
+        const formHeader = document.querySelector('.form-header');
+        formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+        
+        // Auto-remover después de 5 segundos
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Validación adicional del formulario principal
+    userForm.addEventListener('submit', function(e) {
+        // Validar que todos los campos obligatorios estén completos
+        const requiredFields = userForm.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        // Validar que el correo no tenga errores
+        if (emailError.style.display !== 'none') {
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            showAlert('Por favor complete todos los campos obligatorios marcados con OBLIGATORIO', 'error');
+            return;
+        }
+
+        // Validar contraseñas coincidan
+        const password = document.getElementById('{{ form.password.id }}').value;
+        const confirmPassword = document.getElementById('{{ form.confirm_password.id }}').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            showAlert('Las contraseñas no coinciden', 'error');
+            return;
+        }
+
+        // Validar formato de contraseña
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            e.preventDefault();
+            showAlert('La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números', 'error');
+            return;
+        }
+
+        // Mostrar loading en el botón de envío
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creando Usuario...';
+    });
 });
 </script>
 {% endblock %}
