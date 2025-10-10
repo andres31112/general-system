@@ -851,7 +851,7 @@
                         </div>
                     </div>
 
-                    <!-- Nuevo campo de dirección -->
+                    <!-- Campo de dirección del estudiante -->
                     <div class="form-group address-field">
                         <label for="{{ form.direccion.id }}" class="form-label">
                             <i class="fas fa-map-marker-alt"></i>
@@ -1017,7 +1017,7 @@
                         </div>
                     </div>
 
-                    <!-- Formulario de Padre (Acordeón) CORREGIDO -->
+                    <!-- Formulario de Padre (Acordeón) -->
                     <div class="parent-form-container" id="parentFormContainer">
                         <div class="parent-form-header">
                             <h4 class="parent-form-title">
@@ -1097,6 +1097,17 @@
                                 </label>
                                 <input type="tel" class="form-control" id="parentTelefono" placeholder="+57 300 123 4567">
                             </div>
+                        </div>
+
+                        <!-- ✅ NUEVO: Campo de dirección para padre -->
+                        <div class="form-group address-field">
+                            <label class="form-label">
+                                <i class="fas fa-map-marker-alt"></i>
+                                Dirección
+                                <span class="required-badge">OBLIGATORIO</span>
+                            </label>
+                            <input type="text" class="form-control" id="parentDireccion" placeholder="Dirección completa del padre/acudiente">
+                            <div class="error-message" id="parentDireccionError" style="display: none;"></div>
                         </div>
 
                         <div class="form-grid">
@@ -1236,49 +1247,85 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitBtn = document.getElementById('submitBtn');
     const emailError = document.getElementById('emailError');
 
-    // Función para generar contraseña automática
-function generatePassword() {
-    const nombre = nombreInput.value.trim();
-    const apellido = apellidoInput.value.trim();
-    const noIdentidad = noIdentidadInput.value.trim();
-    
-    if (nombre && noIdentidad) {
-        // Capitalizar primera letra del nombre
-        const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+    // Función para generar contraseña automática del ESTUDIANTE
+    function generatePassword() {
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        const noIdentidad = noIdentidadInput.value.trim();
         
-        // Tomar solo el primer nombre
-        const primerNombre = nombreCapitalized.split(' ')[0];
-        
-        // Tomar primera letra del apellido en mayúscula
-        const primeraLetraApellido = apellido.charAt(0).toUpperCase();
-        
-        // Lista de caracteres especiales
-        const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
-        
-        // Seleccionar un carácter especial aleatorio
-        const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
-        
-        // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
-        const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
-        
-        // Mostrar contraseña generada
-        generatedPassword.textContent = password;
-        passwordContainer.style.display = 'flex';
-        
-        // Llenar campos de contraseña
-        passwordInput.value = password;
-        confirmPasswordInput.value = password;
-    } else {
-        passwordContainer.style.display = 'none';
-        passwordInput.value = '';
-        confirmPasswordInput.value = '';
+        if (nombre && noIdentidad) {
+            // Capitalizar primera letra del nombre
+            const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+            
+            // Tomar solo el primer nombre
+            const primerNombre = nombreCapitalized.split(' ')[0];
+            
+            // Tomar primera letra del apellido en mayúscula
+            const primeraLetraApellido = apellido.charAt(0).toUpperCase();
+            
+            // Lista de caracteres especiales
+            const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
+            
+            // Seleccionar un carácter especial aleatorio
+            const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
+            
+            // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
+            const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
+            
+            // Mostrar contraseña generada
+            generatedPassword.textContent = password;
+            passwordContainer.style.display = 'flex';
+            
+            // Llenar campos de contraseña
+            passwordInput.value = password;
+            confirmPasswordInput.value = password;
+        } else {
+            passwordContainer.style.display = 'none';
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+        }
     }
-}
 
-    // Escuchar cambios en nombre y número de identidad
+    // Función para generar contraseña automática del PADRE
+    function generateParentPassword() {
+        const nombre = document.getElementById('parentNombre').value.trim();
+        const apellido = document.getElementById('parentApellido').value.trim();
+        const noIdentidad = document.getElementById('parentNoIdentidad').value.trim();
+        
+        if (nombre && noIdentidad) {
+            // Capitalizar primera letra del nombre
+            const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+            
+            // Tomar solo el primer nombre
+            const primerNombre = nombreCapitalized.split(' ')[0];
+            
+            // Tomar primera letra del apellido en mayúscula
+            const primeraLetraApellido = apellido.charAt(0).toUpperCase();
+            
+            // Lista de caracteres especiales
+            const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
+            
+            // Seleccionar un carácter especial aleatorio
+            const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
+            
+            // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
+            const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
+            
+            // Llenar campos de contraseña
+            document.getElementById('parentPassword').value = password;
+            document.getElementById('parentConfirmPassword').value = password;
+        }
+    }
+
+    // Escuchar cambios en nombre y número de identidad del ESTUDIANTE
     nombreInput.addEventListener('input', generatePassword);
     apellidoInput.addEventListener('input', generatePassword);
     noIdentidadInput.addEventListener('input', generatePassword);
+
+    // Escuchar cambios en nombre y número de identidad del PADRE
+    document.getElementById('parentNombre').addEventListener('input', generateParentPassword);
+    document.getElementById('parentApellido').addEventListener('input', generateParentPassword);
+    document.getElementById('parentNoIdentidad').addEventListener('input', generateParentPassword);
 
     // Copiar contraseña al portapapeles
     copyPasswordBtn.addEventListener('click', function() {
@@ -1288,7 +1335,7 @@ function generatePassword() {
         });
     });
 
-    // Validar existencia de correo electrónico
+    // Validar existencia de correo electrónico del ESTUDIANTE
     emailInput.addEventListener('blur', function() {
         const email = this.value.trim();
         
@@ -1317,6 +1364,106 @@ function generatePassword() {
             .catch(error => {
                 console.error('Error verificando correo:', error);
             });
+    });
+
+    // Validar correo del PADRE en tiempo real
+    document.getElementById('parentCorreo').addEventListener('blur', function() {
+        const email = this.value.trim();
+        const errorElement = document.getElementById('parentCorreoError');
+        
+        if (!email) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showParentError('parentCorreoError', 'El formato del correo electrónico no es válido');
+            return;
+        }
+
+        // Verificar si el correo existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showParentError('parentCorreoError', 'Este correo electrónico ya está registrado en el sistema');
+                } else {
+                    errorElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando correo del padre:', error);
+            });
+    });
+
+    // Validar número de identidad del PADRE en tiempo real
+    document.getElementById('parentNoIdentidad').addEventListener('blur', function() {
+        const noIdentidad = this.value.trim();
+        const errorElement = document.getElementById('parentNoIdentidadError');
+        
+        if (!noIdentidad) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        // Verificar si el número de identidad existe
+        fetch(`/admin/api/verificar-identidad?no_identidad=${encodeURIComponent(noIdentidad)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showParentError('parentNoIdentidadError', 'Este número de identidad ya está registrado en el sistema');
+                } else {
+                    errorElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando identidad del padre:', error);
+            });
+    });
+
+    // Validar contraseña del PADRE en tiempo real
+    document.getElementById('parentPassword').addEventListener('input', function() {
+        const password = this.value;
+        const errorElement = document.getElementById('parentPasswordError');
+        
+        if (!password) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        if (password.length < 8) {
+            showParentError('parentPasswordError', 'La contraseña debe tener al menos 8 caracteres');
+            return;
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            showParentError('parentPasswordError', 'Debe incluir mayúsculas, minúsculas y números');
+            return;
+        }
+
+        errorElement.style.display = 'none';
+    });
+
+    // Validar confirmación de contraseña del PADRE en tiempo real
+    document.getElementById('parentConfirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('parentPassword').value;
+        const confirmPassword = this.value;
+        const errorElement = document.getElementById('parentConfirmPasswordError');
+        
+        if (!confirmPassword) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showParentError('parentConfirmPasswordError', 'Las contraseñas no coinciden');
+            return;
+        }
+
+        errorElement.style.display = 'none';
     });
 
     function showEmailError(message) {
@@ -1504,11 +1651,62 @@ function generatePassword() {
             isValid = false;
         }
 
+        // Validar formato de contraseña para padre
+        if (parentData.password) {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(parentData.password)) {
+                showParentError('parentPasswordError', 'La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números');
+                isValid = false;
+            }
+        }
+
         if (!isValid) {
             showAlert('Por favor complete correctamente todos los campos obligatorios', 'error');
             return;
         }
 
+        // Verificar si el correo del padre ya existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(parentData.correo)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showParentError('parentCorreoError', 'Este correo electrónico ya está registrado en el sistema');
+                    showAlert('El correo electrónico del padre ya está registrado', 'error');
+                    saveParentBtn.disabled = false;
+                    saveParentBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Padre/Acudiente';
+                    return;
+                }
+
+                // Verificar si el número de identidad del padre ya existe
+                fetch(`/admin/api/verificar-identidad?no_identidad=${encodeURIComponent(parentData.no_identidad)}`)
+                    .then(response => response.json())
+                    .then(identidadData => {
+                        if (identidadData.exists) {
+                            showParentError('parentNoIdentidadError', 'Este número de identidad ya está registrado en el sistema');
+                            showAlert('El número de identidad del padre ya está registrado', 'error');
+                            saveParentBtn.disabled = false;
+                            saveParentBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Padre/Acudiente';
+                            return;
+                        }
+
+                        // Si pasa todas las validaciones, proceder a crear el padre
+                        crearPadre(parentData);
+                    })
+                    .catch(error => {
+                        console.error('Error verificando identidad:', error);
+                        // Si falla la verificación de identidad, proceder igualmente
+                        crearPadre(parentData);
+                    });
+            })
+            .catch(error => {
+                console.error('Error verificando correo:', error);
+                // Si falla la verificación de correo, proceder igualmente
+                crearPadre(parentData);
+            });
+    });
+
+    // FUNCIÓN: Crear padre con todas las validaciones
+    function crearPadre(parentData) {
         // Mostrar loading
         saveParentBtn.disabled = true;
         saveParentBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
@@ -1524,7 +1722,7 @@ function generatePassword() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showAlert('Padre/acudiente creado exitosamente', 'success');
+                showAlert('Padre/acudiente creado exitosamente! Se ha enviado un correo de verificación.', 'success');
                 
                 // Seleccionar automáticamente el nuevo padre
                 selectParent({
@@ -1552,7 +1750,7 @@ function generatePassword() {
             saveParentBtn.disabled = false;
             saveParentBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Padre/Acudiente';
         });
-    });
+    }
 
     // Función para limpiar el formulario de padre
     function resetParentForm() {

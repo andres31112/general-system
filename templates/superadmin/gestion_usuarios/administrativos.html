@@ -247,15 +247,23 @@
         color: var(--gray);
     }
 
+    /* Wrapper para tabla con scroll */
+    .table-wrapper {
+        max-height: 600px;
+        overflow-y: auto;
+        border-radius: var(--radius-md);
+        margin-top: 1rem;
+    }
+
     /* Tabla de Administradores */
     .user-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 1rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         border-radius: var(--radius-md);
         overflow: hidden;
         background: var(--white);
+        min-width: 800px;
     }
 
     .user-table th {
@@ -268,6 +276,9 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         border-bottom: 2px solid var(--secondary);
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
 
     .user-table td {
@@ -403,6 +414,58 @@
         width: auto;
     }
 
+    /* Paginación */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 25px;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .pagination button {
+        background: var(--white);
+        border: 2px solid var(--border);
+        color: var(--primary);
+        padding: 8px 15px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-weight: 600;
+        transition: var(--transition);
+        min-width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pagination button:hover:not(:disabled) {
+        background: var(--primary);
+        color: var(--white);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    .pagination button.active {
+        background: var(--primary);
+        color: var(--white);
+        border-color: var(--primary);
+    }
+
+    .pagination button:disabled {
+        background: var(--light-gray);
+        color: var(--gray);
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .page-info {
+        color: var(--gray);
+        font-weight: 500;
+        margin: 0 15px;
+    }
+
     /* Responsive */
     @media (max-width: 1024px) {
         .table-controls {
@@ -443,14 +506,22 @@
             padding: 1.5rem;
         }
         
-        .user-table {
-            display: block;
+        .table-wrapper {
             overflow-x: auto;
         }
         
         .user-table th,
         .user-table td {
             padding: 0.75rem 1rem;
+        }
+        
+        .pagination {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .page-info {
+            margin: 10px 0;
         }
     }
 
@@ -541,34 +612,33 @@
                 </div>
             </div>
 
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th>No. Identidad</th>
-                        <th>Nombre Completo</th>
-                        <th>Correo Electrónico</th>
-                        <th>Estado de Cuenta</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="superadmins-table-body">
-                    <!-- Los datos se cargarán dinámicamente con JavaScript -->
-                    <!-- Estado vacío por defecto -->
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <i class="fas fa-user-shield"></i>
-                                <h3>No hay administradores institucionales registrados</h3>
-                                <p>Comience agregando el primer administrador institucional al sistema</p>
-                                <a href="{{ url_for('admin.crear_usuario', rol='administrador_institucional') }}" class="btn-create">
-                                    <i class="fas fa-user-plus me-2"></i>
-                                    Crear Primer Administrador
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>No. Identidad</th>
+                            <th>Nombre Completo</th>
+                            <th>Correo Electrónico</th>
+                            <th>Estado de Cuenta</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="superadmins-table-body">
+                        <!-- Los datos se cargarán dinámicamente con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination" id="pagination">
+                <button id="prevPage" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info" id="pageInfo">Página 1 de 1</span>
+                <button id="nextPage" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         </section>
     </main>
 </div>

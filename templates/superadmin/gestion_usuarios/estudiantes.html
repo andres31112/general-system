@@ -190,14 +190,22 @@
             font-weight: 500;
         }
 
+        /* Wrapper para tabla con scroll */
+        .table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
         /* Tabla de Usuarios */
         .user-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             border-radius: 8px;
             overflow: hidden;
+            min-width: 1200px;
         }
 
         .user-table th {
@@ -207,6 +215,9 @@
             text-align: left;
             font-weight: 600;
             border-bottom: 2px solid var(--accent3);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .user-table td {
@@ -306,6 +317,58 @@
             accent-color: var(--accent4);
         }
 
+        /* Paginación */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 25px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            background: var(--white);
+            border: 2px solid var(--border);
+            color: var(--accent4);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+            transform: translateY(-2px);
+        }
+
+        .pagination button.active {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+        }
+
+        .pagination button:disabled {
+            background: var(--light-gray);
+            color: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .page-info {
+            color: var(--gray);
+            font-weight: 500;
+            margin: 0 15px;
+        }
+
         /* Responsive */
         @media (max-width: 1100px) {
             .table-controls {
@@ -333,9 +396,17 @@
                 align-items: center;
             }
             
-            .user-table {
-                display: block;
+            .table-wrapper {
                 overflow-x: auto;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .page-info {
+                margin: 10px 0;
             }
         }
     </style>
@@ -379,78 +450,91 @@
                 </div>
             </div>
 
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAllCheckbox"></th>
-                        <th>No. Identidad</th>
-                        <th>Avatar</th>
-                        <th>Nombre completo</th>
-                        <th>Correo</th>
-                        <th>Curso</th>
-                        <th>Año Matrícula</th>
-                        <th>Padre/Acudiente</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="estudiantes-table-body">
-    <!-- Los datos se cargarán desde la base de datos -->
-    {% for estudiante in estudiantes %}
-    <tr>
-        <td><input type="checkbox" class="student-checkbox" value="{{ estudiante.id_usuario }}"></td>
-        <td>{{ estudiante.no_identidad }}</td>
-        <td class="avatar-cell">
-            <div class="avatar">
-                {{ estudiante.nombre[0] }}{{ estudiante.apellido[0] }}
+            <div class="table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>No. Identidad</th>
+                            <th>Avatar</th>
+                            <th>Nombre completo</th>
+                            <th>Correo</th>
+                            <th>Curso</th>
+                            <th>Año Matrícula</th>
+                            <th>Padre/Acudiente</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="estudiantes-table-body">
+                        <!-- Los datos se cargarán desde la base de datos -->
+                        {% for estudiante in estudiantes %}
+                        <tr>
+                            <td><input type="checkbox" class="student-checkbox" value="{{ estudiante.id_usuario }}"></td>
+                            <td>{{ estudiante.no_identidad }}</td>
+                            <td class="avatar-cell">
+                                <div class="avatar">
+                                    {{ estudiante.nombre[0] }}{{ estudiante.apellido[0] }}
+                                </div>
+                            </td>
+                            <td>{{ estudiante.nombre }} {{ estudiante.apellido }}</td>
+                            <td>{{ estudiante.correo }}</td>
+                            <td>
+                                {% if estudiante._matriculas %}
+                                    {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
+                                    {% set curso = estudiante._cursos_dict.get(matricula_reciente.cursoId) %}
+                                    {{ curso.nombreCurso if curso else "Sin asignar" }}
+                                {% else %}
+                                    Sin asignar
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if estudiante._matriculas %}
+                                    {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
+                                    {{ matricula_reciente.año }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if estudiante._padres %}
+                                    {{ estudiante._padres|join(', ') }}
+                                {% else %}
+                                    Sin asignar
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if estudiante.estado_cuenta == 'activa' %}badge-success{% else %}badge-danger{% endif %}">
+                                    {{ estudiante.estado_cuenta }}
+                                </span>
+                            </td>
+                            <td class="actions-cell">
+                                <button class="btn-action" onclick="editarEstudiante({{ estudiante.id_usuario }})" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-action" onclick="verDetalles({{ estudiante.id_usuario }})" title="Ver detalles">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-action delete" onclick="eliminarEstudiante({{ estudiante.id_usuario }})" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-        </td>
-        <td>{{ estudiante.nombre }} {{ estudiante.apellido }}</td>
-        <td>{{ estudiante.correo }}</td>
-        <td>
-            {% if estudiante._matriculas %}
-                {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
-                {% set curso = estudiante._cursos_dict.get(matricula_reciente.cursoId) %}
-                {{ curso.nombreCurso if curso else "Sin asignar" }}
-            {% else %}
-                Sin asignar
-            {% endif %}
-        </td>
-        <td>
-            {% if estudiante._matriculas %}
-                {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
-                {{ matricula_reciente.año }}
-            {% else %}
-                N/A
-            {% endif %}
-        </td>
-        <td>
-            {% if estudiante._padres %}
-                {{ estudiante._padres|join(', ') }}
-            {% else %}
-                Sin asignar
-            {% endif %}
-        </td>
-        <td>
-            <span class="badge {% if estudiante.estado_cuenta == 'activa' %}badge-success{% else %}badge-danger{% endif %}">
-                {{ estudiante.estado_cuenta }}
-            </span>
-        </td>
-        <td class="actions-cell">
-            <button class="btn-action" onclick="editarEstudiante({{ estudiante.id_usuario }})" title="Editar">
-                <i class="fas fa-edit"></i>
-            </button>
-            <button class="btn-action" onclick="verDetalles({{ estudiante.id_usuario }})" title="Ver detalles">
-                <i class="fas fa-eye"></i>
-            </button>
-            <button class="btn-action delete" onclick="eliminarEstudiante({{ estudiante.id_usuario }})" title="Eliminar">
-                <i class="fas fa-trash"></i>
-            </button>
-        </td>
-    </tr>
-    {% endfor %}
-</tbody>
-            </table>
+
+            <!-- Paginación -->
+            <div class="pagination" id="pagination">
+                <button id="prevPage" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info" id="pageInfo">Página 1 de 1</span>
+                <button id="nextPage" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
 
             <!-- Mensaje cuando no hay estudiantes -->
             <div id="no-students-message" style="display: {% if estudiantes %}none{% else %}block{% endif %}; text-align: center; padding: 40px;">
@@ -471,64 +555,109 @@
             const searchInput = document.getElementById('searchInput');
             const refreshBtn = document.getElementById('refreshBtn');
             const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+            const pageInfo = document.getElementById('pageInfo');
 
-            // Función para filtrar estudiantes
-            function filtrarEstudiantes() {
-                const searchTerm = searchInput.value.toLowerCase().trim();
-                const filas = estudiantesTableBody.getElementsByTagName('tr');
-                let estudiantesVisibles = 0;
+            let currentPage = 1;
+            const itemsPerPage = 10;
+            let allEstudiantes = Array.from(estudiantesTableBody.getElementsByTagName('tr'));
+            let filteredEstudiantes = [...allEstudiantes];
 
-                for (let fila of filas) {
-                    const textoFila = fila.textContent.toLowerCase();
-                    if (textoFila.includes(searchTerm)) {
-                        fila.style.display = '';
-                        estudiantesVisibles++;
-                    } else {
-                        fila.style.display = 'none';
-                    }
-                }
+            function renderTable() {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                
+                // Ocultar todas las filas primero
+                allEstudiantes.forEach(row => row.style.display = 'none');
+                
+                // Mostrar solo las filas de la página actual
+                const currentEstudiantes = filteredEstudiantes.slice(startIndex, endIndex);
+                currentEstudiantes.forEach(row => row.style.display = '');
+                
+                updatePagination();
+                updateNoStudentsMessage();
+            }
 
-                // Mostrar mensaje si no hay resultados
-                if (estudiantesVisibles === 0 && searchTerm !== '') {
+            function updatePagination() {
+                const totalPages = Math.ceil(filteredEstudiantes.length / itemsPerPage);
+                
+                pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+                
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+            }
+
+            function updateNoStudentsMessage() {
+                if (filteredEstudiantes.length === 0 && searchInput.value !== '') {
                     noStudentsMessage.style.display = 'block';
                     noStudentsMessage.innerHTML = `
                         <i class="fas fa-search" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
                         <h3 style="color: var(--gray); margin-bottom: 10px;">No se encontraron estudiantes</h3>
-                        <p style="color: var(--gray); margin-bottom: 20px;">No hay estudiantes que coincidan con "${searchTerm}"</p>
+                        <p style="color: var(--gray); margin-bottom: 20px;">No hay estudiantes que coincidan con "${searchInput.value}"</p>
                         <button class="btn-create" onclick="limpiarBusqueda()">
                             <i class="fas fa-times"></i> Limpiar búsqueda
                         </button>
                     `;
-                } else if (estudiantesVisibles === 0) {
+                } else if (filteredEstudiantes.length === 0) {
                     noStudentsMessage.style.display = 'block';
+                    noStudentsMessage.innerHTML = `
+                        <i class="fas fa-user-graduate" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                        <h3 style="color: var(--gray); margin-bottom: 10px;">No hay estudiantes registrados</h3>
+                        <p style="color: var(--gray); margin-bottom: 20px;">Comienza registrando el primer estudiante en el sistema</p>
+                        <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                            <i class="fas fa-user-plus"></i> Registrar Primer Estudiante
+                        </a>
+                    `;
                 } else {
                     noStudentsMessage.style.display = 'none';
                 }
+            }
+
+            // Función para filtrar estudiantes
+            function filtrarEstudiantes() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                currentPage = 1;
+                
+                if (searchTerm === '') {
+                    filteredEstudiantes = [...allEstudiantes];
+                } else {
+                    filteredEstudiantes = allEstudiantes.filter(row => {
+                        const textoFila = row.textContent.toLowerCase();
+                        return textoFila.includes(searchTerm);
+                    });
+                }
+                
+                renderTable();
             }
 
             // Función para limpiar búsqueda
             window.limpiarBusqueda = function() {
                 searchInput.value = '';
                 filtrarEstudiantes();
-                noStudentsMessage.innerHTML = `
-                    <i class="fas fa-user-graduate" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
-                    <h3 style="color: var(--gray); margin-bottom: 10px;">No hay estudiantes registrados</h3>
-                    <p style="color: var(--gray); margin-bottom: 20px;">Comienza registrando el primer estudiante en el sistema</p>
-                    <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
-                        <i class="fas fa-user-plus"></i> Registrar Primer Estudiante
-                    </a>
-                `;
             }
 
-            // Event listener para búsqueda
+            function changePage(direction) {
+                const totalPages = Math.ceil(filteredEstudiantes.length / itemsPerPage);
+                
+                if (direction === 'next' && currentPage < totalPages) {
+                    currentPage++;
+                } else if (direction === 'prev' && currentPage > 1) {
+                    currentPage--;
+                }
+                
+                renderTable();
+            }
+
+            // Event listeners
             searchInput.addEventListener('input', filtrarEstudiantes);
+            
+            prevPageBtn.addEventListener('click', () => changePage('prev'));
+            nextPageBtn.addEventListener('click', () => changePage('next'));
 
             // Botón de actualizar
             refreshBtn.addEventListener('click', function() {
-                // Recargar la página para obtener datos actualizados
                 window.location.reload();
-                
-                // Efecto visual de actualización
                 refreshBtn.style.transform = 'rotate(360deg)';
                 setTimeout(() => {
                     refreshBtn.style.transform = 'rotate(0deg)';
@@ -542,6 +671,9 @@
                     checkbox.checked = this.checked;
                 });
             });
+
+            // Inicializar tabla
+            renderTable();
 
             // Funciones de acción
             window.editarEstudiante = function(id) {
@@ -558,7 +690,6 @@
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json'
-                            // Se eliminó X-CSRFToken ya que no está disponible
                         }
                     })
                     .then(response => response.json())

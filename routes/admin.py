@@ -786,6 +786,25 @@ def crear_usuario():
         rol_predefinido_id=rol_predefinido_id
     )
 
+@admin_bp.route('/api/verificar-identidad')
+@login_required
+@role_required(1)
+def api_verificar_identidad():
+    """API para verificar si un número de identidad ya está registrado"""
+    try:
+        no_identidad = request.args.get('no_identidad', '')
+        
+        if not no_identidad:
+            return jsonify({'exists': False})
+        
+        # Verificar si el número de identidad existe
+        usuario = Usuario.query.filter_by(no_identidad=no_identidad).first()
+        
+        return jsonify({'exists': usuario is not None})
+        
+    except Exception as e:
+        print(f"Error verificando identidad: {e}")
+        return jsonify({'exists': False})
 @admin_bp.route('/api/verificar-correo')
 @login_required
 @role_required(1)
@@ -903,7 +922,7 @@ def api_buscar_padres():
 @login_required
 @role_required(1)
 def api_crear_padre():
-    """API para crear un nuevo padre/acudiente"""
+    """API para crear un nuevo padre/acudiente con verificación de email"""
     try:
         data = request.get_json()
         
@@ -928,7 +947,11 @@ def api_crear_padre():
         if not rol_padre:
             return jsonify({'success': False, 'error': 'Rol de Padre no encontrado'}), 500
         
-        # Crear nuevo padre
+        # Generar código de verificación
+        from datetime import datetime, timedelta
+        verification_code = generate_verification_code()
+        
+        # Crear nuevo padre con verificación de email
         nuevo_padre = Usuario(
             tipo_doc=data['tipo_doc'],
             no_identidad=data['no_identidad'],
@@ -937,16 +960,27 @@ def api_crear_padre():
             correo=data['correo'],
             telefono=data.get('telefono', ''),
             id_rol_fk=rol_padre.id_rol,
-            estado_cuenta='activa'
+            estado_cuenta='activa',
+            email_verified=False,
+            verification_code=verification_code,
+            verification_code_expires=datetime.utcnow() + timedelta(hours=24),
+            verification_attempts=0,
+            temp_password=data['password']  # ✅ Guardar contraseña temporal
         )
         nuevo_padre.set_password(data['password'])
         
         db.session.add(nuevo_padre)
         db.session.commit()
         
+        # Enviar correo de bienvenida con código de verificación
+        email_sent = send_welcome_email(nuevo_padre, verification_code)
+        
+        if not email_sent:
+            print(f"ADVERTENCIA: No se pudo enviar el correo de verificación al padre {nuevo_padre.correo}")
+        
         return jsonify({
             'success': True,
-            'message': 'Padre/acudiente creado exitosamente',
+            'message': 'Padre/acudiente creado exitosamente' + (' y correo de verificación enviado' if email_sent else ' pero hubo un error enviando el correo de verificación'),
             'padre': {
                 'id_usuario': nuevo_padre.id_usuario,
                 'nombre_completo': nuevo_padre.nombre_completo,

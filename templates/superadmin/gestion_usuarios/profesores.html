@@ -191,13 +191,20 @@
         }
 
         /* Tabla de Usuarios */
+        .table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
         .user-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             border-radius: 8px;
             overflow: hidden;
+            min-width: 1200px;
         }
 
         .user-table th {
@@ -207,6 +214,9 @@
             text-align: left;
             font-weight: 600;
             border-bottom: 2px solid var(--accent3);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .user-table td {
@@ -302,6 +312,58 @@
             accent-color: var(--accent4);
         }
 
+        /* Paginación */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 25px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            background: var(--white);
+            border: 2px solid var(--border);
+            color: var(--accent4);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+            transform: translateY(-2px);
+        }
+
+        .pagination button.active {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+        }
+
+        .pagination button:disabled {
+            background: var(--light-gray);
+            color: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .page-info {
+            color: var(--gray);
+            font-weight: 500;
+            margin: 0 15px;
+        }
+
         /* Responsive */
         @media (max-width: 1100px) {
             .table-controls {
@@ -329,9 +391,17 @@
                 align-items: center;
             }
             
-            .user-table {
-                display: block;
+            .table-wrapper {
                 overflow-x: auto;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .page-info {
+                margin: 10px 0;
             }
         }
     </style>
@@ -370,26 +440,39 @@
                 </div>
             </div>
 
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAllCheckbox"></th>
-                        <th>No. Identidad</th>
-                        <th>Avatar</th>
-                        <th>Nombre completo</th>
-                        <th>Correo</th>
-                        <th>Rol</th>
-                        <th>Estado</th>
-                        <th>Curso Asignado</th>
-                        <th>Materia/Área</th>
-                        <th>Sede Asignada</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="profesores-table-body">
-                    
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>No. Identidad</th>
+                            <th>Avatar</th>
+                            <th>Nombre completo</th>
+                            <th>Correo</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Curso Asignado</th>
+                            <th>Materia/Área</th>
+                            <th>Sede Asignada</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profesores-table-body">
+                        
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination" id="pagination">
+                <button id="prevPage" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info" id="pageInfo">Página 1 de 1</span>
+                <button id="nextPage" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         </section>
     </main>
 
