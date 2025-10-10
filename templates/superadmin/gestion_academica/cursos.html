@@ -213,7 +213,7 @@
 </div>
 
 <script>
-// JavaScript CORREGIDO
+// JavaScript CORREGIDO - COMPATIBLE CON WTForms
 document.addEventListener('DOMContentLoaded', function() {
     // Elementos DOM
     const cursoForm = document.getElementById('cursoForm');
@@ -222,23 +222,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const flashContainer = document.getElementById('flashMessagesContainer');
     const sedeSelect = document.getElementById('sedeId');
 
-    // 1. CARGAR SEDES PARA EL SELECT - CORREGIDO
+    // Obtener token CSRF del formulario
+    function getCSRFToken() {
+        const csrfTokenInput = document.querySelector('input[name="csrf_token"]');
+        return csrfTokenInput ? csrfTokenInput.value : '';
+    }
+
+    // 1. CARGAR SEDES - VERSIÓN CORREGIDA
     function cargarSedes() {
-        fetch('{{ url_for("admin.api_sedes") }}')  // RUTA CORREGIDA
+        console.log('🔄 CARGANDO SEDES DESDE:', '{{ url_for("admin.api_sedes") }}');
+        
+        fetch('{{ url_for("admin.api_sedes") }}')
             .then(response => {
+                console.log('📥 RESPUESTA SEDES - Status:', response.status);
                 if (!response.ok) {
-                    throw new Error('Error al cargar sedes');
+                    throw new Error(`Error ${response.status} al cargar sedes`);
                 }
                 return response.json();
             })
             .then(sedes => {
-                console.log('Sedes cargadas:', sedes);
+                console.log('🏢 SEDES CARGADAS:', sedes);
                 sedeSelect.innerHTML = '<option value="">Seleccione una sede</option>';
                 
-                // Asegurarnos de que sedes es un array
                 const sedesArray = Array.isArray(sedes) ? sedes : (sedes.data || []);
+                console.log('📊 SEDES PROCESADAS:', sedesArray);
                 
                 if (sedesArray.length === 0) {
+                    console.warn('⚠️  No hay sedes disponibles');
                     const option = document.createElement('option');
                     option.value = "";
                     option.textContent = "No hay sedes disponibles";
@@ -246,18 +256,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                sedesArray.forEach(sede => {
+                sedesArray.forEach((sede, index) => {
+                    console.log(`🏢 Sede ${index}:`, sede);
                     const option = document.createElement('option');
-                    option.value = sede.id;
-                    option.textContent = sede.nombre || sede.nombreSede;
+                    // IMPORTANTE: Usar id_sede que es el nombre correcto en el modelo
+                    option.value = sede.id_sede || sede.id;
+                    option.textContent = sede.nombre || sede.nombreSede || `Sede ${sede.id_sede || sede.id}`;
                     sedeSelect.appendChild(option);
                 });
+
+                console.log('✅ SEDES CARGADAS EN SELECT. Total:', sedesArray.length);
             })
             .catch(error => {
-                console.error('Error cargando sedes:', error);
+                console.error('❌ ERROR CARGANDO SEDES:', error);
                 mostrarMensaje('Error cargando sedes: ' + error.message, 'warning');
                 
-                // Opción por defecto en caso de error
                 const option = document.createElement('option');
                 option.value = "";
                 option.textContent = "Error cargando sedes";
@@ -335,29 +348,51 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-        // 3. CREAR CURSO - CON DEBUG COMPLETO
+    // 3. CREAR CURSO - VERSIÓN COMPATIBLE CON WTForms
     cursoForm.addEventListener('submit', function(event) {
         event.preventDefault();
         
         const formData = new FormData(cursoForm);
-        const datos = Object.fromEntries(formData.entries());
+        const datosRaw = Object.fromEntries(formData.entries());
+        const csrfToken = getCSRFToken();
 
-        console.log('🎯 DATOS DEL FORMULARIO:', datos);
+        console.log('🎯 DATOS DEL FORMULARIO (ORIGINALES):', datosRaw);
+        console.log('🔐 CSRF TOKEN:', csrfToken ? 'PRESENTE' : 'AUSENTE');
 
-        // Validación básica
-        if (!datos.nombreCurso || !datos.sedeId) {
-            mostrarMensaje('Por favor complete todos los campos', 'warning');
+        // Validación mejorada
+        if (!datosRaw.nombreCurso || !datosRaw.nombreCurso.trim()) {
+            mostrarMensaje('Por favor ingrese el nombre del curso', 'warning');
+            document.getElementById('nombreCurso').focus();
             return;
         }
 
-        console.log('📤 ENVIANDO A:', '{{ url_for("admin.api_cursos") }}');
+        if (!datosRaw.sedeId || datosRaw.sedeId === "") {
+            mostrarMensaje('Por favor seleccione una sede', 'warning');
+            sedeSelect.focus();
+            return;
+        }
+
+        // Convertir a número y validar
+        const sedeIdNumero = parseInt(datosRaw.sedeId);
+        console.log('🔢 sedeId convertido a número:', sedeIdNumero);
+
+        if (isNaN(sedeIdNumero) || sedeIdNumero <= 0) {
+            mostrarMensaje('Por favor seleccione una sede válida', 'warning');
+            return;
+        }
+
+        // IMPORTANTE: Para WTForms necesitamos enviar el formulario como FormData, no como JSON
+        console.log('📤 ENVIANDO COMO FORM DATA A:', '{{ url_for("admin.api_cursos") }}');
         
+        // Crear FormData para enviar como formulario tradicional
+        const formDataToSend = new FormData();
+        formDataToSend.append('nombreCurso', datosRaw.nombreCurso.trim());
+        formDataToSend.append('sedeId', sedeIdNumero.toString()); // WTForms espera string para QuerySelectField
+        formDataToSend.append('csrf_token', csrfToken);
+
         fetch('{{ url_for("admin.api_cursos") }}', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(datos)
+            body: formDataToSend  // Enviar como FormData, no JSON
         })
         .then(response => {
             console.log('📥 RESPUESTA HTTP:', {
@@ -367,7 +402,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 url: response.url
             });
             
-            // Obtener el texto de la respuesta sin importar el status
             return response.text().then(text => {
                 console.log('📄 CONTENIDO DE LA RESPUESTA:', text);
                 
@@ -390,7 +424,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ RESULTADO PROCESADO:', { status, ok, data });
             
             if (ok) {
-                // Éxito - el servidor respondió con 200-299
                 if (data.message) {
                     cursoForm.reset();
                     cargarCursos();
@@ -398,14 +431,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (data.error) {
                     mostrarMensaje(data.error, 'danger');
                 } else {
-                    // Si no hay message pero la respuesta fue exitosa
-                    console.log('⚠️  Respuesta exitosa pero sin mensaje:', data);
                     cursoForm.reset();
                     cargarCursos();
                     mostrarMensaje('Curso creado exitosamente', 'success');
                 }
             } else {
-                // Error - el servidor respondió con 400-599
                 if (data.error) {
                     mostrarMensaje(data.error, 'danger');
                 } else if (data.errors) {
@@ -427,19 +457,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 4. ELIMINAR CURSO
+    // 4. ELIMINAR CURSO - CON CSRF
     function eliminarCurso(event) {
         const button = event.currentTarget;
         const cursoId = button.dataset.id;
         const cursoNombre = button.dataset.nombre;
+        const csrfToken = getCSRFToken();
 
         if (confirm(`¿Está seguro de eliminar el curso "${cursoNombre}"?`)) {
+            // Para DELETE también usar FormData
+            const formData = new FormData();
+            formData.append('id', cursoId);
+            formData.append('csrf_token', csrfToken);
+
             fetch('{{ url_for("admin.api_cursos") }}', {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: cursoId })
+                body: formData
             })
             .then(response => {
                 if (!response.ok) {
@@ -477,10 +510,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 6. MOSTRAR MENSAJES
     function mostrarMensaje(mensaje, tipo) {
+        // Limpiar mensajes anteriores
+        flashContainer.innerHTML = '';
+        
         const alerta = document.createElement('div');
         alerta.className = `alert alert-${tipo} alert-dismissible fade show`;
         alerta.innerHTML = `
-            <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'warning' ? 'exclamation-triangle' : 'exclamation-circle'} me-2"></i>
             ${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
@@ -496,6 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // INICIALIZAR
+    console.log('🚀 INICIANDO APLICACIÓN...');
     cargarSedes();
     cargarCursos();
 });
