@@ -1,265 +1,531 @@
-const form = document.getElementById("form-candidato");
-const lista = document.getElementById("lista-candidatos");
-const resultados = document.getElementById("resultados");
-const fotoPreview = document.getElementById("foto-preview"); // div o img para mostrar previsualización
+// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN
 
-const modalEditar = new bootstrap.Modal(document.getElementById("modalEditar"));
-const formEditar = document.getElementById("form-editar");
-const fotoPreviewEditar = document.getElementById("foto-preview-editar");
+// Configuración
+const API_URLS = {
+    horarios: '/admin/ultimo-horario',
+    guardarHorario: '/admin/guardar-horario',
+    candidatos: '/admin/listar-candidatos',
+    crearCandidato: '/admin/crear-candidato',
+    editarCandidato: '/admin/candidatos/',
+    eliminarCandidato: '/admin/candidatos/',
+    publicarResultados: '/admin/publicar-resultados'
+};
 
-// --------------------
-// Helper: fetch con manejo de errores
-// --------------------
-async function apiFetch(url, opts = {}) {
-  try {
-    const res = await fetch(url, { credentials: "same-origin", ...opts });
-    const data = await res.json();
-    return { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    console.error("Error en apiFetch:", err);
-    return { ok: false, status: 0, data: {} };
-  }
-}
+// Estado de la aplicación
+let estado = {
+    candidatos: [],
+    horarioActual: null
+};
 
-// --------------------
-// Previsualización de la foto
-// --------------------
-function mostrarFotoPreview(input, previewEl) {
-  const file = input.files[0];
-  if (!file) {
-    previewEl.src = "";
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = e => previewEl.src = e.target.result;
-  reader.readAsDataURL(file);
-}
+// Elementos DOM
+let elementos = {};
 
-document.getElementById("foto").addEventListener("change", e => mostrarFotoPreview(e.target, fotoPreview));
-document.getElementById("edit-foto").addEventListener("change", e => mostrarFotoPreview(e.target, fotoPreviewEditar));
-
-// --------------------
-// Mostrar resultados de votos
-// --------------------
-function mostrarResultados(candidatos) {
-  resultados.innerHTML = "";
-
-  if (!Array.isArray(candidatos) || candidatos.length === 0) {
-    resultados.innerHTML = "<p class='text-muted'>No hay resultados disponibles.</p>";
-    return;
-  }
-
-  const grouped = {};
-  candidatos.forEach(c => {
-    const cat = c.categoria || "Sin categoría";
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(c);
-  });
-
-  Object.keys(grouped).forEach(cat => {
-    const resDiv = document.createElement("div");
-    resDiv.innerHTML = `<h4>Resultados de ${cat}</h4>`;
-
-    grouped[cat].forEach(c => {
-      const nombre = c.nombre || "Sin nombre";
-      const tarjeton = c.tarjeton || "N/A";
-      const votos = c.votos ?? 0;
-      resDiv.innerHTML += `<p>${nombre} (${tarjeton}): ${votos} votos</p>`;
-    });
-
-    resultados.appendChild(resDiv);
-  });
-}
-
-// --------------------
-// Cargar lista de candidatos
-// --------------------
-function cargarLista(candidatos) {
-  lista.innerHTML = "";
-  candidatos.forEach(c => {
-    const div = document.createElement("div");
-    div.className = "candidato border rounded p-3 my-2 d-flex justify-content-between align-items-start";
-    div.innerHTML = `
-      <div>
-        <h3>${c.nombre} ${c.apellido || ""}</h3>
-        <p><strong>Categoría:</strong> ${c.categoria}</p>
-        <p><strong>Tarjetón:</strong> ${c.tarjeton}</p>
-        <p><strong>Propuesta:</strong> ${c.propuesta}</p>
-        ${c.foto ? `<img src="/static/images/candidatos/${c.foto}" width="150">` : ""}
-      </div>
-      <div>
-        <button class="btn btn-warning btn-editar" data-id="${c.id}">Editar</button>
-        <button class="btn btn-danger btn-eliminar" data-id="${c.id}">Eliminar</button>
-      </div>
+// FUNCIONES DE UTILIDAD
+function mostrarNotificacion(mensaje, tipo = 'success') {
+    // Crear notificación temporal
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${tipo} alert-dismissible fade show`;
+    notification.innerHTML = `
+        <i class="fas fa-${tipo === 'success' ? 'check' : 'exclamation-triangle'} me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    lista.appendChild(div);
-  });
-  mostrarResultados(candidatos);
+    
+    // Insertar después del header
+    const header = document.querySelector('.admin-header');
+    header.parentNode.insertBefore(notification, header.nextSibling);
+    
+    // Auto-eliminar después de 5 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
 }
 
-// --------------------
-// Validación y envío de formulario
-// --------------------
-async function enviarFormulario(form, listaEl) {
-  const formData = new FormData(form);
-  const nombre = formData.get("nombre")?.trim();
-  const apellido = formData.get("apellido")?.trim() || "";
-  const tarjeton = formData.get("tarjeton")?.trim();
-  const categoria = formData.get("categoria")?.trim();
-  const propuesta = formData.get("propuesta")?.trim();
-  const foto = formData.get("foto");
+async function apiRequest(url, options = {}) {
+    try {
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            ...options
+        };
 
-  if (!nombre || !tarjeton || !categoria || !propuesta || !foto?.name) {
-    return alert("Por favor completa todos los campos, incluida la foto.");
-  }
+        if (config.body && typeof config.body === 'object') {
+            config.body = JSON.stringify(config.body);
+        }
 
-  // Evitar duplicados por nombre+apellido y tarjetón
-  const duplicado = Array.from(listaEl.children).some(div => {
-    const existingNombre = div.querySelector("h3")?.textContent?.trim() || "";
-    const existingTarjeton = div.querySelector("p:nth-of-type(2)")?.textContent.replace("Tarjetón:", "").trim() || "";
-    return (existingNombre.toLowerCase() === `${nombre} ${apellido}`.toLowerCase() || existingTarjeton === tarjeton);
-  });
+        const response = await fetch(url, config);
+        
+        if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
 
-  if (duplicado) return alert("Ya existe un candidato con ese nombre o tarjetón.");
-
-  // Renombrar foto para evitar sobrescribir
-  const timestamp = Date.now();
-  const extension = foto.name.split(".").pop();
-  formData.set("foto", new File([foto], `${timestamp}.${extension}`, { type: foto.type }));
-
-  const res = await apiFetch(form.action, { method: "POST", body: formData });
-  if (!res.ok || !res.data.ok) return alert(res.data.error || "Error al crear candidato");
-
-  cargarLista(res.data.candidatos);
-  form.reset();
-  if (form === formEditar) modalEditar.hide();
-  else if (form === form) fotoPreview.src = "";
+        return await response.json();
+    } catch (error) {
+        console.error('Error en la petición:', error);
+        throw error;
+    }
 }
 
-// --------------------
-// Eventos
-// --------------------
-form?.addEventListener("submit", e => { e.preventDefault(); enviarFormulario(form, lista); });
-formEditar?.addEventListener("submit", e => { e.preventDefault(); enviarFormulario(formEditar, lista); });
+// GESTIÓN DE HORARIOS
+async function cargarHorarioActual() {
+    try {
+        const data = await apiRequest(API_URLS.horarios);
+        if (data.inicio && data.fin) {
+            document.getElementById("inicio").value = data.inicio;
+            document.getElementById("fin").value = data.fin;
+            elementos.horarioActual.innerHTML = `<strong>Horario actual:</strong> ${data.inicio} - ${data.fin}`;
+            estado.horarioActual = data;
+        }
+    } catch (error) {
+        console.error('Error cargando horario:', error);
+    }
+}
 
-// Eliminar candidato
-lista?.addEventListener("click", async e => {
-  const btn = e.target.closest(".btn-eliminar");
-  if (!btn) return;
-  if (!confirm("¿Eliminar este candidato?")) return;
+// GESTIÓN DE CANDIDATOS
+async function cargarCandidatos() {
+    try {
+        const data = await apiRequest(API_URLS.candidatos);
+        console.log('Datos de candidatos recibidos:', data);
+        
+        // Verificar la estructura de los datos
+        estado.candidatos = Array.isArray(data) ? data : [];
+        
+        // Mapear los datos para asegurar que tengan id
+        estado.candidatos = estado.candidatos.map(candidato => {
+            // Si no tiene id, intentar usar id_candidato u otro campo
+            const id = candidato.id || candidato.id_candidato || candidato.ID || Date.now() + Math.random();
+            return {
+                id: id,
+                nombre: candidato.nombre,
+                tarjeton: candidato.tarjeton,
+                propuesta: candidato.propuesta,
+                categoria: candidato.categoria,
+                foto: candidato.foto,
+                votos: candidato.votos || 0
+            };
+        });
+        
+        console.log('Candidatos procesados:', estado.candidatos);
+        
+        // Debug temporal - verificar la estructura completa de los datos
+        if (estado.candidatos.length > 0) {
+            console.log('Estructura completa del primer candidato:', estado.candidatos[0]);
+            console.log('Todos los campos disponibles:', Object.keys(estado.candidatos[0]));
+        }
+        
+        actualizarListaCandidatos();
+        actualizarResultados();
+    } catch (error) {
+        console.error('Error cargando candidatos:', error);
+        estado.candidatos = [];
+        actualizarListaCandidatos();
+    }
+}
 
-  const res = await apiFetch(`/admin/candidatos/${btn.dataset.id}`, { method: "DELETE" });
-  if (!res.ok || !res.data.ok) return alert(res.data.error || "Error al eliminar");
-  cargarLista(res.data.candidatos);
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const lista = document.getElementById("lista-candidatos");
-  const modalEditar = new bootstrap.Modal(document.getElementById("modalEditar"));
-  const formEditar = document.getElementById("form-editar");
-
-  // Click en editar
-  lista?.addEventListener("click", e => {
-    const btn = e.target.closest(".btn-editar");
-    if (!btn) return;
-
-    const card = btn.closest(".candidato");
-    const idEdit = btn.dataset.id;
-
-    // Rellenar campos
-    document.getElementById("edit-id").value = idEdit;
-    document.getElementById("edit-nombre").value = card.querySelector("h3").textContent;
-    document.getElementById("edit-tarjeton").value = card.querySelector("p:nth-of-type(2)").textContent.replace("Tarjetón:", "").trim();
-    document.getElementById("edit-propuesta").value = card.querySelector("p:nth-of-type(3)").textContent.replace("Propuesta:", "").trim();
-    document.getElementById("edit-categoria").value = card.querySelector("p:nth-of-type(1)").textContent.replace("Categoría:", "").trim();
-    document.getElementById("edit-foto").value = ""; // limpiar input
-
-    modalEditar.show();
-  });
-
-  // Guardar cambios
-  formEditar?.addEventListener("submit", async e => {
-    e.preventDefault();
-
-    const id = document.getElementById("edit-id").value;
-    const nombre = document.getElementById("edit-nombre").value.trim();
-    const tarjeton = document.getElementById("edit-tarjeton").value.trim();
-    const propuesta = document.getElementById("edit-propuesta").value.trim();
-    const categoria = document.getElementById("edit-categoria").value;
-    const fotoInput = document.getElementById("edit-foto");
-
-    // Validar campos
-    if (!nombre || !tarjeton || !propuesta || !categoria) {
-      return alert("Todos los campos son obligatorios.");
+function actualizarListaCandidatos() {
+    if (!estado.candidatos || estado.candidatos.length === 0) {
+        elementos.listaCandidatos.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-users fa-3x mb-3"></i>
+                <p>No hay candidatos registrados.</p>
+            </div>
+        `;
+        elementos.candidatesCount.textContent = '(0)';
+        return;
     }
 
-    // Validar tarjetón único
-    const tarjetasExistentes = Array.from(document.querySelectorAll(".candidato")).filter(c => c.querySelector(".btn-editar").dataset.id !== id)
-      .map(c => c.querySelector("p:nth-of-type(2)").textContent.replace("Tarjetón:", "").trim());
+    elementos.candidatesCount.textContent = `(${estado.candidatos.length})`;
+    
+    // Verificar que todos los candidatos tengan ID antes de renderizar
+    console.log('IDs de candidatos a renderizar:', estado.candidatos.map(c => ({id: c.id, nombre: c.nombre})));
+    
+    elementos.listaCandidatos.innerHTML = estado.candidatos.map(candidato => {
+        // Verificar que el candidato tenga ID
+        if (!candidato.id) {
+            console.error('Candidato sin ID:', candidato);
+            return '';
+        }
+        
+        return `
+        <div class="candidate-card">
+            <div class="candidate-info">
+                <h3>${candidato.nombre}</h3>
+                <div class="candidate-meta">
+                    <p><strong><i class="fas fa-tag"></i> Categoría:</strong> ${candidato.categoria}</p>
+                    <p><strong><i class="fas fa-hashtag"></i> Tarjetón:</strong> ${candidato.tarjeton}</p>
+                    <p><strong><i class="fas fa-bullhorn"></i> Propuesta:</strong> ${candidato.propuesta}</p>
+                </div>
+                ${candidato.foto ? `
+                    <div class="candidate-photo">
+                        <img src="/static/images/candidatos/${candidato.foto}" alt="${candidato.nombre}">
+                    </div>
+                ` : ''}
+            </div>
+            <div class="candidate-actions">
+                <button class="btn btn-warning btn-editar" data-id="${candidato.id}">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn btn-danger btn-eliminar" data-id="${candidato.id}">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
 
-    if (tarjetasExistentes.includes(tarjeton)) {
-      return alert("Este número de tarjetón ya está en uso.");
+function actualizarResultados() {
+    if (!estado.candidatos || estado.candidatos.length === 0) {
+        elementos.resultados.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                <p>No hay resultados disponibles.</p>
+            </div>
+        `;
+        return;
     }
 
-    // Preparar FormData
-    const formData = new FormData();
-    formData.append("nombre", nombre);
-    formData.append("tarjeton", tarjeton);
-    formData.append("propuesta", propuesta);
-    formData.append("categoria", categoria);
-    if (fotoInput.files.length > 0) {
-      formData.append("foto", fotoInput.files[0]);
-    }
-
-    // Enviar cambios al backend
-    const res = await fetch(`/admin/candidatos/${id}`, {
-      method: "POST",
-      body: formData,
-      credentials: "same-origin"
+    // Agrupar por categoría
+    const categorias = {};
+    estado.candidatos.forEach(candidato => {
+        if (!categorias[candidato.categoria]) {
+            categorias[candidato.categoria] = [];
+        }
+        categorias[candidato.categoria].push(candidato);
     });
 
-    const data = await res.json();
-    if (!res.ok || !data.ok) return alert(data.error || "Error al editar candidato");
+    let resultadosHTML = '';
+    
+    Object.keys(categorias).forEach(categoria => {
+        // Ordenar por votos descendente
+        const candidatosCategoria = categorias[categoria].sort((a, b) => (b.votos || 0) - (a.votos || 0));
+        const maxVotos = Math.max(...candidatosCategoria.map(c => c.votos || 0));
 
-    // Recargar lista y cerrar modal
-    cargarLista(data.candidatos);
-    modalEditar.hide();
-  });
-});
+        resultadosHTML += `
+            <div class="result-category">
+                <h4>${categoria.charAt(0).toUpperCase() + categoria.slice(1)}</h4>
+                ${candidatosCategoria.map(candidato => {
+                    const esGanador = (candidato.votos || 0) === maxVotos && maxVotos > 0;
+                    return `
+                        <div class="result-item ${esGanador ? 'winner' : ''}">
+                            <div>
+                                <strong>${candidato.nombre}</strong>
+                                <div class="text-muted">Tarjetón: ${candidato.tarjeton}</div>
+                            </div>
+                            <span class="vote-count">${candidato.votos || 0} votos</span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    });
 
+    elementos.resultados.innerHTML = resultadosHTML;
+}
 
-async function cargarUltimoHorario() {
-  const res = await fetch("/admin/ultimo-horario", { credentials: "same-origin" });
-  const data = await res.json();
-  if (data.inicio && data.fin) {
-    document.getElementById("inicio").value = data.inicio;
-    document.getElementById("fin").value = data.fin;
+// GESTIÓN DE FORMULARIOS
+async function enviarFormCandidato(form, esEdicion = false) {
+    const formData = new FormData(form);
+    const id = esEdicion ? document.getElementById('edit-id').value : null;
 
-    // Opcional: mostrar horario actual en el DOM
-    const horarioActual = document.getElementById("horario-actual");
-    if (horarioActual) {
-      horarioActual.textContent = `${data.inicio} - ${data.fin}`;
+    try {
+        const url = esEdicion ? `${API_URLS.editarCandidato}${id}` : API_URLS.crearCandidato;
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Error al procesar la solicitud');
+        }
+
+        mostrarNotificacion(
+            esEdicion ? 'Candidato actualizado correctamente' : 'Candidato agregado correctamente',
+            'success'
+        );
+
+        await cargarCandidatos();
+        form.reset();
+        
+        if (esEdicion) {
+            elementos.modalEditar.hide();
+        } else {
+            elementos.fotoPreview.style.display = 'none';
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarNotificacion(error.message, 'error');
     }
-  }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  cargarUltimoHorario();
-});
+// FUNCIONES PARA EDITAR CANDIDATOS
+function editarCandidato(id) {
+    console.log('Editando candidato ID:', id, 'Tipo:', typeof id);
+    console.log('Candidatos disponibles:', estado.candidatos);
+    
+    if (!id || id === 'undefined') {
+        console.error('ID no válido recibido:', id);
+        mostrarNotificacion('Error: ID de candidato no válido', 'error');
+        return;
+    }
+    
+    // Buscar el candidato - convertir a número si es necesario
+    const candidato = estado.candidatos.find(c => {
+        const candidatoId = c.id;
+        const buscadoId = isNaN(id) ? id : Number(id);
+        
+        console.log(`Comparando: c.id=${candidatoId} (tipo: ${typeof candidatoId}) con id=${buscadoId} (tipo: ${typeof buscadoId})`);
+        return candidatoId == buscadoId; // Usar == para comparación flexible
+    });
+    
+    if (!candidato) {
+        console.error('Candidato no encontrado con ID:', id);
+        console.error('Candidatos disponibles:', estado.candidatos.map(c => c.id));
+        mostrarNotificacion('Error: Candidato no encontrado', 'error');
+        return;
+    }
 
-// --------------------
-// Inicializar candidatos
-// --------------------
-async function initCandidatos() {
-  const res = await apiFetch("/admin/listar-candidatos");
-  console.log("Respuesta de listar-candidatos:", res);
+    console.log('Datos del candidato encontrado:', candidato);
 
-  if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-    cargarLista(res.data);
-  } else {
-    console.warn("No se pudieron cargar los candidatos o la lista está vacía:", res.data);
-    lista.innerHTML = "<p class='text-muted'>No hay candidatos registrados.</p>";
-  }
+    // Llenar el formulario de edición
+    document.getElementById('edit-id').value = candidato.id;
+    document.getElementById('edit-nombre').value = candidato.nombre;
+    document.getElementById('edit-tarjeton').value = candidato.tarjeton;
+    document.getElementById('edit-propuesta').value = candidato.propuesta;
+    document.getElementById('edit-categoria').value = candidato.categoria;
+    
+    // Limpiar preview de nueva foto
+    if (elementos.fotoPreviewEditar) {
+        elementos.fotoPreviewEditar.style.display = 'none';
+    }
+    
+    const editFotoInput = document.getElementById('edit-foto');
+    if (editFotoInput) {
+        editFotoInput.value = '';
+    }
+
+    // Mostrar el modal
+    console.log('Mostrando modal de edición');
+    if (elementos.modalEditar) {
+        elementos.modalEditar.show();
+    } else {
+        console.error('Modal de edición no encontrado');
+    }
 }
 
-document.addEventListener("DOMContentLoaded", initCandidatos);
+async function eliminarCandidato(id) {
+    if (!confirm('¿Está seguro de eliminar este candidato? Esta acción no se puede deshacer.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URLS.eliminarCandidato}${id}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.ok) {
+            mostrarNotificacion('Candidato eliminado correctamente', 'success');
+            await cargarCandidatos();
+        } else {
+            throw new Error(data.error || 'Error al eliminar el candidato');
+        }
+    } catch (error) {
+        mostrarNotificacion(error.message, 'error');
+    }
+}
+
+// EVENTOS Y CONFIGURACIÓN
+function configurarEventos() {
+    // Inicializar elementos DOM
+    elementos = {
+        formHorario: document.getElementById("form-horario"),
+        formCandidato: document.getElementById("form-candidato"),
+        formEditar: document.getElementById("form-editar"),
+        listaCandidatos: document.getElementById("lista-candidatos"),
+        resultados: document.getElementById("resultados"),
+        horarioActual: document.getElementById("horario-actual"),
+        fotoPreview: document.getElementById("foto-preview"),
+        fotoPreviewEditar: document.getElementById("foto-preview-editar"),
+        candidatesCount: document.getElementById("candidates-count"),
+        modalEditar: new bootstrap.Modal(document.getElementById("modalEditar"))
+    };
+
+    console.log('Elementos DOM inicializados:', elementos);
+
+    // Formulario de horario
+    if (elementos.formHorario) {
+        elementos.formHorario.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            try {
+                // USA FormData directamente para coincidir con tu ruta Flask
+                const formData = new FormData(elementos.formHorario);
+                
+                const response = await fetch(API_URLS.guardarHorario, {
+                    method: 'POST',
+                    body: formData  // Envía FormData, no JSON
+                });
+
+                if (response.ok) {
+                    // Recarga la página para mostrar los mensajes flash
+                    window.location.reload();
+                } else {
+                    throw new Error('Error al guardar el horario');
+                }
+            } catch (error) {
+                mostrarNotificacion(error.message, 'error');
+            }
+        });
+    }
+
+    // Formulario de candidato
+    if (elementos.formCandidato) {
+        elementos.formCandidato.addEventListener('submit', (e) => {
+            e.preventDefault();
+            enviarFormCandidato(elementos.formCandidato, false);
+        });
+    }
+
+    // Formulario de edición
+    if (elementos.formEditar) {
+        elementos.formEditar.addEventListener('submit', (e) => {
+            e.preventDefault();
+            enviarFormCandidato(elementos.formEditar, true);
+        });
+    }
+
+    // Preview de imágenes
+    const fotoInput = document.getElementById('foto');
+    if (fotoInput) {
+        fotoInput.addEventListener('change', function(e) {
+            mostrarPreviewImagen(e.target, elementos.fotoPreview);
+        });
+    }
+
+    const editFotoInput = document.getElementById('edit-foto');
+    if (editFotoInput) {
+        editFotoInput.addEventListener('change', function(e) {
+            mostrarPreviewImagen(e.target, elementos.fotoPreviewEditar);
+        });
+    }
+
+    // Eventos delegados para la lista de candidatos - MEJORADO
+    if (elementos.listaCandidatos) {
+        elementos.listaCandidatos.addEventListener('click', (e) => {
+            console.log('Click en lista de candidatos:', e.target);
+            console.log('Elemento clickeado:', e.target.tagName, e.target.className);
+            
+            // Buscar el botón más cercano
+            const botonEditar = e.target.closest('.btn-editar');
+            const botonEliminar = e.target.closest('.btn-eliminar');
+
+            if (botonEditar) {
+                const id = botonEditar.getAttribute('data-id');
+                console.log('Botón editar clickeado, ID:', id, 'Tipo:', typeof id);
+                console.log('Atributos del botón:', botonEditar.attributes);
+                
+                if (id && id !== 'undefined') {
+                    editarCandidato(id);
+                } else {
+                    console.error('ID no válido en botón editar');
+                    mostrarNotificacion('Error: ID de candidato no válido', 'error');
+                }
+            }
+
+            if (botonEliminar) {
+                const id = botonEliminar.getAttribute('data-id');
+                console.log('Botón eliminar clickeado, ID:', id);
+                
+                if (id && id !== 'undefined') {
+                    eliminarCandidato(id);
+                } else {
+                    console.error('ID no válido en botón eliminar');
+                    mostrarNotificacion('Error: ID de candidato no válido', 'error');
+                }
+            }
+        });
+    }
+
+    // Botones de control
+    const btnDashboard = document.getElementById('btn-dashboard');
+    if (btnDashboard) {
+        btnDashboard.addEventListener('click', () => {
+            window.location.href = btnDashboard.dataset.url;
+        });
+    }
+
+    const btnVerResultados = document.getElementById('btn-ver-resultados');
+    if (btnVerResultados) {
+        btnVerResultados.addEventListener('click', () => {
+            actualizarResultados();
+            mostrarNotificacion('Resultados actualizados', 'info');
+        });
+    }
+
+    const btnPublicarResultados = document.getElementById('btn-publicar-resultados');
+    if (btnPublicarResultados) {
+        btnPublicarResultados.addEventListener('click', async () => {
+            if (confirm('¿Está seguro de publicar los resultados? Esta acción no se puede deshacer.')) {
+                try {
+                    const response = await fetch(API_URLS.publicarResultados, {
+                        method: 'POST'
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        mostrarNotificacion('Resultados publicados correctamente', 'success');
+                    } else {
+                        throw new Error(data.error || 'Error al publicar resultados');
+                    }
+                } catch (error) {
+                    mostrarNotificacion(error.message, 'error');
+                }
+            }
+        });
+    }
+}
+
+function mostrarPreviewImagen(input, previewElement) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewElement.querySelector('img').src = e.target.result;
+            previewElement.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewElement.style.display = 'none';
+    }
+}
+
+// INICIALIZACIÓN
+async function inicializar() {
+    console.log('Inicializando sistema de administración...');
+    
+    try {
+        configurarEventos();
+        await Promise.all([
+            cargarHorarioActual(),
+            cargarCandidatos()
+        ]);
+        
+        console.log('Sistema inicializado correctamente');
+        console.log('Candidatos cargados:', estado.candidatos);
+    } catch (error) {
+        console.error('Error en inicialización:', error);
+        mostrarNotificacion('Error al inicializar el sistema', 'error');
+    }
+}
+
+// Iniciar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', inicializar);

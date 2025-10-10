@@ -597,36 +597,36 @@ class Mantenimiento(db.Model):
 
 class Evento(db.Model):
     __tablename__ = "eventos"
-    id_evento = db.Column(db.Integer, primary_key=True)
+
+    id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     fecha = db.Column(db.Date, nullable=False)
     hora = db.Column(db.Time, nullable=False)
     rol_destino = db.Column(db.String(50), nullable=False)
-    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
-    activo = db.Column(db.Boolean, default=True)
 
     def to_dict(self):
         return {
-            "id_evento": self.id_evento,
-            "nombre": self.nombre,
-            "descripcion": self.descripcion,
-            "fecha": self.fecha.isoformat(),
-            "hora": self.hora.strftime("%H:%M"),
-            "rol_destino": self.rol_destino,
-            "activo": self.activo
+            "IdEvento": self.id,
+            "Nombre": self.nombre,
+            "Descripcion": self.descripcion,
+            "Fecha": self.fecha.isoformat(),
+            "Hora": self.hora.strftime("%H:%M"),
+            "RolDestino": self.rol_destino
         }
 
     def __repr__(self):
         return f"<Evento {self.nombre}>"
 
 
+
 class Comunicacion(db.Model):
     __tablename__ = "comunicaciones"
+
     id_comunicacion = db.Column(db.Integer, primary_key=True)
     remitente_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
-    destinatario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
-    asunto = db.Column(db.String(200), nullable=False)
+    destinatario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=True)
+    asunto = db.Column(db.String(200), nullable=True)
     mensaje = db.Column(db.Text, nullable=False)
     fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(
@@ -634,27 +634,32 @@ class Comunicacion(db.Model):
         default="inbox",
         nullable=False
     )
-    leido = db.Column(db.Boolean, default=False)
-    fecha_leido = db.Column(db.DateTime, nullable=True)
 
-    # Relaciones
-    remitente = db.relationship("Usuario", foreign_keys=[remitente_id], back_populates="mensajes_enviados")
-    destinatario = db.relationship("Usuario", foreign_keys=[destinatario_id], back_populates="mensajes_recibidos")
+    remitente = db.relationship("Usuario", foreign_keys=[remitente_id])
+    destinatario = db.relationship("Usuario", foreign_keys=[destinatario_id])
 
     def to_dict(self):
         return {
             "id_comunicacion": self.id_comunicacion,
-            "remitente": self.remitente.nombre_completo if self.remitente else "",
-            "destinatario": self.destinatario.nombre_completo if self.destinatario else "",
-            "asunto": self.asunto,
+            "remitente": self.remitente.nombre if self.remitente else "Desconocido",
+            "destinatario": self.destinatario.nombre if self.destinatario else "Desconocido",
+            "asunto": self.asunto or "(Sin asunto)",
             "mensaje": self.mensaje,
-            "fecha_envio": self.fecha_envio.strftime("%Y-%m-%d %H:%M"),
-            "estado": self.estado,
-            "leido": self.leido
+            "fecha_envio": self.fecha_envio.strftime("%Y-%m-%d %H:%M") if self.fecha_envio else "",
+            "estado": self.estado
         }
 
-    def __repr__(self):
-        return f"<Comunicacion {self.id_comunicacion} - {self.asunto}>"
+class Comunicado(db.Model):
+    __tablename__ = 'comunicados'
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    contenido = db.Column(db.Text, nullable=False)
+    destinatarios = db.Column(db.String(50), nullable=False)
+    prioridad = db.Column(db.String(20), default='normal')
+    fecha = db.Column(db.DateTime, default=datetime.now)
+
+
 
 # ================================
 # Modelos de Votaciones

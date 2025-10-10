@@ -2494,83 +2494,18 @@ def api_detalle_incidente(incidente_id):
         print(f"Error al obtener detalle del incidente: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
-# ==================== SISTEMA DE VOTACIÓN ====================
-
-@admin_bp.route('/sistema-votaciones')
-@login_required
-@role_required(1)
-def sistema_votaciones():
-    """Vista principal del sistema de votación."""
-    return render_template('superadmin/sistema_votaciones/admin.html')
-
-@admin_bp.route('/sistema-votaciones/votar')
-@login_required
-def votar():
-    """Página para votar"""
-    return render_template('superadmin/sistema_votaciones/votar.html')
-
-@admin_bp.route("/guardar-horario", methods=['POST'])
-@login_required
-@role_required(1)
-def guardar_horario():
-    """Guardar horario de votación"""
-    try:
-        inicio = request.form.get("inicio")
-        fin = request.form.get("fin")
-
-        if not inicio or not fin:
-            flash("Debe ingresar inicio y fin del horario", "danger")
-            return redirect(url_for("admin.admin_panel"))
-
-        # Guardar nuevo horario (sobrescribe anterior)
-        horario = HorarioVotacion.query.first()
-        if horario:
-            horario.inicio = datetime.strptime(inicio, "%H:%M").time()
-            horario.fin = datetime.strptime(fin, "%H:%M").time()
-        else:
-            nuevo = HorarioVotacion(
-                inicio=datetime.strptime(inicio, "%H:%M").time(),
-                fin=datetime.strptime(fin, "%H:%M").time()
-            )
-            db.session.add(nuevo)
-
-        db.session.commit()
-        flash("✅ Horario de votación guardado correctamente", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(f"❌ Error al guardar horario: {str(e)}", "danger")
-
-    return redirect(url_for("admin.admin_panel"))
-
-# 📌 Obtener último horario en JSON
-@admin_bp.route("/ultimo-horario", methods=["GET"])
-@login_required
-@role_required(1)
-def ultimo_horario():
-    """Obtener último horario de votación"""
-    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
-    if horario:
-        return jsonify({
-            "inicio": horario.inicio.strftime("%H:%M"),
-            "fin": horario.fin.strftime("%H:%M")
-        })
-    return jsonify({})
-
 # ==================== CALENDARIO Y EVENTOS ====================
 
+# 📌 Vista del calendario de eventos (HTML)
 @admin_bp.route("/eventos/calendario", methods=["GET"])
 @login_required
-@role_required(1)
 def calendario_eventos():
-    """Vista del calendario de eventos"""
     return render_template("superadmin/calendario_admin/index.html")
 
+# 📌 API: Eliminar evento
 @admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
 @login_required
-@role_required(1)
 def eliminar_evento(evento_id):
-    """API para eliminar evento"""
     try:
         evento = Evento.query.get(evento_id)
         if not evento:
@@ -2583,17 +2518,16 @@ def eliminar_evento(evento_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+# 📌 API: Listar todos los eventos (JSON)
 @admin_bp.route("/eventos", methods=["GET"])
 @login_required
-@role_required(1)
 def listar_eventos():
-    """API para listar todos los eventos"""
     try:
         eventos = Evento.query.all()
         resultado = []
         for ev in eventos:
             resultado.append({
-                "id_evento": ev.id_evento,
+                "IdEvento": ev.id,
                 "Nombre": ev.nombre,
                 "Descripcion": ev.descripcion,
                 "Fecha": ev.fecha.strftime("%Y-%m-%d"),
@@ -2604,12 +2538,13 @@ def listar_eventos():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+# 📌 API: Crear un nuevo evento
 @admin_bp.route("/eventos", methods=["POST"])
 @login_required
-@role_required(1)
 def crear_evento():
-    """API para crear un nuevo evento"""
     data = request.get_json()
+    print("📥 Payload recibido:", data)  # Debug en consola
 
     try:
         # Leer valores (aceptando minúsculas o mayúsculas)
@@ -2644,8 +2579,108 @@ def crear_evento():
 
     except Exception as e:
         db.session.rollback()
-        print("❌ Error creando evento:", str(e))
+        print("❌ Error creando evento:", str(e))  # Debug en consola
         return jsonify({"error": str(e)}), 400
+
+
+
+@admin_bp.route('/comunicado', methods=['GET', 'POST'])
+def comunicado():
+    if request.method == 'POST':
+        try:
+            # Obtener datos del formulario
+            titulo = request.form.get('titulo', '').strip()
+            mensaje = request.form.get('mensaje', '').strip()
+            destinatarios = request.form.getlist('destinatarios')
+            prioridad = request.form.get('prioridad', 'normal')
+            
+            # Validaciones básicas
+            if not titulo:
+                flash('El título es requerido', 'error')
+                return render_template('superadmin/comunicados.html')
+            
+            if not mensaje:
+                flash('El mensaje es requerido', 'error')
+                return render_template('superadmin/comunicados.html')
+            
+            if not destinatarios:
+                flash('Selecciona al menos un destinatario', 'error')
+                return render_template('superadmin/comunicados.html')
+            
+            # Aquí tu lógica para guardar en la base de datos
+            # nuevo_comunicado = Comunicado(...)
+            # db.session.add(nuevo_comunicado)
+            # db.session.commit()
+            
+            flash('Comunicado enviado exitosamente!', 'success')
+            return redirect(url_for('admin_bp.comunicado'))
+            
+        except Exception as e:
+            flash(f'Error al enviar el comunicado: {str(e)}', 'error')
+    
+    return render_template('superadmin/comunicados.html')
+
+# ==================== SISTEMA DE VOTACIÓN ====================
+
+@admin_bp.route('/sistema-votaciones')
+@login_required
+@role_required(1)
+def sistema_votaciones():
+    """Vista principal del sistema de votación."""
+    return render_template('superadmin/sistema_votaciones/admin.html')
+
+@admin_bp.route('/sistema-votaciones/votar')
+@login_required
+def votar():
+    """Página para votar"""
+    return render_template('superadmin/sistema_votaciones/votar.html')
+
+
+
+@admin_bp.route("/guardar-horario", methods=["POST"])
+@login_required
+def guardar_horario():
+    try:
+        inicio = request.form.get("inicio")
+        fin = request.form.get("fin")
+
+        if not inicio or not fin:
+            flash("Debe ingresar inicio y fin del horario", "danger")
+            return redirect(url_for("admin.admin_panel"))
+
+        # Guardar nuevo horario (sobrescribe anterior)
+        horario = HorarioVotacion.query.first()
+        if horario:
+            horario.inicio = datetime.strptime(inicio, "%H:%M").time()
+            horario.fin = datetime.strptime(fin, "%H:%M").time()
+        else:
+            nuevo = HorarioVotacion(
+                inicio=datetime.strptime(inicio, "%H:%M").time(),
+                fin=datetime.strptime(fin, "%H:%M").time()
+            )
+            db.session.add(nuevo)
+
+        db.session.commit()
+        flash("✅ Horario de votación guardado correctamente", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Error al guardar horario: {str(e)}", "danger")
+
+    return redirect(url_for("admin.admin_panel"))
+
+# 📌 Obtener último horario en JSON
+@admin_bp.route("/ultimo-horario", methods=["GET"])
+@login_required
+def ultimo_horario():
+    # CORREGIDO: usa id_horario_votacion en lugar de id
+    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
+    if horario:
+        return jsonify({
+            "inicio": horario.inicio.strftime("%H:%M"),
+            "fin": horario.fin.strftime("%H:%M")
+        })
+    return jsonify({})
 
 # ==================== GESTIÓN DE CANDIDATOS ====================
 
@@ -2818,3 +2853,6 @@ def eliminar_candidato(candidato_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+        

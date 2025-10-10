@@ -1,114 +1,215 @@
-{# templates/estudiantes/correo.html #}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Correo Institucional</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiantes/comunicaciones.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Correo - Acentrax</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estudiantes/comunicaciones.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body data-usuario-id="{{ usuario.IdUsuario if usuario is defined else '' }}">
-  <!-- Fondo animado -->
-  <ul class="circles">
-    <li></li><li></li><li></li><li></li><li></li>
-    <li></li><li></li><li></li><li></li><li></li>
-  </ul>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <header class="email-header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="logo">
+                    <i class="fas fa-envelope"></i>
+                    <span>Correo Acentrax</span>
+                </div>
+            </div>
+            
+            <div class="header-center">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar correos..." id="searchInput">
+                    <button class="search-btn">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="user-menu">
+                    <img src="{{ url_for('static', filename='images/default-avatar.png') }}" 
+                        alt="Usuario" class="user-avatar">
+                    <span>{{ current_user.nombre if current_user else 'Usuario' }}</span>
+                </div>
+            </div>
+        </header>
 
-  <!-- HEADER -->
-  <header>
-    <div class="header-left">
-      <div class="header-title">Correo Institucional</div>
-    </div>
+        <!-- Main Layout -->
+        <div class="email-layout">
+            <!-- Sidebar -->
+            <aside class="email-sidebar" id="sidebar">
+                <button class="compose-btn" id="composeBtn">
+                    <i class="fas fa-edit"></i>
+                    Redactar
+                </button>
+                
+                <nav class="folder-nav">
+                    <ul>
+                        <li class="folder-item active" data-folder="inbox">
+                            <i class="fas fa-inbox"></i>
+                            <span>Bandeja de entrada</span>
+                            <span class="email-count" id="inboxCount">0</span>
+                        </li>
+                        <li class="folder-item" data-folder="starred">
+                            <i class="fas fa-star"></i>
+                            <span>Destacados</span>
+                        </li>
+                        <li class="folder-item" data-folder="sent">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Enviados</span>
+                        </li>
+                        <li class="folder-item" data-folder="drafts">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Borradores</span>
+                            <span class="email-count" id="draftsCount">0</span>
+                        </li>
+                        <li class="folder-item" data-folder="trash">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>Papelera</span>
+                        </li>
+                    </ul>
+                </nav>
 
-    <div class="search-wrap">
-      <div class="search-box">
-        <input id="searchInput" type="search" placeholder="🔎 Buscar correos..." autocomplete="off">
-      </div>
-    </div>
+                <div class="sidebar-footer">
+                    <div class="user-info">
+                        <img src="{{ url_for('static', filename='images/default-avatar.png') }}" 
+                            alt="Usuario" class="user-avatar-small">
+                        <div class="user-details">
+                            <strong>{{ current_user.nombre if current_user else 'Usuario' }}</strong>
+                            <span>{{ current_user.correo if current_user else 'usuario@acentrax.com' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
 
-    <div class="header-right">
-      <div id="usuarioNombre" data-id="{{ usuario.IdUsuario if usuario is defined else 0 }}">
-        {{ usuario.Nombre ~ ' ' ~ usuario.Apellido if usuario is defined else 'Usuario' }}
-      </div>
-      <button id="toggleDark" class="btn-ghost" title="Modo oscuro">🌙</button>
-    </div>
-  </header>
+            <!-- Main Content -->
+            <main class="email-main">
+                <!-- Email List -->
+                <div class="email-list-container" id="emailListContainer">
+                    <div class="email-list-header">
+                        <div class="list-controls">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="selectAll">
+                                <label for="selectAll"></label>
+                            </div>
+                            <button class="control-btn" id="refreshBtn">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="control-btn" id="archiveBtn">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                            <button class="control-btn" id="deleteBtn">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="control-btn" id="markReadBtn">
+                                <i class="fas fa-envelope-open"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="list-pagination">
+                            <span id="emailRange">1-50 de 0</span>
+                            <div class="pagination-controls">
+                                <button class="pagination-btn" id="prevPage">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button class="pagination-btn" id="nextPage">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
-  <!-- MAIN -->
-  <main class="dashboard">
-    <!-- SHORTCUTS / CARDS -->
-    <div class="shortcuts">
-      <div class="card" id="cardInbox" onclick="mostrarInbox()">
-        <h3>📥 Bandeja</h3>
-        <p class="meta">Mensajes: <span id="countInbox">{{ bandeja if bandeja is defined else 0 }}</span></p>
-      </div>
-      <div class="card" id="cardSent" onclick="mostrarSent()">
-        <h3>📤 Enviados</h3>
-        <p class="meta">Mensajes: <span id="countSent">{{ enviados if enviados is defined else 0 }}</span></p>
-      </div>
-      <div class="card" id="cardDrafts" onclick="mostrarDrafts()">
-        <h3>📝 Borradores</h3>
-        <p class="meta">Pendientes: <span id="countDrafts">{{ borradores if borradores is defined else 0 }}</span></p>
-      </div>
-      <div class="card" id="cardTrash" onclick="mostrarDeleted()">
-        <h3>🗑️ Eliminados</h3>
-        <p class="meta">Total: <span id="countDeleted">{{ eliminados if eliminados is defined else 0 }}</span></p>
-      </div>
-    </div>
+                    <div class="email-list" id="emailList">
+                        <!-- Los emails se cargarán aquí dinámicamente -->
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <h3>No hay mensajes</h3>
+                            <p>Tu bandeja de entrada está vacía</p>
+                        </div>
+                    </div>
+                </div>
 
-    <!-- BOTÓN REDACTAR FIJO -->
-    <div class="compose-bar">
-      <button id="composeBtn" class="btn-primary animate-float">✉️ Redactar</button>
-    </div>
+                <!-- Email View -->
+                <div class="email-view" id="emailView" style="display: none;">
+                    <div class="email-view-header">
+                        <button class="back-btn" id="backToList">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="email-actions">
+                            <button class="action-btn" id="starEmail">
+                                <i class="far fa-star"></i>
+                            </button>
+                            <button class="action-btn" id="replyEmail">
+                                <i class="fas fa-reply"></i>
+                            </button>
+                            <button class="action-btn" id="forwardEmail">
+                                <i class="fas fa-share"></i>
+                            </button>
+                            <button class="action-btn" id="deleteEmail">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
 
-    <!-- CONTENT -->
-    <section class="content" id="contenido">
-      <div id="mailListPlaceholder" class="mail-list-placeholder">
-        <p class="hint">Selecciona una bandeja (Bandeja / Enviados / Borradores / Eliminados) para ver los mensajes.</p>
-      </div>
-    </section>
-  </main>
-
-  <!-- MODAL REDACTAR -->
-  <div id="composeModal" class="modal" aria-hidden="true">
-    <div class="modal-content" role="dialog" aria-modal="true">
-      <button id="closeCompose" class="modal-close" aria-label="Cerrar">&times;</button>
-      <h2 class="modal-title">Mensaje nuevo</h2>
-
-      <form id="composeForm" onsubmit="enviarCorreo(event)">
-        <div class="form-row">
-          <input id="destinatario" type="email" placeholder="Para" required>
-          <div class="cc-buttons">
-            <button type="button" class="mini">CC</button>
-            <button type="button" class="mini">CCO</button>
-          </div>
+                    <div class="email-content" id="emailContent">
+                        <!-- El contenido del email se cargará aquí -->
+                    </div>
+                </div>
+            </main>
         </div>
-
-        <input id="asunto" type="text" placeholder="Asunto">
-        <textarea id="mensaje" placeholder="Escribe tu mensaje..." required></textarea>
-
-        <!-- Adjuntos -->
-        <div class="attachments">
-          <label for="adjunto" class="file-label">📎 Adjuntar</label>
-          <input id="adjunto" type="file" multiple class="file-input" />
-          <div id="attachedList" class="attached-list" aria-live="polite"></div>
-        </div>
-
-        <div class="actions">
-          <div class="left-actions">
-            <button type="submit" class="btn-send">Enviar</button>
-          </div>
-          <div class="right-actions">
-            <button type="button" class="btn-ghost cancelar" onclick="guardarBorrador()">Guardar borrador</button>
-          </div>
-        </div>
-      </form>
     </div>
-  </div>
-  <!-- FIN MODAL -->
 
-  <!-- JS -->
+    <!-- Modal para redactar email -->
+    <div class="compose-modal" id="composeModal">
+        <div class="compose-header">
+            <h3>Nuevo mensaje</h3>
+            <div class="compose-actions">
+                <button class="modal-btn" id="minimizeCompose">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button class="modal-btn" id="maximizeCompose">
+                    <i class="fas fa-expand"></i>
+                </button>
+                <button class="modal-btn" id="closeCompose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <form class="compose-form" id="composeForm">
+            <div class="compose-field">
+                <input type="email" placeholder="Para" id="composeTo" required>
+            </div>
+            <div class="compose-field">
+                <input type="text" placeholder="Asunto" id="composeSubject" required>
+            </div>
+            <div class="compose-body">
+                <textarea placeholder="Escribe tu mensaje aquí..." id="composeBody" required></textarea>
+            </div>
+            <div class="compose-footer">
+                <button type="submit" class="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                    Enviar
+                </button>
+                <button type="button" class="save-draft-btn" id="saveDraft">
+                    <i class="fas fa-save"></i>
+                    Guardar borrador
+                </button>
+                <button type="button" class="cancel-btn" id="cancelCompose">
+                    Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+
   <script src="{{ url_for('static', filename='js/estudiantes/comunicaciones.js') }}"></script>
+
 
 </body>
 </html>
