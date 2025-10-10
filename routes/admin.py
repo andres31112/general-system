@@ -749,6 +749,257 @@ def mantenimiento():
     """Muestra la página de mantenimiento de equipos."""
     return render_template('superadmin/gestion_inventario/mantenimiento.html')
 
+# ========================================
+# API DE MANTENIMIENTOS
+# ========================================
+
+@admin_bp.route('/api/mantenimientos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_listar_mantenimientos():
+    """
+    Lista todos los mantenimientos con información completa de equipo, sede y salón.
+    """
+    try:
+        mantenimientos_db = db.session.query(
+            Mantenimiento.id,
+            Mantenimiento.equipo_id,
+            Mantenimiento.sede_id,
+            Mantenimiento.fecha_programada,
+            Mantenimiento.tipo,
+            Mantenimiento.estado,
+            Mantenimiento.descripcion,
+            Mantenimiento.fecha_realizada,
+            Mantenimiento.tecnico,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'), # Añadir nombre del salón
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id)\
+         .join(Sede, Mantenimiento.sede_id == Sede.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .order_by(Mantenimiento.fecha_programada.desc())\
+         .all()
+
+        mantenimientos = []
+        for mant in mantenimientos_db:
+            mantenimientos.append({
+                'id': mant.id,
+                'equipo_id': mant.equipo_id,
+                'equipo_nombre': mant.equipo_nombre,
+                'sede_id': mant.sede_id,
+                'sede': mant.sede_nombre,
+                'salon_nombre': mant.salon_nombre or "N/A", # Incluir nombre del salón
+                'fecha_programada': mant.fecha_programada.strftime('%Y-%m-%d'),
+                'tipo': mant.tipo,
+                'estado': mant.estado,
+                'descripcion': mant.descripcion or '',
+                'fecha_realizada': mant.fecha_realizada.strftime('%Y-%m-%d') if mant.fecha_realizada else None,
+                'tecnico': mant.tecnico or ''
+            })
+        return jsonify(mantenimientos), 200
+    except Exception as e:
+        print(f"Error al listar mantenimientos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+@admin_bp.route('/api/mantenimientos/programar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_programar_mantenimiento():
+    """
+    Programa un nuevo mantenimiento y actualiza el estado del equipo.
+    """
+    try:
+        data = request.get_json()
+        equipo_id = data.get('equipo_id')
+        sede_id = data.get('sede_id') # Asegurarse de recibir sede_id
+        fecha_programada_str = data.get('fecha_programada')
+        tipo = data.get('tipo')
+        descripcion = data.get('descripcion', '').strip()
+        tecnico = data.get('tecnico', '').strip()
+
+        if not all([equipo_id, sede_id, fecha_programada_str, tipo]):
+            return jsonify({'success': False, 'error': 'Faltan campos obligatorios.'}), 400
+
+        equipo = Equipo.query.get(equipo_id)
+        if not equipo:
+            return jsonify({'success': False, 'error': f'Equipo con ID {equipo_id} no encontrado.'}), 404
+
+        # Convertir fecha
+        fecha_programada = datetime.strptime(fecha_programada_str, '%Y-%m-%d').date()
+
+        nuevo_mantenimiento = Mantenimiento(
+            equipo_id=equipo_id,
+            sede_id=sede_id,
+            fecha_programada=fecha_programada,
+            tipo=tipo,
+            estado='pendiente', # Estado inicial
+            descripcion=descripcion,
+            tecnico=tecnico
+        )
+        db.session.add(nuevo_mantenimiento)
+
+        # Actualizar estado del equipo a 'Mantenimiento'
+        equipo.estado = 'Mantenimiento'
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Mantenimiento programado exitosamente.',
+            'mantenimiento': nuevo_mantenimiento.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al programar mantenimiento: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_detalle_mantenimiento(mantenimiento_id):
+    """
+    Obtiene el detalle de un mantenimiento específico.
+    """
+    try:
+        mantenimiento = db.session.query(
+            Mantenimiento.id,
+            Mantenimiento.equipo_id,
+            Mantenimiento.sede_id,
+            Mantenimiento.fecha_programada,
+            Mantenimiento.tipo,
+            Mantenimiento.estado,
+            Mantenimiento.descripcion,
+            Mantenimiento.fecha_realizada,
+            Mantenimiento.tecnico,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id)\
+         .join(Sede, Mantenimiento.sede_id == Sede.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .filter(Mantenimiento.id == mantenimiento_id)\
+         .first()
+
+        if not mantenimiento:
+            return jsonify({'success': False, 'error': 'Mantenimiento no encontrado.'}), 404
+
+        return jsonify({
+            'id': mantenimiento.id,
+            'equipo_id': mantenimiento.equipo_id,
+            'equipo_nombre': mantenimiento.equipo_nombre,
+            'sede_id': mantenimiento.sede_id,
+            'sede': mantenimiento.sede_nombre,
+            'salon_nombre': mantenimiento.salon_nombre or "N/A",
+            'fecha_programada': mantenimiento.fecha_programada.strftime('%Y-%m-%d'),
+            'tipo': mantenimiento.tipo,
+            'estado': mantenimiento.estado,
+            'descripcion': mantenimiento.descripcion or '',
+            'fecha_realizada': mantenimiento.fecha_realizada.strftime('%Y-%m-%d') if mantenimiento.fecha_realizada else None,
+            'tecnico': mantenimiento.tecnico or ''
+        }), 200
+    except Exception as e:
+        print(f"Error al obtener detalle de mantenimiento: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>/actualizar', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_mantenimiento(mantenimiento_id):
+    """
+    Actualiza el estado, técnico y fecha de realización de un mantenimiento.
+    También actualiza el estado del equipo asociado.
+    """
+    try:
+        data = request.get_json()
+        mantenimiento = Mantenimiento.query.get_or_404(mantenimiento_id)
+        equipo = Equipo.query.get(mantenimiento.equipo_id) # Obtener el equipo asociado
+
+        nuevo_estado = data.get('estado', mantenimiento.estado)
+        tecnico = data.get('tecnico', mantenimiento.tecnico)
+        fecha_realizada_str = data.get('fecha_realizada')
+
+        if nuevo_estado not in ['pendiente', 'en_progreso', 'completado', 'cancelado']:
+            return jsonify({'success': False, 'error': 'Estado de mantenimiento inválido.'}), 400
+
+        mantenimiento.estado = nuevo_estado
+        mantenimiento.tecnico = tecnico
+
+        if fecha_realizada_str:
+            mantenimiento.fecha_realizada = datetime.strptime(fecha_realizada_str, '%Y-%m-%d').date()
+        elif nuevo_estado == 'completado' and not mantenimiento.fecha_realizada:
+            mantenimiento.fecha_realizada = date.today() # Establecer hoy si se completa y no hay fecha
+
+        # Lógica para actualizar el estado del equipo
+        if equipo:
+            if nuevo_estado == 'completado':
+                equipo.estado = 'Disponible' # O el estado que corresponda después del mantenimiento
+            elif nuevo_estado == 'cancelado':
+                # Si se cancela, el equipo vuelve a su estado anterior o a 'Disponible'
+                # Aquí asumimos 'Disponible' si no hay un estado anterior claro
+                equipo.estado = 'Disponible'
+            elif nuevo_estado == 'en_progreso':
+                equipo.estado = 'Mantenimiento' # Asegurarse de que el equipo esté en mantenimiento
+            # Si es 'pendiente', el estado del equipo ya debería ser 'Mantenimiento' desde la programación
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Mantenimiento actualizado exitosamente.',
+            'mantenimiento_actualizado': mantenimiento.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al actualizar mantenimiento: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_mantenimiento(mantenimiento_id):
+    """
+    Elimina un mantenimiento y restablece el estado del equipo si estaba en 'Mantenimiento'.
+    """
+    try:
+        mantenimiento = Mantenimiento.query.get_or_404(mantenimiento_id)
+        equipo = Equipo.query.get(mantenimiento.equipo_id)
+
+        # Si el mantenimiento estaba activo y el equipo en estado 'Mantenimiento',
+        # se restablece el estado del equipo a 'Disponible'.
+        if equipo and mantenimiento.estado in ['pendiente', 'en_progreso'] and equipo.estado == 'Mantenimiento':
+            equipo.estado = 'Disponible'
+
+        db.session.delete(mantenimiento)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Mantenimiento eliminado exitosamente.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al eliminar mantenimiento: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/mantenimientos/estadisticas', methods=['GET'])
+@login_required
+@role_required(1)
+def api_estadisticas_mantenimientos():
+    """
+    Proporciona estadísticas de mantenimientos por estado.
+    """
+    try:
+        total = db.session.query(Mantenimiento).count()
+        estados_raw = db.session.query(Mantenimiento.estado, db.func.count(Mantenimiento.estado))\
+                                .group_by(Mantenimiento.estado).all()
+        
+        stats = {e[0]: e[1] for e in estados_raw}
+        
+        return jsonify({
+            'total': total,
+            'pendiente': stats.get('pendiente', 0),
+            'en_progreso': stats.get('en_progreso', 0),
+            'completado': stats.get('completado', 0),
+            'cancelado': stats.get('cancelado', 0)
+        }), 200
+    except Exception as e:
+        print(f"Error al obtener estadísticas de mantenimientos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
 @admin_bp.route('/gestion-salones')
 def gestion_salones():
     """Muestra la página de gestión de salones con estadísticas."""

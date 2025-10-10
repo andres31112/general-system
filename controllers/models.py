@@ -352,22 +352,28 @@ class Mantenimiento(db.Model):
     descripcion = db.Column(db.Text, nullable=True)
     fecha_realizada = db.Column(db.Date, nullable=True)
     tecnico = db.Column(db.String(100), nullable=True)
+    
     equipo = db.relationship('Equipo', backref=db.backref('programaciones', lazy=True))
-    sede = db.relationship('Sede', lazy='joined')
+    sede = db.relationship('Sede', backref=db.backref('mantenimientos', lazy=True))
+
     def to_dict(self):
+        salon_nombre = self.equipo.salon.nombre if self.equipo and self.equipo.salon else "N/A"
+        
         return {
             "id": self.id,
             "equipo_id": self.equipo_id,
             "equipo_nombre": self.equipo.nombre if self.equipo else "",
+            "sede_id": self.sede_id,
             "sede": self.sede.nombre if self.sede else "",
+            "salon_nombre": salon_nombre,
             "fecha_programada": self.fecha_programada.strftime("%Y-%m-%d"),
             "tipo": self.tipo,
             "estado": self.estado,
             "descripcion": self.descripcion or "",
-            "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else "",
+            "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else None,
             "tecnico": self.tecnico or ""
         }
-        
+
 #==========================================================================================================#
 #Eventos y votaciones
 #==========================================================================================================#
