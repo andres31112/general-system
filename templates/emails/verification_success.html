@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación Exitosa</title>
+    <style>
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #28A745, #20c997);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 30px;
+        }
+        .credentials-box {
+            background: #f8f9fa;
+            border: 2px dashed #28A745;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .credential-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .credential-item:last-child {
+            border-bottom: none;
+        }
+        .credential-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .credential-value {
+            font-family: 'Courier New', monospace;
+            background: #ffffff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            font-weight: bold;
+            color: #0D3B66;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #0D3B66, #1a5080);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        .footer {
+            background: #e9ecef;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Verificación Exitosa</h1>
+            <p>¡Tu cuenta ha sido verificada correctamente!</p>
+        </div>
+        
+        <div class="content">
+            <div style="text-align: center;">
+                <div class="icon">🎉</div>
+                <h2 style="color: #28A745; margin-bottom: 10px;">¡Bienvenido {{ usuario.nombre_completo }}!</h2>
+                <p style="color: #6c757d; margin-bottom: 30px;">
+                    Tu dirección de correo electrónico ha sido verificada exitosamente. 
+                    Aquí tienes tus credenciales de acceso:
+                </p>
+            </div>
+
+            <div class="credentials-box">
+                <h3 style="color: #0D3B66; margin-top: 0; text-align: center;">Credenciales de Acceso</h3>
+                
+                <div class="credential-item">
+                    <span class="credential-label">Correo Electrónico:</span>
+                    <span class="credential-value">{{ usuario.correo }}</span>
+                </div>
+                
+                <div class="credential-item">
+                    <span class="credential-label">Contraseña:</span>
+                    <span class="credential-value">{{ password }}</span>
+                </div>
+                
+                <div class="credential-item">
+                    <span class="credential-label">Rol:</span>
+                    <span class="credential-value">{{ usuario.rol.nombre }}</span>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ Importante:</strong> 
+                Por seguridad, se recomienda cambiar la contraseña después del primer inicio de sesión.
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ login_url }}" class="button">
+                    🚀 Iniciar Sesión en el Sistema
+                </a>
+            </div>
+
+            <div style="background: #e7f3ff; padding: 15px; border-radius: 6px; border-left: 4px solid #0D3B66;">
+                <strong>💡 ¿Necesitas ayuda?</strong>
+                <p style="margin: 5px 0 0 0; font-size: 14px;">
+                    Si tienes problemas para acceder, contacta al administrador del sistema.
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
+            <p>Sistema Académico - © 2024 Todos los derechos reservados</p>
+        </div>
+    </div>
+</body>
+</html>

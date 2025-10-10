@@ -3,18 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administrador</title>
+  <title>Panel de Administración - Sistema de Votación</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/sistemav/votacionA.css') }}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
   <div class="container">
+    <!-- Header Principal -->
+    <header class="admin-header">
+      <div class="header-title">
+        <i class="fas fa-user-shield"></i>
+        <h1>Panel de Administración</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-dashboard" data-url="{{ url_for('admin.inicio') }}" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i> Dashboard
+        </button>
+      </div>
+    </header>
 
     <!-- 🔔 Mensajes flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            <i class="fas fa-{{ 'check' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
           </div>
@@ -22,102 +36,204 @@
       {% endif %}
     {% endwith %}
 
-    <h1>Panel de Administrador</h1>
-
-    <!-- Horario de votación -->
-<h2>Horario de votación</h2>
-<form id="form-horario" action="{{ url_for('admin.guardar_horario') }}" method="POST" class="my-3">
-  <label for="inicio">Hora de inicio:</label>
-  <input type="time" id="inicio" name="inicio" class="form-control my-2" required>
-
-  <label for="fin">Hora de fin:</label>
-  <input type="time" id="fin" name="fin" class="form-control my-2" required>
-
-  <button type="submit" class="btn btn-success">Guardar Horario</button>
-</form>
-
-<p id="horario-actual"><strong>Horario actual:</strong> No hay horario configurado</p>
-
-<!-- Formulario para agregar candidatos -->
-<h2>Agregar candidato</h2>
-<form id="form-candidato" action="{{ url_for('admin.crear_candidato') }}" method="POST" enctype="multipart/form-data">
-  <input type="text" id="nombre" class="form-control my-2" name="nombre" placeholder="Nombre del candidato" required>
-  <input type="text" id="tarjeton" class="form-control my-2" name="tarjeton" placeholder="Número de tarjetón" required>
-  <textarea id="propuesta" class="form-control my-2" name="propuesta" placeholder="Propuesta" required></textarea>
-  <select id="categoria" class="form-control my-2" name="categoria" required>
-    <option value="">Seleccione categoría</option>
-    <option value="personero">Personero</option>
-    <option value="contralor">Contralor</option>
-    <option value="cabildante">Cabildante</option>
-  </select>
-  <input type="file" id="foto" class="form-control my-2" name="foto" accept="image/*" required>
-  <img id="foto-preview" src="" width="150" style="display:block; margin-top:10px;">
-  <button type="submit" class="btn btn-primary">Agregar Candidato</button>
-</form>
-
-    <!-- Lista de candidatos -->
-    <h2>Lista de Candidatos</h2>
-    <div id="lista-candidatos">
-      {% if candidatos %}
-        {% for candidato in candidatos %}
-          <div class="candidato border rounded p-3 my-2 d-flex justify-content-between align-items-start">
-            <div>
-              <h3>{{ candidato.nombre }}</h3>
-              <p><strong>Categoría:</strong> {{ candidato.categoria }}</p>
-              <p><strong>Tarjetón:</strong> {{ candidato.tarjeton }}</p>
-              <p><strong>Propuesta:</strong> {{ candidato.propuesta }}</p>
-              {% if candidato.foto %}
-                <img src="{{ url_for('static', filename='images/candidatos/' ~ candidato.foto) }}" alt="{{ candidato.nombre }}" width="150">
-              {% endif %}
-            </div>
-            <div>
-              <button class="btn btn-warning btn-editar" data-id="{{ candidato.id }}">Editar</button>
-              <button class="btn btn-danger btn-eliminar" data-id="{{ candidato.id }}">Eliminar</button>
-            </div>
+    <!-- SECCIÓN DE RESULTADOS (EN LA PARTE SUPERIOR) -->
+    <section class="results-section">
+      <div class="results-container">
+        <div class="results-header">
+          <h3 class="results-title">
+            <i class="fas fa-chart-pie"></i>
+            Resultados de la Votación
+          </h3>
+          <div class="results-actions">
+            <button id="btn-ver-resultados" class="btn btn-info">
+              <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+            <button id="btn-publicar-resultados" class="btn btn-success">
+              <i class="fas fa-bullhorn"></i> Publicar
+            </button>
           </div>
-        {% endfor %}
-      {% else %}
-        <p>No hay candidatos aún.</p>
-      {% endif %}
-    </div>
-
-    <!-- Resultados -->
-    <h2>Resultados</h2>
-    <div id="resultados"></div>
-  </div>
-
- <!-- Modal de edición -->
-<div class="modal fade" id="modalEditar" tabindex="-1">
-
-  <div class="modal-dialog">
-    <form id="form-editar" enctype="multipart/form-data">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Editar Candidato</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <input type="hidden" id="edit-id" name="id">
-          <input type="text" id="edit-nombre" class="form-control my-2" name="nombre" placeholder="Nombre" required>
-          <input type="text" id="edit-tarjeton" class="form-control my-2" name="tarjeton" placeholder="Número de tarjetón" required>
-          <textarea id="edit-propuesta" class="form-control my-2" name="propuesta" placeholder="Propuesta" required></textarea>
-          <select id="edit-categoria" class="form-control my-2" name="categoria" required>
-            <option value="personero">Personero</option>
-            <option value="contralor">Contralor</option>
-            <option value="cabildante">Cabildante</option>
-          </select>
-          <input type="file" id="edit-foto" class="form-control my-2" name="foto" accept="image/*">
-          <img id="foto-preview-editar" src="" width="150" style="display:block; margin-top:10px;">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success">Guardar cambios</button>
+        <div id="resultados">
+          <div class="text-center text-muted py-4">
+            <i class="fas fa-chart-bar fa-3x mb-3"></i>
+            <p>Los resultados se mostrarán aquí cuando estén disponibles.</p>
+          </div>
         </div>
       </div>
-    </form>
-  </div>
-</div>
+    </section>
 
+    <!-- SECCIÓN DE GESTIÓN (DEBAJO DE RESULTADOS) -->
+    <div class="management-grid">
+      <!-- Columna Izquierda: Horario y Agregar Candidato -->
+      <div class="management-column">
+        <!-- Horario de votación -->
+        <div class="card">
+          <h2>
+            <i class="fas fa-clock"></i>
+            Horario de Votación
+          </h2>
+          <form id="form-horario" action="{{ url_for('admin.guardar_horario') }}" method="POST">
+            <div class="form-group">
+              <label for="inicio"><i class="fas fa-play"></i> Hora de inicio:</label>
+              <input type="time" id="inicio" name="inicio" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="fin"><i class="fas fa-stop"></i> Hora de fin:</label>
+              <input type="time" id="fin" name="fin" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-success w-100">
+              <i class="fas fa-save"></i> Guardar Horario
+            </button>
+          </form>
+          <div class="schedule-status">
+            <i class="fas fa-info-circle"></i>
+            <span id="horario-actual"><strong>Horario actual:</strong> No configurado</span>
+          </div>
+        </div>
+
+        <!-- Agregar candidato -->
+        <div class="card">
+          <h2>
+            <i class="fas fa-user-plus"></i>
+            Agregar Candidato
+          </h2>
+          <form id="form-candidato" action="{{ url_for('admin.crear_candidato') }}" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+              <label for="nombre"><i class="fas fa-id-card"></i> Nombre del candidato:</label>
+              <input type="text" id="nombre" class="form-control" name="nombre" placeholder="Ingrese el nombre completo" required>
+            </div>
+            <div class="form-group">
+              <label for="tarjeton"><i class="fas fa-hashtag"></i> Número de tarjetón:</label>
+              <input type="text" id="tarjeton" class="form-control" name="tarjeton" placeholder="Número único del tarjetón" required>
+            </div>
+            <div class="form-group">
+              <label for="propuesta"><i class="fas fa-bullhorn"></i> Propuesta:</label>
+              <textarea id="propuesta" class="form-control" name="propuesta" placeholder="Describa la propuesta del candidato" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+              <label for="categoria"><i class="fas fa-tag"></i> Categoría:</label>
+              <select id="categoria" class="form-control" name="categoria" required>
+                <option value="">Seleccione categoría</option>
+                <option value="personero">Personero</option>
+                <option value="contralor">Contralor</option>
+                <option value="cabildante">Cabildante</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="foto"><i class="fas fa-camera"></i> Fotografía:</label>
+              <input type="file" id="foto" class="form-control" name="foto" accept="image/*" required>
+              <div id="foto-preview" class="photo-preview" style="display: none;">
+                <img src="" alt="Vista previa">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fas fa-plus"></i> Agregar Candidato
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Lista de Candidatos -->
+      <div class="candidates-column">
+        <div class="card">
+          <h2>
+            <i class="fas fa-list"></i>
+            Lista de Candidatos
+            <span id="candidates-count" class="text-muted" style="font-size: 0.9rem; margin-left: 10px;"></span>
+          </h2>
+          <div id="lista-candidatos" class="candidates-list">
+            {% if candidatos %}
+              {% for candidato in candidatos %}
+                <div class="candidate-card">
+                  <div class="candidate-info">
+                    <h3>{{ candidato.nombre }}</h3>
+                    <div class="candidate-meta">
+                      <p><strong><i class="fas fa-tag"></i> Categoría:</strong> {{ candidato.categoria }}</p>
+                      <p><strong><i class="fas fa-hashtag"></i> Tarjetón:</strong> {{ candidato.tarjeton }}</p>
+                      <p><strong><i class="fas fa-bullhorn"></i> Propuesta:</strong> {{ candidato.propuesta }}</p>
+                    </div>
+                    {% if candidato.foto %}
+                      <div class="candidate-photo">
+                        <img src="{{ url_for('static', filename='images/candidatos/' ~ candidato.foto) }}" alt="{{ candidato.nombre }}">
+                      </div>
+                    {% endif %}
+                  </div>
+                  <div class="candidate-actions">
+                    <button class="btn btn-warning btn-editar" data-id="{{ candidato.id }}">
+                      <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-eliminar" data-id="{{ candidato.id }}">
+                      <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-users fa-3x mb-3"></i>
+                <p>No hay candidatos registrados.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Edición (Más pequeño) -->
+  <div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-edit"></i>
+            Editar Candidato
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="form-editar" enctype="multipart/form-data">
+          <div class="modal-body">
+            <input type="hidden" id="edit-id" name="id">
+            <div class="form-group">
+              <label for="edit-nombre"><i class="fas fa-id-card"></i> Nombre:</label>
+              <input type="text" id="edit-nombre" class="form-control" name="nombre" placeholder="Nombre del candidato" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-tarjeton"><i class="fas fa-hashtag"></i> Tarjetón:</label>
+              <input type="text" id="edit-tarjeton" class="form-control" name="tarjeton" placeholder="Número de tarjetón" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-propuesta"><i class="fas fa-bullhorn"></i> Propuesta:</label>
+              <textarea id="edit-propuesta" class="form-control" name="propuesta" placeholder="Propuesta del candidato" rows="2" required></textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-categoria"><i class="fas fa-tag"></i> Categoría:</label>
+              <select id="edit-categoria" class="form-control" name="categoria" required>
+                <option value="personero">Personero</option>
+                <option value="contralor">Contralor</option>
+                <option value="cabildante">Cabildante</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-foto"><i class="fas fa-camera"></i> Nueva Fotografía (opcional):</label>
+              <input type="file" id="edit-foto" class="form-control" name="foto" accept="image/*">
+              <div id="foto-preview-editar" class="photo-preview" style="display: none;">
+                <img src="" alt="Vista previa">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-save"></i> Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,84 +1,486 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Usuarios/Roles</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/dashboard.css') }}">
-
-</head>
-<body>
-
 {% extends "base.html" %}
 
 {% block title %}Gestión de Usuarios/Roles{% endblock %}
 
 {% block content %}
-<header class="main-header d-none d-lg-flex justify-content-between align-items-center">
-    <div class="search-bar input-group" style="max-width: 400px;">
-        <span class="input-group-text"><i class="fas fa-search"></i></span>
-        <input type="search" class="form-control" placeholder="Buscar usuarios, roles, etc..." aria-label="Buscar">
+
+<style>
+    /* Variables CSS usando la paleta de colores del diseño anterior */
+    :root {
+        --accent1: #F95738;
+        --accent2: #EE964B;
+        --accent3: #F4D35E;
+        --accent4: #0D3B66;
+        --light: #FAF0CA;
+        --white: #FFFFFF;
+        --black: #333333;
+        --gray: #666666;
+        --light-gray: #F8F9FA;
+        --border: #E9ECEF;
+        --card-bg: #FFFFFF;
+        --header-bg: #FFFFFF;
+        --main-bg: #F8F9FA;
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+        --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+        --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+        --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+    }
+
+    /* Estilos Generales */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
+        color: var(--black);
+        margin: 0;
+        min-height: 100vh;
+    }
+
+    /* Título de la Página */
+    .text-principal {
+        color: var(--accent4);
+        font-weight: 800;
+        font-size: 2.5rem;
+        text-align: center;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+        display: inline-block;
+    }
+
+    .text-principal::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background: var(--gradient-accent);
+        border-radius: 2px;
+    }
+
+    /* Contenedor principal */
+    .container-fluid {
+        padding: 40px 20px;
+        background: transparent;
+    }
+
+    /* Tarjetas de Acceso - Diseño Mejorado */
+    .card {
+        border-radius: 20px;
+        background: var(--card-bg);
+        border: none;
+        text-decoration: none;
+        color: var(--black);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transition: left 0.6s;
+    }
+
+    .card:hover::before {
+        left: 100%;
+    }
+
+    .card:hover {
+        transform: translateY(-12px) scale(1.02);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .card-body {
+        padding: 2.5rem;
+        position: relative;
+        z-index: 2;
+        background: transparent;
+    }
+
+    .card-title {
+        font-weight: 700;
+        color: var(--accent4);
+        font-size: 1.4rem;
+        margin-bottom: 1rem;
+        transition: color 0.3s ease;
+    }
+
+    .card-text {
+        color: var(--gray);
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+    
+    /* Iconos con diseño mejorado */
+    .card-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card-icon::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
+        border-radius: 20px;
+    }
+
+    .card:hover .card-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* Colores específicos para cada tarjeta */
+    .card:nth-child(1) .card-icon {
+        background: var(--gradient-primary);
+        color: white;
+    }
+    .card:nth-child(2) .card-icon {
+        background: var(--gradient-accent);
+        color: white;
+    }
+    .card:nth-child(3) .card-icon {
+        background: var(--gradient-secondary);
+        color: var(--black);
+    }
+    .card:nth-child(4) .card-icon {
+        background: linear-gradient(135deg, var(--accent2), #f0a868);
+        color: white;
+    }
+    .card:nth-child(5) .card-icon {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+    }
+
+    /* Efectos hover específicos */
+    .card:nth-child(1):hover {
+        box-shadow: 0 15px 30px rgba(13, 59, 102, 0.2);
+    }
+    .card:nth-child(2):hover {
+        box-shadow: 0 15px 30px rgba(249, 87, 56, 0.2);
+    }
+    .card:nth-child(3):hover {
+        box-shadow: 0 15px 30px rgba(244, 211, 94, 0.2);
+    }
+    .card:nth-child(4):hover {
+        box-shadow: 0 15px 30px rgba(238, 150, 75, 0.2);
+    }
+
+    /* Grid layout mejorado */
+    .row.g-4 {
+        margin-top: 40px;
+    }
+
+    .col-xl-4 {
+        padding: 15px;
+    }
+
+    /* Efecto de partículas de fondo para las tarjetas */
+    .card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.1) 0%, transparent 50%),
+                   radial-gradient(circle at 80% 20%, rgba(13, 59, 102, 0.05) 0%, transparent 50%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .card:hover::after {
+        opacity: 1;
+    }
+
+    /* Barra de búsqueda */
+    .search-container {
+        max-width: 600px;
+        margin: 0 auto 2rem auto;
+        position: relative;
+    }
+
+    .search-bar {
+        border-radius: 15px;
+        border: 2px solid var(--border);
+        background: var(--white);
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow);
+    }
+
+    .search-bar:focus {
+        border-color: var(--accent4);
+        box-shadow: 0 0 0 0.2rem rgba(13, 59, 102, 0.1);
+    }
+
+    .search-icon {
+        background: var(--gradient-primary);
+        border: none;
+        color: white;
+        border-radius: 0 12px 12px 0;
+        transition: all 0.3s ease;
+    }
+
+    .search-icon:hover {
+        background: var(--accent4);
+    }
+
+    /* Resultados de búsqueda */
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--white);
+        border-radius: 0 0 15px 15px;
+        box-shadow: var(--shadow-hover);
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+
+    .search-result-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .search-result-item:hover {
+        background: var(--light-gray);
+    }
+
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: var(--accent4);
+        margin-bottom: 5px;
+    }
+
+    .user-id {
+        font-size: 0.9rem;
+        color: var(--gray);
+    }
+
+    .user-role {
+        background: var(--gradient-primary);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    /* Layout original con crear usuario a la derecha */
+    .user-cards-container {
+        margin-top: 20px;
+    }
+
+    .create-user-section {
+        height: 100%;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .text-principal {
+            font-size: 2rem;
+        }
+        
+        .card-body {
+            padding: 2rem;
+        }
+        
+        .card-icon {
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
+        }
+
+        .search-container {
+            max-width: 100%;
+            margin: 0 auto 1.5rem auto;
+        }
+    }
+
+    /* Animación de entrada para las tarjetas */
+    @keyframes cardEntrance {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .col-xl-4, .col-lg-6 {
+        animation: cardEntrance 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+
+    .col-xl-4:nth-child(1), .col-lg-6:nth-child(1) { animation-delay: 0.1s; }
+    .col-xl-4:nth-child(2), .col-lg-6:nth-child(2) { animation-delay: 0.2s; }
+    .col-xl-4:nth-child(3), .col-lg-6:nth-child(3) { animation-delay: 0.3s; }
+    .col-xl-4:nth-child(4), .col-lg-6:nth-child(4) { animation-delay: 0.4s; }
+    .col-xl-4:nth-child(5), .col-lg-6:nth-child(5) { animation-delay: 0.5s; }
+
+    /* Enlace de acceso mejorado */
+    .access-link {
+        color: var(--accent1) !important;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .access-link:hover {
+        color: var(--accent4) !important;
+        transform: translateX(5px);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12 text-center">
+            <h1 class="text-principal">Gestión de Usuarios</h1>
+            <p class="lead text-muted" style="font-size: 1.2rem; color: var(--gray) !important;">
+                Sistema integral de administración de usuarios
+            </p>
+        </div>
     </div>
 
-    <div class="user-actions d-flex align-items-center">
-        <a href="#" class="action-link me-4" aria-label="Notificaciones">
-            <i class="fas fa-bell"></i>
-        </a>
-        <a href="#" class="action-link" aria-label="Perfil de usuario">
-            <i class="fas fa-user-circle"></i>
-        </a>
+    <!-- Barra de búsqueda -->
+    <div class="row justify-content-center">
+        <div class="col-12 search-container">
+            <div class="input-group search-bar">
+                <input type="text" 
+                       class="form-control border-0 py-3" 
+                       placeholder="Buscar usuario por número de identificación..." 
+                       id="searchInput"
+                       aria-label="Número de identificación"
+                       style="border-radius: 15px 0 0 15px;">
+                <button class="btn search-icon px-4" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div class="search-results" id="searchResults">
+                <!-- Los resultados se cargarán aquí dinámicamente -->
+            </div>
+        </div>
     </div>
-</header>
-
-<main class="dashboard-content p-4 p-md-5">
-    <h1 class="main-title">¿Qué Usuarios Desea Gestionar hoy?</h1>
-
+    
+    <!-- Layout original con crear usuario a la derecha -->
     <div class="row g-4 user-cards-container">
         <div class="col-lg-8">
             <div class="row g-4">
                 <div class="col-md-6">
-                    <a href="{{ url_for('admin.profesores') }}" class="user-card professors-card text-decoration-none">
-                        <div class="card-body">
-                            <div class="icon-wrapper">
+                    <a href="{{ url_for('admin.profesores') }}" class="card h-100 text-decoration-none">
+                        <div class="card-body d-flex flex-column align-items-start">
+                            <div class="card-icon">
                                 <i class="fas fa-briefcase"></i>
                             </div>
-                            <h3 class="card-title">Profesores</h3>
+                            <h5 class="card-title">Profesores</h5>
+                            <p class="card-text">
+                                Administra los perfiles profesionales y asignaciones de docentes.
+                            </p>
+                            <div class="mt-auto pt-3">
+                                <span class="access-link">
+                                    <i class="fas fa-arrow-right me-1"></i>Gestionar profesores
+                                </span>
+                            </div>
                         </div>
                     </a>
                 </div>
 
                 <div class="col-md-6">
-                    <a href="{{ url_for('admin.estudiantes') }}" class="user-card students-card text-decoration-none">
-                        <div class="card-body">
-                            <div class="icon-wrapper">
+                    <a href="{{ url_for('admin.estudiantes') }}" class="card h-100 text-decoration-none">
+                        <div class="card-body d-flex flex-column align-items-start">
+                            <div class="card-icon">
                                 <i class="fas fa-user-graduate"></i>
                             </div>
-                            <h3 class="card-title">Estudiantes</h3>
+                            <h5 class="card-title">Estudiantes</h5>
+                            <p class="card-text">
+                                Gestiona matriculas, perfiles y registros académicos de estudiantes.
+                            </p>
+                            <div class="mt-auto pt-3">
+                                <span class="access-link">
+                                    <i class="fas fa-arrow-right me-1"></i>Gestionar estudiantes
+                                </span>
+                            </div>
                         </div>
                     </a>
                 </div>
 
                 <div class="col-md-6">
-                    <a href="{{ url_for('admin.padres') }}" class="user-card parents-card text-decoration-none">
-                        <div class="card-body">
-                            <div class="icon-wrapper">
+                    <a href="{{ url_for('admin.padres') }}" class="card h-100 text-decoration-none">
+                        <div class="card-body d-flex flex-column align-items-start">
+                            <div class="card-icon">
                                 <i class="fas fa-users"></i>
                             </div>
-                            <h3 class="card-title">Padres/Tutores</h3>
+                            <h5 class="card-title">Padres/Tutores</h5>
+                            <p class="card-text">
+                                Administra los perfiles de padres y tutores de los estudiantes.
+                            </p>
+                            <div class="mt-auto pt-3">
+                                <span class="access-link">
+                                    <i class="fas fa-arrow-right me-1"></i>Gestionar padres/tutores
+                                </span>
+                            </div>
                         </div>
                     </a>
                 </div>
 
                 <div class="col-md-6">
-                    <a href="{{ url_for('admin.superadmins') }}" class="user-card admins-card text-decoration-none">
-                        <div class="card-body">
-                            <div class="icon-wrapper">
+                    <a href="{{ url_for('admin.superadmins') }}" class="card h-100 text-decoration-none">
+                        <div class="card-body d-flex flex-column align-items-start">
+                            <div class="card-icon">
                                 <i class="fas fa-pen-fancy"></i>
                             </div>
-                            <h3 class="card-title">Administradores<br>Institucionales</h3>
+                            <h5 class="card-title">Administradores Institucionales</h5>
+                            <p class="card-text">
+                                Gestiona los administradores con permisos de configuración del sistema.
+                            </p>
+                            <div class="mt-auto pt-3">
+                                <span class="access-link">
+                                    <i class="fas fa-arrow-right me-1"></i>Gestionar administradores
+                                </span>
+                            </div>
                         </div>
                     </a>
                 </div>
@@ -86,25 +488,144 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="create-user-section card bg-dark text-white shadow-lg">
-                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center p-4">
-                    <img src="https://placehold.co/300x180/495057/FFFFFF?text=Ilustracion" class="img-fluid rounded mb-4" alt="Ilustración para la creación de usuarios">
-                    <h3 class="section-title">Crea Usuarios</h3>
-                    <p class="section-description">Define nuevos perfiles de usuario y gestiona sus permisos dentro del sistema de forma sencilla.</p>
-                    <br>
-                    <a href="{{ url_for('admin.crear_usuario') }}" class="btn btn-light fw-bold w-100 mt-2">
-                        <i class="fas fa-user-plus me-2"></i>
-                        Crear nuevo Usuario
-                    </a>
+            <a href="{{ url_for('admin.crear_usuario') }}" class="card create-user-section h-100 text-decoration-none">
+                <div class="card-body d-flex flex-column align-items-start">
+                    <div class="card-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <h5 class="card-title">Crear Nuevo Usuario</h5>
+                    <p class="card-text">
+                        Define nuevos perfiles de usuario y gestiona sus permisos dentro del sistema de forma sencilla.
+                    </p>
+                    <div class="mt-auto pt-3">
+                        <span class="access-link">
+                            <i class="fas fa-arrow-right me-1"></i>Crear nuevo Usuario
+                        </span>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
-</main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    let searchTimeout;
+
+    async function buscarUsuarios(termino) {
+        if (termino.length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await fetch(`/admin/buscar-usuario?identificacion=${encodeURIComponent(termino)}`);
+            
+            if (!response.ok) {
+                throw new Error('Error en la búsqueda');
+            }
+            
+            const resultados = await response.json();
+            mostrarResultados(resultados);
+        } catch (error) {
+            console.error('Error en la búsqueda:', error);
+            mostrarError('Error al realizar la búsqueda');
+        }
+    }
+
+    function mostrarResultados(resultados) {
+        searchResults.innerHTML = '';
+        
+        if (resultados.length === 0) {
+            searchResults.innerHTML = '<div class="search-result-item text-muted text-center">No se encontraron usuarios</div>';
+            searchResults.style.display = 'block';
+            return;
+        }
+
+        resultados.forEach(usuario => {
+            const item = document.createElement('div');
+            item.className = 'search-result-item';
+            
+            // Traducir el rol para mostrar
+            let rolDisplay = usuario.rol;
+            switch(usuario.rol) {
+                case 'profesor':
+                    rolDisplay = 'Profesor';
+                    break;
+                case 'estudiante':
+                    rolDisplay = 'Estudiante';
+                    break;
+                case 'padre':
+                    rolDisplay = 'Padre/Tutor';
+                    break;
+                case 'admin':
+                    rolDisplay = 'Administrador';
+                    break;
+            }
+            
+            item.innerHTML = `
+                <div class="user-info">
+                    <div class="user-name">${usuario.nombre} ${usuario.apellido}</div>
+                    <div class="user-id">ID: ${usuario.id}</div>
+                </div>
+                <div class="user-role">${rolDisplay}</div>
+            `;
+            
+            item.addEventListener('click', function() {
+                // Redirigir a la página del rol con el filtro del usuario
+                const url = `${usuario.rolUrl}?filter_id=${usuario.id}`;
+                window.location.href = url;
+            });
+
+            searchResults.appendChild(item);
+        });
+
+        searchResults.style.display = 'block';
+    }
+
+    function mostrarError(mensaje) {
+        searchResults.innerHTML = `<div class="search-result-item text-danger text-center">${mensaje}</div>`;
+        searchResults.style.display = 'block';
+    }
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const termino = this.value.trim();
+        
+        searchTimeout = setTimeout(() => {
+            buscarUsuarios(termino);
+        }, 300);
+    });
+
+    // Ocultar resultados al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+
+    // Mostrar resultados al enfocar el input
+    searchInput.addEventListener('focus', function() {
+        const termino = this.value.trim();
+        if (termino.length >= 2) {
+            buscarUsuarios(termino);
+        }
+    });
+
+    // Manejar tecla Enter
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const termino = this.value.trim();
+            if (termino.length >= 2) {
+                buscarUsuarios(termino);
+            }
+        }
+    });
+
+    // Limpiar búsqueda al cargar la página
+    searchInput.value = '';
+});
+</script>
 {% endblock %}
-
-<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-
-</body>
-</html>

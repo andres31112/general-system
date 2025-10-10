@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Estudiante - Sistema Académico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* Variables CSS con paleta completa */
+        :root {
+            --primary: #0D3B66;
+            --primary-light: #1a5080;
+            --secondary: #F4D35E;
+            --accent: #F95738;
+            --accent-light: #EE964B;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --dark: #2C3E50;
+            --gray: #7F8C8D;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --success: #28A745;
+            --error: #DC3545;
+            --warning: #FFC107;
+            
+            --shadow-sm: 0 2px 8px rgba(13, 59, 102, 0.08);
+            --shadow-md: 0 4px 16px rgba(13, 59, 102, 0.12);
+            --shadow-lg: 0 8px 32px rgba(13, 59, 102, 0.15);
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Estilos Base */
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, var(--light-gray) 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        /* Layout Principal */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header con Gradiente */
+        .main-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .main-header h1 {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.75rem;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .header-icon:hover {
+            background: var(--secondary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 211, 94, 0.3);
+        }
+
+        /* Grid Principal */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel de Formulario */
+        .form-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+        }
+
+        .form-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .form-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-title {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .form-subtitle {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Grupos de Formulario */
+        .form-section {
+            margin-bottom: 2rem;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .form-section:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Campos de Formulario */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--white);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-light);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.1);
+            outline: none;
+        }
+
+        .form-control:hover, .form-select:hover {
+            border-color: var(--accent-light);
+        }
+
+        /* Campo de dirección */
+        .address-field {
+            grid-column: 1 / -1;
+        }
+
+        /* Contraseña generada */
+        .password-generated {
+            background-color: var(--light);
+            border: 2px dashed var(--secondary);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .password-text {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .copy-password {
+            background: var(--secondary);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .copy-password:hover {
+            background: var(--accent-light);
+        }
+
+        /* Sección de Padre/Acudiente */
+        .parent-section {
+            background: linear-gradient(135deg, var(--light) 0%, rgba(244, 211, 94, 0.1) 100%);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border-left: 4px solid var(--secondary);
+            border: 1px solid rgba(244, 211, 94, 0.3);
+        }
+
+        .parent-options {
+            display: flex;
+            gap: 1rem;
+            align-items: stretch;
+            margin-bottom: 1.5rem;
+        }
+
+        .parent-search-container {
+            flex: 2;
+        }
+
+        .parent-register-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.875rem 1rem;
+            font-weight: 600;
+            transition: var(--transition);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .parent-register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+        }
+
+        /* Formulario de Padre (Acordeón) - CORREGIDO */
+        .parent-form-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--white);
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+            border: 2px solid transparent;
+        }
+
+        .parent-form-container.active {
+            max-height: 1500px; /* Aumentado para que quepan los botones y errores */
+            border-color: var(--secondary);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            overflow: visible; /* Importante para que se vean los botones */
+        }
+
+        .parent-form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .parent-form-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1.2rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .close-parent-form {
+            background: none;
+            border: none;
+            color: var(--gray);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+        }
+
+        .close-parent-form:hover {
+            color: var(--accent);
+            background: rgba(249, 87, 56, 0.1);
+        }
+
+        /* Contenedor de botones del formulario padre */
+        .parent-form-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--light);
+        }
+
+        .parent-form-buttons .btn-primary,
+        .parent-form-buttons .btn-secondary {
+            flex: 1;
+            margin-top: 0;
+        }
+
+        /* Resultados de búsqueda */
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border: 2px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: var(--shadow-md);
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .search-result-item:hover {
+            background: var(--light);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .parent-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .parent-name {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .parent-email {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Badge para padre seleccionado */
+        .selected-parent {
+            background: linear-gradient(135deg, var(--success), #20c997);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-sm);
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .selected-parent .remove-parent {
+            background: none;
+            border: none;
+            color: var(--white);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .selected-parent .remove-parent:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Panel Lateral */
+        .sidebar-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--secondary);
+            position: sticky;
+            top: 2rem;
+            background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .sidebar-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary), #e9c440);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: var(--dark);
+            font-size: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-title {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Lista de Información */
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .info-item:hover {
+            background: var(--light);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 0 -0.5rem;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        .info-content h4 {
+            color: var(--primary);
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+        }
+
+        .info-content p {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        /* Botones */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--white), var(--light-gray));
+            border: 2px solid var(--secondary);
+            color: var(--dark);
+            padding: 0.875rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            text-decoration: none;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-light);
+            background: var(--light);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            color: var(--primary);
+        }
+
+        /* Badge para campos requeridos */
+        .required-badge {
+            background: var(--accent);
+            color: var(--white);
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        /* Mensajes de error */
+        .error-message {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(220, 53, 69, 0.05);
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--error);
+        }
+
+        /* Estilos para campos con error */
+        .is-invalid {
+            border-color: var(--error) !important;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+        }
+
+        /* Efectos de profundidad */
+        .depth-1 { box-shadow: var(--shadow-sm); }
+        .depth-2 { box-shadow: var(--shadow-md); }
+        .depth-3 { box-shadow: var(--shadow-lg); }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-panel {
+            animation: slideIn 0.6s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container {
+                padding: 1rem;
+            }
+            
+            .form-panel {
+                padding: 1.5rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .parent-options {
+                flex-direction: column;
+            }
+            
+            .parent-search-container,
+            .parent-register-btn {
+                flex: none;
+            }
+            
+            .parent-form-buttons {
+                flex-direction: column;
+            }
+            
+            .sidebar-panel {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="admin-container">
+    <header class="main-header">
+        <h1>Gestión de Estudiantes</h1>
+        <div class="header-icons">
+            <a href="#" class="header-icon">
+                <i class="fas fa-bell"></i>
+            </a>
+            <a href="#" class="header-icon">
+                <i class="fas fa-user-circle"></i>
+            </a>
+        </div>
+    </header>
+
+    <div class="content-grid">
+        <!-- Panel de Formulario -->
+        <div class="form-panel depth-2">
+            <div class="form-header">
+                <div class="form-icon">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <div>
+                    <h2 class="form-title">Crear Nuevo Estudiante</h2>
+                    <p class="form-subtitle">Complete la información del estudiante y asocie un padre/acudiente</p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('admin.crear_estudiante') }}" id="studentForm">
+                {{ form.hidden_tag() }}
+
+                <!-- Información Personal del Estudiante -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-id-card"></i>
+                        Información Personal del Estudiante
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.no_identidad.id }}" class="form-label">
+                                <i class="fas fa-fingerprint"></i>
+                                Número de Identidad
+                            </label>
+                            {{ form.no_identidad(class="form-control", placeholder="Ej: 1234567890") }}
+                            {% for error in form.no_identidad.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.tipo_doc.id }}" class="form-label">
+                                <i class="fas fa-file-alt"></i>
+                                Tipo de Documento
+                            </label>
+                            {{ form.tipo_doc(class="form-select") }}
+                            {% for error in form.tipo_doc.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.nombre.id }}" class="form-label">
+                                <i class="fas fa-user"></i>
+                                Nombre
+                            </label>
+                            {{ form.nombre(class="form-control", placeholder="Nombre del estudiante") }}
+                            {% for error in form.nombre.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.apellido.id }}" class="form-label">
+                                <i class="fas fa-user"></i>
+                                Apellido
+                            </label>
+                            {{ form.apellido(class="form-control", placeholder="Apellido del estudiante") }}
+                            {% for error in form.apellido.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información de Contacto del Estudiante -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-address-book"></i>
+                        Información de Contacto
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.correo.id }}" class="form-label">
+                                <i class="fas fa-envelope"></i>
+                                Correo Electrónico
+                            </label>
+                            {{ form.correo(class="form-control", placeholder="correo@ejemplo.com") }}
+                            <div class="error-message" id="emailError" style="display: none;"></div>
+                            {% for error in form.correo.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.telefono.id }}" class="form-label">
+                                <i class="fas fa-phone"></i>
+                                Teléfono Celular
+                            </label>
+                            {{ form.telefono(class="form-control", placeholder="+57 300 123 4567") }}
+                            {% for error in form.telefono.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Campo de dirección del estudiante -->
+                    <div class="form-group address-field">
+                        <label for="{{ form.direccion.id }}" class="form-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            Dirección
+                            <span class="required-badge">OBLIGATORIO</span>
+                        </label>
+                        {{ form.direccion(class="form-control", placeholder="Dirección completa del estudiante") }}
+                        {% for error in form.direccion.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Seguridad -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-shield-alt"></i>
+                        Seguridad
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    
+                    <!-- Contraseña generada automáticamente -->
+                    <div class="password-generated" id="passwordContainer" style="display: none;">
+                        <div>
+                            <strong>Contraseña generada automáticamente:</strong>
+                            <div class="password-text" id="generatedPassword"></div>
+                        </div>
+                        <button type="button" class="copy-password" id="copyPasswordBtn">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.password.id }}" class="form-label">
+                                <i class="fas fa-lock"></i>
+                                Contraseña
+                            </label>
+                            {{ form.password(class="form-control", placeholder="Contraseña segura", readonly=true) }}
+                            <small class="text-muted">La contraseña se genera automáticamente con el nombre y documento</small>
+                            {% for error in form.password.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.confirm_password.id }}" class="form-label">
+                                <i class="fas fa-lock"></i>
+                                Confirmar Contraseña
+                            </label>
+                            {{ form.confirm_password(class="form-control", placeholder="Repetir contraseña", readonly=true) }}
+                            {% for error in form.confirm_password.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalles de Matrícula -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-graduation-cap"></i>
+                        Detalles de Matrícula
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.curso_id.id }}" class="form-label">Curso</label>
+                            {{ form.curso_id(class="form-select") }}
+                            {% for error in form.curso_id.errors %}
+                                <div class="error-message">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.anio_matricula.id }}" class="form-label">Año de Matrícula</label>
+                            {{ form.anio_matricula(class="form-control", value=now().year) }}
+                            {% for error in form.anio_matricula.errors %}
+                                <div class="error-message">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rol del Usuario -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-user-tag"></i>
+                        Rol del Usuario
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-group">
+                        <input type="hidden" name="{{ form.rol.name }}" value="{{ form.rol.data }}">
+                        <select class="form-select" disabled>
+                            <option value="{{ form.rol.data }}" selected>
+                                {% for id, nombre in form.rol.choices %}
+                                    {% if id == form.rol.data %}{{ nombre }}{% endif %}
+                                {% endfor %}
+                            </option>
+                        </select>
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-info-circle"></i>
+                            Rol predefinido como Estudiante
+                        </small>
+                        {% for error in form.rol.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Asociación con Padre/Acudiente -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-users"></i>
+                        Padre/Acudiente
+                    </h3>
+                    
+                    <div class="parent-section">
+                        <div class="parent-options">
+                            <div class="parent-search-container">
+                                <label class="form-label">
+                                    <i class="fas fa-search"></i>
+                                    Buscar Padre/Acudiente Existente
+                                </label>
+                                <div style="position: relative;">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="parentSearch" 
+                                           placeholder="Buscar por nombre, identidad o correo..."
+                                           autocomplete="off">
+                                    <div class="search-results" id="searchResults"></div>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="parent-register-btn" id="registerParentBtn">
+                                <i class="fas fa-user-plus me-2"></i>
+                                Registrar Nuevo Padre
+                            </button>
+                        </div>
+
+                        <!-- Padre Seleccionado -->
+                        <div id="selectedParentContainer" style="display: none;">
+                            <div class="selected-parent">
+                                <div>
+                                    <strong id="selectedParentName"></strong>
+                                    <div id="selectedParentInfo" class="parent-email"></div>
+                                </div>
+                                <button type="button" class="remove-parent" id="removeParentBtn">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" name="parent_id" id="selectedParentId">
+                        </div>
+                    </div>
+
+                    <!-- Formulario de Padre (Acordeón) -->
+                    <div class="parent-form-container" id="parentFormContainer">
+                        <div class="parent-form-header">
+                            <h4 class="parent-form-title">
+                                <i class="fas fa-user-plus"></i>
+                                Registrar Nuevo Padre/Acudiente
+                            </h4>
+                            <button type="button" class="close-parent-form" id="closeParentForm">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-fingerprint"></i>
+                                    Número de Identidad
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <input type="text" class="form-control" id="parentNoIdentidad" placeholder="Número de identidad">
+                                <div class="error-message" id="parentNoIdentidadError" style="display: none;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-file-alt"></i>
+                                    Tipo de Documento
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <select class="form-select" id="parentTipoDoc">
+                                    <option value="">Seleccione tipo de documento</option>
+                                    <option value="CC">Cédula de Ciudadanía</option>
+                                    <option value="CE">Cédula de Extranjería</option>
+                                    <option value="TI">Tarjeta de Identidad</option>
+                                    <option value="PAS">Pasaporte</option>
+                                </select>
+                                <div class="error-message" id="parentTipoDocError" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Nombre
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <input type="text" class="form-control" id="parentNombre" placeholder="Nombre del padre/acudiente">
+                                <div class="error-message" id="parentNombreError" style="display: none;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-user"></i>
+                                    Apellido
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <input type="text" class="form-control" id="parentApellido" placeholder="Apellido del padre/acudiente">
+                                <div class="error-message" id="parentApellidoError" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-envelope"></i>
+                                    Correo Electrónico
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <input type="email" class="form-control" id="parentCorreo" placeholder="correo@ejemplo.com">
+                                <div class="error-message" id="parentCorreoError" style="display: none;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-phone"></i>
+                                    Teléfono Celular
+                                </label>
+                                <input type="tel" class="form-control" id="parentTelefono" placeholder="+57 300 123 4567">
+                            </div>
+                        </div>
+
+                        <!-- ✅ NUEVO: Campo de dirección para padre -->
+                        <div class="form-group address-field">
+                            <label class="form-label">
+                                <i class="fas fa-map-marker-alt"></i>
+                                Dirección
+                                <span class="required-badge">OBLIGATORIO</span>
+                            </label>
+                            <input type="text" class="form-control" id="parentDireccion" placeholder="Dirección completa del padre/acudiente">
+                            <div class="error-message" id="parentDireccionError" style="display: none;"></div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-lock"></i>
+                                    Contraseña
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <input type="password" class="form-control" id="parentPassword" placeholder="Contraseña segura">
+                                <small class="text-muted">Mínimo 8 caracteres con mayúsculas, minúsculas y números</small>
+                                <div class="error-message" id="parentPasswordError" style="display: none;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-lock"></i>
+                                    Confirmar Contraseña
+                                    <span class="required-badge">OBLIGATORIO</span>
+                                </label>
+                                <input type="password" class="form-control" id="parentConfirmPassword" placeholder="Repetir contraseña">
+                                <div class="error-message" id="parentConfirmPasswordError" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Contenedor de botones -->
+                        <div class="parent-form-buttons">
+                            <button type="button" class="btn-secondary" id="cancelParentBtn">
+                                <i class="fas fa-times me-2"></i>
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn-primary" id="saveParentBtn">
+                                <i class="fas fa-save me-2"></i>
+                                Guardar Padre/Acudiente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Crear Estudiante
+                </button>
+            </form>
+
+            <a href="{{ url_for('admin.estudiantes') }}" class="btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>
+                Volver a la Lista
+            </a>
+        </div>
+
+        <!-- Panel Lateral -->
+        <div class="sidebar-panel depth-2">
+            <div class="sidebar-header">
+                <div class="sidebar-icon">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <h3 class="sidebar-title">Nuevo Estudiante</h3>
+                <p class="sidebar-text">Complete todos los campos requeridos para crear un nuevo estudiante en el sistema</p>
+            </div>
+
+            <ul class="info-list">
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Seguridad</h4>
+                        <p>La contraseña debe tener al menos 8 caracteres con mayúsculas, minúsculas y números</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Verificación</h4>
+                        <p>Todos los campos marcados con <span class="required-badge">OBLIGATORIO</span> son requeridos</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Configuración</h4>
+                        <p>El rol determina los permisos y acceso del usuario en el sistema</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Notificaciones</h4>
+                        <p>El estudiante recibirá un correo de confirmación con sus credenciales</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Dirección</h4>
+                        <p>La dirección es requerida para completar el registro del estudiante</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const parentSearch = document.getElementById('parentSearch');
+    const searchResults = document.getElementById('searchResults');
+    const registerParentBtn = document.getElementById('registerParentBtn');
+    const parentFormContainer = document.getElementById('parentFormContainer');
+    const closeParentForm = document.getElementById('closeParentForm');
+    const cancelParentBtn = document.getElementById('cancelParentBtn');
+    const saveParentBtn = document.getElementById('saveParentBtn');
+    const selectedParentContainer = document.getElementById('selectedParentContainer');
+    const selectedParentName = document.getElementById('selectedParentName');
+    const selectedParentInfo = document.getElementById('selectedParentInfo');
+    const selectedParentId = document.getElementById('selectedParentId');
+    const removeParentBtn = document.getElementById('removeParentBtn');
+    const studentForm = document.getElementById('studentForm');
+    const passwordContainer = document.getElementById('passwordContainer');
+    const generatedPassword = document.getElementById('generatedPassword');
+    const copyPasswordBtn = document.getElementById('copyPasswordBtn');
+    const emailInput = document.getElementById('{{ form.correo.id }}');
+    const nombreInput = document.getElementById('{{ form.nombre.id }}');
+    const apellidoInput = document.getElementById('{{ form.apellido.id }}');
+    const noIdentidadInput = document.getElementById('{{ form.no_identidad.id }}');
+    const passwordInput = document.getElementById('{{ form.password.id }}');
+    const confirmPasswordInput = document.getElementById('{{ form.confirm_password.id }}');
+    const submitBtn = document.getElementById('submitBtn');
+    const emailError = document.getElementById('emailError');
+
+    // Función para generar contraseña automática del ESTUDIANTE
+    function generatePassword() {
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        const noIdentidad = noIdentidadInput.value.trim();
+        
+        if (nombre && noIdentidad) {
+            // Capitalizar primera letra del nombre
+            const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+            
+            // Tomar solo el primer nombre
+            const primerNombre = nombreCapitalized.split(' ')[0];
+            
+            // Tomar primera letra del apellido en mayúscula
+            const primeraLetraApellido = apellido.charAt(0).toUpperCase();
+            
+            // Lista de caracteres especiales
+            const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
+            
+            // Seleccionar un carácter especial aleatorio
+            const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
+            
+            // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
+            const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
+            
+            // Mostrar contraseña generada
+            generatedPassword.textContent = password;
+            passwordContainer.style.display = 'flex';
+            
+            // Llenar campos de contraseña
+            passwordInput.value = password;
+            confirmPasswordInput.value = password;
+        } else {
+            passwordContainer.style.display = 'none';
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+        }
+    }
+
+    // Función para generar contraseña automática del PADRE
+    function generateParentPassword() {
+        const nombre = document.getElementById('parentNombre').value.trim();
+        const apellido = document.getElementById('parentApellido').value.trim();
+        const noIdentidad = document.getElementById('parentNoIdentidad').value.trim();
+        
+        if (nombre && noIdentidad) {
+            // Capitalizar primera letra del nombre
+            const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+            
+            // Tomar solo el primer nombre
+            const primerNombre = nombreCapitalized.split(' ')[0];
+            
+            // Tomar primera letra del apellido en mayúscula
+            const primeraLetraApellido = apellido.charAt(0).toUpperCase();
+            
+            // Lista de caracteres especiales
+            const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
+            
+            // Seleccionar un carácter especial aleatorio
+            const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
+            
+            // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
+            const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
+            
+            // Llenar campos de contraseña
+            document.getElementById('parentPassword').value = password;
+            document.getElementById('parentConfirmPassword').value = password;
+        }
+    }
+
+    // Escuchar cambios en nombre y número de identidad del ESTUDIANTE
+    nombreInput.addEventListener('input', generatePassword);
+    apellidoInput.addEventListener('input', generatePassword);
+    noIdentidadInput.addEventListener('input', generatePassword);
+
+    // Escuchar cambios en nombre y número de identidad del PADRE
+    document.getElementById('parentNombre').addEventListener('input', generateParentPassword);
+    document.getElementById('parentApellido').addEventListener('input', generateParentPassword);
+    document.getElementById('parentNoIdentidad').addEventListener('input', generateParentPassword);
+
+    // Copiar contraseña al portapapeles
+    copyPasswordBtn.addEventListener('click', function() {
+        const password = generatedPassword.textContent;
+        navigator.clipboard.writeText(password).then(function() {
+            showAlert('Contraseña copiada al portapapeles', 'success');
+        });
+    });
+
+    // Validar existencia de correo electrónico del ESTUDIANTE
+    emailInput.addEventListener('blur', function() {
+        const email = this.value.trim();
+        
+        if (!email) {
+            hideEmailError();
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showEmailError('El formato del correo electrónico no es válido');
+            return;
+        }
+
+        // Verificar si el correo existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showEmailError('Este correo electrónico ya está registrado en el sistema');
+                } else {
+                    hideEmailError();
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando correo:', error);
+            });
+    });
+
+    // Validar correo del PADRE en tiempo real
+    document.getElementById('parentCorreo').addEventListener('blur', function() {
+        const email = this.value.trim();
+        const errorElement = document.getElementById('parentCorreoError');
+        
+        if (!email) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showParentError('parentCorreoError', 'El formato del correo electrónico no es válido');
+            return;
+        }
+
+        // Verificar si el correo existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showParentError('parentCorreoError', 'Este correo electrónico ya está registrado en el sistema');
+                } else {
+                    errorElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando correo del padre:', error);
+            });
+    });
+
+    // Validar número de identidad del PADRE en tiempo real
+    document.getElementById('parentNoIdentidad').addEventListener('blur', function() {
+        const noIdentidad = this.value.trim();
+        const errorElement = document.getElementById('parentNoIdentidadError');
+        
+        if (!noIdentidad) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        // Verificar si el número de identidad existe
+        fetch(`/admin/api/verificar-identidad?no_identidad=${encodeURIComponent(noIdentidad)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showParentError('parentNoIdentidadError', 'Este número de identidad ya está registrado en el sistema');
+                } else {
+                    errorElement.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando identidad del padre:', error);
+            });
+    });
+
+    // Validar contraseña del PADRE en tiempo real
+    document.getElementById('parentPassword').addEventListener('input', function() {
+        const password = this.value;
+        const errorElement = document.getElementById('parentPasswordError');
+        
+        if (!password) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        if (password.length < 8) {
+            showParentError('parentPasswordError', 'La contraseña debe tener al menos 8 caracteres');
+            return;
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            showParentError('parentPasswordError', 'Debe incluir mayúsculas, minúsculas y números');
+            return;
+        }
+
+        errorElement.style.display = 'none';
+    });
+
+    // Validar confirmación de contraseña del PADRE en tiempo real
+    document.getElementById('parentConfirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('parentPassword').value;
+        const confirmPassword = this.value;
+        const errorElement = document.getElementById('parentConfirmPasswordError');
+        
+        if (!confirmPassword) {
+            errorElement.style.display = 'none';
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showParentError('parentConfirmPasswordError', 'Las contraseñas no coinciden');
+            return;
+        }
+
+        errorElement.style.display = 'none';
+    });
+
+    function showEmailError(message) {
+        emailError.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        emailError.style.display = 'flex';
+        emailInput.classList.add('is-invalid');
+    }
+
+    function hideEmailError() {
+        emailError.style.display = 'none';
+        emailInput.classList.remove('is-invalid');
+    }
+
+    // Búsqueda de padres existentes
+    parentSearch.addEventListener('input', function() {
+        const searchTerm = this.value.trim();
+        
+        if (searchTerm.length < 2) {
+            searchResults.classList.remove('active');
+            return;
+        }
+
+        // Buscar padres en la base de datos
+        fetch(`/admin/api/buscar-padres?q=${encodeURIComponent(searchTerm)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                displaySearchResults(data);
+            })
+            .catch(error => {
+                console.error('Error buscando padres:', error);
+                searchResults.innerHTML = '<div class="search-result-item">Error al buscar padres</div>';
+                searchResults.classList.add('active');
+            });
+    });
+
+    function displaySearchResults(parents) {
+        searchResults.innerHTML = '';
+        
+        if (parents.length === 0) {
+            searchResults.innerHTML = '<div class="search-result-item">No se encontraron padres/acudientes</div>';
+        } else {
+            parents.forEach(parent => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'search-result-item';
+                resultItem.innerHTML = `
+                    <div class="parent-info">
+                        <div>
+                            <div class="parent-name">${parent.nombre_completo}</div>
+                            <div class="parent-email">${parent.correo} • ${parent.no_identidad}</div>
+                        </div>
+                        <i class="fas fa-plus" style="color: var(--success);"></i>
+                    </div>
+                `;
+                resultItem.addEventListener('click', () => selectParent(parent));
+                searchResults.appendChild(resultItem);
+            });
+        }
+        
+        searchResults.classList.add('active');
+    }
+
+    // Seleccionar padre existente
+    function selectParent(parent) {
+        selectedParentName.textContent = parent.nombre_completo;
+        selectedParentInfo.textContent = `${parent.correo} • ${parent.no_identidad}`;
+        selectedParentId.value = parent.id_usuario;
+        selectedParentContainer.style.display = 'block';
+        searchResults.classList.remove('active');
+        parentSearch.value = '';
+        
+        // Cerrar formulario de registro si está abierto
+        parentFormContainer.classList.remove('active');
+    }
+
+    // Remover padre seleccionado
+    removeParentBtn.addEventListener('click', function() {
+        selectedParentContainer.style.display = 'none';
+        selectedParentId.value = '';
+    });
+
+    // Mostrar formulario de registro de padre
+    registerParentBtn.addEventListener('click', function() {
+        parentFormContainer.classList.add('active');
+        // Ocultar resultados de búsqueda si están visibles
+        searchResults.classList.remove('active');
+    });
+
+    // Cerrar formulario de registro de padre
+    closeParentForm.addEventListener('click', function() {
+        parentFormContainer.classList.remove('active');
+        resetParentForm();
+    });
+
+    // Cancelar formulario de padre
+    cancelParentBtn.addEventListener('click', function() {
+        parentFormContainer.classList.remove('active');
+        resetParentForm();
+    });
+
+    // Funciones auxiliares para manejar errores
+    function hideAllParentErrors() {
+        const errorElements = document.querySelectorAll('[id$="Error"]');
+        errorElements.forEach(element => {
+            element.style.display = 'none';
+        });
+    }
+
+    function showParentError(elementId, message) {
+        const errorElement = document.getElementById(elementId);
+        errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        errorElement.style.display = 'flex';
+    }
+
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // Guardar nuevo padre
+    saveParentBtn.addEventListener('click', function() {
+        // Ocultar todos los errores primero
+        hideAllParentErrors();
+        
+        // Validar formulario de padre
+        const parentData = {
+            no_identidad: document.getElementById('parentNoIdentidad').value.trim(),
+            tipo_doc: document.getElementById('parentTipoDoc').value,
+            nombre: document.getElementById('parentNombre').value.trim(),
+            apellido: document.getElementById('parentApellido').value.trim(),
+            correo: document.getElementById('parentCorreo').value.trim(),
+            telefono: document.getElementById('parentTelefono').value.trim(),
+            password: document.getElementById('parentPassword').value,
+            confirm_password: document.getElementById('parentConfirmPassword').value
+        };
+
+        let isValid = true;
+
+        // Validaciones individuales
+        if (!parentData.no_identidad) {
+            showParentError('parentNoIdentidadError', 'El número de identidad es obligatorio');
+            isValid = false;
+        }
+
+        if (!parentData.tipo_doc) {
+            showParentError('parentTipoDocError', 'El tipo de documento es obligatorio');
+            isValid = false;
+        }
+
+        if (!parentData.nombre) {
+            showParentError('parentNombreError', 'El nombre es obligatorio');
+            isValid = false;
+        }
+
+        if (!parentData.apellido) {
+            showParentError('parentApellidoError', 'El apellido es obligatorio');
+            isValid = false;
+        }
+
+        if (!parentData.correo) {
+            showParentError('parentCorreoError', 'El correo electrónico es obligatorio');
+            isValid = false;
+        } else if (!isValidEmail(parentData.correo)) {
+            showParentError('parentCorreoError', 'El formato del correo electrónico no es válido');
+            isValid = false;
+        }
+
+        if (!parentData.password) {
+            showParentError('parentPasswordError', 'La contraseña es obligatoria');
+            isValid = false;
+        } else if (parentData.password.length < 8) {
+            showParentError('parentPasswordError', 'La contraseña debe tener al menos 8 caracteres');
+            isValid = false;
+        }
+
+        if (!parentData.confirm_password) {
+            showParentError('parentConfirmPasswordError', 'Debe confirmar la contraseña');
+            isValid = false;
+        } else if (parentData.password !== parentData.confirm_password) {
+            showParentError('parentConfirmPasswordError', 'Las contraseñas no coinciden');
+            isValid = false;
+        }
+
+        // Validar formato de contraseña para padre
+        if (parentData.password) {
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(parentData.password)) {
+                showParentError('parentPasswordError', 'La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números');
+                isValid = false;
+            }
+        }
+
+        if (!isValid) {
+            showAlert('Por favor complete correctamente todos los campos obligatorios', 'error');
+            return;
+        }
+
+        // Verificar si el correo del padre ya existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(parentData.correo)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showParentError('parentCorreoError', 'Este correo electrónico ya está registrado en el sistema');
+                    showAlert('El correo electrónico del padre ya está registrado', 'error');
+                    saveParentBtn.disabled = false;
+                    saveParentBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Padre/Acudiente';
+                    return;
+                }
+
+                // Verificar si el número de identidad del padre ya existe
+                fetch(`/admin/api/verificar-identidad?no_identidad=${encodeURIComponent(parentData.no_identidad)}`)
+                    .then(response => response.json())
+                    .then(identidadData => {
+                        if (identidadData.exists) {
+                            showParentError('parentNoIdentidadError', 'Este número de identidad ya está registrado en el sistema');
+                            showAlert('El número de identidad del padre ya está registrado', 'error');
+                            saveParentBtn.disabled = false;
+                            saveParentBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Padre/Acudiente';
+                            return;
+                        }
+
+                        // Si pasa todas las validaciones, proceder a crear el padre
+                        crearPadre(parentData);
+                    })
+                    .catch(error => {
+                        console.error('Error verificando identidad:', error);
+                        // Si falla la verificación de identidad, proceder igualmente
+                        crearPadre(parentData);
+                    });
+            })
+            .catch(error => {
+                console.error('Error verificando correo:', error);
+                // Si falla la verificación de correo, proceder igualmente
+                crearPadre(parentData);
+            });
+    });
+
+    // FUNCIÓN: Crear padre con todas las validaciones
+    function crearPadre(parentData) {
+        // Mostrar loading
+        saveParentBtn.disabled = true;
+        saveParentBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+
+        // Enviar datos al servidor
+        fetch('/admin/api/crear-padre', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(parentData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Padre/acudiente creado exitosamente! Se ha enviado un correo de verificación.', 'success');
+                
+                // Seleccionar automáticamente el nuevo padre
+                selectParent({
+                    id_usuario: data.padre.id_usuario,
+                    nombre_completo: data.padre.nombre_completo,
+                    correo: data.padre.correo,
+                    no_identidad: data.padre.no_identidad
+                });
+
+                // Limpiar formulario de padre
+                resetParentForm();
+                
+                // Cerrar formulario de padre
+                parentFormContainer.classList.remove('active');
+            } else {
+                showAlert(data.error || 'Error al crear el padre/acudiente', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('Error de conexión al crear el padre/acudiente', 'error');
+        })
+        .finally(() => {
+            // Restaurar botón
+            saveParentBtn.disabled = false;
+            saveParentBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Padre/Acudiente';
+        });
+    }
+
+    // Función para limpiar el formulario de padre
+    function resetParentForm() {
+        document.getElementById('parentNoIdentidad').value = '';
+        document.getElementById('parentTipoDoc').value = '';
+        document.getElementById('parentNombre').value = '';
+        document.getElementById('parentApellido').value = '';
+        document.getElementById('parentCorreo').value = '';
+        document.getElementById('parentTelefono').value = '';
+        document.getElementById('parentPassword').value = '';
+        document.getElementById('parentConfirmPassword').value = '';
+        
+        // Ocultar errores al resetear
+        hideAllParentErrors();
+    }
+
+    // Función para mostrar alertas
+    function showAlert(message, type) {
+        // Crear elemento de alerta
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        alertDiv.style.marginBottom = '1rem';
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar después del header del formulario
+        const formHeader = document.querySelector('.form-header');
+        formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+        
+        // Auto-remover después de 5 segundos
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Cerrar resultados de búsqueda al hacer click fuera
+    document.addEventListener('click', function(e) {
+        if (!parentSearch.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.classList.remove('active');
+        }
+    });
+
+    // Validación adicional del formulario principal
+    studentForm.addEventListener('submit', function(e) {
+        // Validar que todos los campos obligatorios estén completos
+        const requiredFields = studentForm.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        // Validar que el correo no tenga errores
+        if (emailError.style.display !== 'none') {
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            showAlert('Por favor complete todos los campos obligatorios marcados con OBLIGATORIO', 'error');
+            return;
+        }
+
+        // Validar contraseñas coincidan
+        const password = document.getElementById('{{ form.password.id }}').value;
+        const confirmPassword = document.getElementById('{{ form.confirm_password.id }}').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            showAlert('Las contraseñas no coinciden', 'error');
+            return;
+        }
+
+        // Validar formato de contraseña
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            e.preventDefault();
+            showAlert('La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números', 'error');
+            return;
+        }
+
+        // Mostrar loading en el botón de envío
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creando Estudiante...';
+
+        // Confirmar si no hay padre asociado
+        if (!selectedParentId.value) {
+            if (!confirm('¿Está seguro de crear el estudiante sin asociar un padre/acudiente?')) {
+                e.preventDefault();
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus me-2"></i>Crear Estudiante';
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}
+</body>
+</html>

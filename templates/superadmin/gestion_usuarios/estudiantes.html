@@ -1,49 +1,413 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Directorio de Estudiantes</title>
-
+    <title>Lista de Estudiantes</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
     <style>
+        /* Variables CSS usando la paleta de colores del diseño anterior */
+        :root {
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --black: #333333;
+            --gray: #666666;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --card-bg: #FFFFFF;
+            --header-bg: #FFFFFF;
+            --main-bg: #F8F9FA;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+            --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+            --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+            --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+        }
+
+        /* Estilos Generales */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--main-bg);
+            color: var(--black);
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        /* Encabezado Principal */
+        .main-header {
+            background: var(--gradient-primary);
+            color: var(--white);
+            padding: 18px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-header h1 {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-icons i {
+            font-size: 1.5rem;
+            color: var(--accent3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .header-icons i:hover {
+            transform: scale(1.1);
+            color: var(--white);
+        }
+
+        /* Área de Contenido */
+        .content-area {
+            padding: 0 20px;
+        }
+
+        /* Encabezado de Página */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border-top: 4px solid var(--accent4);
+        }
+
+        .title-action {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .page-title {
+            color: var(--accent4);
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .btn-create {
+            background: var(--gradient-secondary);
+            color: var(--black);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+            width: fit-content;
+        }
+
+        .btn-create:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .placeholder-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--gradient-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 2rem;
+        }
+
+        /* Contenedor de Tabla */
+        .table-container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 25px;
+            border-top: 4px solid var(--accent3);
+            overflow: hidden;
+        }
+
+        /* Controles de Tabla */
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-bar {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: var(--white);
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.2);
+        }
+
+        .search-bar i {
+            color: var(--gray);
+            margin-right: 10px;
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 250px;
+            color: var(--black);
+            font-weight: 500;
+        }
+
+        /* Wrapper para tabla con scroll */
+        .table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        /* Tabla de Usuarios */
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 1200px;
+        }
+
+        .user-table th {
+            background-color: var(--accent4);
+            color: var(--white);
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent3);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .user-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .user-table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .user-table tbody tr:hover {
+            background-color: var(--light);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Celdas de Acciones */
         .actions-cell {
             white-space: nowrap;
         }
 
-        .actions-cell .btn-action {
-            margin-right: 5px;
-            color: #555;
+        .btn-action {
+            margin-right: 8px;
+            color: var(--gray);
             text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            padding: 6px;
+            border-radius: 4px;
         }
 
-        .actions-cell .btn-action:hover {
-            color: #007bff;
+        .btn-action:hover {
+            color: var(--accent4);
+            background-color: rgba(13, 59, 102, 0.1);
+            transform: scale(1.1);
         }
 
-        .actions-cell .btn-action.delete {
-            color: #dc3545;
+        .btn-action.delete {
+            color: var(--accent1);
+        }
+
+        .btn-action.delete:hover {
+            background-color: rgba(249, 87, 56, 0.1);
         }
 
         /* Estilos para badges */
         .badge {
-            padding: 0.25em 0.5em;
-            border-radius: 0.25rem;
-            color: #fff;
+            padding: 0.35em 0.65em;
+            border-radius: 0.5rem;
+            color: var(--white);
             font-size: 0.75rem;
             font-weight: bold;
+            display: inline-block;
         }
 
         .badge-success {
-            background-color: #28a745;
-            /* Verde para activo */
+            background: linear-gradient(135deg, #28a745, #20c997);
         }
 
         .badge-danger {
-            background-color: #dc3545;
-            /* Rojo para inactivo */
+            background: linear-gradient(135deg, #dc3545, #e25563);
+        }
+
+        .badge-warning {
+            background: linear-gradient(135deg, #ffc107, #ffca2c);
+        }
+
+        /* Avatar */
+        .avatar-cell {
+            width: 50px;
+            height: 50px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--black);
+            font-weight: bold;
+            margin: 0 auto;
+        }
+
+        /* Checkbox */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent4);
+        }
+
+        /* Paginación */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 25px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            background: var(--white);
+            border: 2px solid var(--border);
+            color: var(--accent4);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+            transform: translateY(-2px);
+        }
+
+        .pagination button.active {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+        }
+
+        .pagination button:disabled {
+            background: var(--light-gray);
+            color: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .page-info {
+            color: var(--gray);
+            font-weight: 500;
+            margin: 0 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .table-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .search-bar input {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .title-action {
+                align-items: center;
+            }
+            
+            .table-wrapper {
+                overflow-x: auto;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .page-info {
+                margin: 10px 0;
+            }
         }
     </style>
 </head>
@@ -53,7 +417,7 @@
     {% block content %}
 
     <header class="main-header">
-        <h1>Mi Comunidad Educativa</h1>
+        <h1>Gestión de Estudiantes</h1>
         <div class="header-icons">
             <i class="fa-solid fa-bell"></i>
             <i class="fa-solid fa-user"></i>
@@ -63,38 +427,288 @@
     <main class="content-area">
         <section class="page-header">
             <div class="title-action">
-                <h2 class="page-title">Directorio de Compañeros</h2>
+                <h2 class="page-title">Lista de Estudiantes</h2>
+                <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                    <i class="fas fa-user-plus"></i> Registrar Nuevo Estudiante
+                </a>
             </div>
-            </section>
+            <div class="placeholder-image">
+                <i class="fa-solid fa-user-graduate"></i>
+            </div>
+        </section>
 
         <section class="table-container">
             <div class="table-controls">
                 <div class="search-bar">
                     <i class="fa-solid fa-search"></i>
-                    <input type="search" placeholder="Buscar Estudiantes por Nombre o No. Identidad">
+                    <input type="search" id="searchInput" placeholder="Buscar estudiantes por nombre, identidad o correo...">
+                </div>
+                <div class="table-actions">
+                    <button class="btn-action" id="refreshBtn" title="Actualizar lista">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
                 </div>
             </div>
 
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th>No. Identidad</th>
-                        <th>Nombre Completo</th>
-                        <th>Correo Electrónico</th>
-                        <th>Curso Asignado</th>
-                        <th>Sede</th>
-                        <th>Estado de Cuenta</th>
-                    </tr>
-                </thead>
-                <tbody id="estudiantes-table-body">
+            <div class="table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>No. Identidad</th>
+                            <th>Avatar</th>
+                            <th>Nombre completo</th>
+                            <th>Correo</th>
+                            <th>Curso</th>
+                            <th>Año Matrícula</th>
+                            <th>Padre/Acudiente</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="estudiantes-table-body">
+                        <!-- Los datos se cargarán desde la base de datos -->
+                        {% for estudiante in estudiantes %}
+                        <tr>
+                            <td><input type="checkbox" class="student-checkbox" value="{{ estudiante.id_usuario }}"></td>
+                            <td>{{ estudiante.no_identidad }}</td>
+                            <td class="avatar-cell">
+                                <div class="avatar">
+                                    {{ estudiante.nombre[0] }}{{ estudiante.apellido[0] }}
+                                </div>
+                            </td>
+                            <td>{{ estudiante.nombre }} {{ estudiante.apellido }}</td>
+                            <td>{{ estudiante.correo }}</td>
+                            <td>
+                                {% if estudiante._matriculas %}
+                                    {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
+                                    {% set curso = estudiante._cursos_dict.get(matricula_reciente.cursoId) %}
+                                    {{ curso.nombreCurso if curso else "Sin asignar" }}
+                                {% else %}
+                                    Sin asignar
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if estudiante._matriculas %}
+                                    {% set matricula_reciente = estudiante._matriculas|sort(attribute='año', reverse=true)|first %}
+                                    {{ matricula_reciente.año }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if estudiante._padres %}
+                                    {{ estudiante._padres|join(', ') }}
+                                {% else %}
+                                    Sin asignar
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if estudiante.estado_cuenta == 'activa' %}badge-success{% else %}badge-danger{% endif %}">
+                                    {{ estudiante.estado_cuenta }}
+                                </span>
+                            </td>
+                            <td class="actions-cell">
+                                <button class="btn-action" onclick="editarEstudiante({{ estudiante.id_usuario }})" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-action" onclick="verDetalles({{ estudiante.id_usuario }})" title="Ver detalles">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-action delete" onclick="eliminarEstudiante({{ estudiante.id_usuario }})" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
                     </tbody>
-            </table>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination" id="pagination">
+                <button id="prevPage" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info" id="pageInfo">Página 1 de 1</span>
+                <button id="nextPage" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Mensaje cuando no hay estudiantes -->
+            <div id="no-students-message" style="display: {% if estudiantes %}none{% else %}block{% endif %}; text-align: center; padding: 40px;">
+                <i class="fas fa-user-graduate" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                <h3 style="color: var(--gray); margin-bottom: 10px;">No hay estudiantes registrados</h3>
+                <p style="color: var(--gray); margin-bottom: 20px;">Comienza registrando el primer estudiante en el sistema</p>
+                <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                    <i class="fas fa-user-plus"></i> Registrar Primer Estudiante
+                </a>
+            </div>
         </section>
     </main>
 
-    <script src="{{ url_for('static', filename='js/superadmin/estudiantes.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const estudiantesTableBody = document.getElementById('estudiantes-table-body');
+            const noStudentsMessage = document.getElementById('no-students-message');
+            const searchInput = document.getElementById('searchInput');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+            const pageInfo = document.getElementById('pageInfo');
 
+            let currentPage = 1;
+            const itemsPerPage = 10;
+            let allEstudiantes = Array.from(estudiantesTableBody.getElementsByTagName('tr'));
+            let filteredEstudiantes = [...allEstudiantes];
+
+            function renderTable() {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                
+                // Ocultar todas las filas primero
+                allEstudiantes.forEach(row => row.style.display = 'none');
+                
+                // Mostrar solo las filas de la página actual
+                const currentEstudiantes = filteredEstudiantes.slice(startIndex, endIndex);
+                currentEstudiantes.forEach(row => row.style.display = '');
+                
+                updatePagination();
+                updateNoStudentsMessage();
+            }
+
+            function updatePagination() {
+                const totalPages = Math.ceil(filteredEstudiantes.length / itemsPerPage);
+                
+                pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+                
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+            }
+
+            function updateNoStudentsMessage() {
+                if (filteredEstudiantes.length === 0 && searchInput.value !== '') {
+                    noStudentsMessage.style.display = 'block';
+                    noStudentsMessage.innerHTML = `
+                        <i class="fas fa-search" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                        <h3 style="color: var(--gray); margin-bottom: 10px;">No se encontraron estudiantes</h3>
+                        <p style="color: var(--gray); margin-bottom: 20px;">No hay estudiantes que coincidan con "${searchInput.value}"</p>
+                        <button class="btn-create" onclick="limpiarBusqueda()">
+                            <i class="fas fa-times"></i> Limpiar búsqueda
+                        </button>
+                    `;
+                } else if (filteredEstudiantes.length === 0) {
+                    noStudentsMessage.style.display = 'block';
+                    noStudentsMessage.innerHTML = `
+                        <i class="fas fa-user-graduate" style="font-size: 3rem; color: var(--gray); margin-bottom: 15px;"></i>
+                        <h3 style="color: var(--gray); margin-bottom: 10px;">No hay estudiantes registrados</h3>
+                        <p style="color: var(--gray); margin-bottom: 20px;">Comienza registrando el primer estudiante en el sistema</p>
+                        <a href="{{ url_for('admin.crear_estudiante') }}" class="btn-create">
+                            <i class="fas fa-user-plus"></i> Registrar Primer Estudiante
+                        </a>
+                    `;
+                } else {
+                    noStudentsMessage.style.display = 'none';
+                }
+            }
+
+            // Función para filtrar estudiantes
+            function filtrarEstudiantes() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                currentPage = 1;
+                
+                if (searchTerm === '') {
+                    filteredEstudiantes = [...allEstudiantes];
+                } else {
+                    filteredEstudiantes = allEstudiantes.filter(row => {
+                        const textoFila = row.textContent.toLowerCase();
+                        return textoFila.includes(searchTerm);
+                    });
+                }
+                
+                renderTable();
+            }
+
+            // Función para limpiar búsqueda
+            window.limpiarBusqueda = function() {
+                searchInput.value = '';
+                filtrarEstudiantes();
+            }
+
+            function changePage(direction) {
+                const totalPages = Math.ceil(filteredEstudiantes.length / itemsPerPage);
+                
+                if (direction === 'next' && currentPage < totalPages) {
+                    currentPage++;
+                } else if (direction === 'prev' && currentPage > 1) {
+                    currentPage--;
+                }
+                
+                renderTable();
+            }
+
+            // Event listeners
+            searchInput.addEventListener('input', filtrarEstudiantes);
+            
+            prevPageBtn.addEventListener('click', () => changePage('prev'));
+            nextPageBtn.addEventListener('click', () => changePage('next'));
+
+            // Botón de actualizar
+            refreshBtn.addEventListener('click', function() {
+                window.location.reload();
+                refreshBtn.style.transform = 'rotate(360deg)';
+                setTimeout(() => {
+                    refreshBtn.style.transform = 'rotate(0deg)';
+                }, 500);
+            });
+
+            // Checkbox para seleccionar todos
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.student-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+
+            // Inicializar tabla
+            renderTable();
+
+            // Funciones de acción
+            window.editarEstudiante = function(id) {
+                window.location.href = "{{ url_for('admin.editar_estudiante', id=0) }}".replace('0', id);
+            };
+
+            window.verDetalles = function(id) {
+                window.location.href = "{{ url_for('admin.detalles_estudiante', id=0) }}".replace('0', id);
+            };
+
+            window.eliminarEstudiante = function(id) {
+                if (confirm('¿Está seguro de que desea eliminar este estudiante?')) {
+                    fetch("{{ url_for('admin.eliminar_estudiante', id=0) }}".replace('0', id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Estudiante eliminado correctamente');
+                            window.location.reload();
+                        } else {
+                            alert('Error al eliminar el estudiante: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al eliminar el estudiante');
+                    });
+                }
+            };
+        });
+    </script>
     {% endblock %}
 </body>
-
 </html>

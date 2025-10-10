@@ -2,206 +2,431 @@
    static/css/superadmin/base.css
    ================================ */
 
-/* Paleta de colores */
+/* 🌈 Paleta de colores del sistema */
 :root {
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-texto-principal: #2c3e50;
-    --color-texto-secundario: #7f8c8d;
-    --color-blanco: #ffffff;
-    --color-fondo-seccion: #f8f9fa;
-    --color-borde-suave: #ecf0f1;
-    --color-sidebar: #2c3e50;
-    --color-sidebar-hover: #34495e;
-    --color-sidebar-footer: #252b32;
+  --accent1: #F95738;
+  --accent2: #EE964B;
+  --accent3: #F4D35E;
+  --accent4: #0D3B66;
+  --light: #FAF0CA;
+  --white: #FFFFFF;
+  --black: #333333;
+  --gray: #666666;
+  --light-gray: #F8F9FA;
+  --border: #E9ECEF;
+  --card-bg: #FFFFFF;
+  --header-bg: #FFFFFF;
+  --main-bg: #F8F9FA;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-large: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* General */
+/* Animaciones clave */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes subtlePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.01); }
+}
+
+/* General - Más compacto */
 body {
-    font-family: 'Inter', sans-serif; /* Fuente moderna y legible */
-    overflow-x: hidden; /* Evita scroll horizontal */
-    margin: 0;
-    padding: 0;
-    display: flex;
-    min-height: 100vh; /* Ocupa toda la altura */
-    background-color: var(--color-fondo-seccion);
-    color: var(--color-texto-principal);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  min-height: 100vh;
+  background: var(--main-bg);
+  color: var(--black);
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
-/* Contenedor principal */
-.app-container {
-    display: flex;
-    min-height: 100vh;
-}
-
-/* Sidebar */
+/* Sidebar más delgado y elegante */
 .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    background-color: var(--color-sidebar);
-    color: var(--color-texto-secundario);
-    z-index: 1000;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease-in-out;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05),
-                0 2px 10px rgba(0, 0, 0, 0.05);
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px; /* Reducido de 280px */
+  background: linear-gradient(180deg, var(--accent4), #1a4a7a);
+  color: var(--white);
+  z-index: 1000;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-large);
 }
 
-/* Cabecera del sidebar */
+/* Cabecera del sidebar más compacta */
 .sidebar-header {
-    padding: 1.5rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--color-blanco);
-    font-size: 1.25rem;
+  padding: 1rem 0.75rem; /* Reducido padding */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  min-height: 60px; /* Altura fija */
 }
 
-.sidebar-header .logo {
-    font-size: 1.75rem;
-    color: var(--color-primario);
+.sidebar-header h1 {
+  font-size: 1.1rem; /* Texto más pequeño */
+  font-weight: 600;
+  margin: 0;
+  color: var(--white);
+  letter-spacing: 0.5px;
 }
 
-/* Navegación */
-.sidebar-nav {
-    list-style: none;
-    padding: 1rem 0;
-    margin: 0;
-    flex-grow: 1;
+/* Navegación más compacta */
+.nav {
+  padding: 0.5rem 0; /* Menos padding */
+  flex-grow: 1;
 }
 
-.sidebar-nav li {
-    margin-bottom: 0.25rem;
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem; /* Más compacto */
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  margin: 0.15rem 0.5rem; /* Menos margen */
+  font-size: 0.85rem; /* Texto más pequeño */
+  position: relative;
 }
 
-.sidebar-nav .nav-link {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1.5rem;
-    color: rgba(255, 255, 255, 0.75);
-    text-decoration: none;
-    font-weight: 500;
-    transition: all 0.2s ease;
+.nav-link:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(3px); /* Movimiento más sutil */
 }
 
-.sidebar-nav .nav-link:hover {
-    color: var(--color-blanco);
-    background-color: var(--color-sidebar-hover);
+.nav-link.active {
+  color: var(--white);
+  background: linear-gradient(135deg, var(--accent1), var(--accent2));
+  box-shadow: var(--shadow);
+  border-left: 3px solid var(--accent3);
 }
 
-.sidebar-nav .nav-link.active {
-    color: var(--color-blanco);
-    background-color: var(--color-primario);
-    border-left: 4px solid var(--color-blanco);
-    padding-left: 1.25rem;
+.nav-link i {
+  width: 20px; /* Iconos más pequeños */
+  text-align: center;
+  margin-right: 0.5rem;
+  font-size: 0.9rem; /* Iconos más pequeños */
 }
 
-.sidebar-nav .nav-link i {
-    width: 25px;
-    text-align: center;
-    margin-right: 0.75rem;
-    font-size: 1.1rem;
+/* Dropdowns más compactos */
+.collapse .nav-link {
+  padding: 0.5rem 1rem 0.5rem 2.5rem !important; /* Más compacto */
+  font-size: 0.8rem;
+  margin: 0.1rem 0.5rem;
 }
 
-/* Footer del sidebar */
+/* Footer del sidebar más compacto */
 .sidebar-footer {
-    padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background-color: var(--color-sidebar-footer);
-    color: var(--color-texto-secundario);
+  padding: 0.75rem; /* Menos padding */
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  min-height: 70px; /* Altura fija */
 }
 
-.sidebar-footer .user-info {
-    flex-grow: 1;
+.sidebar-footer .rounded-circle {
+  width: 32px !important; /* Avatar más pequeño */
+  height: 32px !important;
+  border: 2px solid var(--accent3);
 }
 
-.sidebar-footer .user-name {
-    font-weight: 600;
-    color: var(--color-blanco);
+.sidebar-footer .fw-semibold {
+  font-size: 0.85rem; /* Texto más pequeño */
+  font-weight: 600;
 }
 
-.sidebar-footer .user-role {
-    font-size: 0.85rem;
-    color: var(--color-texto-secundario);
+.sidebar-footer .small {
+  font-size: 0.75rem; /* Texto más pequeño */
 }
 
-/* Contenido principal */
+/* Contenido principal ajustado */
 .main-content {
-    margin-left: 280px;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease-in-out;
-    background-color: var(--color-fondo-seccion);
-    min-height: 100vh;
-    overflow-x: hidden;
+  margin-left: 240px; /* Ajustado al sidebar reducido */
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  background: var(--main-bg);
+  min-height: 100vh;
 }
 
-/* Wrapper de contenido */
+/* Header móvil más compacto */
+header.bg-white {
+  background: var(--header-bg) !important;
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 0.75rem 1rem !important; /* Más compacto */
+  min-height: 56px; /* Altura fija */
+}
+
+header h5 {
+  font-size: 1rem; /* Texto más pequeño */
+  font-weight: 600;
+}
+
+/* Wrapper de contenido más compacto */
 .content-wrapper {
-    padding: 20px;
-    flex-grow: 1;
-    background-color: var(--color-blanco);
-    border-radius: 8px;
-    border: 1px solid var(--color-borde-suave);
+  padding: 1.25rem; /* Menos padding */
+  flex-grow: 1;
+  background: var(--card-bg);
+  border-radius: 8px;
+  margin: 0.75rem; /* Menos margen */
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  animation: fadeIn 0.5s ease-out;
 }
 
-/* Dropdowns */
-.nav-link.dropdown-toggle::after {
-    display: inline-block;
-    margin-left: .255em;
-    vertical-align: .255em;
-    content: "";
-    border-top: .3em solid;
-    border-right: .3em solid transparent;
-    border-bottom: 0;
-    border-left: .3em solid transparent;
+/* Alertas más compactas */
+.alert {
+  border: none;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.3s ease-out;
+  border-left: 3px solid;
+  padding: 0.75rem 1rem; /* Más compacto */
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
 }
 
-.nav-link[aria-expanded="true"]::after {
-    transform: rotate(-180deg);
+.alert .btn-close {
+  padding: 0.5rem;
+  font-size: 0.7rem;
 }
 
-.collapse.show .nav-link,
-.collapsing .nav-link {
-    padding-left: 3rem !important;
+/* Mejoras específicas para el contenido del dashboard */
+.dashboard-card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
 }
 
-/* Responsive */
+.dashboard-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+
+/* Grid más compacto para tarjetas */
+.card-grid {
+  display: grid;
+  gap: 0.75rem; /* Espacio reducido */
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* Tablas más compactas */
+.table {
+  font-size: 0.85rem;
+}
+
+.table th {
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  background: var(--light-gray);
+}
+
+.table td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: middle;
+}
+
+/* Botones más compactos */
+.btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+}
+
+.btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Formularios más compactos */
+.form-control {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 5px;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+/* Badges más pequeños */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Responsive para diseño compacto */
 @media (max-width: 991.98px) {
-    .sidebar {
-        left: -280px;
-        box-shadow: none;
-    }
-    .sidebar.active {
-        left: 0;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05),
-                    0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-    .main-content {
-        margin-left: 0;
-    }
-    /* Overlay para móvil */
-    .overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
-        display: none;
-    }
-    .sidebar.active + .overlay {
-        display: block;
-    }
+  .sidebar {
+    width: 220px; /* Aún más compacto en móvil */
+    left: -220px;
+  }
+  
+  .sidebar.show {
+    left: 0;
+  }
+  
+  .main-content {
+    margin-left: 0;
+  }
+  
+  .content-wrapper {
+    padding: 1rem;
+    margin: 0.5rem;
+    border-radius: 6px;
+  }
+  
+  header.bg-white {
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+  }
+  
+  .content-wrapper {
+    padding: 0.75rem;
+    margin: 0.25rem;
+  }
+  
+  .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .nav-link i {
+    font-size: 0.8rem;
+    margin-right: 0.4rem;
+  }
+  
+  .dashboard-card {
+    padding: 0.75rem;
+  }
+  
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .sidebar {
+    width: 100%;
+    left: -100%;
+  }
+  
+  .content-wrapper {
+    padding: 0.5rem;
+    margin: 0.25rem;
+  }
+  
+  .sidebar-header {
+    padding: 0.75rem 0.5rem;
+    min-height: 50px;
+  }
+  
+  .sidebar-header h1 {
+    font-size: 1rem;
+  }
+  
+  .sidebar-footer {
+    padding: 0.5rem;
+    min-height: 60px;
+  }
+}
+
+/* Utilidades para texto compacto */
+.text-sm {
+  font-size: 0.85rem;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+/* Espaciados reducidos */
+.mb-1 {
+  margin-bottom: 0.25rem !important;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem !important;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem !important;
+}
+
+.p-1 {
+  padding: 0.25rem !important;
+}
+
+.p-2 {
+  padding: 0.5rem !important;
+}
+
+.p-3 {
+  padding: 0.75rem !important;
+}
+
+/* Scrollbar más delgada */
+.content-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.content-wrapper::-webkit-scrollbar-thumb {
+  background: var(--accent2);
+  border-radius: 2px;
+}
+
+/* Efectos hover más sutiles */
+.nav-link:hover,
+.btn:hover,
+.dashboard-card:hover {
+  transform: translateY(-1px) scale(1.01);
+}
+
+/* Animaciones más rápidas para mejor rendimiento */
+.nav-link,
+.btn,
+.alert,
+.dashboard-card {
+  transition: all 0.15s ease;
+}
+
+/* Mejora de rendimiento con transform */
+.sidebar,
+.main-content,
+.content-wrapper {
+  will-change: transform;
+  backface-visibility: hidden;
 }

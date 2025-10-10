@@ -1,0 +1,202 @@
+<!-- templates/auth/verify_email.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Email - Sistema Académico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0D3B66;
+            --primary-light: #1a5080;
+            --secondary: #F4D35E;
+            --accent: #F95738;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --dark: #2C3E50;
+            --success: #28A745;
+            --error: #DC3545;
+            --warning: #FFC107;
+        }
+        body {
+            background: linear-gradient(135deg, var(--light) 0%, #e9ecef 100%);
+            min-height: 100vh;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+        }
+        .verification-container {
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .verification-card {
+            background: var(--white);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(13, 59, 102, 0.15);
+            border-top: 4px solid var(--primary);
+            overflow: hidden;
+        }
+        .verification-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: var(--white);
+            padding: 30px;
+            text-align: center;
+        }
+        .verification-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        .verification-body {
+            padding: 30px;
+        }
+        .code-input {
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 8px;
+            text-align: center;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .code-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(249, 87, 56, 0.1);
+        }
+        .attempts-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+        .btn-verify {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-verify:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13, 59, 102, 0.3);
+        }
+        .success-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .success-icon {
+            font-size: 4rem;
+            color: var(--success);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        <div class="verification-card">
+            {% if not verified %}
+            <div class="verification-header">
+                <div class="verification-icon">
+                    <i class="fas fa-envelope-circle-check"></i>
+                </div>
+                <h2>Verifica tu Email</h2>
+                <p class="mb-0">Ingresa el código que enviamos a tu correo</p>
+            </div>
+
+            <div class="verification-body">
+                <!-- Mostrar advertencia de intentos si existe -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show">
+                                <i class="fas fa-{{ 'exclamation-triangle' if category == 'danger' else 'check-circle' }} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('auth.verify_email_page') }}">
+                    <input type="hidden" name="email" value="{{ email }}">
+                    
+                    <div class="mb-4">
+                        <label for="verification_code" class="form-label fw-bold text-dark">
+                            <i class="fas fa-shield-alt me-2"></i>Código de Verificación
+                        </label>
+                        <input type="text" 
+                               class="form-control code-input" 
+                               id="verification_code" 
+                               name="verification_code" 
+                               maxlength="8"
+                               placeholder="XXXXXX"
+                               required
+                               autocomplete="off"
+                               autofocus>
+                        <div class="form-text">
+                            Ingresa el código de 8 caracteres que enviamos a: <strong>{{ email }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="attempts-warning">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        <strong>Importante:</strong> Tienes un máximo de 5 intentos. El código expira en 24 horas.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-verify btn-lg">
+                            <i class="fas fa-check-circle me-2"></i>Verificar Email
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="text-muted">¿No recibiste el código?</p>
+                    <a href="{{ url_for('auth.resend_verification', email=email) }}" class="btn btn-outline-primary">
+                        <i class="fas fa-redo me-2"></i>Reenviar Código
+                    </a>
+                </div>
+            </div>
+
+            {% else %}
+            <!-- Estado de verificación exitosa -->
+            <div class="success-state">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3 class="text-success">¡Email Verificado!</h3>
+                <p class="text-muted mb-4">Tu dirección de correo ha sido verificada exitosamente.</p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('auth.login') }}" class="text-decoration-none">
+                <i class="fas fa-arrow-left me-2"></i>Volver al Inicio de Sesión
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-focus y formato del código
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeInput = document.getElementById('verification_code');
+            if (codeInput) {
+                codeInput.addEventListener('input', function(e) {
+                    // Convertir a mayúsculas y permitir solo letras y números
+                    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

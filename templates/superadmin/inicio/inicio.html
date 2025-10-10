@@ -1,58 +1,117 @@
-
 <html>
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title></title>
+        <title>Dashboard - GENERAL SYSTEM</title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-     
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     </head>
     <body>
  {% extends "base.html" %}
     {% block content %}
     <style>
-    /* Variables CSS para una gestión de colores y sombras más sencilla */
+    /* 🌈 Paleta de colores del sistema analizado */
     :root {
-        --color-primario: #0078ad;
-        --color-primario-oscuro: #00628e;
-        --color-texto-principal: #2c3e50;
-        --color-texto-secundario: #7f8c8d;
-        --color-blanco: #FFFFFF;
-        --color-fondo-seccion: #f8f9fa;
-        --color-borde-suave: #ecf0f1;
+        --accent1: #F95738;
+        --accent2: #EE964B;
+        --accent3: #F4D35E;
+        --accent4: #0D3B66;
+        --light: #FAF0CA;
+        --white: #FFFFFF;
+        --black: #333333;
+        --gray: #666666;
+        --light-gray: #F8F9FA;
+        --border: #E9ECEF;
+        --card-bg: #FFFFFF;
+        --header-bg: #FFFFFF;
+        --main-bg: #F8F9FA;
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
     }
 
-    /* Estilos Generales */
+    /* --- Estilos generales --- */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
     body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--color-fondo-seccion);
-        color: var(--color-texto-principal);
+        background-color: var(--main-bg);
+        color: var(--black);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .container-fluid {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* --- Header del Dashboard --- */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, var(--accent4), #1a5080);
+        color: var(--white);
+        padding: 20px 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        box-shadow: var(--shadow);
+    }
+
+    .header-title {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .header-title i {
+        font-size: 32px;
+        color: var(--accent3);
+    }
+
+    .header-title h1 {
+        color: var(--white);
+        font-weight: 700;
+        font-size: 1.8rem;
         margin: 0;
     }
 
-    /* Contenedor Principal */
-    .container-fluid {
-        padding: 2rem;
-    }
-
-    .fw-bold {
-        font-weight: 700 !important;
-    }
-
-    /* Tarjetas de Acceso Rápido */
+    /* --- Tarjetas de Acceso Rápido --- */
     .card-link-style {
-        border-radius: 1rem;
-        background-color: var(--color-blanco);
-        border: 1px solid var(--color-borde-suave);
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 25px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        border-top: 4px solid var(--accent4);
         text-decoration: none;
-        color: var(--color-texto-principal);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        color: var(--black);
+        display: block;
+        height: 100%;
     }
 
     .card-link-style:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: var(--shadow-hover);
+        text-decoration: none;
+        color: var(--black);
+    }
+
+    .card-link-style:nth-child(2) {
+        border-top-color: var(--accent1);
+    }
+
+    .card-link-style:nth-child(3) {
+        border-top-color: var(--accent2);
+    }
+
+    .card-link-style:nth-child(4) {
+        border-top-color: var(--accent3);
     }
 
     .icon-circle {
@@ -62,75 +121,158 @@
         width: 80px;
         height: 80px;
         border-radius: 50%;
+        margin: 0 auto 15px auto;
     }
 
-    /* Colores para los íconos */
-    .bg-primary-soft { background-color: rgba(0, 120, 173, 0.1); }
-    .text-primary { color: var(--color-primario) !important; }
+    /* Colores para los íconos usando la paleta del sistema */
+    .bg-primary-soft { 
+        background: linear-gradient(135deg, rgba(13, 59, 102, 0.1), rgba(13, 59, 102, 0.05));
+    }
+    .text-primary { 
+        color: var(--accent4) !important; 
+    }
     
-    .bg-success-soft { background-color: rgba(40, 167, 69, 0.1); }
-    .text-success { color: #28a745 !important; }
+    .bg-success-soft { 
+        background: linear-gradient(135deg, rgba(249, 87, 56, 0.1), rgba(249, 87, 56, 0.05));
+    }
+    .text-success { 
+        color: var(--accent1) !important; 
+    }
     
-    .bg-info-soft { background-color: rgba(23, 162, 184, 0.1); }
-    .text-info { color: #17a2b8 !important; }
+    .bg-info-soft { 
+        background: linear-gradient(135deg, rgba(238, 150, 75, 0.1), rgba(238, 150, 75, 0.05));
+    }
+    .text-info { 
+        color: var(--accent2) !important; 
+    }
     
-    .bg-danger-soft { background-color: rgba(220, 53, 69, 0.1); }
-    .text-danger { color: #dc3545 !important; }
+    .bg-danger-soft { 
+        background: linear-gradient(135deg, rgba(244, 211, 94, 0.1), rgba(244, 211, 94, 0.05));
+    }
+    .text-danger { 
+        color: var(--accent4) !important; 
+    }
 
     .card-title {
         font-weight: 600;
-        color: var(--color-texto-principal);
+        color: var(--accent4);
+        text-align: center;
+        margin-bottom: 0;
     }
     
-    /* Sección de Bienvenida */
+    /* --- Panel de Bienvenida --- */
     .bg-dark {
-        background-color: var(--color-primario-oscuro) !important;
+        background: linear-gradient(135deg, var(--accent4), #1a5080) !important;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        border: none;
     }
 
     .text-white {
-        color: var(--color-blanco) !important;
+        color: var(--white) !important;
     }
 
     .illustration-placeholder {
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
 
     .illustration-placeholder i {
-        color: rgba(255, 255, 255, 0.5) !important;
+        color: var(--accent3) !important;
+        font-size: 3rem;
     }
     
-    .btn-light {
-        background-color: var(--color-blanco);
-        color: var(--color-primario);
-        border-radius: 50px;
+    /* --- Botones del Sistema --- */
+    .btn {
+        background: linear-gradient(135deg, var(--accent3), #e9c440);
+        color: var(--black);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
         font-weight: 600;
-        transition: background-color 0.2s ease, color 0.2s ease;
+        transition: all 0.3s;
+        font-size: 0.9rem;
     }
-    
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        text-decoration: none;
+        color: var(--black);
+    }
+
+    .btn-light {
+        background: linear-gradient(135deg, var(--white), #f8f9fa);
+        color: var(--accent4);
+    }
+
     .btn-light:hover {
-        background-color: var(--color-fondo-seccion);
-        color: var(--color-primario-oscuro);
+        background: linear-gradient(135deg, #f8f9fa, var(--white));
+        color: var(--accent4);
     }
 
     .btn-secondary {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: var(--color-blanco);
-        border-color: rgba(255, 255, 255, 0.2);
-        border-radius: 50px;
-        font-weight: 600;
-        transition: background-color 0.2s ease, border-color 0.2s ease;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+        color: var(--white);
+        border: 1px solid rgba(255, 255, 255, 0.3);
     }
-    
+
     .btn-secondary:hover {
-        background-color: rgba(255, 255, 255, 0.3);
-        border-color: rgba(255, 255, 255, 0.3);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.2));
+        color: var(--white);
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+        
+        .dashboard-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 15px;
+            padding: 15px;
+        }
+        
+        .header-title h1 {
+            font-size: 1.5rem;
+        }
+        
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .fw-bold {
+        font-weight: 700 !important;
+    }
+
+    .mb-4 {
+        margin-bottom: 1.5rem !important;
+    }
+
+    .w-100 {
+        width: 100%;
+    }
+
+    .mb-2 {
+        margin-bottom: 0.5rem !important;
     }
 </style>
+
 <div class="container-fluid p-4">
-    <div class="row">
-        <div class="col-12">
-            <h2 class="fw-bold mb-4">Panel Principal de GENERAL SYSTEM</h2>
+    <div class="dashboard-header">
+        <div class="header-title">
+            <i class="fas fa-tachometer-alt"></i>
+            <h1>Panel Principal de GENERAL SYSTEM</h1>
         </div>
     </div>
 
@@ -187,18 +329,15 @@
             <div class="card text-white bg-dark h-100">
                 <div class="card-body p-4 d-flex flex-column">
                     <div class="illustration-placeholder">
-                        <i class="fas fa-cogs fa-4x text-white-50"></i>
+                        <i class="fas fa-cogs"></i>
                     </div>
                     <h4 class="fw-bold mt-4">¡Bienvenido, Admin!</h4>
                     <p class="small text-white-50">
                         Desde este panel tienes el control total sobre las operaciones del sistema. Usa los accesos directos para navegar rápidamente.
                     </p>
-                    <div class="mt-auto"> <a href="#" class="btn btn-light w-100 mb-2">
-                            <i class="fas fa-chart-pie me-2"></i>Ver Estadísticas
-                        </a>
-                        <a href="#" class="btn btn-secondary w-100">
-                            <i class="fas fa-plus-circle me-2"></i>Crear un Comunicado
-                        </a>
+                    <div class="mt-auto"> 
+                    </a>
+
                     </div>
                 </div>
             </div>
@@ -206,7 +345,5 @@
     </div>
 </div>
 {% endblock %}
-        
-
     </body>
 </html>

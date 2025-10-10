@@ -1,118 +1,482 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-       
     <meta charset="UTF-8">
-       
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Lista de Profesores</title>
-       
+    <title>Lista de Profesores</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-       
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
     <style>
+        /* Variables CSS usando la paleta de colores del diseño anterior */
+        :root {
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --black: #333333;
+            --gray: #666666;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --card-bg: #FFFFFF;
+            --header-bg: #FFFFFF;
+            --main-bg: #F8F9FA;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+            --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+            --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+            --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+        }
+
+        /* Estilos Generales */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--main-bg);
+            color: var(--black);
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        /* Encabezado Principal */
+        .main-header {
+            background: var(--gradient-primary);
+            color: var(--white);
+            padding: 18px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-header h1 {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-icons i {
+            font-size: 1.5rem;
+            color: var(--accent3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .header-icons i:hover {
+            transform: scale(1.1);
+            color: var(--white);
+        }
+
+        /* Área de Contenido */
+        .content-area {
+            padding: 0 20px;
+        }
+
+        /* Encabezado de Página */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border-top: 4px solid var(--accent4);
+        }
+
+        .title-action {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .page-title {
+            color: var(--accent4);
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .btn-create {
+            background: var(--gradient-secondary);
+            color: var(--black);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+            width: fit-content;
+        }
+
+        .btn-create:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .placeholder-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--gradient-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 2rem;
+        }
+
+        /* Contenedor de Tabla */
+        .table-container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 25px;
+            border-top: 4px solid var(--accent3);
+            overflow: hidden;
+        }
+
+        /* Controles de Tabla */
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .search-bar {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: var(--white);
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.2);
+        }
+
+        .search-bar i {
+            color: var(--gray);
+            margin-right: 10px;
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 250px;
+            color: var(--black);
+            font-weight: 500;
+        }
+
+        /* Tabla de Usuarios */
+        .table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            min-width: 1200px;
+        }
+
+        .user-table th {
+            background-color: var(--accent4);
+            color: var(--white);
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--accent3);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .user-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .user-table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .user-table tbody tr:hover {
+            background-color: var(--light);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Celdas de Acciones */
         .actions-cell {
             white-space: nowrap;
         }
 
-        .actions-cell .btn-action {
-            margin-right: 5px;
-            color: #555;
+        .btn-action {
+            margin-right: 8px;
+            color: var(--gray);
             text-decoration: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            padding: 6px;
+            border-radius: 4px;
         }
 
-        .actions-cell .btn-action:hover {
-            color: #007bff;
+        .btn-action:hover {
+            color: var(--accent4);
+            background-color: rgba(13, 59, 102, 0.1);
+            transform: scale(1.1);
         }
 
-        .actions-cell .btn-action.delete {
-            color: #dc3545;
+        .btn-action.delete {
+            color: var(--accent1);
+        }
+
+        .btn-action.delete:hover {
+            background-color: rgba(249, 87, 56, 0.1);
         }
 
         /* Estilos para badges */
         .badge {
-            padding: 0.25em 0.5em;
-            border-radius: 0.25rem;
-            color: #fff;
+            padding: 0.35em 0.65em;
+            border-radius: 0.5rem;
+            color: var(--white);
             font-size: 0.75rem;
             font-weight: bold;
+            display: inline-block;
         }
 
         .badge-success {
-            background-color: #28a745;
-            /* Verde para activo */
+            background: linear-gradient(135deg, #28a745, #20c997);
         }
 
         .badge-danger {
-            background-color: #dc3545;
-            /* Rojo para inactivo */
+            background: linear-gradient(135deg, #dc3545, #e25563);
+        }
+
+        /* Avatar */
+        .avatar-cell {
+            width: 50px;
+            height: 50px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--black);
+            font-weight: bold;
+            margin: 0 auto;
+        }
+
+        /* Checkbox */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--accent4);
+        }
+
+        /* Paginación */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 25px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button {
+            background: var(--white);
+            border: 2px solid var(--border);
+            color: var(--accent4);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+            transform: translateY(-2px);
+        }
+
+        .pagination button.active {
+            background: var(--accent4);
+            color: var(--white);
+            border-color: var(--accent4);
+        }
+
+        .pagination button:disabled {
+            background: var(--light-gray);
+            color: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .page-info {
+            color: var(--gray);
+            font-weight: 500;
+            margin: 0 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .table-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .search-bar input {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .title-action {
+                align-items: center;
+            }
+            
+            .table-wrapper {
+                overflow-x: auto;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .page-info {
+                margin: 10px 0;
+            }
         }
     </style>
-
 </head>
 
 <body>
-        {% extends "base.html" %}
-        {% block content %}
+    {% extends "base.html" %}
+    {% block content %}
 
-        <header class="main-header">
-                <h1>Gestion de usuarios/roles</h1>
-                <div class="header-icons">
-                        <i class="fa-solid fa-bell"></i>
-                        <i class="fa-solid fa-user"></i>
-                    </div>
-            </header>
+    <header class="main-header">
+        <h1>Gestión de Usuarios/Roles</h1>
+        <div class="header-icons">
+            <i class="fa-solid fa-bell"></i>
+            <i class="fa-solid fa-user"></i>
+        </div>
+    </header>
 
-        <main class="content-area">
-                <section class="page-header">
-                        <div class="title-action">
-                                <h2 class="page-title">Lista de Profesores</h2>
-                                <a href="{{ url_for('admin.crear_usuario') }}" class="btn-create">Crear Nuevo
-                    Usuario</a>
-                            </div>
-                        <div class="placeholder-image">
-                                <i class="fa-solid fa-image"></i>
-                            </div>
-                    </section>
+    <main class="content-area">
+        <section class="page-header">
+            <div class="title-action">
+                <h2 class="page-title">Lista de Profesores</h2>
+                <a href="{{ url_for('admin.crear_usuario', rol='profesor') }}" class="btn-create">
+                    <i class="fas fa-plus"></i> Crear Nuevo Usuario
+                </a>
+            </div>
+            <div class="placeholder-image">
+                <i class="fa-solid fa-chalkboard-teacher"></i>
+            </div>
+        </section>
 
-                <section class="table-container">
-                        <div class="table-controls">
-                                <div class="dropdown">
-                             
-                                    </div>
-                                <div class="search-bar">
-                                        <i class="fa-solid fa-search"></i>
-                                        <input type="search" placeholder="Buscar Profesores">
-                                    </div>
-                            </div>
+        <section class="table-container">
+            <div class="table-controls">
+                <div class="search-bar">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="search" placeholder="Buscar Profesores">
+                </div>
+            </div>
 
-                        <table class="user-table">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAllCheckbox"></th>
-                        <th>No. Identidad</th>
-                        <th>Avatar</th>
-                        <th>Nombre completo</th>
-                        <th>Correo</th>
-                        <th>Rol</th>
-                        <th>Estado</th>
-                        <th>Curso Asignado</th>
-                        <th>Materia/Area</th>
-                        <th>Sede Asignada</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="profesores-table-body">
-                </tbody>
-            </table>
-                    </section>
-            </main>
-       
-       
+            <div class="table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th>No. Identidad</th>
+                            <th>Avatar</th>
+                            <th>Nombre completo</th>
+                            <th>Correo</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Curso Asignado</th>
+                            <th>Materia/Área</th>
+                            <th>Sede Asignada</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profesores-table-body">
+                        
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination" id="pagination">
+                <button id="prevPage" disabled>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info" id="pageInfo">Página 1 de 1</span>
+                <button id="nextPage" disabled>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+    </main>
+
     <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
-       
-        {% endblock %}
+    {% endblock %}
 </body>
-
 </html>

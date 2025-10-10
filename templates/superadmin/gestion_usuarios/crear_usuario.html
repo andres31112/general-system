@@ -6,322 +6,1215 @@
     <title>Gestión de Usuarios - Crear Usuario</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/crear_usuario.css') }}">
+    <style>
+        /* Variables CSS con paleta completa */
+        :root {
+            --primary: #0D3B66;
+            --primary-light: #1a5080;
+            --secondary: #F4D35E;
+            --accent: #F95738;
+            --accent-light: #EE964B;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --dark: #2C3E50;
+            --gray: #7F8C8D;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --success: #28A745;
+            --error: #DC3545;
+            --warning: #FFC107;
+            
+            --shadow-sm: 0 2px 8px rgba(13, 59, 102, 0.08);
+            --shadow-md: 0 4px 16px rgba(13, 59, 102, 0.12);
+            --shadow-lg: 0 8px 32px rgba(13, 59, 102, 0.15);
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Estilos Base */
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, var(--light-gray) 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Layout Principal */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header con Gradiente */
+        .main-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-title {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.75rem;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-icon:hover {
+            background: var(--secondary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 211, 94, 0.3);
+        }
+
+        .header-icon.notification::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Grid Principal */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel de Formulario */
+        .form-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+        }
+
+        .form-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .form-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-title {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .form-subtitle {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Grupos de Formulario */
+        .form-section {
+            margin-bottom: 2rem;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .form-section:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Campos de Formulario */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--white);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-light);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.1);
+            outline: none;
+        }
+
+        .form-control:hover, .form-select:hover {
+            border-color: var(--accent-light);
+        }
+
+        /* Campo de dirección */
+        .address-field {
+            grid-column: 1 / -1;
+        }
+
+        /* Contraseña generada */
+        .password-generated {
+            background-color: var(--light);
+            border: 2px dashed var(--secondary);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .password-text {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .copy-password {
+            background: var(--secondary);
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .copy-password:hover {
+            background: var(--accent-light);
+        }
+
+        /* Campos Específicos por Rol */
+        .role-fields {
+            background: linear-gradient(135deg, var(--light) 0%, rgba(244, 211, 94, 0.1) 100%);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border-left: 4px solid var(--secondary);
+            border: 1px solid rgba(244, 211, 94, 0.3);
+        }
+
+        .role-fields .section-title {
+            color: var(--dark);
+            border-bottom-color: var(--accent-light);
+        }
+
+        /* Panel Lateral */
+        .sidebar-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--secondary);
+            position: sticky;
+            top: 2rem;
+            background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .sidebar-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary), #e9c440);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: var(--dark);
+            font-size: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-title {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Lista de Información */
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .info-item:hover {
+            background: var(--light);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 0 -0.5rem;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        .info-content h4 {
+            color: var(--primary);
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+        }
+
+        .info-content p {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        /* Botones Mejorados */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--white), var(--light-gray));
+            border: 2px solid var(--secondary);
+            color: var(--dark);
+            padding: 0.875rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            text-decoration: none;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-light);
+            background: var(--light);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            color: var(--primary);
+        }
+
+        /* Mensajes Flash Mejorados */
+        .alert {
+            border-radius: var(--radius-md);
+            border: none;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid;
+            background: var(--white);
+        }
+
+        .alert-success {
+            border-left-color: var(--success);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(40, 167, 69, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-error {
+            border-left-color: var(--error);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(220, 53, 69, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-warning {
+            border-left-color: var(--warning);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(255, 193, 7, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        /* Errores de Formulario */
+        .error-message {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(220, 53, 69, 0.05);
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--error);
+        }
+
+        /* Estados de Campos */
+        .form-control.is-invalid {
+            border-color: var(--error);
+            background: rgba(220, 53, 69, 0.02);
+        }
+
+        .form-control.is-valid {
+            border-color: var(--success);
+            background: rgba(40, 167, 69, 0.02);
+        }
+
+        /* Badge para campos requeridos */
+        .required-badge {
+            background: var(--accent);
+            color: var(--white);
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container {
+                padding: 1rem;
+            }
+            
+            .main-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+                padding: 1.5rem;
+            }
+            
+            .form-panel {
+                padding: 1.5rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .sidebar-panel {
+                position: static;
+            }
+        }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-panel, .sidebar-panel {
+            animation: slideIn 0.6s ease-out;
+        }
+
+        /* Efectos de profundidad */
+        .depth-1 { box-shadow: var(--shadow-sm); }
+        .depth-2 { box-shadow: var(--shadow-md); }
+        .depth-3 { box-shadow: var(--shadow-lg); }
+    </style>
 </head>
 <body>
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    /* Variables CSS para una gestión de colores y sombras más sencilla */
-:root {
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-texto-principal: #2c3e50;
-    --color-texto-secundario: #7f8c8d;
-    --color-blanco: #FFFFFF;
-    --color-fondo-seccion: #f8f9fa;
-    --color-borde-suave: #ecf0f1;
-    --color-rojo: #dc3545;
-    --color-negro: #212529;
-}
-
-/* Estilos Generales */
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--color-fondo-seccion);
-    color: var(--color-texto-principal);
-}
-
-/* Encabezado */
-header {
-    background-color: var(--color-blanco);
-    border-bottom: 1px solid var(--color-borde-suave);
-    border-radius: 0.5rem;
-    padding: 1rem 2rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.h4 {
-    color: var(--color-primario-oscuro);
-    font-weight: 700;
-}
-
-.text-secondary {
-    color: var(--color-texto-secundario) !important;
-}
-
-.text-secondary:hover {
-    color: var(--color-primario) !important;
-}
-
-/* Contenedor principal y tarjetas */
-.main-container {
-    padding: 1rem;
-}
-
-/* Formulario */
-.form-control, .form-select {
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-borde-suave);
-    padding: 0.75rem 1rem;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: var(--color-primario);
-    box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
-}
-
-/* Títulos dentro del formulario */
-.h5 {
-    font-weight: 600;
-    color: var(--color-primario-oscuro);
-}
-
-.h6 {
-    font-weight: 600;
-    color: var(--color-texto-principal);
-}
-
-hr.my-4 {
-    border-top: 2px solid var(--color-borde-suave);
-}
-
-/* Botones */
-.btn-dark {
-    background-color: var(--color-negro);
-    border-color: var(--color-negro);
-    border-radius: 50px;
-    font-weight: 600;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.btn-dark:hover {
-    background-color: var(--color-texto-principal);
-    border-color: var(--color-texto-principal);
-}
-
-.btn-secondary {
-    background-color: var(--color-texto-secundario);
-    border-color: var(--color-texto-secundario);
-    border-radius: 50px;
-    font-weight: 600;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.btn-secondary:hover {
-    background-color: #6c757d;
-    border-color: #6c757d;
-}
-
-/* Placeholder de imagen */
-.image-placeholder {
-    background-color: var(--color-borde-suave);
-    color: var(--color-texto-secundario);
-    border-radius: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    min-height: 450px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Mensajes Flash */
-.flash-messages .alert {
-    border-radius: 0.5rem;
-    font-weight: 500;
-    margin-bottom: 1rem;
-}
-</style>
-<div class="container-fluid px-4">
-    <header class="d-flex justify-content-between align-items-center py-3">
-        <h1 class="h4 mb-0">Gestión de Usuarios / Roles</h1>
-        <div>
-            <a href="#" class="text-secondary me-3"><i class="fas fa-bell fs-5"></i></a>
-            <a href="#" class="text-secondary"><i class="fas fa-user-circle fs-5"></i></a>
+<div class="admin-container">
+    <!-- Header -->
+    <header class="main-header">
+        <h1 class="header-title">
+            <i class="fas fa-users me-2"></i>
+            Gestión de Usuarios
+        </h1>
+        <div class="header-actions">
+            <a href="#" class="header-icon notification">
+                <i class="fas fa-bell"></i>
+            </a>
+            <a href="#" class="header-icon">
+                <i class="fas fa-user-circle"></i>
+            </a>
         </div>
     </header>
 
+    <!-- Mensajes Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="main-container mt-4">
-        <div class="row">
-            <div class="col-lg-7">
-                <h2 class="h5 mb-4">Crear Nuevo Usuario</h2>
-                <form method="POST" action="{{ url_for('admin.crear_usuario') }}">
-                    {{ form.hidden_tag() }}
+    <!-- Contenido Principal -->
+    <div class="content-grid">
+        <!-- Panel de Formulario -->
+        <div class="form-panel depth-2">
+            <div class="form-header">
+                <div class="form-icon">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div>
+                    <h2 class="form-title">Crear Nuevo Usuario</h2>
+                    <p class="form-subtitle">Complete la información requerida para registrar un nuevo usuario en el sistema</p>
+                </div>
+            </div>
 
-                    <div class="mb-3">
-                        <label for="{{ form.no_identidad.id }}" class="form-label">Número de Identidad</label>
-                        {{ form.no_identidad(class="form-control", placeholder="Número de Identidad") }}
-                        {% for error in form.no_identidad.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
+            <form method="POST" action="{{ url_for('admin.crear_usuario') }}" id="userForm">
+                {{ form.hidden_tag() }}
 
-                    <div class="mb-3">
-                        <label for="{{ form.tipo_doc.id }}" class="form-label">Tipo de Documento</label>
-                        {{ form.tipo_doc(class="form-select") }}
-                        {% for error in form.tipo_doc.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.nombre.id }}" class="form-label">Nombre</label>
-                        {{ form.nombre(class="form-control", placeholder="Nombre del Usuario") }}
-                        {% for error in form.nombre.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.apellido.id }}" class="form-label">Apellido</label>
-                        {{ form.apellido(class="form-control", placeholder="Apellido del Usuario") }}
-                        {% for error in form.apellido.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.correo.id }}" class="form-label">Correo Electrónico</label>
-                        {{ form.correo(class="form-control", placeholder="correo@ejemplo.com") }}
-                        {% for error in form.correo.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.password.id }}" class="form-label">Contraseña</label>
-                        {{ form.password(class="form-control", placeholder="Contraseña") }}
-                        {% for error in form.password.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.confirm_password.id }}" class="form-label">Confirmar Contraseña</label>
-                        {{ form.confirm_password(class="form-control", placeholder="Repetir Contraseña") }}
-                        {% for error in form.confirm_password.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.telefono.id }}" class="form-label">Teléfono Celular</label>
-                        {{ form.telefono(class="form-control", placeholder="Ej: +57 300 1234567") }}
-                        {% for error in form.telefono.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.rol.id }}" class="form-label">Rol del Usuario</label>
-                        <select id="{{ form.rol.id }}" name="{{ form.rol.name }}" class="form-select">
-                            <option value="" disabled selected>Selecciona un Rol...</option>
-                            {% for id, nombre in form.rol.choices %}
-                                <option value="{{ id }}">{{ nombre }}</option>
+                <!-- Información Personal -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-id-card"></i>
+                        Información Personal
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.no_identidad.id }}" class="form-label">
+                                <i class="fas fa-fingerprint"></i>
+                                Número de Identidad
+                            </label>
+                            {{ form.no_identidad(class="form-control", placeholder="Ej: 1234567890") }}
+                            {% for error in form.no_identidad.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
                             {% endfor %}
-                        </select>
-                        {% for error in form.rol.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.tipo_doc.id }}" class="form-label">
+                                <i class="fas fa-file-alt"></i>
+                                Tipo de Documento
+                            </label>
+                            {{ form.tipo_doc(class="form-select") }}
+                            {% for error in form.tipo_doc.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
                     </div>
 
-                    <div id="student-fields" style="display: none;">
-                        <hr class="my-4">
-                        <h3 class="h6 mb-3">Detalles de Matrícula</h3>
-                        <div class="mb-3">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.nombre.id }}" class="form-label">
+                                <i class="fas fa-user"></i>
+                                Nombre
+                            </label>
+                            {{ form.nombre(class="form-control", placeholder="Nombre del usuario") }}
+                            {% for error in form.nombre.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.apellido.id }}" class="form-label">
+                                <i class="fas fa-user"></i>
+                                Apellido
+                            </label>
+                            {{ form.apellido(class="form-control", placeholder="Apellido del usuario") }}
+                            {% for error in form.apellido.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información de Contacto -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-address-book"></i>
+                        Información de Contacto
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.correo.id }}" class="form-label">
+                                <i class="fas fa-envelope"></i>
+                                Correo Electrónico
+                            </label>
+                            {{ form.correo(class="form-control", placeholder="correo@ejemplo.com") }}
+                            <div class="error-message" id="emailError" style="display: none;"></div>
+                            {% for error in form.correo.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.telefono.id }}" class="form-label">
+                                <i class="fas fa-phone"></i>
+                                Teléfono Celular
+                            </label>
+                            {{ form.telefono(class="form-control", placeholder="+57 300 123 4567") }}
+                            {% for error in form.telefono.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Nuevo campo de dirección -->
+                    <div class="form-group address-field">
+                        <label for="{{ form.direccion.id }}" class="form-label">
+                            <i class="fas fa-map-marker-alt"></i>
+                            Dirección
+                            <span class="required-badge">OBLIGATORIO</span>
+                        </label>
+                        {{ form.direccion(class="form-control", placeholder="Dirección completa del usuario") }}
+                        {% for error in form.direccion.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Seguridad -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-shield-alt"></i>
+                        Seguridad
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    
+                    <!-- Contraseña generada automáticamente -->
+                    <div class="password-generated" id="passwordContainer" style="display: none;">
+                        <div>
+                            <strong>Contraseña generada automáticamente:</strong>
+                            <div class="password-text" id="generatedPassword"></div>
+                        </div>
+                        <button type="button" class="copy-password" id="copyPasswordBtn">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.password.id }}" class="form-label">
+                                <i class="fas fa-lock"></i>
+                                Contraseña
+                            </label>
+                            {{ form.password(class="form-control", placeholder="Contraseña segura", readonly=true) }}
+                            <small class="text-muted">La contraseña se genera automáticamente con el nombre y documento</small>
+                            {% for error in form.password.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.confirm_password.id }}" class="form-label">
+                                <i class="fas fa-lock"></i>
+                                Confirmar Contraseña
+                            </label>
+                            {{ form.confirm_password(class="form-control", placeholder="Repetir contraseña", readonly=true) }}
+                            {% for error in form.confirm_password.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rol del Usuario -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-user-tag"></i>
+                        Rol del Usuario
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-group">
+                        {% if rol_predefinido %}
+                            <input type="hidden" name="{{ form.rol.name }}" value="{{ form.rol.data }}">
+                            <select class="form-select" disabled>
+                                <option value="{{ form.rol.data }}" selected>
+                                    {% for id, nombre in form.rol.choices %}
+                                        {% if id == form.rol.data %}{{ nombre }}{% endif %}
+                                    {% endfor %}
+                                </option>
+                            </select>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="fas fa-info-circle"></i>
+                                Rol predefinido según la sección seleccionada
+                            </small>
+                        {% else %}
+                            <select id="{{ form.rol.id }}" name="{{ form.rol.name }}" class="form-select">
+                                <option value="" disabled selected>Selecciona un rol...</option>
+                                {% for id, nombre in form.rol.choices %}
+                                    <option value="{{ id }}" {% if form.rol.data == id %}selected{% endif %}>{{ nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                        {% for error in form.rol.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Campos Específicos por Rol -->
+                <div id="student-fields" class="role-fields" style="display: none;">
+                    <h3 class="section-title">
+                        <i class="fas fa-graduation-cap"></i>
+                        Detalles de Matrícula
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
                             <label for="{{ form.curso_id.id }}" class="form-label">Curso</label>
                             {{ form.curso_id(class="form-select") }}
                             {% for error in form.curso_id.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="error-message">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label for="{{ form.anio_matricula.id }}" class="form-label">Año de Matrícula</label>
-                            {{ form.anio_matricula(class="form-control", value=now().year, placeholder="Ej: 2024") }}
+                            {{ form.anio_matricula(class="form-control", value=now().year) }}
                             {% for error in form.anio_matricula.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="error-message">{{ error }}</div>
                             {% endfor %}
                         </div>
                     </div>
+                </div>
 
-                    <div id="professor-fields" style="display: none;">
-                        <hr class="my-4">
-                        <h3 class="h6 mb-3">Asignación de Asignatura</h3>
-                        <div class="mb-3">
+                <!-- Sección de campos de profesor eliminada de la lógica de visualización -->
+                <div id="professor-fields" class="role-fields" style="display: none;">
+                    <h3 class="section-title">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        Asignación de Asignatura
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
                             <label for="{{ form.asignatura_id.id }}" class="form-label">Asignatura</label>
                             {{ form.asignatura_id(class="form-select") }}
                             {% for error in form.asignatura_id.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="error-message">{{ error }}</div>
                             {% endfor %}
                         </div>
-                        <div class="mb-3">
-                            <label for="{{ form.curso_asignacion_id.id }}" class="form-label">Curso de la Asignatura</label>
+                        <div class="form-group">
+                            <label for="{{ form.curso_asignacion_id.id }}" class="form-label">Curso</label>
                             {{ form.curso_asignacion_id(class="form-select") }}
                             {% for error in form.curso_asignacion_id.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="error-message">{{ error }}</div>
                             {% endfor %}
                         </div>
                     </div>
-                    
-                    <button type="submit" class="btn btn-dark w-100 py-2 mt-3">CREAR USUARIO</button>
-                </form>
-            </div>
-
-            <div class="col-lg-5 d-none d-lg-flex align-items-center justify-content-center">
-                <div class="image-placeholder border rounded p-5 text-center">
-                    <i class="fa-regular fa-image fa-3x"></i>
-                    <p class="mt-2 text-muted">Imagen/Ilustración</p>
                 </div>
-            </div>
+
+                <button type="submit" class="btn-primary depth-2" id="submitBtn">
+                    <i class="fas fa-user-plus"></i>
+                    Crear Usuario
+                </button>
+            </form>
+
+            <a href="{{ url_for('admin.profesores') }}" class="btn-secondary depth-1">
+                <i class="fas fa-arrow-left"></i>
+                Volver a la Lista
+            </a>
         </div>
 
-        <a href="{{ url_for('admin.profesores') }}" class="btn btn-secondary w-100 py-2 mt-4">Atrás</a>
+        <!-- Panel Lateral -->
+        <div class="sidebar-panel depth-2">
+            <div class="sidebar-header">
+                <div class="sidebar-icon">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <h3 class="sidebar-title">Nuevo Usuario</h3>
+                <p class="sidebar-text">Complete todos los campos requeridos para crear un nuevo usuario en el sistema</p>
+            </div>
+
+            <ul class="info-list">
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Seguridad</h4>
+                        <p>La contraseña debe tener al menos 8 caracteres con mayúsculas, minúsculas y números</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Verificación</h4>
+                        <p>Todos los campos marcados con <span class="required-badge">OBLIGATORIO</span> son requeridos</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Configuración</h4>
+                        <p>El rol determina los permisos y acceso del usuario en el sistema</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Notificaciones</h4>
+                        <p>El usuario recibirá un correo de confirmación con sus credenciales</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Dirección</h4>
+                        <p>La dirección es requerida para completar el registro del usuario</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const rolSelect = document.getElementById('{{ form.rol.id }}');
-            const studentFields = document.getElementById('student-fields');
-            const professorFields = document.getElementById('professor-fields');
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rolSelect = document.getElementById('{{ form.rol.id }}');
+    const studentFields = document.getElementById('student-fields');
+    const professorFields = document.getElementById('professor-fields');
+    const userForm = document.getElementById('userForm');
+    const passwordContainer = document.getElementById('passwordContainer');
+    const generatedPassword = document.getElementById('generatedPassword');
+    const copyPasswordBtn = document.getElementById('copyPasswordBtn');
+    const emailInput = document.getElementById('{{ form.correo.id }}');
+    const nombreInput = document.getElementById('{{ form.nombre.id }}');
+    const apellidoInput = document.getElementById('{{ form.apellido.id }}');
+    const noIdentidadInput = document.getElementById('{{ form.no_identidad.id }}');
+    const passwordInput = document.getElementById('{{ form.password.id }}');
+    const confirmPasswordInput = document.getElementById('{{ form.confirm_password.id }}');
+    const submitBtn = document.getElementById('submitBtn');
+    const emailError = document.getElementById('emailError');
 
-            rolSelect.addEventListener('change', function() {
-                const selectedRoleName = rolSelect.options[rolSelect.selectedIndex].text.toLowerCase();
-                
-                studentFields.style.display = 'none';
-                professorFields.style.display = 'none';
-
-                if (selectedRoleName.includes('estudiante')) {
-                    studentFields.style.display = 'block';
-                } else if (selectedRoleName.includes('profesor')) {
-                    professorFields.style.display = 'block';
-                }
-            });
+    // Función para generar contraseña automática
+    function generatePassword() {
+        const nombre = nombreInput.value.trim();
+        const apellido = apellidoInput.value.trim();
+        const noIdentidad = noIdentidadInput.value.trim();
+        
+        if (nombre && noIdentidad) {
+            // Capitalizar primera letra del nombre
+            const nombreCapitalized = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
             
-            const initialRoleName = rolSelect.options[rolSelect.selectedIndex].text.toLowerCase();
-            if (initialRoleName.includes('estudiante')) {
-                studentFields.style.display = 'block';
-            } else if (initialRoleName.includes('profesor')) {
-                professorFields.style.display = 'block';
+            // Tomar solo el primer nombre
+            const primerNombre = nombreCapitalized.split(' ')[0];
+            
+            // Tomar primera letra del apellido en mayúscula
+            const primeraLetraApellido = apellido.charAt(0).toUpperCase();
+            
+            // Lista de caracteres especiales
+            const caracteresEspeciales = ['!', '@', '#', '$', '%', '&', '*'];
+            
+            // Seleccionar un carácter especial aleatorio
+            const caracterEspecial = caracteresEspeciales[Math.floor(Math.random() * caracteresEspeciales.length)];
+            
+            // Generar contraseña: Nombre + Carácter especial + Primera letra apellido + Número de documento
+            const password = primerNombre + caracterEspecial + primeraLetraApellido + noIdentidad;
+            
+            // Mostrar contraseña generada
+            generatedPassword.textContent = password;
+            passwordContainer.style.display = 'flex';
+            
+            // Llenar campos de contraseña
+            passwordInput.value = password;
+            confirmPasswordInput.value = password;
+        } else {
+            passwordContainer.style.display = 'none';
+            passwordInput.value = '';
+            confirmPasswordInput.value = '';
+        }
+    }
+
+    // Escuchar cambios en nombre y número de identidad
+    nombreInput.addEventListener('input', generatePassword);
+    apellidoInput.addEventListener('input', generatePassword);
+    noIdentidadInput.addEventListener('input', generatePassword);
+
+    // Copiar contraseña al portapapeles
+    copyPasswordBtn.addEventListener('click', function() {
+        const password = generatedPassword.textContent;
+        navigator.clipboard.writeText(password).then(function() {
+            showAlert('Contraseña copiada al portapapeles', 'success');
+        });
+    });
+
+    // Validar existencia de correo electrónico
+    emailInput.addEventListener('blur', function() {
+        const email = this.value.trim();
+        
+        if (!email) {
+            hideEmailError();
+            return;
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showEmailError('El formato del correo electrónico no es válido');
+            return;
+        }
+
+        // Verificar si el correo existe
+        fetch(`/admin/api/verificar-correo?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showEmailError('Este correo electrónico ya está registrado en el sistema');
+                } else {
+                    hideEmailError();
+                }
+            })
+            .catch(error => {
+                console.error('Error verificando correo:', error);
+            });
+    });
+
+    function showEmailError(message) {
+        emailError.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        emailError.style.display = 'flex';
+        emailInput.classList.add('is-invalid');
+    }
+
+    function hideEmailError() {
+        emailError.style.display = 'none';
+        emailInput.classList.remove('is-invalid');
+    }
+
+    function toggleFieldsBasedOnRole(roleValue, roleText = null) {
+        // Ocultar todos los campos específicos primero
+        studentFields.style.display = 'none';
+        professorFields.style.display = 'none';
+
+        if (roleValue || roleText) {
+            let roleToCheck = roleText;
+            
+            // Si no tenemos el texto del rol, obtenerlo del select
+            if (!roleText && roleValue && rolSelect) {
+                const option = rolSelect.querySelector(`option[value="${roleValue}"]`);
+                if (option) {
+                    roleToCheck = option.textContent.toLowerCase();
+                }
+            }
+
+            // Mostrar solo los campos correspondientes al rol
+            if (roleToCheck) {
+                if (roleToCheck.includes('estudiante')) {
+                    studentFields.style.display = 'block';
+                }
+                // Los campos de profesor nunca se muestran, independientemente del rol
+            }
+        }
+    }
+
+    {% if rol_predefinido %}
+        const predefinedRoleId = '{{ rol_predefinido_id }}';
+        if (predefinedRoleId && predefinedRoleId !== 'None') {
+            const option = document.querySelector(`#{{ form.rol.id }} option[value="${predefinedRoleId}"]`);
+            if (option) {
+                const roleText = option.textContent.toLowerCase();
+                toggleFieldsBasedOnRole(predefinedRoleId, roleText);
+            }
+        }
+        
+        const predefinedRoleName = '{{ rol_predefinido }}'.toLowerCase();
+        if (predefinedRoleName.includes('estudiante')) {
+            studentFields.style.display = 'block';
+        }
+        // Los campos de profesor nunca se muestran, incluso si el rol está predefinido
+    {% else %}
+        if (rolSelect) {
+            rolSelect.addEventListener('change', function() {
+                const selectedValue = rolSelect.value;
+                const selectedOption = rolSelect.options[rolSelect.selectedIndex];
+                toggleFieldsBasedOnRole(selectedValue, selectedOption.textContent.toLowerCase());
+            });
+
+            // Ejecutar al cargar la página si ya hay un valor seleccionado
+            if (rolSelect.value) {
+                const selectedOption = rolSelect.options[rolSelect.selectedIndex];
+                toggleFieldsBasedOnRole(rolSelect.value, selectedOption.textContent.toLowerCase());
+            }
+        }
+    {% endif %}
+
+    // Función para mostrar alertas
+    function showAlert(message, type) {
+        // Crear elemento de alerta
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+        alertDiv.style.marginBottom = '1rem';
+        alertDiv.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar después del header del formulario
+        const formHeader = document.querySelector('.form-header');
+        formHeader.parentNode.insertBefore(alertDiv, formHeader.nextSibling);
+        
+        // Auto-remover después de 5 segundos
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Validación adicional del formulario principal
+    userForm.addEventListener('submit', function(e) {
+        // Validar que todos los campos obligatorios estén completos
+        const requiredFields = userForm.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
             }
         });
-    </script>
+
+        // Validar que el correo no tenga errores
+        if (emailError.style.display !== 'none') {
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            showAlert('Por favor complete todos los campos obligatorios marcados con OBLIGATORIO', 'error');
+            return;
+        }
+
+        // Validar contraseñas coincidan
+        const password = document.getElementById('{{ form.password.id }}').value;
+        const confirmPassword = document.getElementById('{{ form.confirm_password.id }}').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            showAlert('Las contraseñas no coinciden', 'error');
+            return;
+        }
+
+        // Validar formato de contraseña
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            e.preventDefault();
+            showAlert('La contraseña debe tener al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números', 'error');
+            return;
+        }
+
+        // Mostrar loading en el botón de envío
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creando Usuario...';
+    });
+});
+</script>
 {% endblock %}
 </body>
 </html>
