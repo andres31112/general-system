@@ -50,18 +50,7 @@ def ver_horario():
     # return render_template('estudiante/horario.html', horario=horario)
     return render_template('estudiante/horario.html')
 
-# --- Ejemplo de ruta para ver horario ---
-@estudiante_bp.route('/horario')
-@login_required
-@permission_required('ver_horario')
-def ver_horario():
-    """
-    Ruta para que el estudiante vea su horario.
-    """
-    # Aquí iría la lógica para obtener el horario del estudiante.
-    # Por ejemplo: horario = Horario.query.filter_by(id_estudiante=current_user.id).all()
-    # return render_template('estudiante/horario.html', horario=horario)
-    return render_template('estudiante/horario.html')
+
 
 # =======================
 # Sistema de votación
