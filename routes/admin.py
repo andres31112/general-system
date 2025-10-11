@@ -503,7 +503,7 @@ def eliminar_estudiante(id):
         ).join(Equipo, Incidente.equipo_id == Equipo.id)\
          .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
          .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
-         .filter(Incidente.id == incidente_id)\
+         .filter(Incidente.id == incidente_db)\
          .first()
         
         if not incidente_db:
@@ -785,40 +785,6 @@ def api_estadisticas_mantenimientos():
     except Exception as e:
         print(f"Error al obtener estadísticas de mantenimientos: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
-
-@admin_bp.route('/gestion-salones')
-def gestion_salones():
-    """Muestra la página de gestión de salones con estadísticas."""
-    # Esta ruta renderiza el HTML, la API /api/salas_todas es la que alimenta los datos
-    return render_template(
-        'superadmin/gestion_inventario/salones.html'
-    )
-
-@admin_bp.route('/registro_salon', methods=['GET', 'POST'])
-@login_required
-@role_required(1)
-def registro_salon():
-    """Maneja el formulario para crear un nuevo salón."""
-    form = SalonForm()
-    
-    if form.validate_on_submit():
-        nuevo_salon = Salon(
-            nombre=form.nombre_salon.data,
-            tipo=form.tipo.data,
-            id_sede_fk=form.sede.data.id,
-            capacidad=form.capacidad.data,
-            cantidad_sillas=form.cantidad_sillas.data,
-            cantidad_mesas=form.cantidad_mesas.data
-        )
-        db.session.add(nuevo_salon)
-        db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'Estudiante eliminado correctamente'})
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error eliminando estudiante: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/estudiantes/<int:id>/editar')
 @login_required
@@ -2475,13 +2441,6 @@ def api_reportes_equipos_por_sede():
 def incidentes():
     """Muestra la página de gestión de incidentes."""
     return render_template('superadmin/gestion_inventario/incidentes.html')
-
-@admin_bp.route('/mantenimiento')
-@login_required
-@role_required(1)
-def mantenimiento():
-    """Muestra la página de mantenimiento de equipos."""
-    return render_template('superadmin/gestion_inventario/mantenimiento.html')
 
 @admin_bp.route('/gestion-salones')
 @login_required
