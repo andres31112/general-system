@@ -40,7 +40,6 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
     const notificationText = document.getElementById('notification-text');
     const icon = notification.querySelector('i');
     
-    // Configurar icono según el tipo
     if (tipo === 'error') {
         icon.className = 'fas fa-exclamation-circle';
     } else if (tipo === 'warning') {
@@ -74,11 +73,9 @@ function mostrarAlerta(titulo, mensaje, tipo = 'warning', callbackConfirm) {
     tituloElem.textContent = titulo;
     mensajeElem.textContent = mensaje;
 
-    // Configurar botones
     const btnConfirmar = document.getElementById('alert-confirm');
     const btnCancelar = document.getElementById('alert-cancel');
     
-    // Remover event listeners anteriores
     const nuevoBtnConfirmar = btnConfirmar.cloneNode(true);
     const nuevoBtnCancelar = btnCancelar.cloneNode(true);
     
@@ -102,9 +99,9 @@ function mostrarAlerta(titulo, mensaje, tipo = 'warning', callbackConfirm) {
 // =============================================
 
 async function apiRequest(url, options = {}) {
-    console.log('🔗 API Request:', url, options.method || 'GET');
-    
     try {
+        console.log('🔗 API Request:', url, options.method || 'GET');
+        
         const config = {
             headers: {
                 'Content-Type': 'application/json',
@@ -114,10 +111,11 @@ async function apiRequest(url, options = {}) {
 
         if (config.body) {
             config.body = JSON.stringify(config.body);
+            console.log('📦 Request Body:', config.body);
         }
 
         const response = await fetch(url, config);
-        console.log('📥 API Response:', response.status);
+        console.log('📥 API Response Status:', response.status);
         
         if (!response.ok) {
             let errorMessage = `Error ${response.status}: ${response.statusText}`;
@@ -125,6 +123,7 @@ async function apiRequest(url, options = {}) {
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.error || errorData.message || errorMessage;
+                console.error('❌ API Error Data:', errorData);
             } catch (e) {
                 const text = await response.text();
                 if (text) errorMessage += ` - ${text.substring(0, 200)}`;
@@ -166,8 +165,22 @@ async function cargarHorariosGuardados() {
     
     try {
         const horarios = await apiRequest(API_URLS.horarios);
-        estado.horarios = Array.isArray(horarios) ? horarios : [];
-        console.log('📋 Horarios cargados:', estado.horarios.length);
+        
+        console.log('📋 Estructura de horarios recibida:', horarios);
+        
+        // Manejar diferentes estructuras de respuesta
+        if (Array.isArray(horarios)) {
+            estado.horarios = horarios;
+        } else if (horarios && Array.isArray(horarios.data)) {
+            estado.horarios = horarios.data;
+        } else if (horarios && horarios.horarios) {
+            estado.horarios = horarios.horarios;
+        } else {
+            estado.horarios = [];
+            console.warn('⚠️  Estructura de horarios no reconocida:', horarios);
+        }
+        
+        console.log('📋 Horarios procesados:', estado.horarios);
         actualizarListaHorariosUI();
         
     } catch (error) {
@@ -183,8 +196,21 @@ async function cargarHorariosGuardados() {
 async function cargarCursos() {
     try {
         const data = await apiRequest(API_URLS.cursos);
-        estado.cursos = data.data || [];
-        console.log('📚 Cursos cargados:', estado.cursos.length);
+        console.log('📚 Cursos recibidos:', data);
+        
+        // Manejar diferentes estructuras de respuesta
+        if (Array.isArray(data)) {
+            estado.cursos = data;
+        } else if (data && Array.isArray(data.data)) {
+            estado.cursos = data.data;
+        } else if (data && data.cursos) {
+            estado.cursos = data.cursos;
+        } else {
+            estado.cursos = [];
+            console.warn('⚠️  Estructura de cursos no reconocida:', data);
+        }
+        
+        console.log('📚 Cursos procesados:', estado.cursos);
     } catch (error) {
         console.error('Error cargando cursos:', error);
         estado.cursos = [];
@@ -192,20 +218,45 @@ async function cargarCursos() {
 }
 
 async function cargarHorario(id) {
-    if (!id || isNaN(id)) {
-        mostrarNotificacion('ID de horario inválido', 'error');
+    console.log('🔍 Cargando horario ID:', id, 'Tipo:', typeof id);
+    
+    // Validación mejorada
+    if (!id || id === 'null' || id === 'undefined' || id === '') {
+        console.error('❌ ID de horario vacío o inválido:', id);
+        mostrarNotificacion('ID de horario no válido', 'error');
         return;
     }
 
+    let horarioId;
+    
+    if (typeof id === 'string') {
+        horarioId = parseInt(id);
+    } else if (typeof id === 'number') {
+        horarioId = id;
+    } else {
+        console.error('❌ Tipo de ID inválido:', typeof id);
+        mostrarNotificacion('Tipo de ID de horario inválido', 'error');
+        return;
+    }
+
+    if (isNaN(horarioId) || horarioId <= 0) {
+        console.error('❌ ID de horario numérico inválido:', horarioId);
+        mostrarNotificacion('ID de horario numérico inválido', 'error');
+        return;
+    }
+
+    console.log('✅ ID de horario válido:', horarioId);
     mostrarLoading('Cargando horario...');
     
     try {
-        const horarioData = await apiRequest(`${API_URLS.obtenerHorario}/${id}`);
+        const url = `${API_URLS.obtenerHorario}/${horarioId}`;
+        console.log('🌐 URL de solicitud:', url);
+        
+        const horarioData = await apiRequest(url);
         console.log('📋 Datos del horario recibidos:', horarioData);
-
-        // Validar datos críticos
-        if (!horarioData || typeof horarioData !== 'object') {
-            throw new Error('Datos de horario inválidos');
+        
+        if (!horarioData) {
+            throw new Error('No se recibieron datos del horario');
         }
 
         // Reiniciar estado
@@ -213,33 +264,45 @@ async function cargarHorario(id) {
         estado.diasActivos.clear();
 
         // Procesar días
-        if (horarioData.dias && Array.isArray(horarioData.dias)) {
-            horarioData.dias.forEach(dia => estado.diasActivos.add(dia));
+        if (horarioData.diasSemana) {
+            try {
+                if (typeof horarioData.diasSemana === 'string') {
+                    const diasArray = JSON.parse(horarioData.diasSemana);
+                    if (Array.isArray(diasArray)) {
+                        diasArray.forEach(dia => estado.diasActivos.add(dia));
+                    }
+                } else if (Array.isArray(horarioData.diasSemana)) {
+                    horarioData.diasSemana.forEach(dia => estado.diasActivos.add(dia));
+                }
+            } catch (e) {
+                console.warn('Error procesando días, usando días por defecto');
+                ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'].forEach(dia => estado.diasActivos.add(dia));
+            }
         }
 
         // Procesar bloques
         if (horarioData.bloques && Array.isArray(horarioData.bloques)) {
             estado.bloques = horarioData.bloques.map(bloque => ({
-                id: bloque.id || Date.now() + Math.random(),
+                id: bloque.id_bloque || bloque.id || generarIdUnico(),
                 day: bloque.dia_semana || bloque.day || 'Lunes',
                 type: bloque.tipo || bloque.type || 'class',
-                start: bloque.horaInicio || bloque.start || '07:00',
-                end: bloque.horaFin || bloque.end || '07:45',
+                start: formatTimeForInput(bloque.horaInicio || bloque.start || '07:00'),
+                end: formatTimeForInput(bloque.horaFin || bloque.end || '07:45'),
                 nombre: bloque.nombre || 'Bloque',
-                classType: bloque.class_type || bloque.classType,
-                breakType: bloque.break_type || bloque.breakType
+                classType: bloque.class_type || bloque.classType || 'single',
+                breakType: bloque.break_type || bloque.breakType || 'morning'
             })).filter(bloque => bloque.day && bloque.start && bloque.end);
         }
 
-        estado.horarioCargadoId = id;
+        estado.horarioCargadoId = horarioId;
 
         // Actualizar interfaz
         if (horarioData.nombre) {
-            const nombreParts = horarioData.nombre.split(' - ');
-            document.getElementById('schedule-name').value = nombreParts[0] || horarioData.nombre;
-            if (nombreParts.length > 1) {
-                document.getElementById('schedule-period').value = nombreParts[1];
-            }
+            document.getElementById('schedule-name').value = horarioData.nombre;
+        }
+        
+        if (horarioData.periodo) {
+            document.getElementById('schedule-period').value = horarioData.periodo;
         }
 
         actualizarUI();
@@ -251,7 +314,6 @@ async function cargarHorario(id) {
         console.error('❌ Error cargando horario:', error);
         mostrarNotificacion('Error al cargar horario: ' + error.message, 'error');
         
-        // Estado limpio en caso de error
         estado.horarioCargadoId = null;
         estado.bloques = [];
         actualizarUI();
@@ -260,11 +322,25 @@ async function cargarHorario(id) {
     }
 }
 
+function formatTimeForInput(timeValue) {
+    if (!timeValue) return '07:00';
+    
+    if (typeof timeValue === 'string' && timeValue.match(/^\d{1,2}:\d{2}$/)) {
+        const [hours, minutes] = timeValue.split(':');
+        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+    }
+    
+    if (typeof timeValue === 'object' && timeValue.hours !== undefined) {
+        return `${timeValue.hours.toString().padStart(2, '0')}:${timeValue.minutes.toString().padStart(2, '0')}`;
+    }
+    
+    return '07:00';
+}
+
 async function guardarHorarioBD() {
     const nombre = document.getElementById('schedule-name').value.trim();
     const periodo = document.getElementById('schedule-period').value;
 
-    // Validaciones
     if (!nombre) {
         mostrarNotificacion('El nombre del horario es requerido', 'error');
         return null;
@@ -280,7 +356,10 @@ async function guardarHorarioBD() {
         return null;
     }
 
-    // Preparar datos
+    // ✅ CALCULAR HORAS DE INICIO Y FIN AUTOMÁTICAMENTE
+    const horaInicio = calcularHoraInicio();
+    const horaFin = calcularHoraFin();
+
     const datosHorario = {
         nombre: nombre,
         periodo: periodo,
@@ -288,20 +367,20 @@ async function guardarHorarioBD() {
         bloques: estado.bloques.map((bloque, index) => ({
             dia_semana: bloque.day,
             horaInicio: bloque.start,
-            horaFin: bloque.end,
+            horaFin: bloque.end, // ✅ Asegurar que siempre tenga valor
             tipo: bloque.type,
             nombre: bloque.nombre,
             orden: index,
             class_type: bloque.classType,
             break_type: bloque.breakType
         })),
-        horaInicio: calcularHoraInicio(),
-        horaFin: calcularHoraFin(),
+        horaInicio: horaInicio,
+        horaFin: horaFin,
         duracion_clase: 45,
         duracion_descanso: 15
     };
 
-    console.log('💾 Enviando datos:', datosHorario);
+    console.log('💾 Guardando horario:', datosHorario);
     mostrarLoading('Guardando horario...');
 
     try {
@@ -310,7 +389,9 @@ async function guardarHorarioBD() {
             body: datosHorario
         });
 
-        if (resultado.success) {
+        console.log('💾 Resultado guardar horario:', resultado);
+
+        if (resultado.success || resultado.id) {
             mostrarNotificacion('Horario guardado correctamente', 'success');
             await cargarHorariosGuardados();
             return resultado.horario || { id: resultado.id, nombre: datosHorario.nombre };
@@ -328,14 +409,20 @@ async function guardarHorarioBD() {
 }
 
 async function eliminarHorario(id) {
+    const horarioId = parseInt(id);
+    if (isNaN(horarioId) || horarioId <= 0) {
+        mostrarNotificacion('ID de horario inválido para eliminar', 'error');
+        return;
+    }
+
     try {
-        const resultado = await apiRequest(`${API_URLS.eliminarHorario}/${id}`, {
+        const resultado = await apiRequest(`${API_URLS.eliminarHorario}/${horarioId}`, {
             method: 'DELETE'
         });
 
         if (resultado.success) {
             mostrarNotificacion('Horario eliminado correctamente', 'success');
-            if (estado.horarioCargadoId === id) {
+            if (estado.horarioCargadoId === horarioId) {
                 nuevoHorario();
             }
             await cargarHorariosGuardados();
@@ -346,7 +433,8 @@ async function eliminarHorario(id) {
 }
 
 async function asignarHorarioCursos(horarioId, cursosIds) {
-    mostrarLoading('Asignando horario...');
+    console.log('🎯 Asignando horario:', horarioId, 'a cursos:', cursosIds);
+    mostrarLoading('Asignando horario a cursos...');
     
     try {
         const resultado = await apiRequest(API_URLS.asignarHorario, {
@@ -357,14 +445,17 @@ async function asignarHorarioCursos(horarioId, cursosIds) {
             }
         });
 
+        console.log('✅ Resultado asignación:', resultado);
+
         if (resultado.success) {
-            mostrarNotificacion('Horario asignado correctamente', 'success');
+            mostrarNotificacion(`Horario asignado correctamente a ${cursosIds.length} cursos`, 'success');
             return true;
         } else {
-            throw new Error(resultado.error || 'Error al asignar');
+            throw new Error(resultado.error || 'Error al asignar horario');
         }
     } catch (error) {
-        mostrarNotificacion('Error al asignar: ' + error.message, 'error');
+        console.error('❌ Error asignando horario:', error);
+        mostrarNotificacion('Error al asignar horario: ' + error.message, 'error');
         return false;
     } finally {
         ocultarLoading();
@@ -418,7 +509,6 @@ function actualizarBloquesUI() {
         return;
     }
 
-    // Ordenar bloques por hora de inicio
     estado.bloques.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
     contenedor.innerHTML = estado.bloques.map(bloque => `
@@ -468,7 +558,6 @@ function actualizarVistaPrevia() {
             <tbody>
     `;
 
-    // Crear intervalos de tiempo
     const intervalos = generarIntervalosTiempo();
     
     intervalos.forEach(intervalo => {
@@ -523,19 +612,33 @@ function actualizarListaHorariosUI() {
     const contenedor = document.getElementById('saved-schedules-list');
     const select = document.getElementById('schedule-select');
 
+    console.log('🔍 IDs de horarios disponibles:', estado.horarios.map(h => ({
+        id: h.id,
+        id_horario: h.id_horario,
+        nombre: h.nombre
+    })));
+
     if (!estado.horarios || estado.horarios.length === 0) {
         contenedor.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No hay horarios guardados</p>';
         select.innerHTML = '<option value="">No hay horarios disponibles</option>';
         return;
     }
 
+    // SOLUCIÓN: Usar tanto id como id_horario para mayor compatibilidad
     contenedor.innerHTML = estado.horarios.map(horario => {
-        const esActivo = estado.horarioCargadoId === horario.id;
+        // Obtener el ID correcto - priorizar id_horario, luego id
+        const horarioId = horario.id_horario || horario.id;
+        const esActivo = estado.horarioCargadoId === horarioId;
         const nombreSeguro = (horario.nombre || 'Sin nombre').replace(/'/g, "&#39;");
+        
+        if (!horarioId) {
+            console.warn('⚠️ Horario sin ID válido:', horario);
+            return '';
+        }
         
         return `
             <div class="schedule-item ${esActivo ? 'active' : ''}" 
-                 onclick="cargarHorario(${horario.id})">
+                 data-horario-id="${horarioId}">
                 <div class="schedule-item-info">
                     <div class="schedule-item-name">${horario.nombre || 'Sin nombre'}</div>
                     <div class="schedule-item-details">
@@ -544,7 +647,7 @@ function actualizarListaHorariosUI() {
                     </div>
                 </div>
                 <div class="schedule-item-actions">
-                    <button class="small danger" onclick="event.stopPropagation(); configurarEliminacionHorario(${horario.id}, '${nombreSeguro}')">
+                    <button class="small danger" data-horario-id="${horarioId}" data-horario-nombre="${nombreSeguro}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -552,9 +655,47 @@ function actualizarListaHorariosUI() {
         `;
     }).join('');
 
-    select.innerHTML = estado.horarios.map(horario => 
-        `<option value="${horario.id}">${horario.nombre || 'Horario sin nombre'}</option>`
-    ).join('');
+    // Actualizar el select también
+    select.innerHTML = estado.horarios.map(horario => {
+        const horarioId = horario.id_horario || horario.id;
+        return horarioId ? `<option value="${horarioId}">${horario.nombre || 'Horario sin nombre'}</option>` : '';
+    }).join('');
+
+    // Agregar event listeners después de crear el HTML
+    setTimeout(() => {
+        document.querySelectorAll('.schedule-item[data-horario-id]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                if (e.target.closest('.schedule-item-actions')) {
+                    return;
+                }
+                const horarioId = this.getAttribute('data-horario-id');
+                console.log('🖱️ Click en horario ID:', horarioId, 'Tipo:', typeof horarioId);
+                
+                if (!horarioId || horarioId === 'null' || horarioId === 'undefined') {
+                    mostrarNotificacion('ID de horario no válido', 'error');
+                    return;
+                }
+                
+                cargarHorario(horarioId);
+            });
+        });
+
+        document.querySelectorAll('.schedule-item-actions .danger').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const horarioId = this.getAttribute('data-horario-id');
+                const horarioNombre = this.getAttribute('data-horario-nombre');
+                console.log('🗑️ Eliminar horario ID:', horarioId);
+                
+                if (!horarioId || horarioId === 'null' || horarioId === 'undefined') {
+                    mostrarNotificacion('ID de horario no válido para eliminar', 'error');
+                    return;
+                }
+                
+                configurarEliminacionHorario(horarioId, horarioNombre);
+            });
+        });
+    }, 100);
 }
 
 // =============================================
@@ -567,7 +708,6 @@ function agregarBloque() {
     const inicio = document.getElementById('block-start').value;
     const fin = document.getElementById('block-end').value;
 
-    // Validaciones
     if (!estado.diasActivos.has(dia)) {
         mostrarNotificacion(`El día ${dia} no está activo. Active el día primero.`, 'error');
         return;
@@ -583,7 +723,6 @@ function agregarBloque() {
         return;
     }
 
-    // Generar nombre del bloque
     let nombre = generarNombreBloque(tipo);
 
     const nuevoBloque = {
@@ -591,21 +730,19 @@ function agregarBloque() {
         day: dia,
         type: tipo,
         start: inicio,
-        end: fin,
+        end: fin, // ✅ Asegurar que siempre tenga valor
         nombre: nombre,
         classType: tipo === 'class' ? document.getElementById('class-type').value : null,
         breakType: tipo === 'break' ? document.getElementById('break-type').value : null
     };
 
     if (estado.editandoBloqueId) {
-        // Editar bloque existente
         const index = estado.bloques.findIndex(b => b.id === estado.editandoBloqueId);
         if (index !== -1) {
             estado.bloques[index] = nuevoBloque;
             mostrarNotificacion('Bloque actualizado correctamente', 'success');
         }
     } else {
-        // Agregar nuevo bloque
         estado.bloques.push(nuevoBloque);
         mostrarNotificacion('Bloque agregado correctamente', 'success');
     }
@@ -623,7 +760,6 @@ function editarBloque(id) {
 
     estado.editandoBloqueId = id;
     
-    // Llenar formulario con datos del bloque
     document.getElementById('block-day').value = bloque.day;
     document.getElementById('block-type').value = bloque.type;
     document.getElementById('block-start').value = bloque.start;
@@ -640,10 +776,7 @@ function editarBloque(id) {
     document.getElementById('save-block-text').textContent = 'Actualizar';
     actualizarFormularioBloque();
     
-    // Mostrar formulario
     document.getElementById('floating-block-form').style.display = 'block';
-    
-    // Scroll al formulario
     document.getElementById('floating-block-form').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -661,11 +794,24 @@ function eliminarBloque(id) {
 }
 
 function configurarEliminacionHorario(id, nombre) {
+    console.log('🗑️ Configurando eliminación para horario ID:', id);
+    
+    if (!id || id === 'null' || id === 'undefined') {
+        mostrarNotificacion('ID de horario inválido', 'error');
+        return;
+    }
+
+    const horarioId = parseInt(id);
+    if (isNaN(horarioId) || horarioId <= 0) {
+        mostrarNotificacion('ID de horario numérico inválido', 'error');
+        return;
+    }
+    
     mostrarAlerta(
         'Eliminar Horario',
         `¿Está seguro de eliminar el horario "${nombre}"? Esta acción no se puede deshacer.`,
         'error',
-        () => eliminarHorario(id)
+        () => eliminarHorario(horarioId)
     );
 }
 
@@ -695,7 +841,7 @@ function formatTime12h(time24h) {
 }
 
 function calcularHoraInicio() {
-    if (estado.bloques.length === 0) return '07:00';
+    if (estado.bloques.length === 0) return '06:00';
     const minutos = Math.min(...estado.bloques.map(b => timeToMinutes(b.start)));
     return minutesToTime(Math.floor(minutos / 60) * 60);
 }
@@ -731,7 +877,7 @@ function generarNombreBloque(tipo) {
             morning: 'Descanso de Mañana',
             afternoon: 'Descanso de Tarde',
             lunch: 'Almuerzo',
-            custom: 'Descanso Personalizado'
+            custom: 'Otro'
         };
         return nombres[tipoDescanso] || 'Descanso';
     }
@@ -757,7 +903,6 @@ function generarIntervalosTiempo() {
         const inicio = tiemposOrdenados[i];
         const fin = tiemposOrdenados[i + 1];
         
-        // Solo crear intervalos de al menos 15 minutos
         if (fin - inicio >= 15) {
             intervalos.push({
                 inicio: minutesToTime(inicio),
@@ -782,8 +927,8 @@ function actualizarFormularioBloque() {
 function resetearFormularioBloque() {
     document.getElementById('block-day').value = 'Lunes';
     document.getElementById('block-type').value = 'class';
-    document.getElementById('block-start').value = '07:00';
-    document.getElementById('block-end').value = '07:45';
+    document.getElementById('block-start').value = '06:00';
+    document.getElementById('block-end').value = '07:00'; 
     document.getElementById('class-type').value = 'single';
     document.getElementById('break-type').value = 'morning';
     actualizarFormularioBloque();
@@ -821,31 +966,57 @@ function mostrarModalAsignacion() {
         return;
     }
 
+    if (estado.cursos.length === 0) {
+        mostrarNotificacion('No hay cursos disponibles para asignar', 'warning');
+        return;
+    }
+
+    console.log('📋 Cursos para asignación:', estado.cursos);
+
     const cursosLista = document.getElementById('courses-list');
-    cursosLista.innerHTML = estado.cursos.map(curso => `
-        <div class="course-item">
-            <input type="checkbox" class="course-checkbox" value="${curso.id}" 
-                   id="curso-${curso.id}">
-            <label for="curso-${curso.id}" class="course-info">
-                <div class="course-name">${curso.nombreCurso || 'Curso sin nombre'}</div>
-                <div class="course-details">Sede: ${curso.sede || 'Sin sede'}</div>
-            </label>
-            <div class="course-schedule ${curso.horario_general_id ? 'has-schedule' : 'no-schedule'}">
-                ${curso.horario_general_id ? '✓ Con horario' : '✗ Sin horario'}
+    cursosLista.innerHTML = estado.cursos.map(curso => {
+        // Usar el ID correcto del curso
+        const cursoId = curso.id_curso || curso.id;
+        const tieneHorario = curso.horario_general_id || curso.horario_asignado;
+        
+        if (!cursoId) {
+            console.warn('⚠️ Curso sin ID válido:', curso);
+            return '';
+        }
+
+        return `
+            <div class="course-item">
+                <input type="checkbox" class="course-checkbox" value="${cursoId}" 
+                       id="curso-${cursoId}">
+                <label for="curso-${cursoId}" class="course-info">
+                    <div class="course-name">${curso.nombreCurso || curso.nombre || 'Curso sin nombre'}</div>
+                    <div class="course-details">Sede: ${curso.sede || 'Sin sede'}</div>
+                </label>
+                <div class="course-schedule ${tieneHorario ? 'has-schedule' : 'no-schedule'}">
+                    ${tieneHorario ? '✓ Con horario' : '✗ Sin horario'}
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     document.getElementById('assign-schedule-modal').style.display = 'flex';
 }
 
 async function confirmarAsignacion() {
-    const horarioId = parseInt(document.getElementById('schedule-select').value);
+    const horarioSelect = document.getElementById('schedule-select');
+    const horarioId = parseInt(horarioSelect.value);
     const cursosSeleccionados = Array.from(document.querySelectorAll('.course-checkbox:checked'))
-        .map(cb => parseInt(cb.value));
+        .map(cb => {
+            const cursoId = parseInt(cb.value);
+            console.log('✅ Curso seleccionado ID:', cursoId);
+            return cursoId;
+        })
+        .filter(id => !isNaN(id) && id > 0);
 
-    if (!horarioId) {
-        mostrarNotificacion('Seleccione un horario de la lista', 'error');
+    console.log('🎯 Confirmando asignación - Horario ID:', horarioId, 'Cursos:', cursosSeleccionados);
+
+    if (!horarioId || isNaN(horarioId)) {
+        mostrarNotificacion('Seleccione un horario válido de la lista', 'error');
         return;
     }
 
@@ -857,6 +1028,8 @@ async function confirmarAsignacion() {
     const exito = await asignarHorarioCursos(horarioId, cursosSeleccionados);
     if (exito) {
         document.getElementById('assign-schedule-modal').style.display = 'none';
+        // Recargar cursos para actualizar el estado de horarios asignados
+        await cargarCursos();
     }
 }
 
@@ -871,7 +1044,6 @@ function configurarEventListeners() {
             const diaNombre = this.dataset.day;
             if (estado.diasActivos.has(diaNombre)) {
                 estado.diasActivos.delete(diaNombre);
-                // Eliminar bloques del día deseleccionado
                 estado.bloques = estado.bloques.filter(b => b.day !== diaNombre);
             } else {
                 estado.diasActivos.add(diaNombre);
@@ -915,23 +1087,31 @@ function configurarEventListeners() {
         }
     });
 
-    // Botones principales
-    document.getElementById('new-schedule-btn').addEventListener('click', nuevoHorario);
-    document.getElementById('save-schedule-btn').addEventListener('click', async () => {
-        const horarioGuardado = await guardarHorarioBD();
-        if (horarioGuardado) {
-            estado.horarioCargadoId = horarioGuardado.id;
+    document.getElementById('save-schedule-btn').addEventListener('click', async function() {
+        console.log('💾 Intentando guardar horario...');
+        
+        const resultado = await guardarHorarioBD();
+        if (resultado) {
+            console.log('✅ Horario guardado exitosamente:', resultado);
+            estado.horarioCargadoId = resultado.id || resultado.horario_id;
             document.getElementById('delete-schedule-btn').style.display = 'block';
+            
+            // Recargar la lista de horarios
+            await cargarHorariosGuardados();
+        } else {
+            console.log('❌ Error al guardar horario');
         }
     });
 
+    // Botones principales
+    document.getElementById('new-schedule-btn').addEventListener('click', nuevoHorario);
     document.getElementById('assign-schedule-btn').addEventListener('click', mostrarModalAsignacion);
     
     document.getElementById('delete-schedule-btn').addEventListener('click', function() {
         if (estado.horarioCargadoId) {
             const horarioActual = estado.horarios.find(h => h.id === estado.horarioCargadoId);
             const nombre = horarioActual ? horarioActual.nombre : 'este horario';
-            configurarEliminacionHorario(estado.horarioCargadoId, nombre);
+            configurarEliminacionHorario(estado.horarioCargadoId.toString(), nombre);
         }
     });
 
@@ -965,7 +1145,6 @@ async function inicializar() {
     try {
         mostrarLoading('Inicializando sistema de horarios...');
         
-        // Cargar datos en paralelo
         await Promise.allSettled([
             cargarEstadisticas(),
             cargarHorariosGuardados(),

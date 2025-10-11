@@ -619,772 +619,880 @@
 
     <script>
         // =============================================
-        // CONFIGURACIÓN Y VARIABLES GLOBALES
-        // =============================================
-        const API_URLS = {
-            cursos: '/admin/api/cursos',
-            horarios: '/admin/api/horarios',
-            asignaturas: '/admin/api/asignaturas',
-            profesores: '/admin/api/profesores',
-            salones: '/admin/api/salones',
-            horarioCurso: '/admin/api/horario_curso/cargar',
-            guardarHorarioCurso: '/admin/api/horario_curso/guardar',
-            compartirHorario: '/admin/api/horario_curso/compartir',
-            estadisticas: '/admin/api/estadisticas/horarios-cursos'
-        };
+// CONFIGURACIÓN Y VARIABLES GLOBALES
+// =============================================
+const API_URLS = {
+    cursos: '/admin/api/cursos',
+    horarios: '/admin/api/horarios',
+    asignaturas: '/admin/api/asignaturas',
+    profesores: '/admin/api/profesores',
+    salones: '/admin/api/salones',
+    horarioCurso: '/admin/api/horario_curso/cargar',
+    guardarHorarioCurso: '/admin/api/horario_curso/guardar',
+    compartirHorario: '/admin/api/horario_curso/compartir',
+    estadisticas: '/admin/api/estadisticas/horarios-cursos'
+};
 
-        // Estado de la aplicación
-        let estado = {
-            cursos: [],
-            horarios: [],
-            asignaturas: [],
-            profesores: [],
-            salones: [],
-            cursoSeleccionado: null,
-            horarioSeleccionado: null,
-            bloquesHorario: [],
-            asignaciones: {},
-            salonesAsignaciones: {},
-            estadisticas: {
-                total_materias: 0,
-                total_cursos: 0,
-                horarios_asignados: 0
+// Estado de la aplicación
+let estado = {
+    cursos: [],
+    horarios: [],
+    asignaturas: [],
+    profesores: [],
+    salones: [],
+    cursoSeleccionado: null,
+    horarioSeleccionado: null,
+    bloquesHorario: [],
+    asignaciones: {},
+    salonesAsignaciones: {},
+    estadisticas: {
+        total_materias: 0,
+        total_cursos: 0,
+        horarios_asignados: 0
+    },
+    destinatarioCompartir: null
+};
+
+// =============================================
+// FUNCIONES DE UTILIDAD
+// =============================================
+
+function mostrarLoading(mensaje = 'Cargando...') {
+    document.getElementById('loading-message').textContent = mensaje;
+    document.getElementById('loading-modal').style.display = 'flex';
+}
+
+function ocultarLoading() {
+    document.getElementById('loading-modal').style.display = 'none';
+}
+
+function mostrarNotificacion(mensaje, tipo = 'success') {
+    const notification = document.getElementById('notification');
+    const notificationText = document.getElementById('notification-text');
+    const icon = notification.querySelector('i');
+    
+    // Configurar icono según el tipo
+    if (tipo === 'error') {
+        icon.className = 'fas fa-exclamation-circle';
+    } else if (tipo === 'warning') {
+        icon.className = 'fas fa-exclamation-triangle';
+    } else {
+        icon.className = 'fas fa-check-circle';
+    }
+    
+    notificationText.textContent = mensaje;
+    notification.className = `notification ${tipo} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 4000);
+}
+
+// =============================================
+// FUNCIONES DE COMUNICACIÓN CON LA API
+// =============================================
+
+async function apiRequest(url, options = {}) {
+    console.log('🔗 API Request:', url, options.method || 'GET');
+    
+    try {
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
             },
-            destinatarioCompartir: null
+            ...options
         };
 
-        // =============================================
-        // FUNCIONES DE UTILIDAD
-        // =============================================
-
-        function mostrarLoading(mensaje = 'Cargando...') {
-            document.getElementById('loading-message').textContent = mensaje;
-            document.getElementById('loading-modal').style.display = 'flex';
+        if (config.body) {
+            config.body = JSON.stringify(config.body);
         }
 
-        function ocultarLoading() {
-            document.getElementById('loading-modal').style.display = 'none';
-        }
-
-        function mostrarNotificacion(mensaje, tipo = 'success') {
-            const notification = document.getElementById('notification');
-            const notificationText = document.getElementById('notification-text');
-            const icon = notification.querySelector('i');
-            
-            // Configurar icono según el tipo
-            if (tipo === 'error') {
-                icon.className = 'fas fa-exclamation-circle';
-            } else if (tipo === 'warning') {
-                icon.className = 'fas fa-exclamation-triangle';
-            } else {
-                icon.className = 'fas fa-check-circle';
-            }
-            
-            notificationText.textContent = mensaje;
-            notification.className = `notification ${tipo} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 4000);
-        }
-
-        // =============================================
-        // FUNCIONES DE COMUNICACIÓN CON LA API
-        // =============================================
-
-        async function apiRequest(url, options = {}) {
-            console.log('🔗 API Request:', url, options.method || 'GET');
+        const response = await fetch(url, config);
+        console.log('📥 API Response Status:', response.status);
+        
+        if (!response.ok) {
+            let errorMessage = `Error ${response.status}`;
             
             try {
-                const config = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    ...options
-                };
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorData.message || errorMessage;
+            } catch (e) {
+                const text = await response.text();
+                if (text) errorMessage += ` - ${text.substring(0, 200)}`;
+            }
+            
+            throw new Error(errorMessage);
+        }
 
-                if (config.body) {
-                    config.body = JSON.stringify(config.body);
-                }
+        const data = await response.json();
+        console.log('✅ API Success:', data);
+        return data;
+        
+    } catch (error) {
+        console.error('❌ API Error:', error);
+        throw error;
+    }
+}
 
-                const response = await fetch(url, config);
-                console.log('📥 API Response:', response.status);
-                
-                if (!response.ok) {
-                    let errorMessage = `Error ${response.status}`;
-                    
-                    try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.error || errorData.message || errorMessage;
-                    } catch (e) {
-                        const text = await response.text();
-                        if (text) errorMessage += ` - ${text.substring(0, 200)}`;
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
+// =============================================
+// FUNCIONES DE CARGA DE DATOS
+// =============================================
 
-                const data = await response.json();
-                console.log('✅ API Success:', data);
-                return data;
-                
-            } catch (error) {
-                console.error('❌ API Error:', error);
-                throw error;
+async function cargarDatosIniciales() {
+    mostrarLoading('Cargando datos del sistema...');
+    
+    try {
+        // Cargar datos secuencialmente para mejor control de errores
+        console.log('🔄 Cargando cursos...');
+        const cursosData = await apiRequest(API_URLS.cursos);
+        estado.cursos = cursosData.data || cursosData || [];
+        console.log('📚 Cursos cargados:', estado.cursos.length);
+
+        console.log('🔄 Cargando horarios...');
+        const horariosData = await apiRequest(API_URLS.horarios);
+        estado.horarios = horariosData.data || horariosData || [];
+        console.log('🕒 Horarios cargados:', estado.horarios.length);
+
+        console.log('🔄 Cargando asignaturas...');
+        const asignaturasData = await apiRequest(API_URLS.asignaturas);
+        // Manejar diferentes formatos de respuesta
+        if (Array.isArray(asignaturasData)) {
+            estado.asignaturas = asignaturasData;
+        } else if (asignaturasData && Array.isArray(asignaturasData.data)) {
+            estado.asignaturas = asignaturasData.data;
+        } else if (asignaturasData && asignaturasData.asignaturas) {
+            estado.asignaturas = asignaturasData.asignaturas;
+        } else {
+            estado.asignaturas = [];
+        }
+        console.log('📖 Asignaturas cargadas:', estado.asignaturas.length);
+
+        console.log('🔄 Cargando salones...');
+        const salonesData = await apiRequest(API_URLS.salones);
+        // Manejar diferentes formatos de respuesta
+        if (Array.isArray(salonesData)) {
+            estado.salones = salonesData;
+        } else if (salonesData && Array.isArray(salonesData.data)) {
+            estado.salones = salonesData.data;
+        } else {
+            estado.salones = [];
+        }
+        console.log('🏫 Salones cargados:', estado.salones.length);
+
+        console.log('🔄 Cargando estadísticas...');
+        try {
+            const estadisticasData = await apiRequest(API_URLS.estadisticas);
+            estado.estadisticas = estadisticasData;
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar estadísticas, calculando desde datos locales');
+            estado.estadisticas = {
+                total_materias: estado.asignaturas.length,
+                total_cursos: estado.cursos.length,
+                horarios_asignados: estado.cursos.filter(c => c.horario_general_id).length
+            };
+        }
+
+        actualizarEstadisticas();
+        actualizarSelectCursos();
+        actualizarListaMaterias();
+
+        console.log('✅ Todos los datos cargados correctamente');
+        mostrarNotificacion('Sistema cargado correctamente', 'success');
+
+    } catch (error) {
+        console.error('❌ Error cargando datos iniciales:', error);
+        mostrarNotificacion('Error al cargar los datos del sistema: ' + error.message, 'error');
+        
+        // Intentar cargar con datos mínimos
+        cargarDatosMinimos();
+    } finally {
+        ocultarLoading();
+    }
+}
+
+// Función de respaldo para cargar datos mínimos
+async function cargarDatosMinimos() {
+    try {
+        console.log('🔄 Intentando carga mínima de datos...');
+        
+        // Cargar solo cursos y asignaturas
+        const [cursosData, asignaturasData] = await Promise.allSettled([
+            apiRequest(API_URLS.cursos),
+            apiRequest(API_URLS.asignaturas)
+        ]);
+
+        if (cursosData.status === 'fulfilled') {
+            estado.cursos = cursosData.value.data || cursosData.value || [];
+        }
+
+        if (asignaturasData.status === 'fulfilled') {
+            if (Array.isArray(asignaturasData.value)) {
+                estado.asignaturas = asignaturasData.value;
+            } else if (asignaturasData.value && Array.isArray(asignaturasData.value.data)) {
+                estado.asignaturas = asignaturasData.value.data;
             }
         }
 
-        // =============================================
-        // FUNCIONES DE CARGA DE DATOS
-        // =============================================
+        // Calcular estadísticas básicas
+        estado.estadisticas = {
+            total_materias: estado.asignaturas.length,
+            total_cursos: estado.cursos.length,
+            horarios_asignados: 0
+        };
 
-        async function cargarDatosIniciales() {
-            mostrarLoading('Cargando datos del sistema...');
-            
-            try {
-                // Cargar todos los datos en paralelo
-                const [cursosData, horariosData, asignaturasData, salonesData, estadisticasData] = await Promise.allSettled([
-                    apiRequest(API_URLS.cursos),
-                    apiRequest(API_URLS.horarios),
-                    apiRequest(API_URLS.asignaturas),
-                    apiRequest(API_URLS.salones),
-                    apiRequest(API_URLS.estadisticas)
-                ]);
+        actualizarEstadisticas();
+        actualizarSelectCursos();
+        actualizarListaMaterias();
 
-                // Procesar cursos
-                if (cursosData.status === 'fulfilled') {
-                    estado.cursos = cursosData.value.data || cursosData.value || [];
-                } else {
-                    console.error('Error cargando cursos:', cursosData.reason);
-                    estado.cursos = [];
-                }
+        console.log('✅ Datos mínimos cargados');
+        mostrarNotificacion('Datos básicos cargados (algunas funciones pueden estar limitadas)', 'warning');
 
-                // Procesar horarios
-                if (horariosData.status === 'fulfilled') {
-                    estado.horarios = horariosData.value || [];
-                } else {
-                    console.error('Error cargando horarios:', horariosData.reason);
-                    estado.horarios = [];
-                }
+    } catch (error) {
+        console.error('❌ Error en carga mínima:', error);
+        mostrarNotificacion('Error crítico al cargar datos', 'error');
+    }
+}
 
-                // Procesar asignaturas
-                if (asignaturasData.status === 'fulfilled') {
-                    estado.asignaturas = Array.isArray(asignaturasData.value) ? asignaturasData.value : [];
-                    console.log('📚 Asignaturas cargadas con profesores:', estado.asignaturas);
-                } else {
-                    console.error('Error cargando asignaturas:', asignaturasData.reason);
-                    estado.asignaturas = [];
-                }
-
-                // Procesar salones
-                if (salonesData.status === 'fulfilled') {
-                    estado.salones = Array.isArray(salonesData.value) ? salonesData.value : [];
-                    console.log('🏫 Salones cargados:', estado.salones);
-                } else {
-                    console.error('Error cargando salones:', salonesData.reason);
-                    estado.salones = [];
-                }
-
-                // Procesar estadísticas
-                if (estadisticasData.status === 'fulfilled') {
-                    estado.estadisticas = estadisticasData.value;
-                } else {
-                    console.error('Error cargando estadísticas:', estadisticasData.reason);
-                    // Calcular estadísticas básicas desde los datos cargados
-                    estado.estadisticas = {
-                        total_materias: estado.asignaturas.length,
-                        total_cursos: estado.cursos.length,
-                        horarios_asignados: estado.cursos.filter(c => c.horario_general_id).length
-                    };
-                }
-
-                actualizarEstadisticas();
-                actualizarSelectCursos();
-                actualizarListaMaterias();
-
-                console.log('✅ Datos cargados correctamente');
-                mostrarNotificacion('Sistema cargado correctamente', 'success');
-
-            } catch (error) {
-                console.error('❌ Error cargando datos iniciales:', error);
-                mostrarNotificacion('Error al cargar los datos del sistema', 'error');
-            } finally {
-                ocultarLoading();
-            }
+async function cargarHorarioCurso(cursoId) {
+    mostrarLoading('Cargando horario del curso...');
+    
+    try {
+        console.log('🔍 Cargando horario para curso ID:', cursoId);
+        
+        // Cargar información actualizada del curso
+        const cursoData = await apiRequest(`${API_URLS.cursos}/${cursoId}`);
+        if (cursoData) {
+            estado.cursoSeleccionado = cursoData;
+            console.log('📋 Curso actualizado:', cursoData);
         }
 
-        async function cargarHorarioCurso(cursoId) {
-            mostrarLoading('Cargando horario del curso...');
-            
-            try {
-                // Cargar información actualizada del curso
-                const cursoData = await apiRequest(`${API_URLS.cursos}/${cursoId}`);
-                if (cursoData) {
-                    estado.cursoSeleccionado = cursoData;
-                    console.log('📋 Curso actualizado:', cursoData);
-                }
-
-                // Cargar horario específico del curso
-                const horarioData = await apiRequest(`${API_URLS.horarioCurso}/${cursoId}`);
-                console.log('📊 Datos del horario recibidos:', horarioData);
-                
-                // Reiniciar asignaciones
-                estado.asignaciones = {};
-                estado.salonesAsignaciones = {};
-                
-                // Procesar asignaciones si existen
-                if (horarioData && horarioData.asignaciones) {
-                    // Convertir todas las claves a números si es necesario
-                    Object.keys(horarioData.asignaciones).forEach(key => {
-                        const valor = horarioData.asignaciones[key];
-                        estado.asignaciones[key] = typeof valor === 'string' ? parseInt(valor) : valor;
-                    });
-                    console.log('📚 Asignaciones cargadas:', estado.asignaciones);
-                }
-
-                // Procesar salones si existen
-                if (horarioData && horarioData.salones_asignaciones) {
-                    Object.keys(horarioData.salones_asignaciones).forEach(key => {
-                        const valor = horarioData.salones_asignaciones[key];
-                        estado.salonesAsignaciones[key] = typeof valor === 'string' ? parseInt(valor) : valor;
-                    });
-                    console.log('🏫 Salones cargados:', estado.salonesAsignaciones);
-                }
-                
-                // Cargar bloques del horario
-                if (horarioData && horarioData.bloques_horario) {
-                    estado.bloquesHorario = horarioData.bloques_horario;
-                    estado.horarioSeleccionado = {
-                        id: horarioData.horario_general_id,
-                        nombre: 'Horario del curso'
-                    };
-                    console.log('🕒 Bloques cargados desde API:', estado.bloquesHorario.length);
-                } else if (horarioData && horarioData.horario_general_id) {
-                    // Si no vienen los bloques, cargarlos por separado
-                    await cargarHorarioBase(horarioData.horario_general_id);
-                } else {
-                    console.warn('⚠️ No se encontraron bloques de horario');
-                }
-                
-                return horarioData;
-            } catch (error) {
-                console.error('❌ Error cargando horario del curso:', error);
-                // Reiniciar asignaciones en caso de error
-                estado.asignaciones = {};
-                estado.salonesAsignaciones = {};
-                return { asignaciones: {}, salones_asignaciones: {} };
-            } finally {
-                ocultarLoading();
-            }
-        }
-
-        async function cargarHorarioBase(horarioId) {
-            try {
-                const horarioData = await apiRequest(`${API_URLS.horarios}/${horarioId}`);
-                
-                if (horarioData && horarioData.bloques) {
-                    estado.bloquesHorario = horarioData.bloques;
-                    return horarioData;
-                } else {
-                    throw new Error('Estructura de horario inválida');
-                }
-            } catch (error) {
-                console.error('❌ Error cargando horario base:', error);
-                throw error;
-            }
-        }
-
-        async function guardarHorarioCurso() {
-            if (!estado.cursoSeleccionado) {
-                mostrarNotificacion('Seleccione un curso primero', 'error');
-                return false;
-            }
-
-            // Validar que hay asignaciones
-            if (Object.keys(estado.asignaciones).length === 0) {
-                mostrarNotificacion('No hay materias asignadas en el horario', 'error');
-                return false;
-            }
-
-            mostrarLoading('Guardando horario del curso...');
-            
-            try {
-                const datos = {
-                    curso_id: estado.cursoSeleccionado.id,
-                    horario_general_id: estado.horarioSeleccionado?.id,
-                    asignaciones: estado.asignaciones,
-                    salones_asignaciones: estado.salonesAsignaciones
-                };
-
-                const resultado = await apiRequest(API_URLS.guardarHorarioCurso, {
-                    method: 'POST',
-                    body: datos
-                });
-
-                if (resultado.success) {
-                    mostrarNotificacion('Horario del curso guardado correctamente', 'success');
-                    return true;
-                } else {
-                    throw new Error(resultado.error || 'Error desconocido al guardar');
-                }
-            } catch (error) {
-                console.error('❌ Error guardando horario:', error);
-                mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
-                return false;
-            } finally {
-                ocultarLoading();
-            }
-        }
-
-        async function compartirHorario() {
-            if (!estado.cursoSeleccionado) {
-                mostrarNotificacion('Seleccione un curso primero', 'error');
-                return false;
-            }
-
-            if (!estado.destinatarioCompartir) {
-                mostrarNotificacion('Seleccione un destinatario', 'error');
-                return false;
-            }
-
-            // Validar que hay asignaciones
-            if (Object.keys(estado.asignaciones).length === 0) {
-                mostrarNotificacion('No hay materias asignadas en el horario', 'error');
-                return false;
-            }
-
-            mostrarLoading('Compartiendo horario...');
-            
-            try {
-                const datos = {
-                    curso_id: estado.cursoSeleccionado.id,
-                    destinatario: estado.destinatarioCompartir,
-                    horario_general_id: estado.horarioSeleccionado?.id,
-                    asignaciones: estado.asignaciones,
-                    salones_asignaciones: estado.salonesAsignaciones
-                };
-
-                const resultado = await apiRequest(API_URLS.compartirHorario, {
-                    method: 'POST',
-                    body: datos
-                });
-
-                if (resultado.success) {
-                    mostrarNotificacion(`Horario compartido con ${estado.destinatarioCompartir} correctamente`, 'success');
-                    cerrarModalCompartir();
-                    return true;
-                } else {
-                    throw new Error(resultado.error || 'Error desconocido al compartir');
-                }
-            } catch (error) {
-                console.error('❌ Error compartiendo horario:', error);
-                mostrarNotificacion(`Error al compartir: ${error.message}`, 'error');
-                return false;
-            } finally {
-                ocultarLoading();
-            }
-        }
-
-        // =============================================
-        // FUNCIONES DE LA INTERFAZ DE USUARIO
-        // =============================================
-
-        function actualizarEstadisticas() {
-            document.getElementById('total-materias').textContent = estado.estadisticas.total_materias || 0;
-            document.getElementById('total-cursos').textContent = estado.estadisticas.total_cursos || 0;
-            document.getElementById('horarios-asignados').textContent = estado.estadisticas.horarios_asignados || 0;
-        }
-
-        function actualizarSelectCursos() {
-            const select = document.getElementById('course-select');
-            
-            if (estado.cursos.length === 0) {
-                select.innerHTML = '<option value="">No hay cursos disponibles</option>';
-                return;
-            }
-            
-            select.innerHTML = '<option value="">Seleccione un curso</option>' +
-                estado.cursos.map(curso => {
-                    const nombre = curso.nombreCurso || curso.nombre || 'Curso sin nombre';
-                    const sede = curso.sede || (curso.sedeId ? `Sede ${curso.sedeId}` : '');
-                    const horarioAsignado = curso.horario_general_id ? ' (Horario asignado)' : ' (Sin horario)';
-                    return `<option value="${curso.id}">${nombre} ${sede ? '- ' + sede : ''}${horarioAsignado}</option>`;
-                }).join('');
-        }
-
-        function actualizarListaMaterias() {
-            const container = document.getElementById('subjects-list');
-            
-            if (estado.asignaturas.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No hay materias disponibles</p>';
-                return;
-            }
-            
-            container.innerHTML = estado.asignaturas.map(asignatura => {
-                // Obtener lista de profesores
-                const profesores = asignatura.profesores || [];
-                const profesoresTexto = profesores.length > 0 
-                    ? profesores.map(p => p.nombre_completo).join(', ')
-                    : 'Sin profesores asignados';
-                
-                return `
-                    <div class="course-item">
-                        <div class="course-info">
-                            <div class="course-name">${asignatura.nombre}</div>
-                            <div class="course-teacher">
-                                ${asignatura.descripcion || 'Sin descripción'}
-                                ${profesores.length > 0 ? 
-                                    `<div style="margin-top: 5px;">
-                                        <strong>Profesores:</strong> 
-                                        ${profesores.map(p => 
-                                            `<span class="profesor-badge">${p.nombre_completo}</span>`
-                                        ).join('')}
-                                    </div>` : 
-                                    ''
-                                }
-                            </div>
-                        </div>
-                        <div class="course-schedule">${profesores.length > 0 ? 'Con profesores' : 'Sin profesores'}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function verificarEstadoHorario() {
-            console.log('🔍 Estado actual del horario:');
-            console.log('📋 Curso seleccionado:', estado.cursoSeleccionado);
-            console.log('📚 Asignaciones:', estado.asignaciones);
-            console.log('🏫 Salones:', estado.salonesAsignaciones);
-            console.log('🕒 Bloques horario:', estado.bloquesHorario.length);
-            
-            // Verificar una asignación específica
-            if (Object.keys(estado.asignaciones).length > 0) {
-                const primeraClave = Object.keys(estado.asignaciones)[0];
-                console.log('✅ Primera asignación:', primeraClave, '->', estado.asignaciones[primeraClave]);
-            }
-        }
-
-        async function loadCourseSchedule() {
-            const cursoId = document.getElementById('course-select').value;
-
-            if (!cursoId) {
-                mostrarNotificacion('Por favor seleccione un curso', 'error');
-                return;
-            }
-
-            try {
-                // Encontrar curso seleccionado
-                estado.cursoSeleccionado = estado.cursos.find(c => c.id == cursoId);
-
-                if (!estado.cursoSeleccionado) {
-                    mostrarNotificacion('Error al cargar los datos del curso', 'error');
-                    return;
-                }
-
-                document.getElementById('current-course-name').textContent = 
-                    estado.cursoSeleccionado.nombreCurso || estado.cursoSeleccionado.nombre || 'Curso';
-
-                // Cargar horario existente del curso
-                await cargarHorarioCurso(cursoId);
-                
-                // DEBUG: Verificar estado
-                verificarEstadoHorario();
-
-                // Verificar si el curso tiene un horario general asignado
-                if (!estado.horarioSeleccionado) {
-                    mostrarNotificacion('Este curso no tiene un horario general asignado', 'warning');
-                    document.getElementById('course-schedule-table-container').innerHTML = 
-                        '<p style="text-align: center; padding: 20px; color: #666;">Este curso no tiene un horario general asignado. Asigne un horario en la gestión de horarios generales.</p>';
-                    return;
-                }
-
-                // Generar tabla de horario
-                generarTablaHorario();
-
-                mostrarNotificacion(`Horario cargado para ${estado.cursoSeleccionado.nombreCurso}`, 'success');
-
-            } catch (error) {
-                console.error('❌ Error cargando horario del curso:', error);
-                mostrarNotificacion('Error al cargar el horario del curso', 'error');
-            }
-        }
-
-        function generarTablaHorario() {
-            const container = document.getElementById('course-schedule-table-container');
-            
-            if (!estado.horarioSeleccionado || estado.bloquesHorario.length === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No hay horario disponible para mostrar</p>';
-                return;
-            }
-
-            // Obtener días únicos del horario
-            const diasUnicos = [...new Set(estado.bloquesHorario.map(bloque => bloque.dia_semana))].sort();
-            
-            // Agrupar bloques por día
-            const bloquesPorDia = {};
-            diasUnicos.forEach(dia => {
-                bloquesPorDia[dia] = estado.bloquesHorario
-                    .filter(bloque => bloque.dia_semana === dia)
-                    .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+        // Cargar horario específico del curso
+        const horarioData = await apiRequest(`${API_URLS.horarioCurso}/${cursoId}`);
+        console.log('📊 Datos del horario recibidos:', horarioData);
+        
+        // Reiniciar asignaciones
+        estado.asignaciones = {};
+        estado.salonesAsignaciones = {};
+        
+        // Procesar asignaciones si existen
+        if (horarioData && horarioData.asignaciones) {
+            Object.keys(horarioData.asignaciones).forEach(key => {
+                const valor = horarioData.asignaciones[key];
+                estado.asignaciones[key] = typeof valor === 'string' ? parseInt(valor) : valor;
             });
+            console.log('📚 Asignaciones cargadas:', Object.keys(estado.asignaciones).length);
+        }
 
-            let tablaHTML = `
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Hora</th>
-                            ${diasUnicos.map(dia => `<th>${dia}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            // Crear filas para cada bloque de tiempo único
-            const todosLosBloques = estado.bloquesHorario.flat();
-            const horasUnicas = [...new Set(todosLosBloques.map(bloque => bloque.horaInicio))].sort();
-
-            horasUnicas.forEach(hora => {
-                const bloquesEnEstaHora = estado.bloquesHorario.filter(bloque => bloque.horaInicio === hora);
-                
-                if (bloquesEnEstaHora.length > 0) {
-                    const primerBloque = bloquesEnEstaHora[0];
-                    tablaHTML += `
-                        <tr>
-                            <td class="time-cell">${primerBloque.horaInicio} - ${primerBloque.horaFin}</td>
-                            ${diasUnicos.map(dia => {
-                                const bloque = bloquesPorDia[dia]?.find(b => b.horaInicio === hora);
-                                
-                                if (!bloque) {
-                                    return '<td class="empty-block"></td>';
-                                }
-                                
-                                if (bloque.tipo === 'break') {
-                                    let claseBreak = 'break-block';
-                                    if (bloque.break_type === 'morning') claseBreak += ' morning-break';
-                                    else if (bloque.break_type === 'lunch') claseBreak += ' lunch-break';
-                                    else if (bloque.break_type === 'afternoon') claseBreak += ' afternoon-break';
-                                    else claseBreak += ' custom-break';
-                                    
-                                    return `<td class="${claseBreak}">${bloque.nombre || 'Descanso'}</td>`;
-                                } else {
-                                    const asignacionKey = `${dia}-${bloque.horaInicio}`;
-                                    const asignaturaId = estado.asignaciones[asignacionKey];
-                                    const salonId = estado.salonesAsignaciones[asignacionKey];
-                                    const asignatura = estado.asignaturas.find(a => a.id == asignaturaId);
-                                    const salon = estado.salones.find(s => s.id == salonId);
-                                    
-                                    // Obtener profesores de la asignatura
-                                    const profesores = asignatura?.profesores || [];
-                                    const profesoresTexto = profesores.length > 0 
-                                        ? profesores.map(p => p.nombre_completo).join(', ')
-                                        : '';
-                                    
-                                    return `
-                                        <td class="empty-block">
-                                            <select class="subject-select" data-day="${dia}" data-time="${bloque.horaInicio}" onchange="guardarAsignacion(this)">
-                                                <option value="">Seleccionar materia</option>
-                                                ${estado.asignaturas.map(asignatura => {
-                                                    const profesoresAsignatura = asignatura.profesores || [];
-                                                    const textoProfesores = profesoresAsignatura.length > 0 
-                                                        ? ` (${profesoresAsignatura.map(p => p.nombre_completo).join(', ')})`
-                                                        : '';
-                                                    
-                                                    // VERIFICAR SI ESTÁ SELECCIONADA - CORREGIDO
-                                                    const estaSeleccionada = estado.asignaciones[asignacionKey] == asignatura.id;
-                                                    
-                                                    return `
-                                                        <option value="${asignatura.id}" ${estaSeleccionada ? 'selected' : ''}>
-                                                            ${asignatura.nombre}${textoProfesores}
-                                                        </option>
-                                                    `;
-                                                }).join('')}
-                                            </select>
-                                            <select class="salon-select" data-day="${dia}" data-time="${bloque.horaInicio}" onchange="guardarSalon(this)">
-                                                <option value="">Seleccionar salón</option>
-                                                ${estado.salones.map(salon => {
-                                                    // VERIFICAR SI ESTÁ SELECCIONADO - CORREGIDO
-                                                    const estaSeleccionado = estado.salonesAsignaciones[asignacionKey] == salon.id;
-                                                    
-                                                    return `
-                                                        <option value="${salon.id}" ${estaSeleccionado ? 'selected' : ''}>
-                                                            ${salon.nombre} - ${salon.tipo}
-                                                        </option>
-                                                    `;
-                                                }).join('')}
-                                            </select>
-                                            ${asignatura && profesores.length > 0 ? 
-                                                `<div style="margin-top: 5px; font-size: 0.8rem; color: #666;">
-                                                    <strong>Profesor:</strong> ${profesoresTexto}
-                                                </div>` : 
-                                                ''
-                                            }
-                                            ${salon ? 
-                                                `<div style="margin-top: 2px; font-size: 0.8rem; color: #666;">
-                                                    <strong>Salón:</strong> ${salon.nombre}
-                                                </div>` : 
-                                                ''
-                                            }
-                                        </td>
-                                    `;
-                                }
-                            }).join('')}
-                        </tr>
-                    `;
-                }
+        // Procesar salones si existen
+        if (horarioData && horarioData.salones_asignaciones) {
+            Object.keys(horarioData.salones_asignaciones).forEach(key => {
+                const valor = horarioData.salones_asignaciones[key];
+                estado.salonesAsignaciones[key] = typeof valor === 'string' ? parseInt(valor) : valor;
             });
-
-            tablaHTML += '</tbody></table>';
-            container.innerHTML = tablaHTML;
+            console.log('🏫 Salones cargados:', Object.keys(estado.salonesAsignaciones).length);
         }
-
-        function guardarAsignacion(select) {
-            const dia = select.getAttribute('data-day');
-            const tiempo = select.getAttribute('data-time');
-            const asignaturaId = select.value;
-
-            const clave = `${dia}-${tiempo}`;
-            
-            if (asignaturaId) {
-                // Asegurar que se guarda como número
-                estado.asignaciones[clave] = parseInt(asignaturaId);
-                console.log('💾 Asignación guardada:', clave, estado.asignaciones[clave]);
-                mostrarNotificacion('Asignación guardada temporalmente', 'success');
-            } else {
-                delete estado.asignaciones[clave];
-                console.log('🗑️ Asignación eliminada:', clave);
-                mostrarNotificacion('Asignación eliminada', 'warning');
-            }
+        
+        // Cargar bloques del horario
+        if (horarioData && horarioData.bloques_horario) {
+            estado.bloquesHorario = horarioData.bloques_horario;
+            estado.horarioSeleccionado = {
+                id: horarioData.horario_general_id,
+                nombre: 'Horario del curso'
+            };
+            console.log('🕒 Bloques cargados desde API:', estado.bloquesHorario.length);
+        } else if (horarioData && horarioData.horario_general_id) {
+            // Si no vienen los bloques, cargarlos por separado
+            await cargarHorarioBase(horarioData.horario_general_id);
+        } else {
+            console.warn('⚠️ No se encontraron bloques de horario');
+            estado.bloquesHorario = [];
         }
+        
+        return horarioData;
+    } catch (error) {
+        console.error('❌ Error cargando horario del curso:', error);
+        // Reiniciar asignaciones en caso de error
+        estado.asignaciones = {};
+        estado.salonesAsignaciones = {};
+        estado.bloquesHorario = [];
+        mostrarNotificacion('Error al cargar el horario del curso', 'error');
+        return { asignaciones: {}, salones_asignaciones: {} };
+    } finally {
+        ocultarLoading();
+    }
+}
 
-        function guardarSalon(select) {
-            const dia = select.getAttribute('data-day');
-            const tiempo = select.getAttribute('data-time');
-            const salonId = select.value;
-
-            const clave = `${dia}-${tiempo}`;
-            
-            if (salonId) {
-                // Asegurar que se guarda como número
-                estado.salonesAsignaciones[clave] = parseInt(salonId);
-                console.log('💾 Salón guardado:', clave, estado.salonesAsignaciones[clave]);
-                mostrarNotificacion('Salón asignado temporalmente', 'success');
-            } else {
-                delete estado.salonesAsignaciones[clave];
-                console.log('🗑️ Salón eliminado:', clave);
-                mostrarNotificacion('Salón eliminado', 'warning');
-            }
+async function cargarHorarioBase(horarioId) {
+    try {
+        console.log('🔄 Cargando horario base ID:', horarioId);
+        const horarioData = await apiRequest(`${API_URLS.horarios}/${horarioId}`);
+        
+        if (horarioData && horarioData.bloques) {
+            estado.bloquesHorario = horarioData.bloques;
+            console.log('✅ Bloques de horario cargados:', estado.bloquesHorario.length);
+            return horarioData;
+        } else {
+            throw new Error('Estructura de horario inválida');
         }
+    } catch (error) {
+        console.error('❌ Error cargando horario base:', error);
+        throw error;
+    }
+}
 
-        async function saveCourseSchedule() {
-            const exito = await guardarHorarioCurso();
-            if (exito) {
-                // Actualizar estadísticas después de guardar
-                estado.estadisticas.horarios_asignados = estado.cursos.filter(c => c.horario_general_id).length;
-                actualizarEstadisticas();
-            }
-        }
+async function guardarHorarioCurso() {
+    if (!estado.cursoSeleccionado) {
+        mostrarNotificacion('Seleccione un curso primero', 'error');
+        return false;
+    }
 
-        function clearCourseSchedule() {
-            if (!estado.cursoSeleccionado) {
-                mostrarNotificacion('Seleccione un curso primero', 'error');
-                return;
-            }
+    // Obtener el ID correcto del curso
+    const cursoId = estado.cursoSeleccionado.id_curso || estado.cursoSeleccionado.id;
+    
+    if (!cursoId) {
+        mostrarNotificacion('ID de curso no válido', 'error');
+        return false;
+    }
 
-            if (confirm('¿Está seguro de que desea limpiar todas las asignaciones del horario?')) {
-                estado.asignaciones = {};
-                estado.salonesAsignaciones = {};
-                generarTablaHorario();
-                mostrarNotificacion('Horario limpiado correctamente', 'success');
-            }
-        }
+    // Validar que hay asignaciones
+    if (Object.keys(estado.asignaciones).length === 0) {
+        mostrarNotificacion('No hay materias asignadas en el horario', 'error');
+        return false;
+    }
 
-        async function resetCourseSchedule() {
-            if (!estado.cursoSeleccionado) {
-                mostrarNotificacion('Seleccione un curso primero', 'error');
-                return;
-            }
+    mostrarLoading('Guardando horario del curso...');
+    
+    try {
+        // Obtener el ID del horario general si existe
+        const horarioGeneralId = estado.horarioSeleccionado?.id || estado.cursoSeleccionado.horario_general_id;
 
-            if (confirm('¿Está seguro de que desea restablecer el horario a su estado original? Se perderán todas las asignaciones actuales.')) {
-                await cargarHorarioCurso(estado.cursoSeleccionado.id);
-                generarTablaHorario();
-                mostrarNotificacion('Horario restablecido correctamente', 'success');
-            }
-        }
+        const datos = {
+            curso_id: cursoId,
+            horario_general_id: horarioGeneralId,
+            asignaciones: estado.asignaciones,
+            salones_asignaciones: estado.salonesAsignaciones
+        };
 
-        // =============================================
-        // FUNCIONALIDAD DE COMPARTIR
-        // =============================================
+        console.log('💾 Guardando horario:', datos);
 
-        function mostrarModalCompartir() {
-            if (!estado.cursoSeleccionado) {
-                mostrarNotificacion('Seleccione un curso primero', 'error');
-                return;
-            }
-
-            estado.destinatarioCompartir = null;
-            document.querySelectorAll('.share-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            document.getElementById('share-details').style.display = 'none';
-            document.getElementById('share-modal').style.display = 'flex';
-        }
-
-        function cerrarModalCompartir() {
-            document.getElementById('share-modal').style.display = 'none';
-        }
-
-        function seleccionarDestinatario(destinatario, event) {
-            estado.destinatarioCompartir = destinatario;
-            
-            // Actualizar UI
-            document.querySelectorAll('.share-option').forEach(option => {
-            option.classList.remove('selected');
-            });
-            event.currentTarget.classList.add('selected');
-            
-            const details = document.getElementById('share-details');
-            const title = document.getElementById('share-title');
-            const description = document.getElementById('share-description');
-            
-            details.style.display = 'block';
-            
-            if (destinatario === 'estudiantes') {
-                title.textContent = 'Compartir con Estudiantes';
-                description.textContent = `Se compartirá el horario con todos los estudiantes del curso ${estado.cursoSeleccionado.nombreCurso}. Los estudiantes podrán ver su horario semanal con materias, profesores y salones asignados.`;
-            } else {
-                title.textContent = 'Compartir con Profesores';
-                description.textContent = `Se compartirá el horario con los profesores asignados a las materias. Cada profesor podrá ver su horario semanal con los cursos, materias, horarios y salones asignados.`;
-            }
-        }
-
-        function confirmarCompartir() {
-            if (!estado.destinatarioCompartir) {
-                mostrarNotificacion('Seleccione un destinatario', 'error');
-                return;
-            }
-            compartirHorario();
-        }
-
-        // =============================================
-        // INICIALIZACIÓN
-        // =============================================
-
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Inicializando gestión de horarios de cursos...');
-            cargarDatosIniciales();
+        const resultado = await apiRequest(API_URLS.guardarHorarioCurso, {
+            method: 'POST',
+            body: datos
         });
 
-        // Hacer funciones globales para los eventos onclick
-        window.loadCourseSchedule = loadCourseSchedule;
-        window.saveCourseSchedule = saveCourseSchedule;
-        window.clearCourseSchedule = clearCourseSchedule;
-        window.resetCourseSchedule = resetCourseSchedule;
-        window.guardarAsignacion = guardarAsignacion;
-        window.guardarSalon = guardarSalon;
-        window.mostrarModalCompartir = mostrarModalCompartir;
-        window.cerrarModalCompartir = cerrarModalCompartir;
-        window.seleccionarDestinatario = seleccionarDestinatario;
-        window.confirmarCompartir = confirmarCompartir;
+        if (resultado.success) {
+            mostrarNotificacion('Horario del curso guardado correctamente', 'success');
+            return true;
+        } else {
+            throw new Error(resultado.error || 'Error desconocido al guardar');
+        }
+    } catch (error) {
+        console.error('❌ Error guardando horario:', error);
+        mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
+        return false;
+    } finally {
+        ocultarLoading();
+    }
+}
+
+async function compartirHorario() {
+    if (!estado.cursoSeleccionado) {
+        mostrarNotificacion('Seleccione un curso primero', 'error');
+        return false;
+    }
+
+    // Obtener el ID correcto del curso
+    const cursoId = estado.cursoSeleccionado.id_curso || estado.cursoSeleccionado.id;
+    
+    if (!cursoId) {
+        mostrarNotificacion('ID de curso no válido', 'error');
+        return false;
+    }
+
+    if (!estado.destinatarioCompartir) {
+        mostrarNotificacion('Seleccione un destinatario', 'error');
+        return false;
+    }
+
+    // Validar que hay asignaciones
+    if (Object.keys(estado.asignaciones).length === 0) {
+        mostrarNotificacion('No hay materias asignadas en el horario', 'error');
+        return false;
+    }
+
+    mostrarLoading('Compartiendo horario...');
+    
+    try {
+        // Obtener el ID del horario general si existe
+        const horarioGeneralId = estado.horarioSeleccionado?.id || estado.cursoSeleccionado.horario_general_id;
+
+        const datos = {
+            curso_id: cursoId,
+            destinatario: estado.destinatarioCompartir,
+            horario_general_id: horarioGeneralId,
+            asignaciones: estado.asignaciones,
+            salones_asignaciones: estado.salonesAsignaciones
+        };
+
+        const resultado = await apiRequest(API_URLS.compartirHorario, {
+            method: 'POST',
+            body: datos
+        });
+
+        if (resultado.success) {
+            mostrarNotificacion(`Horario compartido con ${estado.destinatarioCompartir} correctamente`, 'success');
+            cerrarModalCompartir();
+            return true;
+        } else {
+            throw new Error(resultado.error || 'Error desconocido al compartir');
+        }
+    } catch (error) {
+        console.error('❌ Error compartiendo horario:', error);
+        mostrarNotificacion(`Error al compartir: ${error.message}`, 'error');
+        return false;
+    } finally {
+        ocultarLoading();
+    }
+}
+
+// =============================================
+// FUNCIONES DE LA INTERFAZ DE USUARIO
+// =============================================
+
+function actualizarEstadisticas() {
+    document.getElementById('total-materias').textContent = estado.estadisticas.total_materias || 0;
+    document.getElementById('total-cursos').textContent = estado.estadisticas.total_cursos || 0;
+    document.getElementById('horarios-asignados').textContent = estado.estadisticas.horarios_asignados || 0;
+}
+
+function actualizarSelectCursos() {
+    const select = document.getElementById('course-select');
+    
+    if (estado.cursos.length === 0) {
+        select.innerHTML = '<option value="">No hay cursos disponibles</option>';
+        return;
+    }
+    
+    select.innerHTML = '<option value="">Seleccione un curso</option>' +
+        estado.cursos.map(curso => {
+            // Usar el ID correcto del curso
+            const cursoId = curso.id_curso || curso.id;
+            const nombre = curso.nombreCurso || curso.nombre || 'Curso sin nombre';
+            const sede = curso.sede || (curso.sedeId ? `Sede ${curso.sedeId}` : '');
+            const horarioAsignado = curso.horario_general_id ? ' (Horario asignado)' : ' (Sin horario)';
+            return `<option value="${cursoId}">${nombre} ${sede ? '- ' + sede : ''}${horarioAsignado}</option>`;
+        }).join('');
+}
+
+function actualizarListaMaterias() {
+    const container = document.getElementById('subjects-list');
+    
+    if (estado.asignaturas.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No hay materias disponibles</p>';
+        return;
+    }
+    
+    container.innerHTML = estado.asignaturas.map(asignatura => {
+        // Usar el ID correcto de la asignatura
+        const asignaturaId = asignatura.id_asignatura || asignatura.id;
+        const nombre = asignatura.nombre || 'Asignatura sin nombre';
+        const descripcion = asignatura.descripcion || 'Sin descripción';
+        
+        // Obtener lista de profesores
+        const profesores = asignatura.profesores || [];
+        const profesoresTexto = profesores.length > 0 
+            ? profesores.map(p => p.nombre_completo || p.nombre).join(', ')
+            : 'Sin profesores asignados';
+        
+        return `
+            <div class="course-item">
+                <div class="course-info">
+                    <div class="course-name">${nombre}</div>
+                    <div class="course-teacher">
+                        ${descripcion}
+                        ${profesores.length > 0 ? 
+                            `<div style="margin-top: 5px;">
+                                <strong>Profesores:</strong> 
+                                ${profesores.map(p => 
+                                    `<span class="profesor-badge">${p.nombre_completo || p.nombre}</span>`
+                                ).join('')}
+                            </div>` : 
+                            ''
+                        }
+                    </div>
+                </div>
+                <div class="course-schedule">${profesores.length > 0 ? 'Con profesores' : 'Sin profesores'}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function verificarEstadoHorario() {
+    console.log('🔍 Estado actual del horario:');
+    console.log('📋 Curso seleccionado:', estado.cursoSeleccionado);
+    console.log('📚 Asignaciones:', estado.asignaciones);
+    console.log('🏫 Salones:', estado.salonesAsignaciones);
+    console.log('🕒 Bloques horario:', estado.bloquesHorario.length);
+    
+    if (Object.keys(estado.asignaciones).length > 0) {
+        const primeraClave = Object.keys(estado.asignaciones)[0];
+        console.log('✅ Primera asignación:', primeraClave, '->', estado.asignaciones[primeraClave]);
+    }
+}
+
+async function loadCourseSchedule() {
+    const cursoId = document.getElementById('course-select').value;
+
+    if (!cursoId) {
+        mostrarNotificacion('Por favor seleccione un curso', 'error');
+        return;
+    }
+
+    try {
+        // Encontrar curso seleccionado usando el ID correcto
+        estado.cursoSeleccionado = estado.cursos.find(c => {
+            const cursoIdComparar = c.id_curso || c.id;
+            return cursoIdComparar == cursoId;
+        });
+
+        if (!estado.cursoSeleccionado) {
+            mostrarNotificacion('Error al cargar los datos del curso', 'error');
+            return;
+        }
+
+        document.getElementById('current-course-name').textContent = 
+            estado.cursoSeleccionado.nombreCurso || estado.cursoSeleccionado.nombre || 'Curso';
+
+        // Cargar horario existente del curso
+        await cargarHorarioCurso(cursoId);
+        
+        // DEBUG: Verificar estado
+        verificarEstadoHorario();
+
+        // Verificar si el curso tiene un horario general asignado
+        if (!estado.horarioSeleccionado && estado.cursoSeleccionado.horario_general_id) {
+            // Intentar cargar el horario general si está asignado pero no se cargó
+            await cargarHorarioBase(estado.cursoSeleccionado.horario_general_id);
+        }
+
+        if (!estado.horarioSeleccionado || estado.bloquesHorario.length === 0) {
+            mostrarNotificacion('Este curso no tiene un horario general asignado o está vacío', 'warning');
+            document.getElementById('course-schedule-table-container').innerHTML = 
+                '<p style="text-align: center; padding: 20px; color: #666;">Este curso no tiene un horario general asignado. Asigne un horario en la gestión de horarios generales.</p>';
+            return;
+        }
+
+        // Generar tabla de horario
+        generarTablaHorario();
+
+        mostrarNotificacion(`Horario cargado para ${estado.cursoSeleccionado.nombreCurso}`, 'success');
+
+    } catch (error) {
+        console.error('❌ Error cargando horario del curso:', error);
+        mostrarNotificacion('Error al cargar el horario del curso', 'error');
+    }
+}
+
+function generarTablaHorario() {
+    const container = document.getElementById('course-schedule-table-container');
+    
+    if (!estado.horarioSeleccionado || estado.bloquesHorario.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No hay horario disponible para mostrar</p>';
+        return;
+    }
+
+    // Obtener días únicos del horario
+    const diasUnicos = [...new Set(estado.bloquesHorario.map(bloque => bloque.dia_semana || bloque.day))].sort();
+    
+    // Agrupar bloques por día
+    const bloquesPorDia = {};
+    diasUnicos.forEach(dia => {
+        bloquesPorDia[dia] = estado.bloquesHorario
+            .filter(bloque => (bloque.dia_semana || bloque.day) === dia)
+            .sort((a, b) => (a.horaInicio || a.start).localeCompare(b.horaInicio || b.start));
+    });
+
+    let tablaHTML = `
+        <table class="schedule-table">
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    ${diasUnicos.map(dia => `<th>${dia}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    // Crear filas para cada bloque de tiempo único
+    const horasUnicas = [...new Set(estado.bloquesHorario.map(bloque => bloque.horaInicio || bloque.start))].sort();
+
+    horasUnicas.forEach(hora => {
+        const bloquesEnEstaHora = estado.bloquesHorario.filter(bloque => 
+            (bloque.horaInicio || bloque.start) === hora
+        );
+        
+        if (bloquesEnEstaHora.length > 0) {
+            const primerBloque = bloquesEnEstaHora[0];
+            const horaInicio = primerBloque.horaInicio || primerBloque.start;
+            const horaFin = primerBloque.horaFin || primerBloque.end;
+            
+            tablaHTML += `
+                <tr>
+                    <td class="time-cell">${horaInicio} - ${horaFin}</td>
+                    ${diasUnicos.map(dia => {
+                        const bloque = bloquesPorDia[dia]?.find(b => 
+                            (b.horaInicio || b.start) === hora
+                        );
+                        
+                        if (!bloque) {
+                            return '<td class="empty-block"></td>';
+                        }
+                        
+                        const tipo = bloque.tipo || bloque.type;
+                        if (tipo === 'break') {
+                            let claseBreak = 'break-block';
+                            const breakType = bloque.break_type || bloque.breakType;
+                            if (breakType === 'morning') claseBreak += ' morning-break';
+                            else if (breakType === 'lunch') claseBreak += ' lunch-break';
+                            else if (breakType === 'afternoon') claseBreak += ' afternoon-break';
+                            else claseBreak += ' custom-break';
+                            
+                            return `<td class="${claseBreak}">${bloque.nombre || 'Descanso'}</td>`;
+                        } else {
+                            const asignacionKey = `${dia}-${horaInicio}`;
+                            const asignaturaId = estado.asignaciones[asignacionKey];
+                            const salonId = estado.salonesAsignaciones[asignacionKey];
+                            
+                            // Buscar asignatura usando ID correcto
+                            const asignatura = estado.asignaturas.find(a => {
+                                const asignaturaIdComparar = a.id_asignatura || a.id;
+                                return asignaturaIdComparar == asignaturaId;
+                            });
+                            
+                            // Buscar salón usando ID correcto
+                            const salon = estado.salones.find(s => {
+                                const salonIdComparar = s.id_salon || s.id;
+                                return salonIdComparar == salonId;
+                            });
+                            
+                            // Obtener profesores de la asignatura
+                            const profesores = asignatura?.profesores || [];
+                            const profesoresTexto = profesores.length > 0 
+                                ? profesores.map(p => p.nombre_completo || p.nombre).join(', ')
+                                : '';
+                            
+                            return `
+                                <td class="empty-block">
+                                    <select class="subject-select" data-day="${dia}" data-time="${horaInicio}" onchange="guardarAsignacion(this)">
+                                        <option value="">Seleccionar materia</option>
+                                        ${estado.asignaturas.map(asignatura => {
+                                            const asignaturaIdOption = asignatura.id_asignatura || asignatura.id;
+                                            const profesoresAsignatura = asignatura.profesores || [];
+                                            const textoProfesores = profesoresAsignatura.length > 0 
+                                                ? ` (${profesoresAsignatura.map(p => p.nombre_completo || p.nombre).join(', ')})`
+                                                : '';
+                                            
+                                            const estaSeleccionada = estado.asignaciones[asignacionKey] == asignaturaIdOption;
+                                            
+                                            return `
+                                                <option value="${asignaturaIdOption}" ${estaSeleccionada ? 'selected' : ''}>
+                                                    ${asignatura.nombre}${textoProfesores}
+                                                </option>
+                                            `;
+                                        }).join('')}
+                                    </select>
+                                    <select class="salon-select" data-day="${dia}" data-time="${horaInicio}" onchange="guardarSalon(this)">
+                                        <option value="">Seleccionar salón</option>
+                                        ${estado.salones.map(salon => {
+                                            const salonIdOption = salon.id_salon || salon.id;
+                                            const estaSeleccionado = estado.salonesAsignaciones[asignacionKey] == salonIdOption;
+                                            
+                                            return `
+                                                <option value="${salonIdOption}" ${estaSeleccionado ? 'selected' : ''}>
+                                                    ${salon.nombre} - ${salon.tipo}
+                                                </option>
+                                            `;
+                                        }).join('')}
+                                    </select>
+                                    ${asignatura && profesores.length > 0 ? 
+                                        `<div style="margin-top: 5px; font-size: 0.8rem; color: #666;">
+                                            <strong>Profesor:</strong> ${profesoresTexto}
+                                        </div>` : 
+                                        ''
+                                    }
+                                    ${salon ? 
+                                        `<div style="margin-top: 2px; font-size: 0.8rem; color: #666;">
+                                            <strong>Salón:</strong> ${salon.nombre}
+                                        </div>` : 
+                                        ''
+                                    }
+                                </td>
+                            `;
+                        }
+                    }).join('')}
+                </tr>
+            `;
+        }
+    });
+
+    tablaHTML += '</tbody></table>';
+    container.innerHTML = tablaHTML;
+}
+
+function guardarAsignacion(select) {
+    const dia = select.getAttribute('data-day');
+    const tiempo = select.getAttribute('data-time');
+    const asignaturaId = select.value;
+
+    const clave = `${dia}-${tiempo}`;
+    
+    if (asignaturaId) {
+        estado.asignaciones[clave] = parseInt(asignaturaId);
+        console.log('💾 Asignación guardada:', clave, estado.asignaciones[clave]);
+        mostrarNotificacion('Asignación guardada temporalmente', 'success');
+    } else {
+        delete estado.asignaciones[clave];
+        console.log('🗑️ Asignación eliminada:', clave);
+        mostrarNotificacion('Asignación eliminada', 'warning');
+    }
+}
+
+function guardarSalon(select) {
+    const dia = select.getAttribute('data-day');
+    const tiempo = select.getAttribute('data-time');
+    const salonId = select.value;
+
+    const clave = `${dia}-${tiempo}`;
+    
+    if (salonId) {
+        estado.salonesAsignaciones[clave] = parseInt(salonId);
+        console.log('💾 Salón guardado:', clave, estado.salonesAsignaciones[clave]);
+        mostrarNotificacion('Salón asignado temporalmente', 'success');
+    } else {
+        delete estado.salonesAsignaciones[clave];
+        console.log('🗑️ Salón eliminado:', clave);
+        mostrarNotificacion('Salón eliminado', 'warning');
+    }
+}
+
+async function saveCourseSchedule() {
+    const exito = await guardarHorarioCurso();
+    if (exito) {
+        // Actualizar estadísticas después de guardar
+        estado.estadisticas.horarios_asignados = estado.cursos.filter(c => c.horario_general_id).length;
+        actualizarEstadisticas();
+    }
+}
+
+function clearCourseSchedule() {
+    if (!estado.cursoSeleccionado) {
+        mostrarNotificacion('Seleccione un curso primero', 'error');
+        return;
+    }
+
+    if (confirm('¿Está seguro de que desea limpiar todas las asignaciones del horario?')) {
+        estado.asignaciones = {};
+        estado.salonesAsignaciones = {};
+        generarTablaHorario();
+        mostrarNotificacion('Horario limpiado correctamente', 'success');
+    }
+}
+
+async function resetCourseSchedule() {
+    if (!estado.cursoSeleccionado) {
+        mostrarNotificacion('Seleccione un curso primero', 'error');
+        return;
+    }
+
+    // Obtener el ID correcto del curso
+    const cursoId = estado.cursoSeleccionado.id_curso || estado.cursoSeleccionado.id;
+    
+    if (!cursoId) {
+        mostrarNotificacion('ID de curso no válido', 'error');
+        return;
+    }
+
+    if (confirm('¿Está seguro de que desea restablecer el horario a su estado original? Se perderán todas las asignaciones actuales.')) {
+        await cargarHorarioCurso(cursoId);
+        generarTablaHorario();
+        mostrarNotificacion('Horario restablecido correctamente', 'success');
+    }
+}
+
+// =============================================
+// FUNCIONALIDAD DE COMPARTIR
+// =============================================
+
+function mostrarModalCompartir() {
+    if (!estado.cursoSeleccionado) {
+        mostrarNotificacion('Seleccione un curso primero', 'error');
+        return;
+    }
+
+    estado.destinatarioCompartir = null;
+    document.querySelectorAll('.share-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    document.getElementById('share-details').style.display = 'none';
+    document.getElementById('share-modal').style.display = 'flex';
+}
+
+function cerrarModalCompartir() {
+    document.getElementById('share-modal').style.display = 'none';
+}
+
+function seleccionarDestinatario(destinatario, event) {
+    estado.destinatarioCompartir = destinatario;
+    
+    // Actualizar UI
+    document.querySelectorAll('.share-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    
+    const details = document.getElementById('share-details');
+    const title = document.getElementById('share-title');
+    const description = document.getElementById('share-description');
+    
+    details.style.display = 'block';
+    
+    if (destinatario === 'estudiantes') {
+        title.textContent = 'Compartir con Estudiantes';
+        description.textContent = `Se compartirá el horario con todos los estudiantes del curso ${estado.cursoSeleccionado.nombreCurso}. Los estudiantes podrán ver su horario semanal con materias, profesores y salones asignados.`;
+    } else {
+        title.textContent = 'Compartir con Profesores';
+        description.textContent = `Se compartirá el horario con los profesores asignados a las materias. Cada profesor podrá ver su horario semanal con los cursos, materias, horarios y salones asignados.`;
+    }
+}
+
+function confirmarCompartir() {
+    if (!estado.destinatarioCompartir) {
+        mostrarNotificacion('Seleccione un destinatario', 'error');
+        return;
+    }
+    compartirHorario();
+}
+
+// =============================================
+// INICIALIZACIÓN
+// =============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inicializando gestión de horarios de cursos...');
+    cargarDatosIniciales();
+});
+
+// Hacer funciones globales para los eventos onclick
+window.loadCourseSchedule = loadCourseSchedule;
+window.saveCourseSchedule = saveCourseSchedule;
+window.clearCourseSchedule = clearCourseSchedule;
+window.resetCourseSchedule = resetCourseSchedule;
+window.guardarAsignacion = guardarAsignacion;
+window.guardarSalon = guardarSalon;
+window.mostrarModalCompartir = mostrarModalCompartir;
+window.cerrarModalCompartir = cerrarModalCompartir;
+window.seleccionarDestinatario = seleccionarDestinatario;
+window.confirmarCompartir = confirmarCompartir;
     </script>
 </body>
 </html>

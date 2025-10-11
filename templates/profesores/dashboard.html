@@ -158,12 +158,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.horarios.forEach(horario => {
                         tablaHTML += `
                             <tr>
-                                <td>${horario.curso_nombre}</td>
-                                <td>${horario.asignatura_nombre}</td>
-                                <td>${horario.dia_semana}</td>
-                                <td>${horario.hora_inicio} - ${horario.hora_fin}</td>
-                                <td>${horario.salon}</td>
-                                <td>${horario.sede}</td>
+                                <td>${horario.curso_nombre || 'N/A'}</td>
+                                <td>${horario.asignatura_nombre || 'N/A'}</td>
+                                <td>${horario.dia_semana || 'N/A'}</td>
+                                <td>${horario.hora_inicio || 'N/A'} - ${horario.hora_fin || 'N/A'}</td>
+                                <td>${horario.salon || 'N/A'}</td>
+                                <td>${horario.sede || 'N/A'}</td>
                             </tr>
                         `;
                     });

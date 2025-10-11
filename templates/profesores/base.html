@@ -7,59 +7,184 @@
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/base.css') }}">
 
     <style>
-        /* Estilos específicos para el panel de profesor */
+        /* Variables CSS usando la paleta de colores del diseño */
+        :root {
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --black: #333333;
+            --gray: #666666;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --card-bg: #FFFFFF;
+            --header-bg: #FFFFFF;
+            --main-bg: #F8F9FA;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+            --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+            --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+            --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+            --sidebar-width: 280px;
+            --transition-speed: 0.3s;
+        }
+
+        /* Estilos del Sidebar */
         .sidebar {
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            background: var(--gradient-primary);
             min-height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
-            width: 280px;
+            width: var(--sidebar-width);
             z-index: 1000;
-            transition: transform 0.3s ease;
+            transition: transform var(--transition-speed) ease;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
 
         .sidebar-header {
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1.5rem 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            text-align: center;
+            margin: 0;
+            line-height: 1.3;
+            font-weight: 700;
+            color: var(--white);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .nav-link {
-            color: rgba(255, 255, 255, 0.8) !important;
-            padding: 12px 15px;
-            margin: 2px 0;
+            color: rgba(255, 255, 255, 0.9) !important;
+            padding: 0.85rem 1rem;
+            margin: 3px 0;
             border: none;
-            transition: all 0.3s ease;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            position: relative;
+            font-weight: 500;
+            text-decoration: none;
         }
 
         .nav-link:hover, 
-        .nav-link:focus, 
-        .nav-link.active {
-            color: #fff !important;
+        .nav-link:focus {
+            color: var(--white) !important;
             background: rgba(255, 255, 255, 0.15);
-            border-radius: 8px;
+            transform: translateX(8px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-link.active {
+            color: var(--white) !important;
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid var(--accent3);
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(244, 211, 94, 0.3);
+        }
+
+        .nav-link i {
+            width: 22px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link:hover i {
+            transform: scale(1.1);
+        }
+
+        .nav-link.active i {
+            color: var(--accent3);
         }
 
         .nav-link.dropdown-toggle::after {
             margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link.dropdown-toggle[aria-expanded="true"]::after {
+            transform: rotate(180deg);
+        }
+
+        .nav-link.dropdown-toggle[aria-expanded="true"] {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .collapse .nav-link {
-            padding-left: 45px;
+            padding-left: 3rem;
             font-size: 0.9em;
+            margin: 2px 0;
+            border-radius: 8px;
+        }
+
+        .collapse .nav-link:hover {
+            transform: translateX(4px);
+        }
+
+        .sidebar-section {
+            margin: 1rem 0;
+        }
+
+        .sidebar-section-title {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
         }
 
         .sidebar-footer {
             background: rgba(0, 0, 0, 0.2);
             border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .user-avatar {
+            background: var(--gradient-secondary);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .user-info .fw-semibold {
+            color: var(--white);
+            font-size: 0.9rem;
+        }
+
+        .user-info .text-white-50 {
+            color: rgba(255, 255, 255, 0.7) !important;
+            font-size: 0.8rem;
+        }
+
+        .logout-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            transition: color 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .logout-link:hover {
+            color: var(--accent3) !important;
         }
 
         .main-content {
-            margin-left: 280px;
+            margin-left: var(--sidebar-width);
             min-height: 100vh;
+            transition: margin-left var(--transition-speed) ease;
+            background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
         }
 
         .sidebar-overlay {
@@ -71,10 +196,52 @@
             bottom: 0;
             background: rgba(0, 0, 0, 0.5);
             z-index: 999;
+            backdrop-filter: blur(5px);
         }
 
         .sidebar-overlay.show {
             display: block;
+        }
+
+        /* Badge para notificaciones */
+        .badge-notification {
+            background: var(--gradient-accent);
+            font-size: 0.7em;
+            margin-left: auto;
+            border-radius: 10px;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(249, 87, 56, 0.3);
+        }
+
+        /* Indicador de submenú abierto */
+        .nav-item.has-submenu.open > .nav-link {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Separador visual en el sidebar */
+        .sidebar-separator {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            margin: 1rem;
+        }
+
+        /* Efecto de partículas de fondo para el sidebar */
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
         }
 
         @media (max-width: 991.98px) {
@@ -91,18 +258,62 @@
             }
         }
 
-        /* Indicador de página activa */
-        .nav-link.active {
-            background: rgba(52, 152, 219, 0.3) !important;
-            border-left: 4px solid #3498db;
+        /* Mejoras para el contenido principal */
+        .content-wrapper {
+            padding: 1.5rem;
         }
 
-        /* Badge para notificaciones */
-        .badge-notification {
-            background: #e74c3c;
-            font-size: 0.7em;
-            margin-left: auto;
+        /* Mejoras para la alerta de curso seleccionado */
+        .curso-alert {
+            border-left: 4px solid var(--accent4);
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
         }
+
+        /* Estilos para el botón de toggle en móvil */
+        #sidebarToggle {
+            border: none;
+            background: transparent;
+            font-size: 1.25rem;
+            color: var(--accent4);
+            transition: all 0.3s ease;
+        }
+
+        #sidebarToggle:hover {
+            color: var(--accent1);
+            transform: scale(1.1);
+        }
+
+        #sidebarToggle:focus {
+            box-shadow: none;
+        }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .nav-link {
+            animation: slideIn 0.4s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .nav-link:nth-child(1) { animation-delay: 0.1s; }
+        .nav-link:nth-child(2) { animation-delay: 0.15s; }
+        .nav-link:nth-child(3) { animation-delay: 0.2s; }
+        .nav-link:nth-child(4) { animation-delay: 0.25s; }
+        .nav-link:nth-child(5) { animation-delay: 0.3s; }
+        .nav-link:nth-child(6) { animation-delay: 0.35s; }
+        .nav-link:nth-child(7) { animation-delay: 0.4s; }
+        .nav-link:nth-child(8) { animation-delay: 0.45s; }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -111,78 +322,99 @@
 
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar text-white d-flex flex-column">
-        <div class="sidebar-header p-4 d-flex align-items-center justify-content-center">
-            <h1 class="fs-4 fw-bold text-uppercase m-0">PANEL DE PROFESOR</h1>
+        <div class="sidebar-header">
+            <h1 class="fw-bold text-uppercase">Panel de Profesor</h1>
         </div>
 
-        <nav class="nav flex-column flex-grow-1 p-3">
+        <nav class="nav flex-column flex-grow-1 p-3" aria-label="Navegación principal">
             <!-- Inicio -->
-            <a href="{{ url_for('profesor.dashboard') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.dashboard' %}active{% endif %}">
-                <i class="fas fa-home fa-fw me-2"></i>Inicio
-            </a>
-
-            <!-- Gestión Académica -->
-            <a class="nav-link rounded my-1 dropdown-toggle {% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}active{% endif %}" 
-               href="#academicaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                <i class="fas fa-book-open fa-fw me-2"></i>Gestión Académica
-            </a>
-            
-            <div class="collapse {% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}show{% endif %}" 
-                 id="academicaSubmenu">
-                <a href="{{ url_for('profesor.gestion_lc') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.gestion_lc' %}active{% endif %}">
-                    <i class="fas fa-clipboard-list fa-fw me-2"></i>Listas y Calificaciones
-                </a>
-                <a href="{{ url_for('profesor.asistencia') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.asistencia' %}active{% endif %}">
-                    <i class="fas fa-calendar-check fa-fw me-2"></i>Registro de Asistencia
-                </a>
-                <a href="{{ url_for('profesor.ver_lista_estudiantes') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_lista_estudiantes' %}active{% endif %}">
-                    <i class="fas fa-users fa-fw me-2"></i>Lista de Estudiantes
+            <div class="sidebar-section">
+                <a href="{{ url_for('profesor.dashboard') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i>Inicio
                 </a>
             </div>
 
-            <!-- Horarios -->
-            <a href="{{ url_for('profesor.ver_horario_clases') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_horario_clases' %}active{% endif %}">
-                <i class="fas fa-calendar-alt fa-fw me-2"></i>Mi Horario
-            </a>
+            <!-- Gestión Académica -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Gestión Académica</div>
+                
+                <div class="nav-item has-submenu">
+                    <a class="nav-link rounded my-1 dropdown-toggle {% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}active{% endif %}" 
+                       href="#academicaSubmenu" data-bs-toggle="collapse" role="button" 
+                       aria-expanded="{% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}true{% else %}false{% endif %}" 
+                       aria-controls="academicaSubmenu">
+                        <i class="fas fa-book-open"></i>Gestión Académica
+                    </a>
+                    
+                    <div class="collapse {% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}show{% endif %}" 
+                         id="academicaSubmenu">
+                        <a href="{{ url_for('profesor.gestion_lc') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.gestion_lc' %}active{% endif %}">
+                            <i class="fas fa-clipboard-list"></i>Listas y Calificaciones
+                        </a>
+                        <a href="{{ url_for('profesor.asistencia') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.asistencia' %}active{% endif %}">
+                            <i class="fas fa-calendar-check"></i>Registro de Asistencia
+                        </a>
+                        <a href="{{ url_for('profesor.ver_lista_estudiantes') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_lista_estudiantes' %}active{% endif %}">
+                            <i class="fas fa-users"></i>Lista de Estudiantes
+                        </a>
+                    </div>
+                </div>
 
-            <!-- Mis Cursos y Asignaturas -->
-            <a href="{{ url_for('profesor.cursos') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.cursos' %}active{% endif %}">
-                <i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Mis Cursos
-            </a>
+                <a href="{{ url_for('profesor.ver_horario_clases') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_horario_clases' %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i>Mi Horario
+                </a>
+            </div>
 
-            <a href="{{ url_for('profesor.asignaturas') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.asignaturas' %}active{% endif %}">
-                <i class="fas fa-book fa-fw me-2"></i>Mis Asignaturas
-            </a>
+            <!-- Mis Cursos -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Mis Cursos</div>
+                
+                <a href="{{ url_for('profesor.cursos') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.cursos' %}active{% endif %}">
+                    <i class="fas fa-chalkboard-teacher"></i>Mis Cursos
+                </a>
+
+                <a href="{{ url_for('profesor.asignaturas') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.asignaturas' %}active{% endif %}">
+                    <i class="fas fa-book"></i>Mis Asignaturas
+                </a>
+            </div>
 
             <!-- Comunicaciones -->
-            <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
-                <i class="fas fa-bullhorn fa-fw me-2"></i>Comunicaciones
-            </a>
-            <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded my-1">
-                <i class="fas fa-calendar-alt fa-fw me-2"></i>Eventos
-            </a>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Comunicaciones</div>
+                
+                <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
+                    <i class="fas fa-bullhorn"></i>Comunicaciones
+                    <span class="badge-notification">3</span>
+                </a>
+                <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_eventos' %}active{% endif %}">
+                    <i class="fas fa-calendar-day"></i>Eventos
+                </a>
+            </div>
+
+            <!-- Separador antes de la sección de perfil -->
+            <div class="sidebar-separator mt-auto"></div>
 
             <!-- Perfil y Soporte -->
-            <div class="mt-auto">
+            <div class="sidebar-section">
                 <a href="{{ url_for('profesor.perfil') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.perfil' %}active{% endif %}">
-                    <i class="fas fa-user-circle fa-fw me-2"></i>Mi Perfil
+                    <i class="fas fa-user-cog"></i>Mi Perfil
                 </a>
                 <a href="{{ url_for('profesor.soporte') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.soporte' %}active{% endif %}">
-                    <i class="fas fa-question-circle fa-fw me-2"></i>Soporte
+                    <i class="fas fa-question-circle"></i>Soporte
                 </a>
             </div>
         </nav>
 
-        <div class="sidebar-footer p-3">
+        <div class="sidebar-footer">
             <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-white d-flex align-items-center justify-content-center me-3" 
-                     style="width: 40px; height: 40px;">
-                    <i class="fas fa-user text-primary"></i>
+                <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
+                     style="width: 45px; height: 45px;">
+                    <i class="fas fa-user text-dark"></i>
                 </div>
-                <div>
-                    <p class="fw-semibold m-0">{{ current_user.nombre_completo }}</p>
+                <div class="user-info">
+                    <p class="fw-semibold m-0 small">{{ current_user.nombre_completo }}</p>
                     <p class="small text-white-50 m-0">Profesor</p>
-                    <a href="{{ url_for('auth.logout') }}" class="small text-white-50 text-decoration-none">
+                    <a href="{{ url_for('auth.logout') }}" class="logout-link text-decoration-none d-flex align-items-center mt-1">
                        <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
                     </a>
                 </div>
@@ -196,10 +428,10 @@
         <header class="d-lg-none p-3 sticky-top bg-white border-bottom shadow-sm">
             <div class="d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-outline-secondary me-3" type="button" id="sidebarToggle">
+                    <button class="btn" type="button" id="sidebarToggle" aria-label="Alternar menú">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <h5 class="m-0 text-dark">Panel de Profesor</h5>
+                    <h5 class="m-0 ms-3 text-dark fw-bold">Panel de Profesor</h5>
                 </div>
                 <!-- Indicador de curso seleccionado en móvil -->
                 {% if session.get('curso_seleccionado') %}
@@ -212,10 +444,10 @@
         </header>
         
         <!-- Content -->
-        <main class="content-wrapper flex-grow-1 p-3">
+        <main class="content-wrapper flex-grow-1">
             <!-- Información del curso seleccionado -->
             {% if session.get('curso_seleccionado') %}
-            <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <div class="alert alert-info alert-dismissible fade show mb-4 curso-alert" role="alert">
                 <div class="d-flex align-items-center">
                     <i class="fas fa-chalkboard-teacher me-2 fs-5"></i>
                     <div class="flex-grow-1">
@@ -230,7 +462,7 @@
                         <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-outline-info btn-sm me-2">
                             <i class="fas fa-sync-alt me-1"></i>Cambiar curso
                         </a>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                     </div>
                 </div>
             </div>
@@ -255,7 +487,7 @@
                         <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
                             <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
                             {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
                     {% endfor %}
                 {% endif %}
@@ -282,6 +514,7 @@
                 sidebarToggle.addEventListener('click', function() {
                     sidebar.classList.toggle('show');
                     document.querySelector('.sidebar-overlay').classList.toggle('show');
+                    document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
                 });
             }
 
@@ -291,6 +524,7 @@
                 if (event.target === overlayEl) {
                     sidebar.classList.remove('show');
                     overlayEl.classList.remove('show');
+                    document.body.style.overflow = '';
                 }
             });
 
@@ -301,6 +535,18 @@
                     if (window.innerWidth < 992) {
                         sidebar.classList.remove('show');
                         document.querySelector('.sidebar-overlay').classList.remove('show');
+                        document.body.style.overflow = '';
+                    }
+                });
+            });
+
+            // Manejar el estado de los submenús
+            const dropdownToggles = document.querySelectorAll('.nav-link.dropdown-toggle');
+            dropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const parent = this.closest('.nav-item.has-submenu');
+                    if (parent) {
+                        parent.classList.toggle('open');
                     }
                 });
             });
@@ -314,32 +560,33 @@
                     link.classList.remove('active');
                     if (link.getAttribute('href') === currentPath) {
                         link.classList.add('active');
+                        
+                        // Activar también el elemento padre si es un submenú
+                        const parentDropdown = link.closest('.collapse');
+                        if (parentDropdown) {
+                            const toggle = document.querySelector(`[href="#${parentDropdown.id}"]`);
+                            if (toggle) {
+                                toggle.classList.add('active');
+                                const parentItem = toggle.closest('.nav-item.has-submenu');
+                                if (parentItem) {
+                                    parentItem.classList.add('open');
+                                }
+                            }
+                        }
                     }
                 });
             }
 
             setActiveNavLink();
-        });
-
-        // Manejar el estado del dropdown de Gestión Académica
-        window.addEventListener('load', function() {
-            const currentPath = window.location.pathname;
-            const academicPaths = [
-                '/profesor/gestion-lc',
-                '/profesor/ver_lista_estudiantes',
-                '/profesor/registrar_calificaciones',
-                '/profesor/asistencia'
-            ];
             
-            if (academicPaths.some(path => currentPath.includes(path))) {
-                const academicaSubmenu = document.getElementById('academicaSubmenu');
-                const academicaToggle = document.querySelector('[href="#academicaSubmenu"]');
-                
-                if (academicaSubmenu && academicaToggle) {
-                    academicaSubmenu.classList.add('show');
-                    academicaToggle.classList.add('active');
+            // Manejar el redimensionamiento de la ventana
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 992) {
+                    sidebar.classList.remove('show');
+                    document.querySelector('.sidebar-overlay').classList.remove('show');
+                    document.body.style.overflow = '';
                 }
-            }
+            });
         });
     </script>
 

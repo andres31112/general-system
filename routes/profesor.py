@@ -17,6 +17,38 @@ profesor_bp = Blueprint('profesor', __name__, url_prefix='/profesor')
 def obtener_cursos_del_profesor(profesor_id):
     """Obtiene todos los cursos únicos del profesor basado en horarios compartidos y clases."""
     try:
+        # Cursos desde HorarioCompartido - CORREGIDO
+        cursos_horarios = db.session.query(Curso).join(
+            HorarioCompartido, HorarioCompartido.curso_id == Curso.id_curso  # ✅ id_curso en lugar de id
+        ).filter(
+            HorarioCompartido.profesor_id == profesor_id
+        ).distinct().all()
+    except Exception as e:
+        flash(f'Error en la consulta de cursos por horario: {str(e)}', 'error')
+        cursos_horarios = []
+
+    # Cursos desde Clase - CORREGIDO
+    try:
+        cursos_clases = db.session.query(Curso).join(
+            Clase, Clase.cursoId == Curso.id_curso  # ✅ id_curso en lugar de id
+        ).filter(
+            Clase.profesorId == profesor_id
+        ).distinct().all()
+    except Exception as e:
+        flash(f'Error en la consulta de cursos por clase: {str(e)}', 'error')
+        cursos_clases = []
+
+    # Combinar y eliminar duplicados manteniendo objetos Curso
+    todos = {c.id_curso: c for c in (cursos_horarios + cursos_clases)}.values()  # ✅ id_curso
+    todos_cursos = list(todos)
+
+    # Agregar total de estudiantes por curso
+    for curso in todos_cursos:
+        curso.total_estudiantes = len(obtener_estudiantes_por_curso(curso.id_curso))  # ✅ id_curso
+
+    return todos_cursos
+    """Obtiene todos los cursos únicos del profesor basado en horarios compartidos y clases."""
+    try:
         # Cursos desde HorarioCompartido (más directo y sin ambigüedad)
         cursos_horarios = db.session.query(Curso).join(
             HorarioCompartido, HorarioCompartido.curso_id == Curso.id
@@ -49,6 +81,56 @@ def obtener_cursos_del_profesor(profesor_id):
     return todos_cursos
 
 def obtener_horarios_detallados_profesor(profesor_id):
+    """Obtiene horarios compartidos con detalles completos."""
+    horarios = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
+    horarios_detallados = []
+
+    for hcomp in horarios:
+        # Buscar el HorarioCurso que coincida - CORREGIDO
+        horario_curso = HorarioCurso.query.filter_by(
+            curso_id=hcomp.curso_id,
+            asignatura_id=hcomp.asignatura_id,
+            horario_general_id=hcomp.horario_general_id
+        ).first()
+
+        # Fallback: si no existe una coincidencia exacta, intentar por curso + asignatura
+        if not horario_curso:
+            horario_curso = HorarioCurso.query.filter_by(
+                curso_id=hcomp.curso_id,
+                asignatura_id=hcomp.asignatura_id
+            ).first()
+
+        curso = Curso.query.get(hcomp.curso_id)
+        asignatura = Asignatura.query.get(hcomp.asignatura_id)
+        horario_general = HorarioGeneral.query.get(hcomp.horario_general_id) if hcomp.horario_general_id else None
+
+        # Salon - CORREGIDO
+        salon = None
+        if horario_curso and getattr(horario_curso, 'id_salon_fk', None):
+            salon = Salon.query.get(horario_curso.id_salon_fk)
+
+        sede = None
+        if curso and getattr(curso, 'sedeId', None):
+            sede = Sede.query.get(curso.sedeId)
+
+        horarios_detallados.append({
+            'curso_nombre': curso.nombreCurso if curso else 'N/A',  # ✅ curso_nombre
+            'asignatura_nombre': asignatura.nombre if asignatura else 'N/A',  # ✅ asignatura_nombre
+            'dia_semana': horario_curso.dia_semana if horario_curso and getattr(horario_curso, 'dia_semana', None) else (horario_general.nombre if horario_general else 'N/A'),  # ✅ dia_semana
+            'hora_inicio': (
+                horario_curso.hora_inicio if horario_curso and getattr(horario_curso, 'hora_inicio', None)
+                else (horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else 'N/A')
+            ),
+            'hora_fin': (
+                horario_curso.hora_fin if horario_curso and getattr(horario_curso, 'hora_fin', None)  # ✅ hora_fin de HorarioCurso
+                else (horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else 'N/A')
+            ),
+            'salon': salon.nombre if salon else 'N/A',
+            'sede': sede.nombre if sede else 'N/A',
+            'origen_id_horario_curso': horario_curso.id_horario_curso if horario_curso else None  # ✅ id_horario_curso
+        })
+
+    return horarios_detallados
     """Obtiene horarios compartidos con detalles completos."""
     horarios = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
     horarios_detallados = []
@@ -130,6 +212,37 @@ def obtener_asignaturas_por_curso_y_profesor(curso_id, profesor_id):
         return []
 
     try:
+        # CORREGIDO: usar id_asignatura en lugar de id
+        asignaturas_horario = db.session.query(Asignatura).join(
+            HorarioCompartido, HorarioCompartido.asignatura_id == Asignatura.id_asignatura
+        ).filter(
+            HorarioCompartido.curso_id == curso_id,
+            HorarioCompartido.profesor_id == profesor_id
+        ).distinct().all()
+    except Exception as e:
+        flash(f'Error al obtener asignaturas (horario): {str(e)}', 'error')
+        asignaturas_horario = []
+
+    # Desde la tabla Clase - CORREGIDO
+    try:
+        asignaturas_clase = db.session.query(Asignatura).join(
+            Clase, Clase.asignaturaId == Asignatura.id_asignatura  # ✅ id_asignatura
+        ).filter(
+            Clase.cursoId == curso_id,
+            Clase.profesorId == profesor_id
+        ).distinct().all()
+    except Exception as e:
+        flash(f'Error al obtener asignaturas (clase): {str(e)}', 'error')
+        asignaturas_clase = []
+
+    # Unir y retornar sin duplicados
+    asignaturas = {a.id_asignatura: a for a in (asignaturas_horario + asignaturas_clase)}.values()  # ✅ id_asignatura
+    return list(asignaturas)
+    """Obtiene asignaturas asignadas al profesor en un curso específico."""
+    if not curso_id:
+        return []
+
+    try:
         asignaturas_horario = db.session.query(Asignatura).join(
             HorarioCompartido, HorarioCompartido.asignatura_id == Asignatura.id
         ).filter(
@@ -157,6 +270,30 @@ def obtener_asignaturas_por_curso_y_profesor(curso_id, profesor_id):
     return list(asignaturas)
 
 def obtener_asignaturas_del_profesor(profesor_id):
+    """Obtiene todas las asignaturas del profesor (todas las sedes/ cursos)."""
+    try:
+        # CORREGIDO: usar id_asignatura
+        asignaturas_horario = db.session.query(Asignatura).join(
+            HorarioCompartido, HorarioCompartido.asignatura_id == Asignatura.id_asignatura
+        ).filter(
+            HorarioCompartido.profesor_id == profesor_id
+        ).distinct().all()
+    except Exception as e:
+        flash(f'Error al obtener asignaturas del profesor (horario): {str(e)}', 'error')
+        asignaturas_horario = []
+
+    try:
+        asignaturas_clase = db.session.query(Asignatura).join(
+            Clase, Clase.asignaturaId == Asignatura.id_asignatura  # ✅ id_asignatura
+        ).filter(
+            Clase.profesorId == profesor_id
+        ).distinct().all()
+    except Exception as e:
+        flash(f'Error al obtener asignaturas del profesor (clase): {str(e)}', 'error')
+        asignaturas_clase = []
+
+    asignaturas = {a.id_asignatura: a for a in (asignaturas_horario + asignaturas_clase)}.values()  # ✅ id_asignatura
+    return list(asignaturas)
     """Obtiene todas las asignaturas del profesor (todas las sedes/ cursos)."""
     try:
         asignaturas_horario = db.session.query(Asignatura).join(
@@ -523,6 +660,7 @@ def api_mis_horarios():
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener horarios: {str(e)}'}), 500
 
+
 @profesor_bp.route('/api/mis-cursos')
 @login_required
 def api_mis_cursos():
@@ -530,10 +668,10 @@ def api_mis_cursos():
     try:
         cursos = obtener_cursos_del_profesor(current_user.id_usuario)
         cursos_data = [{
-            'id': curso.id,
+            'id': curso.id_curso,  # ✅ id_curso en lugar de id
             'nombre': curso.nombreCurso,
             'sede': curso.sede.nombre if getattr(curso, 'sede', None) else 'N/A',
-            'director': 'No asignado',  # En tu modelo Curso no tiene director
+            'director': 'No asignado',
             'total_estudiantes': getattr(curso, 'total_estudiantes', 0)
         } for curso in cursos]
         return jsonify({
@@ -743,25 +881,27 @@ def agregar_asignatura():
         # Crear nueva asignatura
         nueva_asignatura = Asignatura(nombre=nombre.strip())
         db.session.add(nueva_asignatura)
-        db.session.flush()  # para obtener nueva_asignatura.id
+        db.session.flush()
 
-        # Asociar la asignatura al curso y al profesor mediante HorarioCurso y HorarioCompartido.
-        # Es preferible recibir id_horario_general en el request; si no, usamos el primero disponible.
+        # Obtener el ID correcto de la asignatura - CORREGIDO
+        asignatura_id = nueva_asignatura.id_asignatura  # ✅ id_asignatura
+
         id_horario_general = data.get('horario_general_id')
         if not id_horario_general:
             horario_general = HorarioGeneral.query.first()
             if not horario_general:
                 db.session.rollback()
                 return jsonify({'success': False, 'message': 'No hay horarios generales disponibles'}), 400
-            id_horario_general = horario_general.id
+            id_horario_general = horario_general.id_horario  # ✅ id_horario
 
-        # Crear HorarioCurso con los nombres de campos correctos
+        # Crear HorarioCurso - CORREGIDO
         horario_curso = HorarioCurso(
             curso_id=curso_id,
-            asignatura_id=nueva_asignatura.id,
+            asignatura_id=asignatura_id,  # ✅ usar la variable correcta
             horario_general_id=id_horario_general,
             dia_semana=data.get('dia_semana', 'Lunes'),
             hora_inicio=data.get('hora_inicio', '07:00'),
+            hora_fin=data.get('hora_fin', '07:45'),  # ✅ Asegurar que hora_fin tenga valor
             id_salon_fk=data.get('id_salon_fk', None)
         )
         db.session.add(horario_curso)
@@ -771,7 +911,7 @@ def agregar_asignatura():
         horario_compartido = HorarioCompartido(
             profesor_id=current_user.id_usuario,
             curso_id=curso_id,
-            asignatura_id=nueva_asignatura.id,
+            asignatura_id=asignatura_id,  # ✅ usar la variable correcta
             horario_general_id=id_horario_general,
             fecha_compartido=datetime.utcnow()
         )
@@ -781,12 +921,12 @@ def agregar_asignatura():
         return jsonify({
             'success': True,
             'message': 'Asignatura añadida correctamente',
-            'asignatura_id': nueva_asignatura.id
+            'asignatura_id': asignatura_id  # ✅ id_asignatura
         })
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error al añadir asignatura: {str(e)}'}), 500
-
+    
 @profesor_bp.route('/api/editar-asignatura', methods=['POST'])
 @login_required
 def editar_asignatura():

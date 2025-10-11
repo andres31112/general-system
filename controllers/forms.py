@@ -138,14 +138,8 @@ class RegistrationForm(FlaskForm):
     rol = SelectField('Rol del Usuario', validators=[DataRequired()])
     
     # Campos específicos para estudiantes
-    curso_id = QuerySelectField(
-        'Curso',
-        query_factory=get_all_courses,
-        get_pk=lambda c: c.id_curso,
-        get_label=lambda c: c.nombreCurso,
-        allow_blank=True,
-        blank_text='Selecciona un Curso...'
-    )
+    curso_id = SelectField('Curso', coerce=int, validators=[Optional()])
+
     
     anio_matricula = IntegerField('Año de Matrícula', 
                                  validators=[Optional()],
