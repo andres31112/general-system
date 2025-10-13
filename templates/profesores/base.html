@@ -65,12 +65,12 @@
         }
 
         .nav-link {
-            color: rgba(255, 255, 255, 0.9) !important;
-            padding: 0.85rem 1rem;
-            margin: 3px 0;
+            color: rgba(255, 255, 255, 0.95) !important;
+            padding: 0.65rem 0.9rem;
+            margin: 6px 0;
             border: none;
-            border-radius: 12px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 10px;
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             position: relative;
@@ -134,25 +134,26 @@
             transform: translateX(4px);
         }
 
+        /* Agrupar enlaces en bloques compactos */
         .sidebar-section {
-            margin: 1rem 0;
+            margin: 0.35rem 0;
+            padding: 0.25rem 0.25rem;
         }
 
-        .sidebar-section-title {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 0.5rem 1rem;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
+        .sidebar-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 0.25rem 0;
         }
+
+        /* Se eliminaron los subtítulos (sidebar-section-title) para una navegación más limpia */
 
         .sidebar-footer {
-            background: rgba(0, 0, 0, 0.2);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 1rem;
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.18);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 0.75rem;
+            backdrop-filter: blur(8px);
         }
 
         .user-avatar {
@@ -226,8 +227,8 @@
         /* Separador visual en el sidebar */
         .sidebar-separator {
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            margin: 1rem;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+            margin: 0.6rem 0;
         }
 
         /* Efecto de partículas de fondo para el sidebar */
@@ -327,66 +328,38 @@
         </div>
 
         <nav class="nav flex-column flex-grow-1 p-3" aria-label="Navegación principal">
-            <!-- Inicio -->
-            <div class="sidebar-section">
-                <a href="{{ url_for('profesor.dashboard') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.dashboard' %}active{% endif %}">
+            <div class="sidebar-group">
+                <a href="{{ url_for('profesor.dashboard') }}" class="nav-link rounded {% if request.endpoint == 'profesor.dashboard' %}active{% endif %}">
                     <i class="fas fa-home"></i>Inicio
                 </a>
             </div>
 
-            <!-- Gestión Académica -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">Gestión Académica</div>
-                
-                <div class="nav-item has-submenu">
-                    <a class="nav-link rounded my-1 dropdown-toggle {% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}active{% endif %}" 
-                       href="#academicaSubmenu" data-bs-toggle="collapse" role="button" 
-                       aria-expanded="{% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}true{% else %}false{% endif %}" 
-                       aria-controls="academicaSubmenu">
-                        <i class="fas fa-book-open"></i>Gestión Académica
-                    </a>
-                    
-                    <div class="collapse {% if request.endpoint in ['profesor.gestion_lc', 'profesor.ver_lista_estudiantes', 'profesor.registrar_calificaciones', 'profesor.asistencia'] %}show{% endif %}" 
-                         id="academicaSubmenu">
-                        <a href="{{ url_for('profesor.gestion_lc') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.gestion_lc' %}active{% endif %}">
-                            <i class="fas fa-clipboard-list"></i>Listas y Calificaciones
-                        </a>
-                        <a href="{{ url_for('profesor.asistencia') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.asistencia' %}active{% endif %}">
-                            <i class="fas fa-calendar-check"></i>Registro de Asistencia
-                        </a>
-                        <a href="{{ url_for('profesor.ver_lista_estudiantes') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_lista_estudiantes' %}active{% endif %}">
-                            <i class="fas fa-users"></i>Lista de Estudiantes
-                        </a>
-                    </div>
-                </div>
-
-                <a href="{{ url_for('profesor.ver_horario_clases') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_horario_clases' %}active{% endif %}">
+            <div class="sidebar-group">
+                <a href="{{ url_for('profesor.gestion_lc') }}" class="nav-link rounded {% if request.endpoint == 'profesor.gestion_lc' or request.endpoint == 'profesor.asistencia' %}active{% endif %}">
+                    <i class="fas fa-clipboard-list"></i>Asistencia/Calificaciones
+                </a>
+                <a href="{{ url_for('profesor.ver_horario_clases') }}" class="nav-link rounded {% if request.endpoint == 'profesor.ver_horario_clases' %}active{% endif %}">
                     <i class="fas fa-calendar-alt"></i>Mi Horario
                 </a>
             </div>
 
-            <!-- Mis Cursos -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">Mis Cursos</div>
-                
-                <a href="{{ url_for('profesor.cursos') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.cursos' %}active{% endif %}">
+            <div class="sidebar-group">
+                <a href="{{ url_for('profesor.cursos') }}" class="nav-link rounded {% if request.endpoint == 'profesor.cursos' %}active{% endif %}">
                     <i class="fas fa-chalkboard-teacher"></i>Mis Cursos
                 </a>
-
-                <a href="{{ url_for('profesor.asignaturas') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.asignaturas' %}active{% endif %}">
+                <a href="{{ url_for('profesor.asignaturas') }}" class="nav-link rounded {% if request.endpoint == 'profesor.asignaturas' %}active{% endif %}">
                     <i class="fas fa-book"></i>Mis Asignaturas
                 </a>
             </div>
 
-            <!-- Comunicaciones -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">Comunicaciones</div>
-                
-                <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
+            <div class="sidebar-group">
+                <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
                     <i class="fas fa-bullhorn"></i>Comunicaciones
-                    <span class="badge-notification">3</span>
+                    {% if unread_messages|default(0) > 0 %}
+                    <span class="badge-notification">{{ unread_messages|default(0) }}</span>
+                    {% endif %}
                 </a>
-                <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.ver_eventos' %}active{% endif %}">
+                <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded {% if request.endpoint == 'profesor.ver_eventos' %}active{% endif %}">
                     <i class="fas fa-calendar-day"></i>Eventos
                 </a>
             </div>
@@ -394,30 +367,28 @@
             <!-- Separador antes de la sección de perfil -->
             <div class="sidebar-separator mt-auto"></div>
 
-            <!-- Perfil y Soporte -->
-            <div class="sidebar-section">
-                <a href="{{ url_for('profesor.perfil') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.perfil' %}active{% endif %}">
-                    <i class="fas fa-user-cog"></i>Mi Perfil
-                </a>
-                <a href="{{ url_for('profesor.soporte') }}" class="nav-link rounded my-1 {% if request.endpoint == 'profesor.soporte' %}active{% endif %}">
-                    <i class="fas fa-question-circle"></i>Soporte
-                </a>
-            </div>
+            <!-- Perfil y Soporte (moved to footer area) -->
         </nav>
 
-        <div class="sidebar-footer">
-            <div class="d-flex align-items-center">
-                <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
-                     style="width: 45px; height: 45px;">
-                    <i class="fas fa-user text-dark"></i>
+        <div class="sidebar-footer d-flex flex-column align-items-stretch">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center">
+                    <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
+                         style="width: 48px; height: 48px;">
+                        <i class="fas fa-user text-dark"></i>
+                    </div>
+                    <div class="user-info">
+                        <p class="fw-semibold m-0 small">{{ current_user.nombre_completo }}</p>
+                        <p class="small text-white-50 m-0">Profesor</p>
+                    </div>
                 </div>
-                <div class="user-info">
-                    <p class="fw-semibold m-0 small">{{ current_user.nombre_completo }}</p>
-                    <p class="small text-white-50 m-0">Profesor</p>
-                    <a href="{{ url_for('auth.logout') }}" class="logout-link text-decoration-none d-flex align-items-center mt-1">
-                       <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
-                    </a>
-                </div>
+                <a href="{{ url_for('profesor.perfil') }}" class="btn btn-sm btn-light">Perfil</a>
+            </div>
+
+            <div class="d-flex">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                </a>
             </div>
         </div>
     </aside>

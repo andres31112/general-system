@@ -1,9 +1,12 @@
-{% extends "base.html" %}
+{% extends "profesores/base.html" %}
+
+{% block title %}Seleccionar Curso{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Seleccionar Curso</h1>
+        <h1 class="h3 mb-0 text-dark">Seleccionar Curso</h1>
+        <small class="text-muted">Selecciona el curso con el que trabajarás en esta sesión</small>
     </div>
 
     <div class="row">
@@ -40,7 +43,10 @@
                                     
                                     <form action="{{ url_for('profesor.guardar_curso_seleccionado') }}" method="POST" class="mt-3">
                                         <input type="hidden" name="curso_id" value="{{ curso.id }}">
-                                        <button type="submit" class="btn btn-primary btn-block">
+                                        {% if request.args.get('next') %}
+                                        <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+                                        {% endif %}
+                                        <button type="submit" class="btn btn-academica btn-block">
                                             <i class="fas fa-check me-2"></i>Seleccionar Curso
                                         </button>
                                     </form>

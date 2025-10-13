@@ -1,9 +1,13 @@
-{% extends "/profesores/base.html" %}
+{% extends "profesores/base.html" %}
 
 {% block title %}Panel de Profesor{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/dashboard.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid prof-dashboard-container">
     <h2 class="mb-4">Dashboard de Profesor</h2>
 
     <div class="row g-4">
@@ -13,10 +17,13 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-white-50">Estudiantes a cargo</p>
-                            <h3 class="card-title fw-bold">125</h3>
+                            <h3 class="card-title fw-bold">{{ estudiantes_count|default(0) }}</h3>
                         </div>
                         <i class="fas fa-users fa-3x text-white-50"></i>
                     </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end">
+                    <a href="{{ url_for('profesor.ver_lista_estudiantes') }}" class="text-white-50">Ver lista <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
@@ -26,10 +33,13 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-white-50">Asignaturas</p>
-                            <h3 class="card-title fw-bold">4</h3>
+                            <h3 class="card-title fw-bold">{{ asignaturas_count|default(0) }}</h3>
                         </div>
                         <i class="fas fa-book fa-3x text-white-50"></i>
                     </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end">
+                    <a href="{{ url_for('profesor.asignaturas') }}" class="text-white-50">Administrar <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
@@ -39,10 +49,13 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-black-50">Pendientes</p>
-                            <h3 class="card-title fw-bold">8</h3>
+                            <h3 class="card-title fw-bold">{{ pendientes_count|default(0) }}</h3>
                         </div>
                         <i class="fas fa-tasks fa-3x text-black-50"></i>
                     </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end">
+                    <a href="{{ url_for('profesor.gestion_lc') }}" class="text-dark">Ver pendientes <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
@@ -52,17 +65,41 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-white-50">Mensajes sin leer</p>
-                            <h3 class="card-title fw-bold">3</h3>
+                            <h3 class="card-title fw-bold">{{ unread_messages|default(0) }}</h3>
                         </div>
                         <i class="fas fa-envelope fa-3x text-white-50"></i>
                     </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-end">
+                    <a href="{{ url_for('profesor.comunicaciones') }}" class="text-white-50">Ir a mensajes <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row g-4 mt-3">
-        <div class="col-lg-6">
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Próxima Clase</h5>
+                </div>
+                <div class="card-body">
+                    <div id="proxima-clase-content">
+                        {% if proxima_clase %}
+                            <p class="mb-1 fw-semibold">{{ proxima_clase.asignatura_nombre }} — {{ proxima_clase.curso_nombre }}</p>
+                            <p class="mb-1 text-muted"><i class="fas fa-calendar-day me-1"></i> {{ proxima_clase.dia_semana }} • {{ proxima_clase.hora_inicio }} - {{ proxima_clase.hora_fin }}</p>
+                            <p class="mb-0"><i class="fas fa-map-marker-alt me-1"></i> Salón: {{ proxima_clase.salon or 'N/A' }}</p>
+                        {% else %}
+                            <p class="text-muted">No hay próximas clases programadas.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer bg-white text-end">
+                    <a href="{{ url_for('profesor.ver_horario_clases') }}" class="btn btn-sm btn-outline-secondary">Ver horario completo</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-white">
                     <h5 class="card-title mb-0">Anuncios Recientes</h5>
@@ -86,7 +123,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-6">
+        </div>
+        <div class="col-lg-8">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-white">
                     <h5 class="card-title mb-0">Mis Horarios Compartidos</h5>
@@ -129,7 +167,10 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     cargarHorarios();

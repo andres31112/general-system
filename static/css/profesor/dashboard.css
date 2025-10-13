@@ -1,0 +1,45 @@
+/* Estilos específicos para el dashboard del profesor - inspirado en área académica */
+:root{
+    --academico-bg: #f5f8fb;
+    --academico-primary: #0d6efd; /* azul bootstrap */
+    --academico-accent: #ee964b; /* tono cálido usado en el proyecto */
+    --card-radius: 12px;
+}
+
+.prof-dashboard-container{ padding: 1rem; }
+
+.card.academico{
+    border: none;
+    border-radius: var(--card-radius);
+    box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+}
+
+.card.academico .card-header{
+    background: linear-gradient(90deg, rgba(13,110,253,0.06), rgba(238,150,75,0.03));
+    border-bottom: none;
+    font-weight: 700;
+}
+
+.card.academico .card-body{ background: #fff; }
+
+.kpi-card{
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.kpi-card .value{ font-size: 1.6rem; font-weight: 800; }
+.kpi-card .label{ font-size: 0.85rem; color: #6c757d; }
+
+.btn-academica{
+    background: var(--academico-primary);
+    color: #fff;
+    border-radius: 8px;
+    border: none;
+}
+.btn-academica:hover{ background: #0b5ed7; color: #fff; }
+
+.proxima-clase-card{ background: linear-gradient(90deg, rgba(238,150,75,0.08), rgba(13,110,253,0.04)); }
+
+@media (max-width: 991.98px){
+    .kpi-card .value{ font-size: 1.3rem; }
+}

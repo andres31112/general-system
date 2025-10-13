@@ -1,0 +1,21 @@
+{% extends "profesores/base.html" %}
+
+{% block title %}Perfil{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Perfil</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card p-3">
+                <h5>Estadísticas</h5>
+                <ul class="list-unstyled">
+                    <li>Total cursos: {{ total_cursos }}</li>
+                    <li>Total asignaturas: {{ total_asignaturas }}</li>
+                    <li>Total horarios compartidos: {{ total_horarios }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -940,13 +940,16 @@ async function cargarHorarioBase(horarioId) {
     }
 }
 
+// =============================================
+// FUNCIONES DE GESTIÓN DE HORARIOS - CORREGIDAS
+// =============================================
+
 async function guardarHorarioCurso() {
     if (!estado.cursoSeleccionado) {
         mostrarNotificacion('Seleccione un curso primero', 'error');
         return false;
     }
 
-    // Obtener el ID correcto del curso
     const cursoId = estado.cursoSeleccionado.id_curso || estado.cursoSeleccionado.id;
     
     if (!cursoId) {
@@ -954,16 +957,24 @@ async function guardarHorarioCurso() {
         return false;
     }
 
-    // Validar que hay asignaciones
     if (Object.keys(estado.asignaciones).length === 0) {
         mostrarNotificacion('No hay materias asignadas en el horario', 'error');
         return false;
     }
 
+    console.log('======= 🚀 INICIANDO GUARDADO =======');
+    console.log('📋 Curso ID:', cursoId);
+    console.log('📚 Asignaciones a guardar:', estado.asignaciones);
+    console.log('🏫 Salones a guardar:', estado.salonesAsignaciones);
+    console.log('🕒 Total de asignaciones:', Object.keys(estado.asignaciones).length);
+
+    // Verificar que las asignaciones tienen valores válidos
+    const asignacionesValidas = Object.entries(estado.asignaciones).filter(([clave, valor]) => valor && valor !== '');
+    console.log('✅ Asignaciones válidas:', asignacionesValidas.length);
+
     mostrarLoading('Guardando horario del curso...');
     
     try {
-        // Obtener el ID del horario general si existe
         const horarioGeneralId = estado.horarioSeleccionado?.id || estado.cursoSeleccionado.horario_general_id;
 
         const datos = {
@@ -973,15 +984,25 @@ async function guardarHorarioCurso() {
             salones_asignaciones: estado.salonesAsignaciones
         };
 
-        console.log('💾 Guardando horario:', datos);
+        console.log('📤 Enviando datos al servidor:', datos);
 
         const resultado = await apiRequest(API_URLS.guardarHorarioCurso, {
             method: 'POST',
             body: datos
         });
 
+        console.log('📥 Respuesta del servidor:', resultado);
+
         if (resultado.success) {
-            mostrarNotificacion('Horario del curso guardado correctamente', 'success');
+            const mensaje = resultado.message || 'Horario del curso guardado correctamente';
+            console.log('✅ ' + mensaje);
+            mostrarNotificacion(mensaje, 'success');
+            
+            // Recargar para ver los cambios
+            console.log('🔄 Recargando horario...');
+            await cargarHorarioCurso(cursoId);
+            generarTablaHorario();
+            
             return true;
         } else {
             throw new Error(resultado.error || 'Error desconocido al guardar');
@@ -992,7 +1013,34 @@ async function guardarHorarioCurso() {
         return false;
     } finally {
         ocultarLoading();
+        console.log('======= 🏁 FINALIZADO GUARDADO =======');
     }
+}
+
+// ✅ NUEVA FUNCIÓN: PREPARAR DATOS CON HORA_FIN CALCULADA
+function prepararDatosParaGuardar(horarioGeneralId) {
+    const datos = {
+        curso_id: estado.cursoSeleccionado.id_curso || estado.cursoSeleccionado.id,
+        horario_general_id: horarioGeneralId,
+        asignaciones: {},
+        salones_asignaciones: {}
+    };
+
+    // Procesar cada asignación y calcular hora_fin
+    Object.keys(estado.asignaciones).forEach(clave => {
+        const asignaturaId = estado.asignaciones[clave];
+        const salonId = estado.salonesAsignaciones[clave];
+        
+        if (asignaturaId) {
+            datos.asignaciones[clave] = asignaturaId;
+            if (salonId) {
+                datos.salones_asignaciones[clave] = salonId;
+            }
+        }
+    });
+
+    console.log('📦 Datos preparados para guardar:', datos);
+    return datos;
 }
 
 async function compartirHorario() {
@@ -1471,6 +1519,32 @@ function confirmarCompartir() {
         return;
     }
     compartirHorario();
+}
+
+// =============================================
+// FUNCIONES AUXILIARES
+// =============================================
+
+function timeToMinutes(timeStr) {
+    if (!timeStr || timeStr === '') {
+        console.warn('⚠️ timeToMinutes recibió tiempo vacío');
+        return 0;
+    }
+    
+    // Manejar formato HH:MM
+    if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+    
+    console.warn('⚠️ Formato de tiempo no reconocido:', timeStr);
+    return 0;
+}
+
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
 // =============================================

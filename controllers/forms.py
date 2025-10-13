@@ -135,10 +135,10 @@ class RegistrationForm(FlaskForm):
                                     render_kw={"placeholder": "Repetir contraseña", "readonly": True})
     
     # Rol y configuración
-    rol = SelectField('Rol del Usuario', validators=[DataRequired()])
+    rol = SelectField('Rol del Usuario', choices=[], validators=[DataRequired()])
     
     # Campos específicos para estudiantes
-    curso_id = SelectField('Curso', coerce=int, validators=[Optional()])
+    curso_id = SelectField('Curso', choices=[], coerce=int, validators=[Optional()])
 
     
     anio_matricula = IntegerField('Año de Matrícula', 

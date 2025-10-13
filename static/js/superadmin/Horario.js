@@ -356,7 +356,37 @@ async function guardarHorarioBD() {
         return null;
     }
 
-    // ✅ CALCULAR HORAS DE INICIO Y FIN AUTOMÁTICAMENTE
+    // ✅ VALIDACIÓN CRÍTICA: Asegurar que todos los bloques tengan hora_fin
+    const bloquesConHoraFin = estado.bloques.map((bloque, index) => {
+        // Si no hay hora_fin, calcularla basándose en la hora_inicio
+        if (!bloque.end || bloque.end === '') {
+            const horaInicio = timeToMinutes(bloque.start);
+            const horaFin = horaInicio + 45; // 45 minutos por defecto
+            bloque.end = minutesToTime(horaFin);
+            console.warn(`⚠️ Bloque ${index} sin hora_fin, calculada automáticamente: ${bloque.end}`);
+        }
+        
+        // Validar que hora_fin sea posterior a hora_inicio
+        if (timeToMinutes(bloque.start) >= timeToMinutes(bloque.end)) {
+            const horaInicio = timeToMinutes(bloque.start);
+            const horaFin = horaInicio + 45; // 45 minutos por defecto
+            bloque.end = minutesToTime(horaFin);
+            console.warn(`⚠️ Bloque ${index} con hora_fin anterior a inicio, corregido: ${bloque.end}`);
+        }
+
+        return {
+            dia_semana: bloque.day,
+            horaInicio: bloque.start,
+            horaFin: bloque.end, // ✅ Ahora siempre tendrá valor
+            tipo: bloque.type,
+            nombre: bloque.nombre || `Bloque ${index + 1}`,
+            orden: index,
+            class_type: bloque.classType,
+            break_type: bloque.breakType
+        };
+    });
+
+    // ✅ CALCULAR HORAS DE INICIO Y FIN GLOBALES
     const horaInicio = calcularHoraInicio();
     const horaFin = calcularHoraFin();
 
@@ -364,23 +394,14 @@ async function guardarHorarioBD() {
         nombre: nombre,
         periodo: periodo,
         dias: Array.from(estado.diasActivos),
-        bloques: estado.bloques.map((bloque, index) => ({
-            dia_semana: bloque.day,
-            horaInicio: bloque.start,
-            horaFin: bloque.end, // ✅ Asegurar que siempre tenga valor
-            tipo: bloque.type,
-            nombre: bloque.nombre,
-            orden: index,
-            class_type: bloque.classType,
-            break_type: bloque.breakType
-        })),
+        bloques: bloquesConHoraFin,
         horaInicio: horaInicio,
         horaFin: horaFin,
         duracion_clase: 45,
         duracion_descanso: 15
     };
 
-    console.log('💾 Guardando horario:', datosHorario);
+    console.log('💾 Guardando horario con validación:', datosHorario);
     mostrarLoading('Guardando horario...');
 
     try {
@@ -706,11 +727,19 @@ function agregarBloque() {
     const dia = document.getElementById('block-day').value;
     const tipo = document.getElementById('block-type').value;
     const inicio = document.getElementById('block-start').value;
-    const fin = document.getElementById('block-end').value;
+    let fin = document.getElementById('block-end').value;
 
     if (!estado.diasActivos.has(dia)) {
         mostrarNotificacion(`El día ${dia} no está activo. Active el día primero.`, 'error');
         return;
+    }
+
+    // ✅ VALIDACIÓN: Si no hay hora_fin, calcular automáticamente
+    if (!fin || fin === '') {
+        const inicioMinutos = timeToMinutes(inicio);
+        fin = minutesToTime(inicioMinutos + 45); // 45 minutos por defecto
+        document.getElementById('block-end').value = fin;
+        console.warn('⚠️ Hora fin vacía, calculada automáticamente:', fin);
     }
 
     if (inicio >= fin) {
@@ -730,7 +759,7 @@ function agregarBloque() {
         day: dia,
         type: tipo,
         start: inicio,
-        end: fin, // ✅ Asegurar que siempre tenga valor
+        end: fin, // ✅ Ahora siempre tendrá valor
         nombre: nombre,
         classType: tipo === 'class' ? document.getElementById('class-type').value : null,
         breakType: tipo === 'break' ? document.getElementById('break-type').value : null
@@ -820,9 +849,19 @@ function configurarEliminacionHorario(id, nombre) {
 // =============================================
 
 function timeToMinutes(timeStr) {
-    if (!timeStr) return 0;
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
+    if (!timeStr || timeStr === '') {
+        console.warn('⚠️ timeToMinutes recibió tiempo vacío');
+        return 0;
+    }
+    
+    // Manejar formato HH:MM
+    if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+    
+    console.warn('⚠️ Formato de tiempo no reconocido:', timeStr);
+    return 0;
 }
 
 function minutesToTime(minutes) {

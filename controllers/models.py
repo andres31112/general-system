@@ -403,7 +403,7 @@ class HorarioCurso(db.Model):
     asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
-    hora_fin = db.Column(db.String(5), nullable=False)
+    hora_fin = db.Column(db.String(5), nullable=False)  # ✅ YA ESTÁ DEFINIDO CORRECTAMENTE
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'))
     id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id_salon'), nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
@@ -413,6 +413,19 @@ class HorarioCurso(db.Model):
     asignatura = db.relationship('Asignatura', back_populates='horarios_asignados')
     horario_general = db.relationship('HorarioGeneral', back_populates='horarios_cursos')
     salon = db.relationship('Salon', back_populates='horarios_asignados')
+    
+    def to_dict(self):
+        return {
+            'id_horario_curso': self.id_horario_curso,
+            'curso_id': self.curso_id,
+            'asignatura_id': self.asignatura_id,
+            'dia_semana': self.dia_semana,
+            'hora_inicio': self.hora_inicio,
+            'hora_fin': self.hora_fin,  # ✅ INCLUIR HORA_FIN
+            'horario_general_id': self.horario_general_id,
+            'id_salon_fk': self.id_salon_fk,
+            'fecha_creacion': self.fecha_creacion.isoformat() if self.fecha_creacion else None
+        }
     
     def __repr__(self):
         return f'<HorarioCurso {self.curso_id} - {self.asignatura_id}>'
