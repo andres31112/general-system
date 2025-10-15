@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, session, request, redirect, url_fo
 from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso,
-    Asistencia, CategoriaCalificacion, HorarioCompartido, HorarioCurso,
+    Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
     HorarioGeneral, Salon, Sede, Evento
 )
 from datetime import datetime, date
@@ -335,7 +335,7 @@ def obtener_asistencias_por_curso(curso_id):
     if not curso_id:
         return []
     asistencias = db.session.query(Asistencia).join(
-        Clase, Asistencia.claseId == Clase.id
+        Clase, Asistencia.claseId == Clase.id_clase
     ).filter(
         Clase.cursoId == curso_id
     ).all()
@@ -344,7 +344,7 @@ def obtener_asistencias_por_curso(curso_id):
 def obtener_clase_para_asistencia(curso_id, profesor_id):
     """Obtiene el ID de una clase para registrar asistencia."""
     clase = Clase.query.filter_by(cursoId=curso_id, profesorId=profesor_id).first()
-    return clase.id if clase else None
+    return clase.id_clase if clase else None
 
 def guardar_o_actualizar_asistencia(estudiante_id, clase_id, fecha, estado):
     """Guarda o actualiza una asistencia. Asistencia NO tiene campo curso_id en tu modelo."""
@@ -747,7 +747,16 @@ def gestion_lc():
     estudiantes_json = [_serialize_estudiante(e) for e in estudiantes]
     asignaturas_json = [_serialize_asignatura(a) for a in asignaturas]
     calificaciones_json = [_serialize_calificacion(c) for c in calificaciones]
-    categorias_json = [{'id': getattr(cat, 'id', None), 'nombre': getattr(cat, 'nombre', '')} for cat in categorias]
+    # Enviar campos completos para que el frontend no tenga que volver a pedirlos
+    categorias_json = [
+        {
+            'id': getattr(cat, 'id_categoria', None) or getattr(cat, 'id', None),
+            'nombre': getattr(cat, 'nombre', '') or '',
+            'color': getattr(cat, 'color', '') or '#cccccc',
+            'porcentaje': float(getattr(cat, 'porcentaje', 0) or 0)
+        }
+        for cat in categorias
+    ]
 
     # Limpiar flashes temporales en sesión
     session.pop('flash_messages', None)
@@ -1134,7 +1143,7 @@ def obtener_calificaciones_api():
         calificaciones_data = []
         for cal, usuario, asign, cat in rows:
             calificaciones_data.append({
-                'id': cal.id,
+                'id': cal.id_calificacion,
                 'estudiante_id': cal.estudianteId,
                 'estudiante_nombre': f"{usuario.nombre} {usuario.apellido}",
                 'asignatura_id': cal.asignaturaId,
@@ -1142,7 +1151,8 @@ def obtener_calificaciones_api():
                 'categoria_id': cal.categoriaId,
                 'categoria_nombre': cat.nombre if cat else '',
                 'valor': float(cal.valor) if cal.valor is not None else None,
-                'observaciones': cal.observaciones
+                'observaciones': cal.observaciones,
+                'nombre_calificacion': getattr(cal, 'nombre_calificacion', None)
             })
 
         return jsonify({'success': True, 'calificaciones': calificaciones_data})
@@ -1199,6 +1209,151 @@ def guardar_calificacion():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error al guardar calificación: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/crear-asignacion', methods=['POST'])
+@login_required
+def api_crear_asignacion():
+    """Crea una nueva asignación (placeholder de calificación) para todos los estudiantes del curso seleccionado.
+    Body: { asignatura_id: int, nombre_calificacion: str, categoria_id: int }
+    """
+    try:
+        data = request.get_json()
+        asignatura_id = data.get('asignatura_id')
+        nombre = data.get('nombre_calificacion')
+        categoria_id = data.get('categoria_id')
+        curso_id = session.get('curso_seleccionado')
+
+        if not curso_id:
+            return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+
+        if not verificar_asignatura_profesor_en_curso(asignatura_id, current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a esa asignatura en el curso'}), 403
+
+        estudiantes = obtener_estudiantes_por_curso(curso_id)
+        creadas = []
+        for est in estudiantes:
+            nueva = Calificacion(
+                estudianteId=getattr(est, 'id_usuario', None),
+                asignaturaId=asignatura_id,
+                categoriaId=categoria_id or (CategoriaCalificacion.query.first().id_categoria if CategoriaCalificacion.query.first() else None),
+                valor=None,
+                observaciones='',
+                nombre_calificacion=nombre
+            )
+            db.session.add(nueva)
+            db.session.flush()
+            creadas.append({'id': nueva.id_calificacion, 'estudiante_id': nueva.estudianteId})
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Asignación creada', 'creadas': creadas})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error creando asignación: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/editar-asignacion', methods=['POST'])
+@login_required
+def api_editar_asignacion():
+    """Editar nombre de asignación: body { nombre_antiguo, nombre_nuevo }
+    Actualiza las calificaciones existentes que tienen nombre_calificacion igual al nombre_antiguo.
+    """
+    try:
+        data = request.get_json() or {}
+        nombre_ant = data.get('nombre_antiguo')
+        nombre_new = data.get('nombre_nuevo')
+        curso_id = session.get('curso_seleccionado')
+
+        if not curso_id:
+            return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+        if not nombre_ant or not nombre_new:
+            return jsonify({'success': False, 'message': 'nombres requeridos'}), 400
+
+        # Actualizar todas las calificaciones del curso con ese nombre
+        rows = Calificacion.query.filter_by(nombre_calificacion=nombre_ant).all()
+        for r in rows:
+            r.nombre_calificacion = nombre_new
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Asignación renombrada'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error renombrando asignación: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/eliminar-asignacion', methods=['POST'])
+@login_required
+def api_eliminar_asignacion():
+    """Eliminar una asignación por nombre (elimina las calificaciones asociadas). Body: { nombre_calificacion }
+    """
+    try:
+        data = request.get_json() or {}
+        nombre = data.get('nombre_calificacion')
+        curso_id = session.get('curso_seleccionado')
+
+        if not curso_id:
+            return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+        if not nombre:
+            return jsonify({'success': False, 'message': 'nombre requerido'}), 400
+
+        Calificacion.query.filter_by(nombre_calificacion=nombre).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Asignación eliminada'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error eliminando asignación: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/categorias', methods=['GET', 'POST'])
+@login_required
+def api_categorias():
+    if request.method == 'GET':
+        cats = CategoriaCalificacion.query.all()
+        data = [{'id': c.id_categoria, 'nombre': c.nombre, 'color': c.color, 'porcentaje': float(c.porcentaje)} for c in cats]
+        return jsonify({'success': True, 'categorias': data})
+
+    # POST: crear
+    try:
+        data = request.get_json()
+        nombre = data.get('nombre')
+        color = data.get('color', '#000000')
+        porcentaje = data.get('porcentaje', 0)
+        if not nombre:
+            return jsonify({'success': False, 'message': 'Nombre requerido'}), 400
+        nueva = CategoriaCalificacion(nombre=nombre, color=color, porcentaje=porcentaje)
+        db.session.add(nueva)
+        db.session.commit()
+        return jsonify({'success': True, 'categoria': {'id': nueva.id_categoria, 'nombre': nueva.nombre, 'color': nueva.color, 'porcentaje': float(nueva.porcentaje)}})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error creando categoría: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/categorias/<int:cat_id>', methods=['PUT', 'DELETE'])
+@login_required
+def api_categorias_modificar(cat_id):
+    if request.method == 'DELETE':
+        try:
+            CategoriaCalificacion.query.filter_by(id_categoria=cat_id).delete()
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Categoría eliminada'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Error eliminando categoría: {str(e)}'}), 500
+
+    # PUT: editar
+    try:
+        data = request.get_json()
+        cat = CategoriaCalificacion.query.get(cat_id)
+        if not cat:
+            return jsonify({'success': False, 'message': 'Categoría no encontrada'}), 404
+        cat.nombre = data.get('nombre', cat.nombre)
+        cat.color = data.get('color', cat.color)
+        cat.porcentaje = data.get('porcentaje', cat.porcentaje)
+        db.session.commit()
+        return jsonify({'success': True, 'categoria': {'id': cat.id_categoria, 'nombre': cat.nombre, 'color': cat.color, 'porcentaje': float(cat.porcentaje)}})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error actualizando categoría: {str(e)}'}), 500
 
 # ============================================================================ #
 # APIs - ASIGNATURAS
@@ -1378,6 +1533,44 @@ def obtener_estadisticas_calificaciones():
         return jsonify({'success': True, **estadisticas})
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener estadísticas: {str(e)}'}), 500
+
+
+# ============================================================================ #
+# APIs - CONFIGURACIÓN DE CALIFICACIONES
+# ============================================================================ #
+@profesor_bp.route('/api/configuracion-calificaciones', methods=['GET', 'POST'])
+@login_required
+def api_configuracion_calificaciones():
+    """GET: devuelve la configuración (única fila esperada)
+       POST: crea o actualiza la configuración con payload { notaMinima, notaMaxima, notaMinimaAprobacion }
+    """
+    try:
+        if request.method == 'GET':
+            cfg = ConfiguracionCalificacion.query.first()
+            if not cfg:
+                # valores por defecto
+                return jsonify({'success': True, 'configuracion': {'notaMinima': 0, 'notaMaxima': 100, 'notaMinimaAprobacion': 60}})
+            return jsonify({'success': True, 'configuracion': {'notaMinima': float(cfg.notaMinima), 'notaMaxima': float(cfg.notaMaxima), 'notaMinimaAprobacion': float(cfg.notaMinimaAprobacion)}})
+
+        # POST: upsert
+        data = request.get_json() or {}
+        notaMinima = data.get('notaMinima', 0)
+        notaMaxima = data.get('notaMaxima', 100)
+        notaMinimaAprobacion = data.get('notaMinimaAprobacion', 60)
+
+        cfg = ConfiguracionCalificacion.query.first()
+        if cfg:
+            cfg.notaMinima = notaMinima
+            cfg.notaMaxima = notaMaxima
+            cfg.notaMinimaAprobacion = notaMinimaAprobacion
+        else:
+            cfg = ConfiguracionCalificacion(notaMinima=notaMinima, notaMaxima=notaMaxima, notaMinimaAprobacion=notaMinimaAprobacion)
+            db.session.add(cfg)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Configuración guardada'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error en configuración: {str(e)}'}), 500
 
 
 # ============================================================================ #

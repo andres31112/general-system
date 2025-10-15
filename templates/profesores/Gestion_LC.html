@@ -611,14 +611,16 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 99999 !important;
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s, visibility 0.3s;
+            pointer-events: none;
         }
         .modal-overlay.show {
             opacity: 1;
             visibility: visible;
+            pointer-events: auto;
         }
         .modal-content {
             background-color: var(--color-blanco);
@@ -630,6 +632,8 @@
             text-align: center;
             transform: scale(0.9);
             transition: transform 0.3s;
+            position: relative;
+            z-index: 100000 !important;
         }
         .modal-overlay.show .modal-content {
             transform: scale(1);
@@ -658,6 +662,10 @@
 <body>
     <nav class="navbar">
         <div class="navbar-container">
+            <!-- Left action: volver al inicio -->
+            <div class="left-actions">
+                <a href="/profesor/dashboard" class="back-button" style="margin-right:10px;">&larr; Volver al inicio</a>
+            </div>
             <a class="navbar-brand" href="#">
                 <div class="logo-circle"></div>
                 <h1>Gestión Académica</h1>
@@ -673,8 +681,8 @@
                             <i class="fas fa-user"></i>
                         </div>
                         <div class="profile-info">
-                            <h2 id="professor-name">Cargando...</h2>
-                            <p id="professor-campus">Cargando...</p>
+                            <h2 id="professor-name">Nombre Profesor</h2>
+                            <p id="professor-campus">Sede Correspondiente</p>
                             <p><strong>Rol:</strong> Profesor</p>
                         </div>
                     </div>
@@ -682,15 +690,15 @@
                         <div class="card students-card">
                             <div class="card-body">
                                 <p class="card-title">Estudiantes</p>
-                                <p class="card-content" id="total-students">0</p>
+                                <p class="card-content" id="total-students">5</p>
                                 <p class="card-footer mb-0 text-muted small">Total de estudiantes</p>
                             </div>
                         </div>
                         <div class="card course-card">
                              <div class="card-body">
                                 <p class="fw-bold mb-1">Curso</p>
-                                <p class="mb-1" id="course-info">Cargando...</p>
-                                <p class="mb-0 text-muted small" id="course-representative">Cargando...</p>
+                                <p class="mb-1" id="course-info">702 - Director de Curso: Juan Pérez</p>
+                                <p class="mb-0 text-muted small" id="course-representative">Representante de curso: Cielo Rubio</p>
                              </div>
                         </div>
                     </div>
@@ -781,9 +789,11 @@
                                 <label for="passing-grade">Nota Aprob:</label>
                                 <input type="number" id="passing-grade" value="60">
                             </div>
+                           <div id="categoriesPctWarningInline" style="display:none;margin-left:18px;margin-top:6px;color:#b71c1c;font-weight:700;">haz pasado el 100% reduce porcentajes</div>
+                            <div id="categories-list" style="display:inline-block; margin-left:18px; vertical-align: middle;"></div>
                             <div>
                                 <button id="generate-report-btn" class="back-button">Generar Reporte</button>
-                                <button id="export-grades-btn" class="back-button">Exportar</button>
+                                <button id="manage-categories-btn" class="back-button">Categorias</button>
                                 <button id="add-assignment-btn" class="save-button">Añadir Asignación</button>
                             </div>
                         </div>
@@ -837,6 +847,39 @@
         </div>
     </div>
 
+    <!-- Modal para crear/editar categoría -->
+    <div id="categoryModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 class="modal-title">Crear Categoría</h5>
+            <p id="categoryModalBody">Rellena los datos de la categoría</p>
+            <div id="categoryPctWarning" style="display:none;margin-top:6px;color:#b71c1c;font-weight:700;">haz pasado el 100% reduce porcentajes</div>
+            <div id="categoryListContainer" style="text-align:left; margin-bottom:12px; max-height:160px; overflow:auto; border:1px solid var(--color-borde-suave); padding:8px; border-radius:6px; background:#fff;">
+                <!-- Lista de categorías con editar/eliminar se renderiza aquí -->
+            </div>
+            <input type="text" id="categoryNameInput" class="modal-input" placeholder="Nombre de la categoría">
+            <input type="color" id="categoryColorInput" class="modal-input" style="height:40px; padding:4px;">
+            <input type="number" id="categoryPctInput" class="modal-input" placeholder="Porcentaje (ej. 20)">
+            <div class="modal-footer">
+                <button id="categoryModalCancelBtn" class="back-button">Cancelar</button>
+                <button id="categoryModalConfirmBtn" class="save-button">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear asignación -->
+    <div id="assignmentModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 class="modal-title">Nueva Asignación</h5>
+            <p id="assignmentModalBody">Introduce el nombre y selecciona la categoría</p>
+            <input type="text" id="assignmentNameInput" class="modal-input" placeholder="Nombre de la asignación">
+            <select id="assignmentCategorySelect" class="modal-input" style="height:40px;padding:6px;"></select>
+            <div class="modal-footer">
+                <button id="assignmentModalCancelBtn" class="back-button">Cancelar</button>
+                <button id="assignmentModalConfirmBtn" class="save-button">Crear</button>
+            </div>
+        </div>
+    </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- MÓDULO DE UTILIDADES (MODALES Y VISTAS) ---
@@ -858,12 +901,89 @@ document.addEventListener('DOMContentLoaded', () => {
             inactiveContent.style.display = 'none';
         };
 
+        // track overlays we temporarily hide so we can restore them
+        let _temporarilyHiddenOverlays = [];
+
         const showModal = (modal, setup) => {
+            if (!modal) return;
+            // Reparent to body so it is outside other stacking contexts
+            try { if (modal.parentNode !== document.body) document.body.appendChild(modal); } catch (e) { /* ignore */ }
+
+            // Compute maximum z-index used in the page to ensure our modal is above it
+            let maxZ = 0;
+            try {
+                const els = document.querySelectorAll('body *');
+                els.forEach(el => {
+                    const z = window.getComputedStyle(el).getPropertyValue('z-index');
+                    const zi = parseInt(z, 10);
+                    if (!isNaN(zi)) maxZ = Math.max(maxZ, zi);
+                });
+            } catch (err) {
+                maxZ = 10000;
+            }
+
+            const overlayZ = Math.max(10000, maxZ + 10);
+            const contentZ = overlayZ + 10;
+
+            // Apply overlay and content styles
+            modal.style.zIndex = String(overlayZ);
+            modal.style.pointerEvents = 'auto';
+            const content = modal.querySelector('.modal-content');
+            if (content) {
+                content.style.position = 'fixed';
+                content.style.zIndex = String(contentZ);
+                // center
+                content.style.top = '50%';
+                content.style.left = '50%';
+                content.style.transform = 'translate(-50%, -50%)';
+            }
+
+            // Before showing, temporarily hide other visible modal overlays to avoid stacking/interaction issues
+            try {
+                _temporarilyHiddenOverlays = Array.from(document.querySelectorAll('.modal-overlay.show')).filter(m => m !== modal);
+                _temporarilyHiddenOverlays.forEach(m => {
+                    m.dataset._wasShown = '1';
+                    m.classList.remove('show');
+                    m.style.display = 'none';
+                });
+            } catch (e) { _temporarilyHiddenOverlays = []; }
+
             setup();
             modal.classList.add('show');
         };
 
-        const hideModal = (modal) => modal.classList.remove('show');
+        const hideModal = (modal) => {
+            modal.classList.remove('show');
+            try {
+                // Reset inline styles we may have set
+                modal.style.zIndex = '';
+                modal.style.pointerEvents = '';
+                const content = modal.querySelector('.modal-content');
+                if (content) {
+                    content.style.position = '';
+                    content.style.zIndex = '';
+                    content.style.top = '';
+                    content.style.left = '';
+                    content.style.transform = '';
+                }
+            } catch (err) { /* ignore */ }
+
+            // restore any overlays we temporarily hid
+            try {
+                if (_temporarilyHiddenOverlays && _temporarilyHiddenOverlays.length > 0) {
+                    _temporarilyHiddenOverlays.forEach(m => {
+                        try {
+                            m.style.display = '';
+                            if (m.dataset._wasShown) {
+                                m.classList.add('show');
+                                delete m.dataset._wasShown;
+                            }
+                        } catch (e) { /* ignore */ }
+                    });
+                    _temporarilyHiddenOverlays = [];
+                }
+            } catch (e) { /* ignore */ }
+        };
 
         const showAlert = (message) => {
             showModal(alertModal, () => {
@@ -900,131 +1020,281 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     // --- DATOS GLOBALES ---
-    let students = [];
-    let assignmentNames = [];
+    // Si el servidor inyectó datos en window.SERVER_DATA, inicializarlos desde allí.
+    let students = (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.estudiantes)) ?
+        window.SERVER_DATA.estudiantes.map(s => ({ id: s.id, name: ((s.nombre || '') + ' ' + (s.apellido || '')).trim(), grades: [] })) :
+        [
+            { id: 'AS', name: 'Alice Smith', grades: [] },
+            { id: 'BJ', name: 'Bob Johnson', grades: [] },
+            { id: 'CB', name: 'Charlie Brown', grades: [] },
+            { id: 'DP', name: 'Diana Prince', grades: [] },
+            { id: 'EH', name: 'Ethan Hunt', grades: [] },
+        ];
+
+    // assignmentMeta: [{ name, categoria_id, color, porcentaje }]
+    let assignmentMeta = [];
+    let categoriesMap = {}; // id -> {id, nombre, color, porcentaje}
     let attendanceData = {};
     let professorData = {};
     let courseData = {};
 
+    // Debounce helper
+    function debounce(fn, wait) {
+        let t;
+        return function(...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    // Función global para renderizar la lista de categorías (usable desde DataLoader)
+    function renderCategoriesList() {
+        const container = document.getElementById('categories-list');
+        if (!container) return;
+        const cats = Object.values(categoriesMap || {});
+        if (!cats || cats.length === 0) {
+            container.innerHTML = '<small>No hay categorías</small>';
+            return;
+        }
+        container.innerHTML = cats.map(c => {
+            const color = c.color || '#cccccc';
+            const name = c.nombre || 'Sin nombre';
+            const pct = (c.porcentaje !== undefined && c.porcentaje !== null) ? `${c.porcentaje}%` : '';
+            return `<div style="display:inline-flex;align-items:center;margin-right:8px;font-size:0.9em;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;margin-right:6px;border:1px solid rgba(0,0,0,0.05);"></span><span>${name} ${pct}</span></div>`;
+        }).join('');
+    }
+
+    // Normalizar array de categorías (acepta distintos nombres de campos)
+    function normalizeCategoriesArray(arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(c => {
+            const id = c.id || c.id_categoria || c.idCategoria || null;
+            return {
+                id: id,
+                nombre: c.nombre || c.name || '',
+                color: c.color || c.colour || '#cccccc',
+                porcentaje: parseFloat(c.porcentaje || c.pct || c.percentage || 0) || 0
+            };
+        });
+    }
+
     // --- FUNCIONES PARA CARGAR DATOS ---
     const DataLoader = (() => {
         const loadProfessorData = async () => {
-            // Usar datos inyectados por el servidor si existen
+            // Preferir datos inyectados por el servidor
             if (window.SERVER_DATA && window.SERVER_DATA.profesor) {
-                professorData = window.SERVER_DATA.profesor;
+                professorData = {
+                    name: window.SERVER_DATA.profesor.nombre || 'Profesor',
+                    campus: window.SERVER_DATA.profesor.sede || 'N/A'
+                };
             } else {
-                // fallback: intentar llamar a una API si se dispone
-                try {
-                    const res = await fetch('/profesor/api/mis-cursos');
-                    if (res.ok) {
-                        const json = await res.json();
-                        // tomar primer curso si existe
-                        professorData = { name: document.getElementById('professor-name').textContent || 'Profesor', campus: '' };
-                    }
-                } catch (e) {
-                    professorData = { name: document.getElementById('professor-name').textContent || 'Profesor', campus: '' };
-                }
+                professorData = { name: 'Nombre Profesor', campus: 'Sede Correspondiente' };
             }
-
-            document.getElementById('professor-name').textContent = professorData.nombre || professorData.name || 'Profesor';
-            document.getElementById('professor-campus').textContent = professorData.sede || professorData.campus || '';
+            document.getElementById('professor-name').textContent = professorData.name;
+            document.getElementById('professor-campus').textContent = professorData.campus;
         };
 
         const loadCourseData = async () => {
             if (window.SERVER_DATA && window.SERVER_DATA.curso) {
-                courseData = window.SERVER_DATA.curso;
-                courseData.totalStudents = (window.SERVER_DATA.estudiantes || []).length;
+                courseData = {
+                    id: window.SERVER_DATA.curso.id,
+                    nombre: window.SERVER_DATA.curso.nombre || 'Curso',
+                    director: window.SERVER_DATA.curso.director || 'No asignado',
+                    representante: window.SERVER_DATA.curso.representante || 'N/A',
+                    totalStudents: students.length
+                };
             } else {
-                // fallback: intentar usar API mis-cursos (tomar el primero)
-                try {
-                    const res = await fetch('/profesor/api/mis-cursos');
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json.cursos && json.cursos.length > 0) {
-                            courseData = json.cursos[0];
-                        }
-                    }
-                } catch (e) {
-                    courseData = {};
-                }
+                courseData = {
+                    nombre: '702',
+                    director: 'Juan Pérez',
+                    representante: 'Cielo Rubio',
+                    totalStudents: students.length
+                };
             }
-
-            document.getElementById('course-info').textContent = `${courseData.nombre || courseData.name || 'Curso'} - Director de Curso: ${courseData.director || 'No asignado'}`;
-            document.getElementById('course-representative').textContent = `Representante de curso: ${courseData.representante || courseData.representative || ''}`;
+            document.getElementById('course-info').textContent = `${courseData.nombre} - Director de Curso: ${courseData.director}`;
+            document.getElementById('course-representative').textContent = `Representante de curso: ${courseData.representante}`;
         };
 
         const loadStudents = async () => {
-            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.estudiantes)) {
-                students = window.SERVER_DATA.estudiantes.map(s => ({ id: s.id, name: `${s.nombre || ''} ${s.apellido || ''}`.trim(), grades: [] }));
-            } else {
-                // pedir a la API de calificaciones para obtener estudiantes incluidos (la API devuelve estudiante_nombre)
-                try {
-                    const res = await fetch('/profesor/api/obtener-calificaciones');
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json.calificaciones) {
-                            // construir lista única de estudiantes
-                            const map = {};
-                            json.calificaciones.forEach(c => {
-                                map[c.estudiante_id] = map[c.estudiante_id] || { id: c.estudiante_id, name: c.estudiante_nombre, grades: [] };
-                            });
-                            students = Object.values(map);
-                        }
-                    }
-                } catch (e) {
-                    students = [];
-                }
-            }
-
             document.getElementById('total-students').textContent = students.length;
-            courseData.totalStudents = students.length;
         };
 
         const loadAttendanceData = async () => {
-            // Preferir datos inyectados por el servidor (si tuvieran historial),
-            // caso contrario inicializar vacío; la vista mensual pedirá asistencias por mes usando la API.
+            // Preferir cargar asistencias desde el servidor vía API si hay curso seleccionado
             attendanceData = {};
+            try {
+                const año = new Date().getFullYear();
+                const mes = new Date().getMonth() + 1;
+                const resp = await fetch(`/profesor/api/obtener-asistencias?año=${año}&mes=${mes}`);
+                const data = await resp.json();
+                if (data && data.success && Array.isArray(data.asistencias)) {
+                    data.asistencias.forEach(a => {
+                        attendanceData[a.fecha] = attendanceData[a.fecha] || {};
+                        attendanceData[a.fecha][a.estudiante_id] = { present: a.estado === 'present', absent: a.estado === 'absent', late: a.estado === 'late', excuse: !!a.excusa };
+                    });
+                    return;
+                }
+            } catch (err) {
+                console.warn('No se pudieron obtener asistencias vía API, usando datos inyectados si existen', err);
+            }
+
+            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asistencias)) {
+                window.SERVER_DATA.asistencias.forEach(a => {
+                    attendanceData[a.fecha] = attendanceData[a.fecha] || {};
+                    attendanceData[a.fecha][a.estudiante_id] = { present: a.estado === 'present', absent: a.estado === 'absent', late: a.estado === 'late', excuse: !!a.excusa };
+                });
+            }
         };
 
-        const loadGradesData = async () => {
-            // Intentar usar categorias y asignaturas inyectadas
-            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas)) {
-                assignmentNames = window.SERVER_DATA.asignaturas.map(a => a.nombre || a.name);
-            } else {
-                assignmentNames = [];
-            }
+    const loadGradesData = async () => {
+            // Inicializar
+            assignmentMeta = [];
             students.forEach(student => student.grades = []);
+
+            // Si el servidor inyectó calificaciones, construir columnas y valores
+            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.calificaciones)) {
+                const califs = window.SERVER_DATA.calificaciones;
+
+                // Unificar por nombre_calificacion (o por id si falta nombre)
+                const byName = {};
+                califs.forEach(c => {
+                    const name = c.nombre_calificacion || (`Asignación ${c.id || ''}`);
+                    if (!byName[name]) byName[name] = { name: name, categoria_id: c.categoria_id || c.categoriaId || null, entries: [] };
+                    byName[name].entries.push(c);
+                });
+
+                // Obtener categorías completas: preferir window.SERVER_DATA.categorias, si no tienen color, pedir vía API
+                let categoriasMap = {};
+                if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.categorias) && window.SERVER_DATA.categorias.length > 0 && window.SERVER_DATA.categorias[0].color) {
+                    window.SERVER_DATA.categorias.forEach(cat => { categoriasMap[cat.id] = cat; });
+                } else {
+                    try {
+                        const resp = await fetch('/profesor/api/categorias');
+                        const data = await resp.json();
+                        if (data && data.success && Array.isArray(data.categorias)) {
+                            data.categorias.forEach(cat => { categoriasMap[cat.id] = cat; });
+                        }
+                    } catch (err) {
+                        console.warn('No se pudieron obtener categorías completas:', err);
+                    }
+                }
+
+                // Construir assignmentMeta en orden de aparición
+                Object.keys(byName).forEach(name => {
+                    const info = byName[name];
+                    const catId = info.categoria_id || (info.entries[0] && (info.entries[0].categoria_id || info.entries[0].categoriaId)) || null;
+                    const cat = categoriasMap[catId] || null;
+                    const color = cat ? (cat.color || '#cccccc') : '#cccccc';
+                    const porcentaje = cat ? (cat.porcentaje || 0) : 0;
+                    assignmentMeta.push({ name: name, categoria_id: catId, color: color, porcentaje: porcentaje });
+                });
+
+                // Preparar mapa de estudiantes y llenar grades arrays
+                const studentMap = {};
+                students.forEach(s => { studentMap[s.id] = s; s.grades = Array(assignmentMeta.length).fill(''); });
+
+                califs.forEach(c => {
+                    const name = c.nombre_calificacion || (`Asignación ${c.id || ''}`);
+                    const idx = assignmentMeta.findIndex(a => a.name === name);
+                    const s = studentMap[c.estudiante_id];
+                    if (s && idx >= 0) {
+                        s.grades[idx] = c.valor !== null && c.valor !== undefined ? c.valor : '';
+                    }
+                });
+            }
+
+            // Construir categoriesMap global (si hay datos en SERVER_DATA)
+            categoriesMap = {};
+            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.categorias)) {
+                window.SERVER_DATA.categorias.forEach(cat => {
+                    categoriesMap[cat.id] = { id: cat.id, nombre: cat.nombre, color: cat.color || '#cccccc', porcentaje: parseFloat(cat.porcentaje) || 0 };
+                });
+            }
+            // Si no hay colores/porcentajes, intentar obtener via API
+            if (Object.keys(categoriesMap).length === 0) {
+                try {
+                    const resp = await fetch('/profesor/api/categorias');
+                    const data = await resp.json();
+                    if (data && data.success && Array.isArray(data.categorias)) {
+                        data.categorias.forEach(cat => {
+                            categoriesMap[cat.id] = { id: cat.id, nombre: cat.nombre, color: cat.color || '#cccccc', porcentaje: parseFloat(cat.porcentaje) || 0 };
+                        });
+                    }
+                } catch (err) {
+                    console.warn('No se pudieron obtener categorías para el mapa global:', err);
+                }
+            }
+
+            // Renderizar lista de categorias junto a las opciones
+            renderCategoriesList();
         };
 
         const initializeAllData = async () => {
             try {
-                await loadProfessorData();
-                await loadCourseData();
-                await loadStudents();
-                await loadAttendanceData();
-                await loadGradesData();
+                try {
+                    await loadProfessorData();
+                } catch (err) {
+                    console.error('Error loading professor data:', err);
+                    UI.showAlert('Error al cargar datos del profesor: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
 
-                // Si hay datos pre-cargados (window.SERVER_DATA) y contiene calificaciones,
-                // mapearlas a students.grades para mostrar en la tabla
-                if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.calificaciones)) {
-                    const calMap = {};
-                    window.SERVER_DATA.calificaciones.forEach(c => {
-                        const sid = c.estudiante_id;
-                        calMap[sid] = calMap[sid] || [];
-                        calMap[sid].push(c);
-                    });
-                    students.forEach(s => {
-                        s.grades = (calMap[s.id] || []).map(x => x.valor !== null ? x.valor : '');
-                    });
+                try {
+                    await loadCourseData();
+                } catch (err) {
+                    console.error('Error loading course data:', err);
+                    UI.showAlert('Error al cargar datos del curso: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadStudents();
+                } catch (err) {
+                    console.error('Error loading students:', err);
+                    UI.showAlert('Error al cargar lista de estudiantes: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadAttendanceData();
+                } catch (err) {
+                    console.error('Error loading attendance data:', err);
+                    UI.showAlert('Error al cargar asistencias: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadGradesData();
+                    // cargar configuración de notas desde servidor
+                    try {
+                        await loadGradeConfig();
+                    } catch (err) { console.warn('No se pudo cargar configuración de calificaciones', err); }
+                } catch (err) {
+                    console.error('Error loading grades data:', err);
+                    UI.showAlert('Error al cargar calificaciones: ' + (err && err.message ? err.message : String(err)));
+                    return;
                 }
 
                 // Inicializar módulos después de cargar datos
-                AttendanceModule.init();
-                GradesModule.init();
-                
+                try {
+                    AttendanceModule.init();
+                } catch (err) {
+                    console.error('AttendanceModule.init error:', err);
+                    UI.showAlert('Error en módulo de asistencia: ' + (err && err.message ? err.message : String(err)));
+                    // no return; intentar inicializar GradesModule también
+                }
+
+                try {
+                    GradesModule.init();
+                } catch (err) {
+                    console.error('GradesModule.init error:', err);
+                    UI.showAlert('Error en módulo de calificaciones: ' + (err && err.message ? err.message : String(err)));
+                }
+
             } catch (error) {
-                console.error('Error loading data:', error);
-                UI.showAlert('Error al cargar los datos. Por favor, recarga la página.');
+                // Catch all fallback (should be rare)
+                console.error('Unexpected error initializing data:', error);
+                UI.showAlert('Error inesperado al inicializar la página: ' + (error && error.message ? error.message : String(error)));
             }
         };
 
@@ -1175,10 +1445,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Aquí puedes guardar en tu API
-            // Ejemplo: await fetch('/api/attendance', { method: 'POST', body: JSON.stringify(attendanceData[dateKey]) });
-            
-            UI.showAlert('Asistencia guardada!');
+            // Intentar persistir via API
+            try {
+                const payload = { fecha: dateKey, asistencias: Object.keys(attendanceData[dateKey]).map(stId => ({ estudiante_id: stId, estado: attendanceData[dateKey][stId].absent ? 'absent' : (attendanceData[dateKey][stId].late ? 'late' : 'present') })) };
+                const resp = await fetch('/profesor/api/guardar-asistencia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await resp.json();
+                if (data && data.success) {
+                    UI.showAlert('Asistencia guardada!');
+                } else {
+                    UI.showAlert('Error guardando asistencia en el servidor, guardada localmente');
+                }
+            } catch (err) {
+                console.error('Error guardando asistencias via API:', err);
+                UI.showAlert('Error de red al guardar asistencia, guardada localmente');
+            }
             showMonthlyView();
         };
 
@@ -1208,6 +1488,22 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
+        const renderCategoriesList = () => {
+            const container = document.getElementById('categories-list');
+            if (!container) return;
+            const cats = Object.values(categoriesMap || {});
+            if (!cats || cats.length === 0) {
+                container.innerHTML = '<small>No hay categorías</small>';
+                return;
+            }
+            container.innerHTML = cats.map(c => {
+                const color = c.color || '#cccccc';
+                const name = c.nombre || 'Sin nombre';
+                const pct = (c.porcentaje !== undefined && c.porcentaje !== null) ? `${c.porcentaje}%` : '';
+                return `<div style="display:inline-flex;align-items:center;margin-right:8px;font-size:0.9em;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;margin-right:6px;border:1px solid rgba(0,0,0,0.05);"></span><span>${name} ${pct}</span></div>`;
+            }).join('');
+        };
+
         return { 
             init: () => { 
                 setupEventListeners(); 
@@ -1229,31 +1525,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxGradeInput = document.getElementById('max-grade');
 
         const calculateAllAverages = () => {
-            let allGrades = [];
             const passingGrade = parseFloat(passingGradeInput.value) || 60;
 
+            const finals = [];
+
             gradesTableBody.querySelectorAll('tr').forEach((row, studentIndex) => {
-                let sum = 0, count = 0;
+                // Construir por categoría
+                const categoryBuckets = {}; // catId -> {sum, count}
                 row.querySelectorAll('.grade-input').forEach((input, gradeIndex) => {
-                    const value = parseFloat(input.value);
-                    if (!isNaN(value)) {
-                        sum += value;
-                        count++;
-                        allGrades.push(value);
-                    }
+                    const raw = input.value;
+                    const value = raw === '' ? NaN : parseFloat(raw);
                     students[studentIndex].grades[gradeIndex] = isNaN(value) ? '' : value;
+                    const meta = assignmentMeta[gradeIndex];
+                    const catId = meta && meta.categoria_id ? meta.categoria_id : null;
+                    const key = catId || '__nocat__';
+                    if (!categoryBuckets[key]) categoryBuckets[key] = { sum: 0, count: 0, porcentaje: (meta && meta.porcentaje) ? parseFloat(meta.porcentaje) : (categoriesMap[catId] ? categoriesMap[catId].porcentaje : 0) };
+                    if (!isNaN(value)) {
+                        categoryBuckets[key].sum += value;
+                        categoryBuckets[key].count += 1;
+                    }
                 });
-                const average = count > 0 ? (sum / count).toFixed(1) : 'N/A';
+
+                // Calcular promedio ponderado por categorías
+                let finalScore = 0;
+                // Si no hay categorías definidas, caemos al promedio simple
+                if (assignmentMeta.length === 0) {
+                    finalScore = 0;
+                } else {
+                    // Sumar por categoria: (avg_in_category) * (categoria_porcentaje / 100)
+                    Object.keys(categoryBuckets).forEach(k => {
+                        const b = categoryBuckets[k];
+                        const avgCat = b.count > 0 ? (b.sum / b.count) : 0;
+                        const weight = b.porcentaje ? (b.porcentaje / 100) : 0;
+                        finalScore += avgCat * weight;
+                    });
+                }
+
                 const averageCell = row.querySelector('.average-cell');
-                averageCell.textContent = average;
-                averageCell.classList.toggle('failing', average !== 'N/A' && parseFloat(average) < passingGrade);
-                row.classList.toggle('failing-student', average !== 'N/A' && parseFloat(average) < passingGrade);
+                const display = isNaN(finalScore) ? 'N/A' : (Math.round(finalScore * 10) / 10).toFixed(1);
+                averageCell.textContent = display;
+                const numericFinal = isNaN(finalScore) ? null : finalScore;
+                if (numericFinal !== null) {
+                    averageCell.classList.toggle('failing', numericFinal < passingGrade);
+                    row.classList.toggle('failing-student', numericFinal < passingGrade);
+                    finals.push(numericFinal);
+                } else {
+                    averageCell.classList.remove('failing');
+                    row.classList.remove('failing-student');
+                }
             });
 
-            if (allGrades.length > 0) {
-                lowestGradeEl.textContent = Math.min(...allGrades).toFixed(1);
-                highestGradeEl.textContent = Math.max(...allGrades).toFixed(1);
-                averageGradeEl.textContent = (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(1);
+            if (finals.length > 0) {
+                lowestGradeEl.textContent = Math.min(...finals).toFixed(1);
+                highestGradeEl.textContent = Math.max(...finals).toFixed(1);
+                averageGradeEl.textContent = (finals.reduce((a, b) => a + b, 0) / finals.length).toFixed(1);
             } else {
                 lowestGradeEl.textContent = '0';
                 highestGradeEl.textContent = '0';
@@ -1262,59 +1587,73 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const renderGradesTable = () => {
-            gradesTableHead.innerHTML = `<tr><th class="student-name-header">Nombre</th>${assignmentNames.map(name =>
-                `<th><span>${name}</span> <span class="assignment-actions"><i class="fas fa-pencil-alt" data-action="edit-assignment"></i><i class="fas fa-trash-alt delete-assignment-icon" data-action="delete-assignment"></i></span></th>`
-            ).join('')}<th>Promedio</th></tr>`;
+            // construir encabezados con color según categoría
+            const headers = assignmentMeta.map((a, idx) => {
+                const colorStyle = a.color ? `style="background:${a.color};color:#fff;padding:6px;border-radius:4px;display:inline-block;min-width:80px;"` : '';
+                return `<th><div ${colorStyle}>${a.name}</div> <div class="assignment-actions"><i class="fas fa-pencil-alt" data-action="edit-assignment" data-col="${idx}"></i><i class="fas fa-trash-alt delete-assignment-icon" data-action="delete-assignment" data-col="${idx}"></i></div></th>`;
+            }).join('');
+
+            gradesTableHead.innerHTML = `<tr><th class="student-name-header">Nombre</th>${headers}<th>Promedio</th></tr>`;
 
             gradesTableBody.innerHTML = students.map(student =>
                 `<tr data-student-id="${student.id}"><td class="student-name-cell">${student.name}</td>${student.grades.map(grade =>
                     `<td><input type="number" class="grade-input" value="${grade}"></td>`
                 ).join('')}<td class="average-cell">0</td></tr>`
             ).join('');
-            
+
             calculateAllAverages();
         };
 
         const setupEventListeners = () => {
-            document.getElementById('add-assignment-btn').addEventListener('click', () => {
-                UI.showPrompt("Nueva Asignación", "Introduce el nombre de la nueva asignación:", (name) => {
-                    if (name && name.trim() !== '') {
-                        assignmentNames.push(name.trim());
-                        students.forEach(student => student.grades.push(''));
-                        renderGradesTable();
-                        
-                        // Aquí puedes guardar en tu API
-                        // Ejemplo: await fetch('/api/assignments', { method: 'POST', body: JSON.stringify({ name: name.trim() }) });
-                    }
-                });
-            });
+            // add-assignment: handled by modal below (assignmentModal)
 
             gradesTableHead.addEventListener('click', (e) => {
                 const action = e.target.dataset.action;
                 if (!action) return;
                 const headerCell = e.target.closest('th');
                 const columnIndex = Array.from(headerCell.parentNode.children).indexOf(headerCell) - 1;
-                const currentName = assignmentNames[columnIndex];
+                const currentMeta = assignmentMeta[columnIndex];
 
                 if (action === 'delete-assignment') {
-                    UI.showConfirm(`¿Estás seguro de que quieres eliminar la columna "${currentName}"?`, async (confirmed) => {
+                    UI.showConfirm(`¿Estás seguro de que quieres eliminar la columna "${currentMeta ? currentMeta.name : 'Asignación'}"?`, async (confirmed) => {
                         if (confirmed) {
-                            assignmentNames.splice(columnIndex, 1);
-                            students.forEach(student => student.grades.splice(columnIndex, 1));
-                            renderGradesTable();
-                            
-                            // Aquí puedes eliminar de tu API
-                            // Ejemplo: await fetch(`/api/assignments/${columnIndex}`, { method: 'DELETE' });
+                            try {
+                                // call backend to delete assignment placeholder (no direct id available; rely on nombre & asignatura)
+                                const payload = { nombre_calificacion: currentMeta ? currentMeta.name : null };
+                                const resp = await fetch('/profesor/api/eliminar-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                                const data = await resp.json();
+                                if (data && data.success) {
+                                    assignmentMeta.splice(columnIndex, 1);
+                                    students.forEach(student => student.grades.splice(columnIndex, 1));
+                                    renderGradesTable();
+                                    UI.showAlert('Asignación eliminada');
+                                } else {
+                                    UI.showAlert('Error eliminando asignación');
+                                }
+                            } catch (err) {
+                                console.error('Error eliminando asignación:', err);
+                                UI.showAlert('Error de red al eliminar asignación');
+                            }
                         }
                     });
                 } else if (action === 'edit-assignment') {
-                    UI.showPrompt('Editar Asignación', `Introduce el nuevo nombre para "${currentName}":`, async (newName) => {
+                    UI.showPrompt('Editar Asignación', `Introduce el nuevo nombre para "${currentMeta ? currentMeta.name : 'Asignación'}":`, async (newName) => {
                         if (newName && newName.trim() !== '') {
-                            assignmentNames[columnIndex] = newName.trim();
-                            renderGradesTable();
-                            
-                            // Aquí puedes actualizar en tu API
-                            // Ejemplo: await fetch(`/api/assignments/${columnIndex}`, { method: 'PUT', body: JSON.stringify({ name: newName.trim() }) });
+                            try {
+                                const oldName = currentMeta ? currentMeta.name : null;
+                                const resp = await fetch('/profesor/api/editar-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre_antiguo: oldName, nombre_nuevo: newName.trim() }) });
+                                const data = await resp.json();
+                                if (data && data.success) {
+                                    if (currentMeta) currentMeta.name = newName.trim();
+                                    renderGradesTable();
+                                    UI.showAlert('Asignación actualizada');
+                                } else {
+                                    UI.showAlert('Error actualizando asignación');
+                                }
+                            } catch (err) {
+                                console.error('Error actualizando asignación:', err);
+                                UI.showAlert('Error de red al actualizar asignación');
+                            }
                         }
                     });
                 }
@@ -1329,9 +1668,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         e.target.value = '';
                     }
                     calculateAllAverages();
-                    
-                    // Aquí puedes guardar en tu API
-                    // Ejemplo: await fetch('/api/grades', { method: 'POST', body: JSON.stringify(students) });
                 }
             });
 
@@ -1339,19 +1675,309 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.addEventListener('change', calculateAllAverages);
             });
 
-            document.getElementById('export-grades-btn').addEventListener('click', () => {
-                // Implementar exportación de calificaciones
-                UI.showAlert('Funcionalidad de exportación en desarrollo');
-            });
+            // Autosave grade configuration (min/max/passing)
+            const saveGradeConfig = debounce(async () => {
+                try {
+                    const payload = {
+                        notaMinima: parseFloat(minGradeInput.value) || 0,
+                        notaMaxima: parseFloat(maxGradeInput.value) || 100,
+                        notaMinimaAprobacion: parseFloat(passingGradeInput.value) || 60
+                    };
+                    const resp = await fetch('/profesor/api/configuracion-calificaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const data = await resp.json();
+                    if (!(data && data.success)) console.warn('No se pudo guardar configuración de calificaciones', data);
+                } catch (err) {
+                    console.error('Error guardando configuración de calificaciones:', err);
+                }
+            }, 700);
+
+            [minGradeInput, maxGradeInput, passingGradeInput].forEach(inp => inp.addEventListener('input', () => { calculateAllAverages(); saveGradeConfig(); }));
+
+            const exportGradesBtn = document.getElementById('export-grades-btn');
+            if (exportGradesBtn) {
+                exportGradesBtn.addEventListener('click', () => {
+                    UI.showAlert('Funcionalidad de exportación en desarrollo');
+                });
+            }
 
             document.getElementById('generate-report-btn').addEventListener('click', () => {
-                // Implementar generación de reportes
                 UI.showAlert('Funcionalidad de reportes en desarrollo');
             });
+
+            // Manejo de categorías con modal (crear y listar)
+            const manageCategoriesBtn = document.getElementById('manage-categories-btn');
+            if (manageCategoriesBtn) {
+                manageCategoriesBtn.addEventListener('click', async () => {
+                    // Abrir modal de categorías; rellenar inputs vacíos para crear
+                    document.getElementById('categoryNameInput').value = '';
+                    document.getElementById('categoryColorInput').value = '#2d8cff';
+                    document.getElementById('categoryPctInput').value = 10;
+                        // Renderizar lista de categorías dentro del modal
+                            await refreshCategoryListInModal();
+                            // recalcular y mostrar warning si corresponde
+                            try { updateCategoryPctWarning(); } catch (e) { /* ignore */ }
+                            document.getElementById('categoryModal').classList.add('show');
+                });
+
+                // Cancelar categoría
+                document.getElementById('categoryModalCancelBtn').addEventListener('click', () => document.getElementById('categoryModal').classList.remove('show'));
+
+                // Confirmar creación/actualización de categoría
+                document.getElementById('categoryModalConfirmBtn').addEventListener('click', async () => {
+                    const nombre = document.getElementById('categoryNameInput').value.trim();
+                    const color = document.getElementById('categoryColorInput').value;
+                    const porcentaje = parseFloat(document.getElementById('categoryPctInput').value) || 0;
+                    if (!nombre) { UI.showAlert('El nombre es requerido'); return; }
+                    const editingId = document.getElementById('categoryModal').dataset.editingId || null;
+                    try {
+                        if (editingId) {
+                            // PUT actualizar
+                            const resp = await fetch(`/profesor/api/categorias/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombre, color: color, porcentaje: porcentaje }) });
+                            const data = await resp.json();
+                            if (data && data.success && data.categoria) {
+                                const cat = data.categoria;
+                                const normalized = normalizeCategoriesArray([cat])[0];
+                                categoriesMap[normalized.id] = normalized;
+                                renderCategoriesList();
+                                await refreshCategoryListInModal();
+                                updateCategoryPctWarning();
+                                document.getElementById('categoryModal').classList.remove('show');
+                                UI.showAlert('Categoría actualizada');
+                                document.getElementById('categoryModal').dataset.editingId = '';
+                            } else {
+                                UI.showAlert('Error actualizando categoría');
+                            }
+                        } else {
+                            // POST crear
+                            const resp = await fetch('/profesor/api/categorias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombre, color: color, porcentaje: porcentaje }) });
+                            const data = await resp.json();
+                            if (data && data.success && data.categoria) {
+                                const cat = data.categoria;
+                                const normalized = normalizeCategoriesArray([cat])[0];
+                                categoriesMap[normalized.id] = normalized;
+                                renderCategoriesList();
+                                await refreshCategoryListInModal();
+                                updateCategoryPctWarning();
+                                document.getElementById('categoryModal').classList.remove('show');
+                                UI.showAlert('Categoría creada');
+                            } else {
+                                UI.showAlert('Error creando categoría');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error creando/actualizando categoría:', err);
+                        UI.showAlert('Error de red al crear/actualizar la categoría.');
+                    }
+                });
+            }
+
+            // Helper: render list inside modal with edit/delete buttons
+            async function refreshCategoryListInModal() {
+                const container = document.getElementById('categoryListContainer');
+                container.innerHTML = 'Cargando...';
+                try {
+                    const resp = await fetch('/profesor/api/categorias');
+                    const data = await resp.json();
+                    if (data && data.success && Array.isArray(data.categorias)) {
+                        // actualizar mapa global de categorias (normalizado)
+                        const normalized = normalizeCategoriesArray(data.categorias);
+                        normalized.forEach(c => { categoriesMap[c.id] = c; });
+
+                        const list = normalized.map(cat => {
+                            const id = cat.id || cat.id_categoria || cat.idCategoria;
+                            const color = cat.color || '#cccccc';
+                            const pct = (cat.porcentaje !== undefined && cat.porcentaje !== null) ? `${cat.porcentaje}%` : '';
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px solid var(--color-borde-suave);"><div style="display:flex;gap:8px;align-items:center;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,0.05);"></span><strong>${cat.nombre}</strong> <small style="color:var(--color-texto-secundario);margin-left:6px;">${pct}</small></div><div><button data-id="${id}" class="edit-cat-btn back-button" style="margin-right:6px;">Editar</button><button data-id="${id}" class="delete-cat-btn back-button">Eliminar</button></div></div>`;
+                        }).join('');
+                        container.innerHTML = list || '<small>No hay categorías</small>';
+                        // attach events
+                        container.querySelectorAll('.edit-cat-btn').forEach(b => b.addEventListener('click', onEditCategory));
+                        container.querySelectorAll('.delete-cat-btn').forEach(b => b.addEventListener('click', onDeleteCategory));
+                    } else {
+                        container.innerHTML = '<small>No hay categorías</small>';
+                    }
+                } catch (err) {
+                    console.error('Error cargando categorías en modal:', err);
+                    container.innerHTML = '<small>Error cargando categorías</small>';
+                }
+                // Después de cargar la lista, actualizar aviso según suma de porcentajes
+                try { updateCategoryPctWarning(); } catch (e) { /* ignore */ }
+            }
+
+            async function onEditCategory(e) {
+                const id = e.currentTarget.dataset.id;
+                try {
+                    const resp = await fetch('/profesor/api/categorias');
+                    const data = await resp.json();
+                    const found = (data.categorias || []).find(c => String(c.id || c.id_categoria) === String(id));
+                    if (found) {
+                        document.getElementById('categoryNameInput').value = found.nombre || '';
+                        document.getElementById('categoryColorInput').value = found.color || '#2d8cff';
+                        document.getElementById('categoryPctInput').value = found.porcentaje || 0;
+                        document.getElementById('categoryModal').dataset.editingId = id;
+                        // keep modal open
+                    } else {
+                        UI.showAlert('Categoría no encontrada');
+                    }
+                } catch (err) {
+                    console.error('Error obteniendo categoría para editar:', err);
+                    UI.showAlert('Error al obtener datos de la categoría');
+                }
+            }
+
+            async function onDeleteCategory(e) {
+                const id = e.currentTarget.dataset.id;
+                UI.showConfirm('¿Eliminar esta categoría? Esto no borrará calificaciones existentes.', async (ok) => {
+                    if (!ok) return;
+                    try {
+                        const resp = await fetch(`/profesor/api/categorias/${id}`, { method: 'DELETE' });
+                        const data = await resp.json();
+                        if (data && data.success) {
+                            delete categoriesMap[id];
+                            renderCategoriesList();
+                            await refreshCategoryListInModal();
+                            updateCategoryPctWarning();
+                            UI.showAlert('Categoría eliminada');
+                        } else {
+                            UI.showAlert('Error eliminando categoría');
+                        }
+                    } catch (err) {
+                        console.error('Error eliminando categoría:', err);
+                        UI.showAlert('Error de red al eliminar categoría');
+                    }
+                });
+            }
+
+            // Añadir asignación con modal y select de categorías
+            const addAssignmentBtn = document.getElementById('add-assignment-btn');
+            if (addAssignmentBtn) {
+                addAssignmentBtn.addEventListener('click', async () => {
+                    // poblar select con categorías actuales
+                    const select = document.getElementById('assignmentCategorySelect');
+                    select.innerHTML = '';
+                    const cats = Object.values(categoriesMap || {});
+                    if (cats.length === 0) {
+                        // intentar obtener vía API
+                        try {
+                            const resp = await fetch('/profesor/api/categorias');
+                            const data = await resp.json();
+                            if (data && data.success) {
+                                const normalized = normalizeCategoriesArray(data.categorias);
+                                normalized.forEach(c => { categoriesMap[c.id] = c; });
+                            }
+                        } catch (err) { console.warn('No se pudieron cargar categorías', err); }
+                    }
+                    Object.values(categoriesMap).forEach(c => {
+                        const opt = document.createElement('option'); opt.value = c.id; opt.textContent = `${c.nombre} (${c.porcentaje}%)`; select.appendChild(opt);
+                    });
+                    document.getElementById('assignmentNameInput').value = '';
+                    document.getElementById('assignmentModal').classList.add('show');
+                });
+
+                document.getElementById('assignmentModalCancelBtn').addEventListener('click', () => document.getElementById('assignmentModal').classList.remove('show'));
+
+                document.getElementById('assignmentModalConfirmBtn').addEventListener('click', async () => {
+                    const name = document.getElementById('assignmentNameInput').value.trim();
+                    const catId = document.getElementById('assignmentCategorySelect').value || null;
+                    if (!name) { UI.showAlert('El nombre es requerido'); return; }
+                    // asignatura por defecto
+                    let asignatura_id = null;
+                    if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) asignatura_id = window.SERVER_DATA.asignaturas[0].id;
+                    try {
+                        const resp = await fetch('/profesor/api/crear-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ asignatura_id: asignatura_id, nombre_calificacion: name, categoria_id: catId }) });
+                        const data = await resp.json();
+                        if (data && data.success) {
+                            // agregar meta local
+                            const cat = categoriesMap[catId] || null;
+                            assignmentMeta.push({ name: name, categoria_id: catId, color: cat ? cat.color : '#cccccc', porcentaje: cat ? cat.porcentaje : 0 });
+                            students.forEach(s => s.grades.push(''));
+                            renderGradesTable();
+                            document.getElementById('assignmentModal').classList.remove('show');
+                            UI.showAlert('Asignación creada');
+                        } else {
+                            UI.showAlert('Error creando asignación');
+                        }
+                    } catch (err) {
+                        console.error('Error creando asignación:', err);
+                        UI.showAlert('Error de red al crear asignación');
+                    }
+                });
+            }
         };
 
-        return { init: () => { setupEventListeners(); renderGradesTable(); } };
+        // ------------------ Helpers para porcentaje de categorías ------------------
+        function computeTotalCategoriesPercentage(includeEditingId = null, editingValue = null) {
+            // Sumar los porcentajes de categoriesMap, opcionalmente reemplazando el valor de una categoría que se está editando
+            let total = 0;
+            try {
+                Object.keys(categoriesMap || {}).forEach(k => {
+                    const c = categoriesMap[k];
+                    if (!c) return;
+                    // si estamos editando y coincide con editingId, tomar editingValue
+                    if (includeEditingId && String(c.id) === String(includeEditingId) && editingValue !== null && editingValue !== undefined) {
+                        total += parseFloat(editingValue) || 0;
+                    } else {
+                        total += parseFloat(c.porcentaje) || 0;
+                    }
+                });
+            } catch (e) {
+                console.warn('computeTotalCategoriesPercentage error', e);
+            }
+            return total;
+        }
+
+        function updateCategoryPctWarning() {
+            const modalWarningEl = document.getElementById('categoryPctWarning');
+            const inlineWarningEl = document.getElementById('categoriesPctWarningInline');
+            // if neither exists, nothing to do
+            if (!modalWarningEl && !inlineWarningEl) return;
+            // considerar valor actual del input (por si estamos creando/actualizando una categoría)
+            const editingId = document.getElementById('categoryModal') ? (document.getElementById('categoryModal').dataset.editingId || null) : null;
+            const inputEl = document.getElementById('categoryPctInput');
+            const inputVal = inputEl ? (parseFloat(inputEl.value) || 0) : 0;
+            const total = computeTotalCategoriesPercentage(editingId, inputVal);
+            const shouldShow = total > 100;
+            try { if (modalWarningEl) modalWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignore */ }
+            try { if (inlineWarningEl) inlineWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignore */ }
+        }
+
+        // Vincular eventos para recalcular al modificar el input de porcentaje
+        const categoryPctInput = document.getElementById('categoryPctInput');
+        if (categoryPctInput) {
+            categoryPctInput.addEventListener('input', () => {
+                try { updateCategoryPctWarning(); } catch (e) { /* ignore */ }
+            });
+        }
+
+        return { init: () => { 
+                // Comprobar elementos críticos
+                if (!gradesTable || !gradesTableHead || !gradesTableBody) {
+                    console.warn('GradesModule: elementos de tabla de calificaciones no encontrados, omitiendo inicialización.');
+                    return;
+                }
+                setupEventListeners();
+                renderGradesTable();
+            } };
     })();
+
+    // Cargar configuración de calificaciones desde backend
+    async function loadGradeConfig() {
+        try {
+            const resp = await fetch('/profesor/api/configuracion-calificaciones');
+            const data = await resp.json();
+            if (data && data.success && data.configuracion) {
+                const cfg = data.configuracion;
+                const minEl = document.getElementById('min-grade');
+                const maxEl = document.getElementById('max-grade');
+                const passEl = document.getElementById('passing-grade');
+                if (minEl && cfg.notaMinima !== undefined) minEl.value = parseFloat(cfg.notaMinima);
+                if (maxEl && cfg.notaMaxima !== undefined) maxEl.value = parseFloat(cfg.notaMaxima);
+                if (passEl && cfg.notaMinimaAprobacion !== undefined) passEl.value = parseFloat(cfg.notaMinimaAprobacion);
+            }
+        } catch (err) {
+            console.warn('Error cargando configuración de calificaciones', err);
+        }
+    }
 
     // --- INICIALIZACIÓN GENERAL ---
     UI.attendanceTab.addEventListener('click', () => UI.switchView(UI.attendanceTab, UI.attendanceContent, UI.gradesTab, UI.gradesContent));

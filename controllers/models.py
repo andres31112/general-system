@@ -300,7 +300,10 @@ class Calificacion(db.Model):
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
     asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     categoriaId = db.Column(db.Integer, db.ForeignKey('categoria_calificacion.id_categoria'), nullable=False)
-    valor = db.Column(db.Numeric(5,2), nullable=False)
+    # Allow null initially (assignments may be created before grades are entered)
+    valor = db.Column(db.Numeric(5,2), nullable=True)
+    # Nombre libre para identificar la calificación / asignación (por ejemplo: 'Parcial 1')
+    nombre_calificacion = db.Column(db.String(200), nullable=True)
     observaciones = db.Column(db.Text)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
