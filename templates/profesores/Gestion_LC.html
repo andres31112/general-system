@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Asistencia y Calificaciones</title>
-    <!-- Google Fonts -->
+    
+    <!-- Fuentes e iconos -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
     <style>
+        /* --- VARIABLES DE COLOR --- */
         :root {
             --color-primario: #0078ad;
             --color-primario-oscuro: #00628e;
@@ -24,7 +26,7 @@
             --color-hoy: #ffc107;
         }
 
-        /* --- General Styles --- */
+        /* --- ESTILOS GENERALES --- */
         body {
             font-family: 'Montserrat', sans-serif;
             background-color: var(--color-fondo-seccion);
@@ -32,7 +34,7 @@
             color: var(--color-texto-principal);
         }
 
-        /* --- Navbar --- */
+        /* --- BARRA DE NAVEGACIÓN --- */
         .navbar {
             background-color: var(--color-blanco);
             border-bottom: 1px solid var(--color-borde-suave);
@@ -85,7 +87,7 @@
             max-width: 1200px;
         }
 
-        /* --- Main Content --- */
+        /* --- CONTENIDO PRINCIPAL --- */
         main {
             padding: 20px 50px;
         }
@@ -175,7 +177,7 @@
             margin: 5px 0;
         }
 
-        /* --- Content Tabs --- */
+        /* --- PESTAÑAS DE CONTENIDO --- */
         .content-tabs {
             margin-top: 30px;
             border-bottom: 1px solid var(--color-borde-suave);
@@ -198,7 +200,7 @@
             border-bottom: 3px solid var(--color-primario);
         }
 
-        /* --- Attendance & Grades Section --- */
+        /* --- SECCIÓN ASISTENCIA Y CALIFICACIONES --- */
         .content-section {
             background-color: var(--color-blanco);
             border: 1px solid var(--color-borde-suave);
@@ -261,7 +263,7 @@
             background-color: #e9ecef;
         }
 
-        /* --- Summary Cards --- */
+        /* --- TARJETAS RESUMEN --- */
         .summary-cards {
             display: flex;
             flex-wrap: wrap;
@@ -283,11 +285,11 @@
             font-size: 1.5rem;
             font-weight: 700;
         }
-        .summary-card.present .count { color: var(--color-presente); }
-        .summary-card.absent .count { color: var(--color-ausente); }
-        .summary-card.late .count { color: var(--color-tarde); }
+        .summary-card.presente .count { color: var(--color-presente); }
+        .summary-card.ausente .count { color: var(--color-ausente); }
+        .summary-card.tarde .count { color: var(--color-tarde); }
 
-        /* --- Monthly List View --- */
+        /* --- VISTA MENSUAL --- */
         .monthly-list-container {
             overflow-x: auto;
         }
@@ -348,9 +350,9 @@
             margin: auto;
             position: relative;
         }
-        .status-indicator.present { background-color: var(--color-presente); }
-        .status-indicator.absent { background-color: var(--color-ausente); }
-        .status-indicator.late { background-color: var(--color-tarde); }
+        .status-indicator.presente { background-color: var(--color-presente); }
+        .status-indicator.ausente { background-color: var(--color-ausente); }
+        .status-indicator.tarde { background-color: var(--color-tarde); }
         
         .excuse-dot {
             position: absolute;
@@ -364,7 +366,7 @@
             border: 1px solid var(--color-blanco);
         }
 
-        /* --- Daily Student List --- */
+        /* --- LISTA DIARIA DE ESTUDIANTES --- */
         .student-list {
             margin-top: 25px;
             overflow-x: auto;
@@ -448,9 +450,9 @@
             border-color: #d4d9db;
         }
 
-        .status-btn.selected.present { background-color: var(--color-presente); border-color: var(--color-presente); color: var(--color-blanco); }
-        .status-btn.selected.absent { background-color: var(--color-ausente); border-color: var(--color-ausente); color: var(--color-blanco); }
-        .status-btn.selected.late { background-color: var(--color-tarde); border-color: var(--color-tarde); color: var(--color-texto-principal); }
+        .status-btn.selected.presente { background-color: var(--color-presente); border-color: var(--color-presente); color: var(--color-blanco); }
+        .status-btn.selected.ausente { background-color: var(--color-ausente); border-color: var(--color-ausente); color: var(--color-blanco); }
+        .status-btn.selected.tarde { background-color: var(--color-tarde); border-color: var(--color-tarde); color: var(--color-texto-principal); }
 
         .excuse-container {
             display: flex;
@@ -472,7 +474,7 @@
             cursor: pointer;
         }
 
-        /* --- Grades Section --- */
+        /* --- SECCIÓN CALIFICACIONES --- */
         .grades-summary-cards {
             display: flex;
             justify-content: space-around;
@@ -574,7 +576,7 @@
             color: var(--color-ausente);
         }
 
-        /* --- Footer Action --- */
+        /* --- PIE DE PÁGINA PARA GUARDAR --- */
         .save-footer {
             text-align: right;
             margin-top: 25px;
@@ -600,7 +602,7 @@
             margin-left: 8px;
         }
 
-        /* --- Modal Styles --- */
+        /* --- ESTILOS DE MODALES --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -660,9 +662,10 @@
     </style>
 </head>
 <body>
+    <!-- Barra de navegación -->
     <nav class="navbar">
         <div class="navbar-container">
-            <!-- Left action: volver al inicio -->
+            <!-- Acción izquierda: volver al inicio -->
             <div class="left-actions">
                 <a href="/profesor/dashboard" class="back-button" style="margin-right:10px;">&larr; Volver al inicio</a>
             </div>
@@ -672,9 +675,12 @@
             </a>
         </div>
     </nav>
+    
+    <!-- Contenedor principal -->
     <div class="page-container">
         <div class="container">
             <main>
+                <!-- Encabezado con información del profesor y curso -->
                 <section class="main-header">
                     <div class="profile-card">
                         <div class="avatar-large">
@@ -690,27 +696,29 @@
                         <div class="card students-card">
                             <div class="card-body">
                                 <p class="card-title">Estudiantes</p>
-                                <p class="card-content" id="total-students">5</p>
+                                <p class="card-content" id="total-students">0</p>
                                 <p class="card-footer mb-0 text-muted small">Total de estudiantes</p>
                             </div>
                         </div>
                         <div class="card course-card">
                              <div class="card-body">
                                 <p class="fw-bold mb-1">Curso</p>
-                                <p class="mb-1" id="course-info">702 - Director de Curso: Juan Pérez</p>
-                                <p class="mb-0 text-muted small" id="course-representative">Representante de curso: Cielo Rubio</p>
+                                <p class="mb-1" id="course-info">Curso - Director de Curso: </p>
+                                <p class="mb-0 text-muted small" id="course-representative">Representante de curso: </p>
                              </div>
                         </div>
                     </div>
                 </section>
 
+                <!-- Pestañas de navegación -->
                 <nav class="content-tabs">
                     <a id="attendance-tab" class="tab-link active">Asistencia</a>
                     <a id="grades-tab" class="tab-link">Calificaciones</a>
                 </nav>
 
+                <!-- Contenido de Asistencia -->
                 <div id="attendance-content">
-                    <!-- Monthly List View (Default) -->
+                    <!-- Vista Mensual (por defecto) -->
                     <section id="monthly-view" class="content-section">
                         <div class="attendance-header">
                             <div class="month-navigation">
@@ -730,7 +738,7 @@
                         </div>
                     </section>
 
-                    <!-- Daily Attendance View (Hidden by default) -->
+                    <!-- Vista Diaria (oculta por defecto) -->
                     <section id="daily-view" class="content-section" style="display: none;">
                         <div class="attendance-header">
                             <h2 id="daily-view-title">Asistencia</h2>
@@ -739,33 +747,38 @@
                             </div>
                         </div>
 
+                        <!-- Tarjetas de resumen de asistencia -->
                         <div class="summary-cards">
-                            <div class="summary-card present">
-                                <span class="count" id="present-count">0</span>
+                            <div class="summary-card presente">
+                                <span class="count" id="presente-count">0</span>
                                 <span>Presentes</span>
                             </div>
-                            <div class="summary-card absent">
-                                <span class="count" id="absent-count">0</span>
+                            <div class="summary-card ausente">
+                                <span class="count" id="ausente-count">0</span>
                                 <span>Ausentes</span>
                             </div>
-                            <div class="summary-card late">
-                                <span class="count" id="late-count">0</span>
+                            <div class="summary-card tarde">
+                                <span class="count" id="tarde-count">0</span>
                                 <span>Tardes</span>
                             </div>
                         </div>
 
+                        <!-- Lista de estudiantes para asistencia diaria -->
                         <div class="student-list">
-                            <!-- Student Rows will be populated by JS -->
+                            <!-- Las filas de estudiantes se llenarán con JavaScript -->
                         </div>
 
+                        <!-- Pie de página para guardar -->
                         <div class="save-footer">
                             <button id="save-daily-attendance-btn" class="save-button">Guardar Asistencia <i class="fas fa-check-circle"></i></button>
                         </div>
                     </section>
                 </div>
 
+                <!-- Contenido de Calificaciones -->
                 <div id="grades-content" style="display: none;">
                     <section class="content-section">
+                        <!-- Tarjetas de resumen de calificaciones -->
                         <div class="grades-summary-cards">
                             <div class="grades-summary-card">
                                 <div id="lowest-grade" class="value">0</div>
@@ -780,6 +793,8 @@
                                 <div class="label">Promedio de Clase</div>
                             </div>
                         </div>
+                        
+                        <!-- Configuración y acciones de calificaciones -->
                         <div class="grades-actions">
                              <div class="grades-settings">
                                 <label for="min-grade">Nota Mín:</label>
@@ -789,21 +804,23 @@
                                 <label for="passing-grade">Nota Aprob:</label>
                                 <input type="number" id="passing-grade" value="60">
                             </div>
-                           <div id="categoriesPctWarningInline" style="display:none;margin-left:18px;margin-top:6px;color:#b71c1c;font-weight:700;">haz pasado el 100% reduce porcentajes</div>
+                           <div id="categoriesPctWarningInline" style="display:none;margin-left:18px;margin-top:6px;color:#b71c1c;font-weight:700;">Has superado el 100%, reduce porcentajes</div>
                             <div id="categories-list" style="display:inline-block; margin-left:18px; vertical-align: middle;"></div>
                             <div>
                                 <button id="generate-report-btn" class="back-button">Generar Reporte</button>
-                                <button id="manage-categories-btn" class="back-button">Categorias</button>
+                                <button id="manage-categories-btn" class="back-button">Categorías</button>
                                 <button id="add-assignment-btn" class="save-button">Añadir Asignación</button>
                             </div>
                         </div>
+                        
+                        <!-- Tabla de calificaciones -->
                         <div class="grades-table-container">
                             <table class="grades-table">
                                 <thead>
-                                    <!-- Headers generated by JS -->
+                                    <!-- Encabezados generados por JavaScript -->
                                 </thead>
                                 <tbody>
-                                    <!-- Grade rows will be populated by JS -->
+                                    <!-- Filas de calificaciones se llenarán con JavaScript -->
                                 </tbody>
                             </table>
                         </div>
@@ -813,7 +830,9 @@
         </div>
     </div>
     
-    <!-- Custom Modals -->
+    <!-- Modales personalizados -->
+    
+    <!-- Modal de alerta -->
     <div id="alertModal" class="modal-overlay">
         <div class="modal-content">
             <h5 class="modal-title">Notificación</h5>
@@ -824,6 +843,7 @@
         </div>
     </div>
 
+    <!-- Modal de entrada -->
     <div id="promptModal" class="modal-overlay">
         <div class="modal-content">
             <h5 id="promptModalTitle" class="modal-title"></h5>
@@ -836,6 +856,7 @@
         </div>
     </div>
 
+    <!-- Modal de confirmación -->
     <div id="confirmModal" class="modal-overlay">
         <div class="modal-content">
             <h5 class="modal-title">Confirmar Acción</h5>
@@ -852,7 +873,7 @@
         <div class="modal-content">
             <h5 class="modal-title">Crear Categoría</h5>
             <p id="categoryModalBody">Rellena los datos de la categoría</p>
-            <div id="categoryPctWarning" style="display:none;margin-top:6px;color:#b71c1c;font-weight:700;">haz pasado el 100% reduce porcentajes</div>
+            <div id="categoryPctWarning" style="display:none;margin-top:6px;color:#b71c1c;font-weight:700;">Has superado el 100%, reduce porcentajes</div>
             <div id="categoryListContainer" style="text-align:left; margin-bottom:12px; max-height:160px; overflow:auto; border:1px solid var(--color-borde-suave); padding:8px; border-radius:6px; background:#fff;">
                 <!-- Lista de categorías con editar/eliminar se renderiza aquí -->
             </div>
@@ -881,9 +902,11 @@
     </div>
 
 <script>
+// Inicialización cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', () => {
     // --- MÓDULO DE UTILIDADES (MODALES Y VISTAS) ---
     const UI = (() => {
+        // Referencias a elementos del DOM
         const attendanceTab = document.getElementById('attendance-tab');
         const gradesTab = document.getElementById('grades-tab');
         const attendanceContent = document.getElementById('attendance-content');
@@ -894,6 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const promptModal = document.getElementById('promptModal');
         const confirmModal = document.getElementById('confirmModal');
 
+        // Cambiar entre vistas de asistencia y calificaciones
         const switchView = (activeTab, activeContent, inactiveTab, inactiveContent) => {
             activeTab.classList.add('active');
             inactiveTab.classList.remove('active');
@@ -901,15 +925,19 @@ document.addEventListener('DOMContentLoaded', () => {
             inactiveContent.style.display = 'none';
         };
 
-        // track overlays we temporarily hide so we can restore them
+        // Variables para controlar modales superpuestos
         let _temporarilyHiddenOverlays = [];
 
+        // Mostrar modal con configuración específica
         const showModal = (modal, setup) => {
             if (!modal) return;
-            // Reparent to body so it is outside other stacking contexts
-            try { if (modal.parentNode !== document.body) document.body.appendChild(modal); } catch (e) { /* ignore */ }
+            
+            // Mover el modal al body para evitar problemas de contexto
+            try { 
+                if (modal.parentNode !== document.body) document.body.appendChild(modal); 
+            } catch (e) { /* ignorar */ }
 
-            // Compute maximum z-index used in the page to ensure our modal is above it
+            // Calcular z-index máximo para asegurar que el modal esté por encima
             let maxZ = 0;
             try {
                 const els = document.querySelectorAll('body *');
@@ -925,20 +953,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const overlayZ = Math.max(10000, maxZ + 10);
             const contentZ = overlayZ + 10;
 
-            // Apply overlay and content styles
+            // Aplicar estilos al overlay y contenido
             modal.style.zIndex = String(overlayZ);
             modal.style.pointerEvents = 'auto';
             const content = modal.querySelector('.modal-content');
             if (content) {
                 content.style.position = 'fixed';
                 content.style.zIndex = String(contentZ);
-                // center
+                // Centrar
                 content.style.top = '50%';
                 content.style.left = '50%';
                 content.style.transform = 'translate(-50%, -50%)';
             }
 
-            // Before showing, temporarily hide other visible modal overlays to avoid stacking/interaction issues
+            // Ocultar otros modales visibles temporalmente
             try {
                 _temporarilyHiddenOverlays = Array.from(document.querySelectorAll('.modal-overlay.show')).filter(m => m !== modal);
                 _temporarilyHiddenOverlays.forEach(m => {
@@ -952,10 +980,11 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.classList.add('show');
         };
 
+        // Ocultar modal
         const hideModal = (modal) => {
             modal.classList.remove('show');
             try {
-                // Reset inline styles we may have set
+                // Restablecer estilos en línea
                 modal.style.zIndex = '';
                 modal.style.pointerEvents = '';
                 const content = modal.querySelector('.modal-content');
@@ -966,9 +995,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     content.style.left = '';
                     content.style.transform = '';
                 }
-            } catch (err) { /* ignore */ }
+            } catch (err) { /* ignorar */ }
 
-            // restore any overlays we temporarily hid
+            // Restaurar overlays temporalmente ocultos
             try {
                 if (_temporarilyHiddenOverlays && _temporarilyHiddenOverlays.length > 0) {
                     _temporarilyHiddenOverlays.forEach(m => {
@@ -978,13 +1007,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 m.classList.add('show');
                                 delete m.dataset._wasShown;
                             }
-                        } catch (e) { /* ignore */ }
+                        } catch (e) { /* ignorar */ }
                     });
                     _temporarilyHiddenOverlays = [];
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) { /* ignorar */ }
         };
 
+        // Mostrar alerta
         const showAlert = (message) => {
             showModal(alertModal, () => {
                 alertModalBody.innerHTML = message.replace(/\n/g, '<br>');
@@ -992,6 +1022,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
+        // Mostrar prompt con entrada de texto
         const showPrompt = (title, body, callback) => {
             showModal(promptModal, () => {
                 promptModal.querySelector('#promptModalTitle').textContent = title;
@@ -1006,6 +1037,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
+        // Mostrar confirmación
         const showConfirm = (body, callback) => {
             showModal(confirmModal, () => {
                 confirmModal.querySelector('#confirmModalBody').textContent = body;
@@ -1016,29 +1048,43 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        return { switchView, showAlert, showPrompt, showConfirm, attendanceTab, gradesTab, attendanceContent, gradesContent };
+        return { 
+            switchView, 
+            showAlert, 
+            showPrompt, 
+            showConfirm, 
+            attendanceTab, 
+            gradesTab, 
+            attendanceContent, 
+            gradesContent 
+        };
     })();
 
     // --- DATOS GLOBALES ---
-    // Si el servidor inyectó datos en window.SERVER_DATA, inicializarlos desde allí.
-    let students = (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.estudiantes)) ?
-        window.SERVER_DATA.estudiantes.map(s => ({ id: s.id, name: ((s.nombre || '') + ' ' + (s.apellido || '')).trim(), grades: [] })) :
-        [
-            { id: 'AS', name: 'Alice Smith', grades: [] },
-            { id: 'BJ', name: 'Bob Johnson', grades: [] },
-            { id: 'CB', name: 'Charlie Brown', grades: [] },
-            { id: 'DP', name: 'Diana Prince', grades: [] },
-            { id: 'EH', name: 'Ethan Hunt', grades: [] },
-        ];
+    // Si el servidor inyectó datos en window.SERVER_DATA, inicializar desde allí
+    let estudiantes = (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.estudiantes)) ?
+        window.SERVER_DATA.estudiantes.map(s => ({ 
+            id: s.id, 
+            nombre: ((s.nombre || '') + ' ' + (s.apellido || '')).trim(), 
+            calificaciones: [] 
+        })) : [];
 
-    // assignmentMeta: [{ name, categoria_id, color, porcentaje }]
+    // Metadatos de asignaciones
     let assignmentMeta = [];
-    let categoriesMap = {}; // id -> {id, nombre, color, porcentaje}
+    
+    // Mapa de categorías: id -> {id, nombre, color, porcentaje}
+    let categoriesMap = {};
+    
+    // Datos de asistencia
     let attendanceData = {};
+    
+    // Datos del profesor
     let professorData = {};
+    
+    // Datos del curso
     let courseData = {};
 
-    // Debounce helper
+    // Función para retrasar ejecución (debounce)
     function debounce(fn, wait) {
         let t;
         return function(...args) {
@@ -1047,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Función global para renderizar la lista de categorías (usable desde DataLoader)
+    // Función global para renderizar la lista de categorías
     function renderCategoriesList() {
         const container = document.getElementById('categories-list');
         if (!container) return;
@@ -1080,20 +1126,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNCIONES PARA CARGAR DATOS ---
     const DataLoader = (() => {
+        // Cargar datos del profesor
         const loadProfessorData = async () => {
             // Preferir datos inyectados por el servidor
             if (window.SERVER_DATA && window.SERVER_DATA.profesor) {
                 professorData = {
-                    name: window.SERVER_DATA.profesor.nombre || 'Profesor',
+                    nombre: window.SERVER_DATA.profesor.nombre || 'Profesor',
                     campus: window.SERVER_DATA.profesor.sede || 'N/A'
                 };
             } else {
-                professorData = { name: 'Nombre Profesor', campus: 'Sede Correspondiente' };
+                professorData = { nombre: 'Nombre Profesor', campus: 'Sede Correspondiente' };
             }
-            document.getElementById('professor-name').textContent = professorData.name;
+            document.getElementById('professor-name').textContent = professorData.nombre;
             document.getElementById('professor-campus').textContent = professorData.campus;
         };
 
+        // Cargar datos del curso
         const loadCourseData = async () => {
             if (window.SERVER_DATA && window.SERVER_DATA.curso) {
                 courseData = {
@@ -1101,26 +1149,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     nombre: window.SERVER_DATA.curso.nombre || 'Curso',
                     director: window.SERVER_DATA.curso.director || 'No asignado',
                     representante: window.SERVER_DATA.curso.representante || 'N/A',
-                    totalStudents: students.length
+                    totalEstudiantes: estudiantes.length
                 };
             } else {
                 courseData = {
-                    nombre: '702',
-                    director: 'Juan Pérez',
-                    representante: 'Cielo Rubio',
-                    totalStudents: students.length
+                    nombre: '',
+                    director: '',
+                    representante: '',
+                    totalEstudiantes: estudiantes.length
                 };
             }
             document.getElementById('course-info').textContent = `${courseData.nombre} - Director de Curso: ${courseData.director}`;
             document.getElementById('course-representative').textContent = `Representante de curso: ${courseData.representante}`;
         };
 
+        // Cargar lista de estudiantes
         const loadStudents = async () => {
-            document.getElementById('total-students').textContent = students.length;
+            document.getElementById('total-students').textContent = estudiantes.length;
         };
 
+        // Cargar datos de asistencia
         const loadAttendanceData = async () => {
-            // Preferir cargar asistencias desde el servidor vía API si hay curso seleccionado
             attendanceData = {};
             try {
                 const año = new Date().getFullYear();
@@ -1130,7 +1179,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data && data.success && Array.isArray(data.asistencias)) {
                     data.asistencias.forEach(a => {
                         attendanceData[a.fecha] = attendanceData[a.fecha] || {};
-                        attendanceData[a.fecha][a.estudiante_id] = { present: a.estado === 'present', absent: a.estado === 'absent', late: a.estado === 'late', excuse: !!a.excusa };
+                        attendanceData[a.fecha][a.estudiante_id] = { 
+                            presente: a.estado === 'presente', 
+                            ausente: a.estado === 'ausente', 
+                            tarde: a.estado === 'tarde', 
+                            excusa: !!a.excusa 
+                        };
                     });
                     return;
                 }
@@ -1141,15 +1195,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asistencias)) {
                 window.SERVER_DATA.asistencias.forEach(a => {
                     attendanceData[a.fecha] = attendanceData[a.fecha] || {};
-                    attendanceData[a.fecha][a.estudiante_id] = { present: a.estado === 'present', absent: a.estado === 'absent', late: a.estado === 'late', excuse: !!a.excusa };
+                    attendanceData[a.fecha][a.estudiante_id] = { 
+                        presente: a.estado === 'presente', 
+                        ausente: a.estado === 'ausente', 
+                        tarde: a.estado === 'tarde', 
+                        excusa: !!a.excusa 
+                    };
                 });
             }
         };
 
-    const loadGradesData = async () => {
+        // Cargar datos de calificaciones
+        const loadGradesData = async () => {
             // Inicializar
             assignmentMeta = [];
-            students.forEach(student => student.grades = []);
+            estudiantes.forEach(estudiante => estudiante.calificaciones = []);
 
             // Si el servidor inyectó calificaciones, construir columnas y valores
             if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.calificaciones)) {
@@ -1163,7 +1223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     byName[name].entries.push(c);
                 });
 
-                // Obtener categorías completas: preferir window.SERVER_DATA.categorias, si no tienen color, pedir vía API
+                // Obtener categorías completas
                 let categoriasMap = {};
                 if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.categorias) && window.SERVER_DATA.categorias.length > 0 && window.SERVER_DATA.categorias[0].color) {
                     window.SERVER_DATA.categorias.forEach(cat => { categoriasMap[cat.id] = cat; });
@@ -1189,27 +1249,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     assignmentMeta.push({ name: name, categoria_id: catId, color: color, porcentaje: porcentaje });
                 });
 
-                // Preparar mapa de estudiantes y llenar grades arrays
+                // Preparar mapa de estudiantes y llenar arrays de calificaciones
                 const studentMap = {};
-                students.forEach(s => { studentMap[s.id] = s; s.grades = Array(assignmentMeta.length).fill(''); });
+                estudiantes.forEach(s => { studentMap[s.id] = s; s.calificaciones = Array(assignmentMeta.length).fill(''); });
 
                 califs.forEach(c => {
                     const name = c.nombre_calificacion || (`Asignación ${c.id || ''}`);
                     const idx = assignmentMeta.findIndex(a => a.name === name);
                     const s = studentMap[c.estudiante_id];
                     if (s && idx >= 0) {
-                        s.grades[idx] = c.valor !== null && c.valor !== undefined ? c.valor : '';
+                        s.calificaciones[idx] = c.valor !== null && c.valor !== undefined ? c.valor : '';
                     }
                 });
             }
 
-            // Construir categoriesMap global (si hay datos en SERVER_DATA)
+            // Construir categoriesMap global
             categoriesMap = {};
             if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.categorias)) {
                 window.SERVER_DATA.categorias.forEach(cat => {
                     categoriesMap[cat.id] = { id: cat.id, nombre: cat.nombre, color: cat.color || '#cccccc', porcentaje: parseFloat(cat.porcentaje) || 0 };
                 });
             }
+            
             // Si no hay colores/porcentajes, intentar obtener via API
             if (Object.keys(categoriesMap).length === 0) {
                 try {
@@ -1225,16 +1286,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Renderizar lista de categorias junto a las opciones
+            // Renderizar lista de categorías junto a las opciones
             renderCategoriesList();
         };
 
+        // Inicializar todos los datos
         const initializeAllData = async () => {
             try {
                 try {
                     await loadProfessorData();
                 } catch (err) {
-                    console.error('Error loading professor data:', err);
+                    console.error('Error cargando datos del profesor:', err);
                     UI.showAlert('Error al cargar datos del profesor: ' + (err && err.message ? err.message : String(err)));
                     return;
                 }
@@ -1242,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await loadCourseData();
                 } catch (err) {
-                    console.error('Error loading course data:', err);
+                    console.error('Error cargando datos del curso:', err);
                     UI.showAlert('Error al cargar datos del curso: ' + (err && err.message ? err.message : String(err)));
                     return;
                 }
@@ -1250,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await loadStudents();
                 } catch (err) {
-                    console.error('Error loading students:', err);
+                    console.error('Error cargando lista de estudiantes:', err);
                     UI.showAlert('Error al cargar lista de estudiantes: ' + (err && err.message ? err.message : String(err)));
                     return;
                 }
@@ -1258,19 +1320,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await loadAttendanceData();
                 } catch (err) {
-                    console.error('Error loading attendance data:', err);
+                    console.error('Error cargando asistencias:', err);
                     UI.showAlert('Error al cargar asistencias: ' + (err && err.message ? err.message : String(err)));
                     return;
                 }
 
                 try {
                     await loadGradesData();
-                    // cargar configuración de notas desde servidor
+                    // Cargar configuración de notas desde servidor
                     try {
                         await loadGradeConfig();
                     } catch (err) { console.warn('No se pudo cargar configuración de calificaciones', err); }
                 } catch (err) {
-                    console.error('Error loading grades data:', err);
+                    console.error('Error cargando calificaciones:', err);
                     UI.showAlert('Error al cargar calificaciones: ' + (err && err.message ? err.message : String(err)));
                     return;
                 }
@@ -1281,7 +1343,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (err) {
                     console.error('AttendanceModule.init error:', err);
                     UI.showAlert('Error en módulo de asistencia: ' + (err && err.message ? err.message : String(err)));
-                    // no return; intentar inicializar GradesModule también
                 }
 
                 try {
@@ -1292,8 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
             } catch (error) {
-                // Catch all fallback (should be rare)
-                console.error('Unexpected error initializing data:', error);
+                console.error('Error inesperado inicializando datos:', error);
                 UI.showAlert('Error inesperado al inicializar la página: ' + (error && error.message ? error.message : String(error)));
             }
         };
@@ -1303,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- MÓDULO DE ASISTENCIA ---
     const AttendanceModule = (() => {
+        // Referencias a elementos del DOM
         const monthlyView = document.getElementById('monthly-view');
         const dailyView = document.getElementById('daily-view');
         const monthYearDisplay = document.getElementById('month-year-display');
@@ -1310,22 +1371,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const monthlyTableBody = document.querySelector('.monthly-grid-table tbody');
         const dailyViewTitle = document.getElementById('daily-view-title');
 
+        // Fecha actual para mostrar
         let currentDisplayDate = new Date();
+        
+        // Fecha seleccionada para vista diaria
         let selectedDateForDailyView = null;
 
+        // Contar ausencias sin excusa para un estudiante en un mes
         const countUnexcusedAbsences = (studentId, year, month) => {
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             let unexcusedCount = 0;
             for (let i = 1; i <= daysInMonth; i++) {
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 const studentData = attendanceData[dateKey]?.[studentId];
-                if (studentData?.absent && !studentData.excuse) {
+                if (studentData?.ausente && !studentData.excusa) {
                     unexcusedCount++;
                 }
             }
             return unexcusedCount;
         };
 
+        // Renderizar vista mensual de asistencia
         const renderMonthlyList = (year, month) => {
             monthYearDisplay.textContent = new Date(year, month).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
             monthlyTableHead.innerHTML = `<tr><th class="student-name-header">Estudiante</th>${Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => {
@@ -1335,20 +1401,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `<th class="day-header ${isToday ? 'today' : ''}" data-day="${day}">${day}</th>`;
             }).join('')}</tr>`;
 
-            monthlyTableBody.innerHTML = students.map(student => {
-                const unexcusedAbsences = countUnexcusedAbsences(student.id, year, month);
+            monthlyTableBody.innerHTML = estudiantes.map(estudiante => {
+                const unexcusedAbsences = countUnexcusedAbsences(estudiante.id, year, month);
                 const rowClass = unexcusedAbsences >= 3 ? 'highlight-absentee' : '';
                 const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => {
                     const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-                    const studentData = attendanceData[dateKey]?.[student.id];
-                    const status = studentData ? (studentData.absent ? 'absent' : (studentData.late ? 'late' : (studentData.present ? 'present' : null))) : '';
-                    const hasExcuse = studentData?.excuse ? '<div class="excuse-dot"></div>' : '';
+                    const studentData = attendanceData[dateKey]?.[estudiante.id];
+                    const status = studentData ? (studentData.ausente ? 'ausente' : (studentData.tarde ? 'tarde' : (studentData.presente ? 'presente' : null))) : '';
+                    const hasExcuse = studentData?.excusa ? '<div class="excuse-dot"></div>' : '';
                     return `<td><div class="status-indicator ${status}">${hasExcuse}</div></td>`;
                 }).join('');
-                return `<tr class="${rowClass}"><td class="student-name-cell">${student.name}</td>${days}</tr>`;
+                return `<tr class="${rowClass}"><td class="student-name-cell">${estudiante.nombre}</td>${days}</tr>`;
             }).join('');
         };
 
+        // Mostrar vista diaria de asistencia
         const showDailyView = (date) => {
             selectedDateForDailyView = date;
             dailyViewTitle.textContent = `Asistencia para ${date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}`;
@@ -1357,68 +1424,73 @@ document.addEventListener('DOMContentLoaded', () => {
             dailyView.style.display = 'block';
         };
 
+        // Poblar lista de estudiantes para un día específico
         const populateStudentListForDay = (date) => {
             const studentListContainer = dailyView.querySelector('.student-list');
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            studentListContainer.innerHTML = `<div class="list-header"><span class="student-name-header-daily">Nombre del Estudiante</span><span class="attendance-status-header">Estado de Asistencia</span></div>${students.map(student => {
-                const studentData = attendanceData[dateKey]?.[student.id];
-                const isAbsent = studentData?.absent || false;
-                const isLate = studentData?.late || false;
-                const isPresent = studentData?.present || false;
-                const hasExcuse = studentData?.excuse || false;
-                return `<div class="student-row" data-student-id="${student.id}"><div class="student-info"><div class="avatar-small">${student.id}</div><span>${student.name}</span></div><div class="attendance-controls"><button class="status-btn present ${isPresent ? 'selected' : ''}">Presente</button><button class="status-btn absent ${isAbsent ? 'selected' : ''}">Ausente</button><button class="status-btn late ${isLate ? 'selected' : ''}">Tarde</button><div class="excuse-container" style="display: ${isAbsent || isLate ? 'flex' : 'none'};"><label class="excuse-label"><input type="checkbox" class="excuse-checkbox" ${hasExcuse ? 'checked' : ''}> Trajo Excusa</label></div></div></div>`;
+            studentListContainer.innerHTML = `<div class="list-header"><span class="student-name-header-daily">Nombre del Estudiante</span><span class="attendance-status-header">Estado de Asistencia</span></div>${estudiantes.map(estudiante => {
+                const studentData = attendanceData[dateKey]?.[estudiante.id];
+                const isAusente = studentData?.ausente || false;
+                const isTarde = studentData?.tarde || false;
+                const isPresente = studentData?.presente || false;
+                const hasExcusa = studentData?.excusa || false;
+                return `<div class="student-row" data-student-id="${estudiante.id}"><div class="student-info"><div class="avatar-small">${estudiante.id}</div><span>${estudiante.nombre}</span></div><div class="attendance-controls"><button class="status-btn presente ${isPresente ? 'selected' : ''}">Presente</button><button class="status-btn ausente ${isAusente ? 'selected' : ''}">Ausente</button><button class="status-btn tarde ${isTarde ? 'selected' : ''}">Tarde</button><div class="excuse-container" style="display: ${isAusente || isTarde ? 'flex' : 'none'};"><label class="excuse-label"><input type="checkbox" class="excuse-checkbox" ${hasExcusa ? 'checked' : ''}> Trajo Excusa</label></div></div></div>`;
             }).join('')}`;
             setupDailyViewLogic();
         };
 
+        // Configurar lógica de la vista diaria
         const setupDailyViewLogic = () => {
             const studentRows = dailyView.querySelectorAll('.student-row');
-            const presentCountEl = document.getElementById('present-count');
-            const absentCountEl = document.getElementById('absent-count');
-            const lateCountEl = document.getElementById('late-count');
+            const presenteCountEl = document.getElementById('presente-count');
+            const ausenteCountEl = document.getElementById('ausente-count');
+            const tardeCountEl = document.getElementById('tarde-count');
             
+            // Actualizar resumen de conteos
             const updateSummary = () => {
-                let present = 0, absent = 0, late = 0;
+                let presente = 0, ausente = 0, tarde = 0;
                 studentRows.forEach(row => {
-                    if (row.querySelector('.status-btn.present').classList.contains('selected')) present++;
-                    if (row.querySelector('.status-btn.absent').classList.contains('selected')) absent++;
-                    if (row.querySelector('.status-btn.late').classList.contains('selected')) late++;
+                    if (row.querySelector('.status-btn.presente').classList.contains('selected')) presente++;
+                    if (row.querySelector('.status-btn.ausente').classList.contains('selected')) ausente++;
+                    if (row.querySelector('.status-btn.tarde').classList.contains('selected')) tarde++;
                 });
-                presentCountEl.textContent = present;
-                absentCountEl.textContent = absent;
-                lateCountEl.textContent = late;
+                presenteCountEl.textContent = presente;
+                ausenteCountEl.textContent = ausente;
+                tardeCountEl.textContent = tarde;
             };
 
+            // Actualizar visibilidad de excusa según estado
             const updateExcuseVisibility = (row) => {
-                const isAbsentOrLate = row.querySelector('.status-btn.absent').classList.contains('selected') || row.querySelector('.status-btn.late').classList.contains('selected');
-                row.querySelector('.excuse-container').style.display = isAbsentOrLate ? 'flex' : 'none';
-                if (!isAbsentOrLate) row.querySelector('.excuse-checkbox').checked = false;
+                const isAusenteOrTarde = row.querySelector('.status-btn.ausente').classList.contains('selected') || row.querySelector('.status-btn.tarde').classList.contains('selected');
+                row.querySelector('.excuse-container').style.display = isAusenteOrTarde ? 'flex' : 'none';
+                if (!isAusenteOrTarde) row.querySelector('.excuse-checkbox').checked = false;
             };
 
+            // Configurar eventos para botones de estado
             studentRows.forEach(row => {
                 const btns = row.querySelectorAll('.status-btn');
                 btns.forEach(btn => {
                     btn.addEventListener('click', () => {
-                        const status = btn.classList[1]; // present, absent, late
-                        const presentBtn = row.querySelector('.status-btn.present');
-                        const absentBtn = row.querySelector('.status-btn.absent');
-                        const lateBtn = row.querySelector('.status-btn.late');
+                        const status = btn.classList[1]; // presente, ausente, tarde
+                        const presenteBtn = row.querySelector('.status-btn.presente');
+                        const ausenteBtn = row.querySelector('.status-btn.ausente');
+                        const tardeBtn = row.querySelector('.status-btn.tarde');
 
-                        if (status === 'present') {
-                            presentBtn.classList.toggle('selected');
-                            absentBtn.classList.remove('selected');
-                            if (!presentBtn.classList.contains('selected')) lateBtn.classList.remove('selected');
-                        } else if (status === 'absent') {
-                            absentBtn.classList.toggle('selected');
-                            if (absentBtn.classList.contains('selected')) {
-                                presentBtn.classList.remove('selected');
-                                lateBtn.classList.remove('selected');
+                        if (status === 'presente') {
+                            presenteBtn.classList.toggle('selected');
+                            ausenteBtn.classList.remove('selected');
+                            if (!presenteBtn.classList.contains('selected')) tardeBtn.classList.remove('selected');
+                        } else if (status === 'ausente') {
+                            ausenteBtn.classList.toggle('selected');
+                            if (ausenteBtn.classList.contains('selected')) {
+                                presenteBtn.classList.remove('selected');
+                                tardeBtn.classList.remove('selected');
                             }
-                        } else if (status === 'late') {
-                            lateBtn.classList.toggle('selected');
-                            if (lateBtn.classList.contains('selected')) {
-                                presentBtn.classList.add('selected');
-                                absentBtn.classList.remove('selected');
+                        } else if (status === 'tarde') {
+                            tardeBtn.classList.toggle('selected');
+                            if (tardeBtn.classList.contains('selected')) {
+                                presenteBtn.classList.add('selected');
+                                ausenteBtn.classList.remove('selected');
                             }
                         }
                         updateExcuseVisibility(row);
@@ -1429,6 +1501,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSummary();
         };
 
+        // Guardar asistencia diaria
         const saveDailyAttendance = async () => {
             const date = selectedDateForDailyView;
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -1436,38 +1509,64 @@ document.addEventListener('DOMContentLoaded', () => {
             
             dailyView.querySelectorAll('.student-row').forEach(row => {
                 const studentId = row.dataset.studentId;
-                const isPresent = row.querySelector('.status-btn.present').classList.contains('selected');
-                const isAbsent = row.querySelector('.status-btn.absent').classList.contains('selected');
-                const isLate = row.querySelector('.status-btn.late').classList.contains('selected');
-                const hasExcuse = row.querySelector('.excuse-checkbox').checked;
-                if (isPresent || isAbsent || isLate) {
-                    attendanceData[dateKey][studentId] = { present: isPresent, absent: isAbsent, late: isLate, excuse: hasExcuse };
+                const isPresente = row.querySelector('.status-btn.presente').classList.contains('selected');
+                const isAusente = row.querySelector('.status-btn.ausente').classList.contains('selected');
+                const isTarde = row.querySelector('.status-btn.tarde').classList.contains('selected');
+                const hasExcusa = row.querySelector('.excuse-checkbox').checked;
+                
+                // Determinar el estado final
+                let estado = '';
+                if (isPresente && !isTarde) estado = 'presente';
+                else if (isAusente) estado = 'ausente';
+                else if (isTarde) estado = 'tarde';
+                
+                if (estado) {
+                    attendanceData[dateKey][studentId] = { 
+                        presente: isPresente, 
+                        ausente: isAusente, 
+                        tarde: isTarde, 
+                        excusa: hasExcusa,
+                        estado: estado
+                    };
                 }
             });
 
             // Intentar persistir via API
             try {
-                const payload = { fecha: dateKey, asistencias: Object.keys(attendanceData[dateKey]).map(stId => ({ estudiante_id: stId, estado: attendanceData[dateKey][stId].absent ? 'absent' : (attendanceData[dateKey][stId].late ? 'late' : 'present') })) };
-                const resp = await fetch('/profesor/api/guardar-asistencia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const payload = { 
+                    fecha: dateKey, 
+                    asistencias: Object.keys(attendanceData[dateKey]).map(stId => ({ 
+                        estudiante_id: stId, 
+                        estado: attendanceData[dateKey][stId].estado,
+                        excusa: attendanceData[dateKey][stId].excusa
+                    })) 
+                };
+                const resp = await fetch('/profesor/api/guardar-asistencia', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
                 const data = await resp.json();
                 if (data && data.success) {
-                    UI.showAlert('Asistencia guardada!');
+                    UI.showAlert('Asistencia guardada correctamente!');
                 } else {
-                    UI.showAlert('Error guardando asistencia en el servidor, guardada localmente');
+                    UI.showAlert('Error guardando asistencia en el servidor: ' + (data.message || 'Error desconocido'));
                 }
             } catch (err) {
                 console.error('Error guardando asistencias via API:', err);
-                UI.showAlert('Error de red al guardar asistencia, guardada localmente');
+                UI.showAlert('Error de red al guardar asistencia');
             }
             showMonthlyView();
         };
 
+        // Mostrar vista mensual
         const showMonthlyView = () => {
             dailyView.style.display = 'none';
             monthlyView.style.display = 'block';
             renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth());
         };
 
+        // Configurar event listeners
         const setupEventListeners = () => {
             document.getElementById('prev-month-btn').addEventListener('click', () => {
                 currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1);
@@ -1488,22 +1587,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        const renderCategoriesList = () => {
-            const container = document.getElementById('categories-list');
-            if (!container) return;
-            const cats = Object.values(categoriesMap || {});
-            if (!cats || cats.length === 0) {
-                container.innerHTML = '<small>No hay categorías</small>';
-                return;
-            }
-            container.innerHTML = cats.map(c => {
-                const color = c.color || '#cccccc';
-                const name = c.nombre || 'Sin nombre';
-                const pct = (c.porcentaje !== undefined && c.porcentaje !== null) ? `${c.porcentaje}%` : '';
-                return `<div style="display:inline-flex;align-items:center;margin-right:8px;font-size:0.9em;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;margin-right:6px;border:1px solid rgba(0,0,0,0.05);"></span><span>${name} ${pct}</span></div>`;
-            }).join('');
-        };
-
         return { 
             init: () => { 
                 setupEventListeners(); 
@@ -1514,6 +1597,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- MÓDULO DE CALIFICACIONES ---
     const GradesModule = (() => {
+        // Referencias a elementos del DOM
         const gradesTable = document.querySelector('.grades-table');
         const gradesTableHead = gradesTable.querySelector('thead');
         const gradesTableBody = gradesTable.querySelector('tbody');
@@ -1524,6 +1608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minGradeInput = document.getElementById('min-grade');
         const maxGradeInput = document.getElementById('max-grade');
 
+        // Calcular promedios de todos los estudiantes
         const calculateAllAverages = () => {
             const passingGrade = parseFloat(passingGradeInput.value) || 60;
 
@@ -1535,7 +1620,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.querySelectorAll('.grade-input').forEach((input, gradeIndex) => {
                     const raw = input.value;
                     const value = raw === '' ? NaN : parseFloat(raw);
-                    students[studentIndex].grades[gradeIndex] = isNaN(value) ? '' : value;
+                    estudiantes[studentIndex].calificaciones[gradeIndex] = isNaN(value) ? '' : value;
                     const meta = assignmentMeta[gradeIndex];
                     const catId = meta && meta.categoria_id ? meta.categoria_id : null;
                     const key = catId || '__nocat__';
@@ -1586,8 +1671,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // Renderizar tabla de calificaciones
         const renderGradesTable = () => {
-            // construir encabezados con color según categoría
+            // Construir encabezados con color según categoría
             const headers = assignmentMeta.map((a, idx) => {
                 const colorStyle = a.color ? `style="background:${a.color};color:#fff;padding:6px;border-radius:4px;display:inline-block;min-width:80px;"` : '';
                 return `<th><div ${colorStyle}>${a.name}</div> <div class="assignment-actions"><i class="fas fa-pencil-alt" data-action="edit-assignment" data-col="${idx}"></i><i class="fas fa-trash-alt delete-assignment-icon" data-action="delete-assignment" data-col="${idx}"></i></div></th>`;
@@ -1595,17 +1681,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             gradesTableHead.innerHTML = `<tr><th class="student-name-header">Nombre</th>${headers}<th>Promedio</th></tr>`;
 
-            gradesTableBody.innerHTML = students.map(student =>
-                `<tr data-student-id="${student.id}"><td class="student-name-cell">${student.name}</td>${student.grades.map(grade =>
-                    `<td><input type="number" class="grade-input" value="${grade}"></td>`
+            gradesTableBody.innerHTML = estudiantes.map(estudiante =>
+                `<tr data-student-id="${estudiante.id}"><td class="student-name-cell">${estudiante.nombre}</td>${estudiante.calificaciones.map(calificacion =>
+                    `<td><input type="number" class="grade-input" value="${calificacion}"></td>`
                 ).join('')}<td class="average-cell">0</td></tr>`
             ).join('');
 
             calculateAllAverages();
         };
 
+        // Configurar event listeners
         const setupEventListeners = () => {
-            // add-assignment: handled by modal below (assignmentModal)
+            // add-assignment: manejado por modal (assignmentModal)
 
             gradesTableHead.addEventListener('click', (e) => {
                 const action = e.target.dataset.action;
@@ -1618,17 +1705,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     UI.showConfirm(`¿Estás seguro de que quieres eliminar la columna "${currentMeta ? currentMeta.name : 'Asignación'}"?`, async (confirmed) => {
                         if (confirmed) {
                             try {
-                                // call backend to delete assignment placeholder (no direct id available; rely on nombre & asignatura)
+                                // Llamar al backend para eliminar asignación
                                 const payload = { nombre_calificacion: currentMeta ? currentMeta.name : null };
                                 const resp = await fetch('/profesor/api/eliminar-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                                 const data = await resp.json();
                                 if (data && data.success) {
                                     assignmentMeta.splice(columnIndex, 1);
-                                    students.forEach(student => student.grades.splice(columnIndex, 1));
+                                    estudiantes.forEach(estudiante => estudiante.calificaciones.splice(columnIndex, 1));
                                     renderGradesTable();
                                     UI.showAlert('Asignación eliminada');
                                 } else {
-                                    UI.showAlert('Error eliminando asignación');
+                                    UI.showAlert('Error eliminando asignación: ' + (data.message || 'Error desconocido'));
                                 }
                             } catch (err) {
                                 console.error('Error eliminando asignación:', err);
@@ -1648,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     renderGradesTable();
                                     UI.showAlert('Asignación actualizada');
                                 } else {
-                                    UI.showAlert('Error actualizando asignación');
+                                    UI.showAlert('Error actualizando asignación: ' + (data.message || 'Error desconocido'));
                                 }
                             } catch (err) {
                                 console.error('Error actualizando asignación:', err);
@@ -1659,23 +1746,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            gradesTableBody.addEventListener('change', (e) => {
+            gradesTableBody.addEventListener('change', debounce((e) => {
                 if (e.target.classList.contains('grade-input')) {
                     const value = parseFloat(e.target.value);
                     const min = parseFloat(minGradeInput.value);
                     const max = parseFloat(maxGradeInput.value);
                     if (e.target.value !== '' && (value < min || value > max)) {
                         e.target.value = '';
+                        UI.showAlert(`La calificación debe estar entre ${min} y ${max}`);
+                        return;
                     }
+                    
+                    // Encontrar el estudiante y la columna
+                    const row = e.target.closest('tr');
+                    const studentId = row.dataset.studentId;
+                    const estudiante = estudiantes.find(s => s.id == studentId);
+                    const columnIndex = Array.from(row.querySelectorAll('.grade-input')).indexOf(e.target);
+                    const assignment = assignmentMeta[columnIndex];
+                    
+                    if (estudiante && assignment) {
+                        // Guardar en el backend
+                        saveGradeToBackend(studentId, assignment.categoria_id, assignment.name, e.target.value);
+                    }
+                    
                     calculateAllAverages();
                 }
-            });
+            }, 500));
 
             document.querySelectorAll('.grades-settings input').forEach(input => {
                 input.addEventListener('change', calculateAllAverages);
             });
 
-            // Autosave grade configuration (min/max/passing)
+            // Autoguardar configuración de calificaciones (min/max/aprobación)
             const saveGradeConfig = debounce(async () => {
                 try {
                     const payload = {
@@ -1712,11 +1814,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('categoryNameInput').value = '';
                     document.getElementById('categoryColorInput').value = '#2d8cff';
                     document.getElementById('categoryPctInput').value = 10;
-                        // Renderizar lista de categorías dentro del modal
-                            await refreshCategoryListInModal();
-                            // recalcular y mostrar warning si corresponde
-                            try { updateCategoryPctWarning(); } catch (e) { /* ignore */ }
-                            document.getElementById('categoryModal').classList.add('show');
+                    // Renderizar lista de categorías dentro del modal
+                    await refreshCategoryListInModal();
+                    // Recalcular y mostrar warning si corresponde
+                    try { updateCategoryPctWarning(); } catch (e) { /* ignorar */ }
+                    document.getElementById('categoryModal').classList.add('show');
                 });
 
                 // Cancelar categoría
@@ -1745,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 UI.showAlert('Categoría actualizada');
                                 document.getElementById('categoryModal').dataset.editingId = '';
                             } else {
-                                UI.showAlert('Error actualizando categoría');
+                                UI.showAlert('Error actualizando categoría: ' + (data.message || 'Error desconocido'));
                             }
                         } else {
                             // POST crear
@@ -1761,7 +1863,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 document.getElementById('categoryModal').classList.remove('show');
                                 UI.showAlert('Categoría creada');
                             } else {
-                                UI.showAlert('Error creando categoría');
+                                UI.showAlert('Error creando categoría: ' + (data.message || 'Error desconocido'));
                             }
                         }
                     } catch (err) {
@@ -1771,7 +1873,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Helper: render list inside modal with edit/delete buttons
+            // Helper: renderizar lista dentro del modal con botones editar/eliminar
             async function refreshCategoryListInModal() {
                 const container = document.getElementById('categoryListContainer');
                 container.innerHTML = 'Cargando...';
@@ -1779,7 +1881,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const resp = await fetch('/profesor/api/categorias');
                     const data = await resp.json();
                     if (data && data.success && Array.isArray(data.categorias)) {
-                        // actualizar mapa global de categorias (normalizado)
+                        // Actualizar mapa global de categorías (normalizado)
                         const normalized = normalizeCategoriesArray(data.categorias);
                         normalized.forEach(c => { categoriesMap[c.id] = c; });
 
@@ -1790,7 +1892,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px solid var(--color-borde-suave);"><div style="display:flex;gap:8px;align-items:center;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,0.05);"></span><strong>${cat.nombre}</strong> <small style="color:var(--color-texto-secundario);margin-left:6px;">${pct}</small></div><div><button data-id="${id}" class="edit-cat-btn back-button" style="margin-right:6px;">Editar</button><button data-id="${id}" class="delete-cat-btn back-button">Eliminar</button></div></div>`;
                         }).join('');
                         container.innerHTML = list || '<small>No hay categorías</small>';
-                        // attach events
+                        // Adjuntar eventos
                         container.querySelectorAll('.edit-cat-btn').forEach(b => b.addEventListener('click', onEditCategory));
                         container.querySelectorAll('.delete-cat-btn').forEach(b => b.addEventListener('click', onDeleteCategory));
                     } else {
@@ -1801,7 +1903,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     container.innerHTML = '<small>Error cargando categorías</small>';
                 }
                 // Después de cargar la lista, actualizar aviso según suma de porcentajes
-                try { updateCategoryPctWarning(); } catch (e) { /* ignore */ }
+                try { updateCategoryPctWarning(); } catch (e) { /* ignorar */ }
             }
 
             async function onEditCategory(e) {
@@ -1815,7 +1917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         document.getElementById('categoryColorInput').value = found.color || '#2d8cff';
                         document.getElementById('categoryPctInput').value = found.porcentaje || 0;
                         document.getElementById('categoryModal').dataset.editingId = id;
-                        // keep modal open
+                        // Mantener modal abierto
                     } else {
                         UI.showAlert('Categoría no encontrada');
                     }
@@ -1827,7 +1929,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             async function onDeleteCategory(e) {
                 const id = e.currentTarget.dataset.id;
-                UI.showConfirm('¿Eliminar esta categoría? Esto no borrará calificaciones existentes.', async (ok) => {
+                UI.showConfirm('¿Eliminar esta categoría? Las categorías con calificaciones asociadas no se pueden eliminar.', async (ok) => {
                     if (!ok) return;
                     try {
                         const resp = await fetch(`/profesor/api/categorias/${id}`, { method: 'DELETE' });
@@ -1839,7 +1941,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             updateCategoryPctWarning();
                             UI.showAlert('Categoría eliminada');
                         } else {
-                            UI.showAlert('Error eliminando categoría');
+                            UI.showAlert(data.message || 'Error eliminando categoría');
                         }
                     } catch (err) {
                         console.error('Error eliminando categoría:', err);
@@ -1852,12 +1954,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const addAssignmentBtn = document.getElementById('add-assignment-btn');
             if (addAssignmentBtn) {
                 addAssignmentBtn.addEventListener('click', async () => {
-                    // poblar select con categorías actuales
+                    // Poblar select con categorías actuales
                     const select = document.getElementById('assignmentCategorySelect');
                     select.innerHTML = '';
                     const cats = Object.values(categoriesMap || {});
                     if (cats.length === 0) {
-                        // intentar obtener vía API
+                        // Intentar obtener vía API
                         try {
                             const resp = await fetch('/profesor/api/categorias');
                             const data = await resp.json();
@@ -1868,7 +1970,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         } catch (err) { console.warn('No se pudieron cargar categorías', err); }
                     }
                     Object.values(categoriesMap).forEach(c => {
-                        const opt = document.createElement('option'); opt.value = c.id; opt.textContent = `${c.nombre} (${c.porcentaje}%)`; select.appendChild(opt);
+                        const opt = document.createElement('option'); 
+                        opt.value = c.id; 
+                        opt.textContent = `${c.nombre} (${c.porcentaje}%)`; 
+                        select.appendChild(opt);
                     });
                     document.getElementById('assignmentNameInput').value = '';
                     document.getElementById('assignmentModal').classList.add('show');
@@ -1880,22 +1985,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     const name = document.getElementById('assignmentNameInput').value.trim();
                     const catId = document.getElementById('assignmentCategorySelect').value || null;
                     if (!name) { UI.showAlert('El nombre es requerido'); return; }
-                    // asignatura por defecto
+                    // Asignatura por defecto
                     let asignatura_id = null;
                     if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) asignatura_id = window.SERVER_DATA.asignaturas[0].id;
                     try {
                         const resp = await fetch('/profesor/api/crear-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ asignatura_id: asignatura_id, nombre_calificacion: name, categoria_id: catId }) });
                         const data = await resp.json();
                         if (data && data.success) {
-                            // agregar meta local
+                            // Agregar meta local
                             const cat = categoriesMap[catId] || null;
                             assignmentMeta.push({ name: name, categoria_id: catId, color: cat ? cat.color : '#cccccc', porcentaje: cat ? cat.porcentaje : 0 });
-                            students.forEach(s => s.grades.push(''));
+                            estudiantes.forEach(s => s.calificaciones.push(''));
                             renderGradesTable();
                             document.getElementById('assignmentModal').classList.remove('show');
                             UI.showAlert('Asignación creada');
                         } else {
-                            UI.showAlert('Error creando asignación');
+                            UI.showAlert('Error creando asignación: ' + (data.message || 'Error desconocido'));
                         }
                     } catch (err) {
                         console.error('Error creando asignación:', err);
@@ -1905,6 +2010,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // Función para guardar calificación en el backend
+        async function saveGradeToBackend(estudianteId, categoriaId, nombreCalificacion, valor) {
+            try {
+                // Asignatura por defecto
+                let asignatura_id = null;
+                if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) {
+                    asignatura_id = window.SERVER_DATA.asignaturas[0].id;
+                }
+                
+                const payload = {
+                    estudiante_id: estudianteId,
+                    asignatura_id: asignatura_id,
+                    categoria_id: categoriaId,
+                    nombre_calificacion: nombreCalificacion,
+                    valor: valor === '' ? null : parseFloat(valor)
+                };
+                
+                const resp = await fetch('/profesor/api/guardar-calificacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await resp.json();
+                if (!data.success) {
+                    console.error('Error guardando calificación:', data.message);
+                    UI.showAlert('Error guardando calificación: ' + (data.message || 'Error desconocido'));
+                }
+            } catch (err) {
+                console.error('Error de red guardando calificación:', err);
+                UI.showAlert('Error de red al guardar calificación');
+            }
+        }
+
         // ------------------ Helpers para porcentaje de categorías ------------------
         function computeTotalCategoriesPercentage(includeEditingId = null, editingValue = null) {
             // Sumar los porcentajes de categoriesMap, opcionalmente reemplazando el valor de una categoría que se está editando
@@ -1913,7 +2052,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 Object.keys(categoriesMap || {}).forEach(k => {
                     const c = categoriesMap[k];
                     if (!c) return;
-                    // si estamos editando y coincide con editingId, tomar editingValue
+                    // Si estamos editando y coincide con editingId, tomar editingValue
                     if (includeEditingId && String(c.id) === String(includeEditingId) && editingValue !== null && editingValue !== undefined) {
                         total += parseFloat(editingValue) || 0;
                     } else {
@@ -1929,27 +2068,28 @@ document.addEventListener('DOMContentLoaded', () => {
         function updateCategoryPctWarning() {
             const modalWarningEl = document.getElementById('categoryPctWarning');
             const inlineWarningEl = document.getElementById('categoriesPctWarningInline');
-            // if neither exists, nothing to do
+            // Si ninguno existe, no hacer nada
             if (!modalWarningEl && !inlineWarningEl) return;
-            // considerar valor actual del input (por si estamos creando/actualizando una categoría)
+            // Considerar valor actual del input (por si estamos creando/actualizando una categoría)
             const editingId = document.getElementById('categoryModal') ? (document.getElementById('categoryModal').dataset.editingId || null) : null;
             const inputEl = document.getElementById('categoryPctInput');
             const inputVal = inputEl ? (parseFloat(inputEl.value) || 0) : 0;
             const total = computeTotalCategoriesPercentage(editingId, inputVal);
             const shouldShow = total > 100;
-            try { if (modalWarningEl) modalWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignore */ }
-            try { if (inlineWarningEl) inlineWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignore */ }
+            try { if (modalWarningEl) modalWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignorar */ }
+            try { if (inlineWarningEl) inlineWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignorar */ }
         }
 
         // Vincular eventos para recalcular al modificar el input de porcentaje
         const categoryPctInput = document.getElementById('categoryPctInput');
         if (categoryPctInput) {
             categoryPctInput.addEventListener('input', () => {
-                try { updateCategoryPctWarning(); } catch (e) { /* ignore */ }
+                try { updateCategoryPctWarning(); } catch (e) { /* ignorar */ }
             });
         }
 
-        return { init: () => { 
+        return { 
+            init: () => { 
                 // Comprobar elementos críticos
                 if (!gradesTable || !gradesTableHead || !gradesTableBody) {
                     console.warn('GradesModule: elementos de tabla de calificaciones no encontrados, omitiendo inicialización.');
@@ -1957,7 +2097,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 setupEventListeners();
                 renderGradesTable();
-            } };
+            } 
+        };
     })();
 
     // Cargar configuración de calificaciones desde backend

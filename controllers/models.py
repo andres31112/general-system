@@ -257,6 +257,7 @@ class Asistencia(db.Model):
     fecha = db.Column(db.Date, nullable=False)
     estado = db.Column(db.String(20), nullable=False, default='presente')
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    excusa = db.Column(db.Boolean, default=False)  # ✅ NUEVO CAMPO AÑADIDO
     
     # Relaciones
     estudiante_rel = db.relationship('Usuario', back_populates='asistencias', foreign_keys=[estudianteId])
