@@ -3,223 +3,819 @@
 {% block title %}Panel de Profesor{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/dashboard.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    /* =======================================
+       VARIABLES CSS
+       Definición de la paleta de colores y otras variables reutilizables.
+       ======================================= */
+    :root {
+        --accent1: #F95738; /* Acento rojo */
+        --accent2: #EE964B; /* Acento naranja */
+        --accent3: #F4D35E; /* Acento amarillo */
+        --accent4: #0D3B66; /* Acento azul oscuro */
+        --light: #FAF0CA; /* Fondo claro */
+        --white: #FFFFFF; /* Blanco */
+        --black: #333333; /* Negro para texto */
+        --gray: #666666; /* Gris para subtítulos */
+        --light-gray: #F8F9FA; /* Gris claro para fondos */
+        --border: #E9ECEF; /* Bordes */
+        --card-bg: #FFFFFF; /* Fondo de tarjetas */
+        --header-bg: #FFFFFF; /* Fondo de encabezado */
+        --main-bg: #F8F9FA; /* Fondo principal */
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Sombra estándar */
+        --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15); /* Sombra en hover */
+        --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080); /* Gradiente primario */
+        --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440); /* Gradiente secundario */
+        --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a); /* Gradiente acento */
+        --gradient-warning: linear-gradient(135deg, var(--accent2), #f0a868); /* Gradiente warning */
+    }
+
+    /* =======================================
+       ESTILOS GENERALES
+       Configuración base para el cuerpo y elementos comunes.
+       ======================================= */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Fuente principal */
+        background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%); /* Fondo degradado */
+        color: var(--black); /* Color de texto principal */
+        margin: 0; /* Sin márgenes */
+        min-height: 100vh; /* Altura mínima para cubrir la vista */
+    }
+
+    .container {
+        max-width: 1400px; /* Ancho máximo */
+        margin: 0 auto; /* Centrado */
+        padding: 30px 15px; /* Espaciado interno reducido */
+    }
+
+    /* =======================================
+       HEADER
+       Encabezado principal con título y subtítulo, incluyendo underline gradient.
+       ======================================= */
+    header {
+        text-align: center; /* Centrado */
+        margin-bottom: 30px; /* Espacio inferior reducido */
+    }
+
+    .text-principal {
+        color: var(--accent4); /* Color principal */
+        font-weight: 800; /* Negrita */
+        font-size: 2rem; /* Tamaño de fuente reducido */
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra de texto */
+        position: relative; /* Para posicionar el underline */
+        display: inline-block; /* Para ajustar al contenido */
+    }
+
+    .text-principal::after {
+        content: ''; /* Elemento vacío para underline */
+        position: absolute; /* Posicionamiento absoluto */
+        bottom: -8px; /* Posición debajo del texto */
+        left: 50%; /* Centrado horizontal */
+        transform: translateX(-50%); /* Ajuste de centrado */
+        width: 60px; /* Ancho reducido */
+        height: 3px; /* Altura reducida */
+        background: var(--gradient-accent); /* Fondo degradado */
+        border-radius: 2px; /* Bordes redondeados */
+    }
+
+    header p {
+        color: var(--gray); /* Color gris */
+        font-size: 1rem; /* Tamaño reducido */
+        margin-top: 10px; /* Espacio superior reducido */
+    }
+
+    /* =======================================
+       TARJETAS BASE
+       Estilos para tarjetas generales con efectos de hover y animaciones.
+       ======================================= */
+    .card {
+        border-radius: 15px; /* Bordes redondeados reducidos */
+        background: var(--card-bg); /* Fondo blanco */
+        border: none; /* Sin borde */
+        box-shadow: var(--shadow); /* Sombra estándar */
+        position: relative; /* Para elementos absolutos internos */
+        overflow: hidden; /* Ocultar desbordes */
+        backdrop-filter: blur(10px); /* Efecto de desenfoque */
+        border: 1px solid rgba(255, 255, 255, 0.2); /* Borde sutil */
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Transición suave */
+        padding: 20px; /* Espaciado interno reducido */
+        margin-bottom: 25px; /* Espacio inferior reducido */
+    }
+
+    .card::before {
+        content: ''; /* Elemento para efecto de brillo */
+        position: absolute;
+        top: 0;
+        left: -100%; /* Fuera de vista inicial */
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent); /* Degradado de brillo */
+        transition: left 0.6s; /* Animación de movimiento */
+    }
+
+    .card:hover::before {
+        left: 100%; /* Movimiento al hover */
+    }
+
+    .card:hover {
+        transform: translateY(-8px) scale(1.01); /* Efecto de elevación y escala reducido */
+        box-shadow: var(--shadow-hover); /* Sombra más fuerte */
+    }
+
+    .card::after {
+        content: ''; /* Elemento para fondo radial */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.1) 0%, transparent 50%),
+                   radial-gradient(circle at 80% 20%, rgba(13, 59, 102, 0.05) 0%, transparent 50%); /* Gradientes radiales */
+        opacity: 0; /* Inicialmente invisible */
+        transition: opacity 0.3s ease; /* Transición de opacidad */
+    }
+
+    .card:hover::after {
+        opacity: 1; /* Visible al hover */
+    }
+
+    .card h2 {
+        display: flex; /* Flexbox para alineación */
+        align-items: center; /* Alineación vertical */
+        justify-content: center; /* Alineación horizontal */
+        gap: 10px; /* Espacio entre elementos reducido */
+        margin-bottom: 15px; /* Espacio inferior reducido */
+        color: var(--accent4); /* Color azul */
+        font-size: 1.2rem; /* Tamaño reducido */
+        font-weight: 700; /* Negrita */
+        position: relative; /* Para z-index */
+        z-index: 2; /* Sobre otros elementos */
+        text-align: center; /* Centrado */
+    }
+
+    .card h2 i {
+        font-size: 1.2rem; /* Tamaño de icono reducido */
+        background: var(--gradient-primary); /* Fondo degradado */
+        -webkit-background-clip: text; /* Clip de fondo a texto */
+        -webkit-text-fill-color: transparent; /* Texto transparente */
+        background-clip: text; /* Clip estándar */
+    }
+
+    /* =======================================
+       GRID PARA SECCIONES INTERNAS
+       Configuración de grids responsivos.
+       ======================================= */
+    .grid {
+        display: grid; /* Grid layout */
+        gap: 15px; /* Espacio entre items reducido */
+    }
+
+    .grid-cols-1-sm-4 {
+        grid-template-columns: repeat(1, minmax(0, 1fr)); /* 1 columna por defecto */
+    }
+    @media (min-width: 640px) {
+        .grid-cols-1-sm-4 {
+            grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 columnas en pantallas medianas */
+        }
+    }
+
+    /* Ajuste adicional para clases actuales: grid más compacto y ajustado */
+    .clases-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Minmax reducido a 150px para tarjetas más estrechas y compactas */
+        gap: 10px; /* Gap reducido para menos espacio entre tarjetas */
+    }
+
+    /* =======================================
+       STAT CARDS (para Clases Actuales)
+       Tarjetas de estadísticas con tamaños reducidos para compactar.
+       ======================================= */
+    .stat-card {
+        background: var(--white); /* Fondo blanco */
+        padding: 10px; /* Padding reducido de 15px a 10px para compactar */
+        border-radius: 12px; /* Bordes ligeramente reducidos */
+        box-shadow: var(--shadow); /* Sombra */
+        text-align: center; /* Centrado */
+        position: relative; /* Para badges */
+        transition: all 0.3s ease; /* Transición */
+        border: 1px solid rgba(255, 255, 255, 0.2); /* Borde sutil */
+        display: flex; /* Flexbox */
+        flex-direction: column; /* Columna */
+        align-items: center; /* Centrado horizontal */
+        justify-content: flex-start; /* Alineación superior */
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px); /* Elevación al hover */
+    }
+
+    .stat-card .card-icon {
+        width: 40px; /* Ancho reducido de 50px a 40px */
+        height: 40px; /* Altura reducida */
+        border-radius: 10px; /* Bordes reducidos */
+        display: flex; /* Flexbox */
+        align-items: center; /* Centrado vertical */
+        justify-content: center; /* Centrado horizontal */
+        margin: 0 auto 8px; /* Margen inferior reducido de 10px a 8px */
+        font-size: 1.2rem; /* Tamaño de icono reducido de 1.5rem a 1.2rem */
+        color: white; /* Color blanco */
+        flex-shrink: 0; /* No encoge */
+    }
+
+    .stat-card.success .card-icon {
+        background: var(--gradient-primary); /* Gradiente primario */
+    }
+
+    .stat-card.primary .card-icon {
+        background: var(--gradient-accent); /* Gradiente acento */
+    }
+
+    .stat-card.dark .card-icon {
+        background: var(--gradient-secondary); /* Gradiente secundario */
+    }
+
+    .stat-card.warning .card-icon {
+        background: var(--gradient-warning); /* Gradiente warning */
+    }
+
+    .stat-card h3 {
+        font-size: 0.85rem; /* Tamaño reducido de 0.95rem a 0.85rem */
+        color: var(--accent4); /* Color azul */
+        font-weight: 600; /* Semi-negrita */
+        margin-bottom: 6px; /* Espacio reducido de 8px a 6px */
+        width: 100%; /* Ancho completo */
+        text-align: center; /* Centrado */
+    }
+
+    .stat-card p {
+        font-size: 0.75rem; /* Tamaño reducido de 0.8rem a 0.75rem */
+        color: var(--gray); /* Gris */
+        margin: 3px 0; /* Margen reducido de 4px a 3px */
+        width: 100%; /* Ancho completo */
+        text-align: center; /* Centrado */
+    }
+
+    .stat-card ul {
+        width: 100%; /* Ancho completo */
+        padding-left: 0; /* Sin padding izquierdo */
+        margin: 6px 0 0; /* Margen reducido de 8px a 6px */
+        list-style: none; /* Sin viñetas */
+        font-size: 0.75rem; /* Tamaño reducido */
+    }
+
+    .stat-card ul li {
+        text-align: left; /* Alineado a la izquierda */
+        margin-bottom: 3px; /* Espacio reducido de 4px a 3px */
+    }
+
+    .badge {
+        position: absolute; /* Posicionamiento absoluto */
+        top: 6px; /* Posición superior reducida de 8px a 6px */
+        right: 6px; /* Posición derecha reducida */
+        width: 18px; /* Ancho reducido de 20px a 18px */
+        height: 18px; /* Altura reducida */
+        font-size: 0.65rem; /* Tamaño reducido */
+        background: var(--accent1); /* Fondo rojo */
+        color: white; /* Texto blanco */
+        border-radius: 50%; /* Circular */
+        display: flex; /* Flexbox */
+        align-items: center; /* Centrado vertical */
+        justify-content: center; /* Centrado horizontal */
+    }
+
+    /* =======================================
+       KPIs
+       Tarjetas de indicadores clave de rendimiento (KPIs) con centrado y tamaños ajustados para compactar.
+       ======================================= */
+    .dashboard {
+        display: grid; /* Grid */
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Minmax reducido de 150px a 100px para tarjetas más estrechas y compactas */
+        gap: 10px; /* Gap reducido de 15px a 10px */
+        margin-bottom: 20px; /* Espacio inferior reducido */
+    }
+
+    .kpi-card {
+        background: var(--white); /* Blanco */
+        padding: 10px; /* Padding reducido de 15px a 10px */
+        border-radius: 12px; /* Bordes reducidos de 15px a 12px */
+        box-shadow: var(--shadow); /* Sombra */
+        text-align: center; /* Centrado */
+        transition: all 0.3s ease; /* Transición */
+        display: flex; /* Flexbox */
+        flex-direction: column; /* Columna */
+        align-items: center; /* Centrado */
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-5px); /* Elevación */
+        box-shadow: var(--shadow-hover); /* Sombra hover */
+    }
+
+    .kpi-card .card-icon {
+        width: 35px; /* Reducido de 50px a 35px */
+        height: 35px; /* Reducido */
+        border-radius: 10px; /* Reducido de 15px a 10px */
+        margin: 0 auto 6px; /* Margen reducido de 10px a 6px */
+        font-size: 1rem; /* Reducido de 1.5rem a 1rem */
+        color: white; /* Blanco */
+        display: flex; /* Flexbox */
+        align-items: center; /* Centrado */
+        justify-content: center; /* Centrado */
+        flex-shrink: 0; /* No encoge */
+    }
+
+    /* Colores diferenciados para cada KPI, similares a Clases Actuales */
+    .kpi-card.courses .card-icon {
+        background: var(--gradient-primary); /* Azul para Cursos */
+    }
+
+    .kpi-card.students .card-icon {
+        background: var(--gradient-accent); /* Rojo para Estudiantes */
+    }
+
+    .kpi-card.attendance .card-icon {
+        background: var(--gradient-secondary); /* Amarillo para Asistencia */
+    }
+
+    .kpi-card.approval .card-icon {
+        background: var(--gradient-warning); /* Naranja para Aprobación */
+    }
+
+    .kpi-card.hours .card-icon {
+        background: linear-gradient(135deg, var(--accent4), #2a6bb0); /* Variación azul oscuro para Horas */
+    }
+
+    .kpi-card.tasks .card-icon {
+        background: var(--gradient-accent); /* Rojo para Tareas (ya estaba, pero consistente) */
+    }
+
+    .kpi-card h3 {
+        font-size: 0.75rem; /* Reducido de 0.85rem a 0.75rem */
+        color: var(--gray); /* Gris */
+        margin-bottom: 4px; /* Reducido de 6px a 4px */
+    }
+
+    .kpi-value {
+        font-size: 1.2rem; /* Reducido de 1.5rem a 1.2rem */
+        font-weight: bold; /* Negrita */
+        color: var(--accent4); /* Azul */
+    }
+
+    /* =======================================
+       CHARTS
+       Contenedores para gráficos con ajustes de tamaño y centrado.
+       ======================================= */
+    .chart-container {
+        position: relative; /* Para canvas */
+        height: 250px; /* Altura reducida */
+        background: var(--white); /* Blanco */
+        border-radius: 15px; /* Reducido */
+        padding: 15px; /* Reducido */
+        box-shadow: var(--shadow); /* Sombra */
+        margin-bottom: 15px; /* Reducido */
+        display: flex; /* Flexbox */
+        flex-direction: column; /* Columna */
+        align-items: center; /* Centrado */
+    }
+
+    .chart-container h3 {
+        text-align: center; /* Centrado */
+        color: var(--accent4); /* Azul */
+        font-size: 1rem; /* Reducido */
+        font-weight: 600; /* Semi-negrita */
+        margin-bottom: 10px; /* Reducido */
+        width: 100%; /* Ancho completo */
+    }
+
+    /* =======================================
+       DETAILS
+       Grids y listas para detalles adicionales.
+       ======================================= */
+    .details-grid {
+        display: grid; /* Grid */
+        grid-template-columns: 1fr; /* 1 columna por defecto */
+        gap: 20px; /* Espacio reducido */
+    }
+    @media (min-width: 768px) {
+        .details-grid {
+            grid-template-columns: 1fr 1fr; /* 2 columnas en medianas */
+        }
+    }
+
+    .list {
+        list-style: none; /* Sin viñetas */
+        padding-left: 0; /* Sin padding */
+    }
+
+    .list li {
+        background: rgba(250, 240, 202, 0.5); /* Fondo claro */
+        padding: 12px; /* Reducido */
+        margin-bottom: 10px; /* Reducido */
+        border-radius: 12px; /* Reducido */
+        border-left: 4px solid var(--accent1); /* Borde izquierdo rojo */
+        font-size: 0.85rem; /* Reducido */
+        transition: all 0.3s ease; /* Transición */
+    }
+
+    .list li:hover {
+        background: rgba(13, 59, 102, 0.1); /* Fondo hover */
+        transform: translateX(5px); /* Movimiento hover */
+    }
+
+    table {
+        width: 100%; /* Ancho completo */
+        border-collapse: collapse; /* Colapso de bordes */
+        font-size: 0.85rem; /* Reducido */
+        background: var(--white); /* Blanco */
+        border-radius: 15px; /* Reducido */
+        overflow: hidden; /* Ocultar desbordes */
+        box-shadow: var(--shadow); /* Sombra */
+        table-layout: fixed; /* Layout fijo */
+    }
+
+    table th, table td {
+        padding: 10px; /* Reducido */
+        text-align: center; /* Centrado */
+        border-bottom: 1px solid var(--border); /* Borde inferior */
+        word-wrap: break-word; /* Romper palabras largas */
+    }
+
+    table th {
+        background: var(--gradient-primary); /* Gradiente en encabezado */
+        color: white; /* Blanco */
+        font-weight: 600; /* Semi-negrita */
+    }
+
+    table tr:hover {
+        background: rgba(244, 211, 94, 0.2); /* Fondo hover */
+    }
+
+    /* =======================================
+       FOOTER
+       Pie de página con información de actualización.
+       ======================================= */
+    footer {
+        text-align: center; /* Centrado */
+        color: var(--gray); /* Gris */
+        font-size: 0.8rem; /* Reducido */
+        margin-top: 20px; /* Reducido */
+        padding: 12px; /* Reducido */
+        background: var(--white); /* Blanco */
+        border-radius: 15px; /* Reducido */
+        box-shadow: var(--shadow); /* Sombra */
+    }
+
+    /* =======================================
+       ANIMACIONES
+       Animación de entrada para elementos.
+       ======================================= */
+    @keyframes cardEntrance {
+        from { opacity: 0; transform: translateY(30px); } /* Inicio */
+        to { opacity: 1; transform: translateY(0); } /* Fin */
+    }
+
+    .animate-entrance {
+        animation: cardEntrance 0.6s ease-out; /* Animación */
+        animation-fill-mode: both; /* Mantener estilo final */
+    }
+
+    /* ======================================= 
+       RESPONSIVE AJUSTES
+       Media queries para diferentes tamaños de pantalla.
+       ======================================= */
+    @media (max-width: 1024px) {
+        .grid-cols-1-sm-4 {
+            grid-template-columns: repeat(2, 1fr); /* 2 columnas */
+        }
+        .clases-grid {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Aún más estrecho en tablets */
+            gap: 8px; /* Gap reducido */
+        }
+        .dashboard {
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Más compacto en tablets */
+            gap: 8px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 20px 10px; /* Reducido */
+        }
+        .text-principal {
+            font-size: 1.8rem; /* Reducido */
+        }
+        .grid-cols-1-sm-4 {
+            grid-template-columns: 1fr; /* 1 columna */
+        }
+        .clases-grid {
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Muy compacto en mobile */
+            gap: 8px; /* Gap reducido */
+        }
+        .dashboard {
+            grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); /* Aún más compacto en mobile */
+            gap: 8px;
+        }
+        .chart-container {
+            height: 200px; /* Más reducido */
+            padding: 10px; /* Reducido */
+        }
+        .stat-card .card-icon {
+            width: 30px; /* Aún más reducido en mobile */
+            height: 30px;
+            font-size: 1rem;
+        }
+        .kpi-card .card-icon {
+            width: 30px; /* Reducido en mobile */
+            height: 30px;
+            font-size: 0.9rem;
+        }
+        .kpi-value {
+            font-size: 1rem; /* Reducido en mobile */
+        }
+        table th, table td {
+            padding: 6px; /* Reducido */
+            font-size: 0.75rem; /* Reducido */
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dashboard {
+            grid-template-columns: repeat(3, 1fr); /* Mantener 3 columnas si cabe */
+        }
+        .details-grid {
+            grid-template-columns: 1fr; /* 1 columna */
+        }
+        .card h2 {
+            font-size: 1rem; /* Reducido */
+            flex-direction: column; /* Columna */
+        }
+        .text-principal {
+            font-size: 1.5rem; /* Reducido */
+        }
+        .clases-grid {
+            grid-template-columns: 1fr; /* Forzar apilado en muy pequeño */
+        }
+        .stat-card p, .stat-card ul {
+            font-size: 0.7rem; /* Aún más pequeño */
+        }
+        .kpi-card h3 {
+            font-size: 0.7rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid prof-dashboard-container">
-    <h2 class="mb-4">Dashboard de Profesor</h2>
-
-    <div class="row g-4">
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-primary text-white shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="mb-0 fw-semibold text-white-50">Estudiantes a cargo</p>
-                            <h3 class="card-title fw-bold">{{ estudiantes_count|default(0) }}</h3>
-                        </div>
-                        <i class="fas fa-users fa-3x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0 text-end">
-                    <a href="{{ url_for('profesor.ver_lista_estudiantes') }}" class="text-white-50">Ver lista <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
+<div class="container">
+    <!-- Sección 1: Clases Actuales con Notificaciones -->
+    <div class="card animate-entrance" style="animation-delay: 0.1s;">
+        <h2><i class="fas fa-clock"></i> Clases Actuales</h2> <!-- Título de sección -->
+        <div class="clases-grid"> <!-- Grid personalizado más compacto -->
+            <div class="stat-card success"> <!-- Tarjeta de clase en curso -->
+                <div class="card-icon"><i class="fas fa-play-circle"></i></div>
+                <h3>En Curso</h3>
+                <p style="font-weight: 600; color: var(--accent4);">Matemáticas Avanzadas</p>
+                <p>8:00-10:00 | Aula A101</p>
+                <p><span id="live-timer" style="color: var(--accent1); font-weight: 600;">Quedan 45 min</span></p>
             </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-success text-white shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="mb-0 fw-semibold text-white-50">Asignaturas</p>
-                            <h3 class="card-title fw-bold">{{ asignaturas_count|default(0) }}</h3>
-                        </div>
-                        <i class="fas fa-book fa-3x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0 text-end">
-                    <a href="{{ url_for('profesor.asignaturas') }}" class="text-white-50">Administrar <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
+            <div class="stat-card primary"> <!-- Tarjeta de próxima clase -->
+                <div class="card-icon"><i class="fas fa-clock"></i></div>
+                <h3>Próxima</h3>
+                <p style="font-weight: 600; color: var(--accent4);">Historia Universal</p>
+                <p>10:00-12:00 | Aula A101</p>
             </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-warning text-dark shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="mb-0 fw-semibold text-black-50">Pendientes</p>
-                            <h3 class="card-title fw-bold">{{ pendientes_count|default(0) }}</h3>
-                        </div>
-                        <i class="fas fa-tasks fa-3x text-black-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0 text-end">
-                    <a href="{{ url_for('profesor.gestion_lc') }}" class="text-dark">Ver pendientes <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
+            <div class="stat-card dark"> <!-- Tarjeta de hora actual -->
+                <div class="card-icon"><i class="fas fa-calendar"></i></div>
+                <h3>Hora Actual</h3>
+                <p id="current-time" style="font-weight: 600; color: var(--accent4);">Cargando...</p>
+                <p id="current-date" style="color: var(--gray);">Cargando...</p>
             </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="card bg-info text-white shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <p class="mb-0 fw-semibold text-white-50">Mensajes sin leer</p>
-                            <h3 class="card-title fw-bold">{{ unread_messages|default(0) }}</h3>
-                        </div>
-                        <i class="fas fa-envelope fa-3x text-white-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0 text-end">
-                    <a href="{{ url_for('profesor.comunicaciones') }}" class="text-white-50">Ir a mensajes <i class="fas fa-arrow-right ms-1"></i></a>
-                </div>
+            <div class="stat-card warning"> <!-- Tarjeta de notificaciones -->
+                <div class="card-icon"><i class="fas fa-bell"></i></div>
+                <h3>Notificaciones</h3>
+                <ul>
+                    <li style="color: var(--accent1);"><i class="fas fa-exclamation-triangle"></i> 5 tareas Mat.</li>
+                    <li style="color: var(--accent1);"><i class="fas fa-exclamation-triangle"></i> 3 est. riesgo Hist.</li>
+                    <li><i class="fas fa-calendar-event" style="color: var(--accent2);"></i> Reunión vie.</li>
+                </ul>
+                <span class="badge">3</span> <!-- Badge de conteo -->
             </div>
         </div>
     </div>
 
-    <div class="row g-4 mt-3">
-        <div class="col-lg-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Próxima Clase</h5>
-                </div>
-                <div class="card-body">
-                    <div id="proxima-clase-content">
-                        {% if proxima_clase %}
-                            <p class="mb-1 fw-semibold">{{ proxima_clase.asignatura_nombre }} — {{ proxima_clase.curso_nombre }}</p>
-                            <p class="mb-1 text-muted"><i class="fas fa-calendar-day me-1"></i> {{ proxima_clase.dia_semana }} • {{ proxima_clase.hora_inicio }} - {{ proxima_clase.hora_fin }}</p>
-                            <p class="mb-0"><i class="fas fa-map-marker-alt me-1"></i> Salón: {{ proxima_clase.salon or 'N/A' }}</p>
-                        {% else %}
-                            <p class="text-muted">No hay próximas clases programadas.</p>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="card-footer bg-white text-end">
-                    <a href="{{ url_for('profesor.ver_horario_clases') }}" class="btn btn-sm btn-outline-secondary">Ver horario completo</a>
-                </div>
+    <!-- Header Principal -->
+    <header class="animate-entrance" style="animation-delay: 0.2s;">
+        <h1 class="text-principal"><i class="fas fa-chalkboard-teacher"></i> Dashboard Profesor</h1> <!-- Título principal -->
+        <p>Todo en un vistazo optimizado</p> <!-- Subtítulo -->
+    </header>
+
+    <!-- Sección 2: KPIs -->
+    <div class="card animate-entrance" style="animation-delay: 0.3s;">
+        <h2><i class="fas fa-chart-bar"></i> KPIs</h2> <!-- Título de sección -->
+        <div class="dashboard"> <!-- Grid para KPIs más compacto -->
+            <div class="kpi-card courses"> <!-- KPI de cursos con clase courses */
+                <div class="card-icon"><i class="fas fa-book"></i></div>
+                <h3>Cursos</h3>
+                <div class="kpi-value">{{ cursos|length }}</div>
+            </div>
+            <div class="kpi-card students"> <!-- KPI de estudiantes con clase students -->
+                <div class="card-icon"><i class="fas fa-users"></i></div>
+                <h3>Estudiantes</h3>
+                <div class="kpi-value">{{ estudiantes_count|default(0) }}</div>
+            </div>
+            <div class="kpi-card attendance"> <!-- KPI de asistencia con clase attendance -->
+                <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                <h3>Asistencia</h3>
+                <div class="kpi-value" id="asistencia-promedio">92%</div>
+            </div>
+            <div class="kpi-card approval"> <!-- KPI de aprobación con clase approval -->
+                <div class="card-icon"><i class="fas fa-trophy"></i></div>
+                <h3>Aprobación</h3>
+                <div class="kpi-value" id="aprobacion-promedio">85%</div>
+            </div>
+            <div class="kpi-card hours"> <!-- KPI de horas con clase hours -->
+                <div class="card-icon"><i class="fas fa-clock"></i></div>
+                <h3>Horas</h3>
+                <div class="kpi-value">{{ horarios_detallados|length * 2 if horarios_detallados else 0 }}</div>
+            </div>
+            <div class="kpi-card tasks"> <!-- KPI de tareas con clase tasks -->
+                <div class="card-icon"><i class="fas fa-tasks"></i></div>
+                <h3>Tareas</h3>
+                <div class="kpi-value">{{ pendientes_count|default(0) }}</div>
             </div>
         </div>
-        <div class="col-lg-8">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Anuncios Recientes</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            <p class="fw-semibold mb-1">Nueva directiva de evaluación</p>
-                            <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> Publicado hace 2 horas</small>
-                            <small>Por favor, revisen los nuevos criterios de evaluación para el segundo trimestre.</small>
-                        </li>
-                        <li class="list-group-item">
-                            <p class="fw-semibold mb-1">Reunión de profesores</p>
-                            <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> Publicado ayer</small>
-                            <small>Reunión en sala de profesores a las 10:00 AM.</small>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-footer bg-white text-end">
-                    <a href="" class="btn btn-sm btn-outline-secondary">Ver todos los anuncios</a>
-                </div>
+    </div>
+
+    <!-- Sección 3: Visualizaciones -->
+    <div class="card animate-entrance" style="animation-delay: 0.4s;">
+        <h2><i class="fas fa-bar-chart"></i> Visualizaciones</h2> <!-- Título de sección -->
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"> <!-- Grid para charts -->
+            <div class="chart-container"> <!-- Contenedor de gráfico de asistencia -->
+                <h3>Asistencia Mensual (porcentaje promedio)</h3>
+                <canvas id="asistenciaChart"></canvas> <!-- Canvas para Chart.js -->
+            </div>
+            <div class="chart-container"> <!-- Contenedor de gráfico de notas -->
+                <h3>Notas Promedio por Curso</h3>
+                <canvas id="promedioCursoChart"></canvas> <!-- Canvas para Chart.js -->
             </div>
         </div>
-        </div>
-        <div class="col-lg-8">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Mis Horarios Compartidos</h5>
-                </div>
-                <div class="card-body">
-                    {% if horarios_detallados %}
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Curso</th>
-                                    <th>Asignatura</th>
-                                    <th>Día</th>
-                                    <th>Hora</th>
-                                    <th>Salón</th>
-                                    <th>Sede</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for horario in horarios_detallados %}
-                                <tr>
-                                    <td>{{ horario.curso_nombre }}</td>
-                                    <td>{{ horario.asignatura_nombre }}</td>
-                                    <td>{{ horario.dia_semana }}</td>
-                                    <td>{{ horario.hora_inicio }} - {{ horario.hora_fin }}</td>
-                                    <td>{{ horario.salon }}</td>
-                                    <td>{{ horario.sede }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+    </div>
+
+    <!-- Sección 4: Detalles Adicionales -->
+    <div class="card animate-entrance" style="animation-delay: 0.5s;">
+        <h2><i class="fas fa-info-circle"></i> Detalles Adicionales</h2> <!-- Título de sección -->
+        <div class="details-grid"> <!-- Grid responsivo para detalles -->
+            <div> <!-- Columna de cursos asignados -->
+                <h3 style="margin-bottom: 12px; color: var(--accent4); text-align: center;"><i class="fas fa-journal-whills"></i> Cursos Asignados</h3>
+                <ul class="list">
+                    {% for curso in cursos %}
+                    <li>{{ curso.nombreCurso }}: {{ curso.total_estudiantes }} estudiantes, Sede: {{ curso.sede.nombre if curso.sede else 'N/A' }}.</li>
                     {% else %}
-                    <p class="text-muted text-center">No hay horarios compartidos disponibles.</p>
-                    {% endif %}
-                </div>
-                <div class="card-footer bg-white text-end">
-                    <a href="{{ url_for('profesor.ver_horario_clases') }}" class="btn btn-sm btn-outline-secondary">Ver horario completo</a>
+                    <li>No hay cursos asignados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div> <!-- Columna de horario semanal -->
+                <h3 style="margin-bottom: 12px; color: var(--accent4); text-align: center;"><i class="fas fa-calendar-week"></i> Horario Semanal</h3>
+                <div style="overflow-x: auto;"> <!-- Contenedor con scroll horizontal para tabla -->
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Día</th>
+                                <th>Hora</th>
+                                <th>Curso</th>
+                                <th>Aula</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for horario in horarios_detallados %}
+                            <tr>
+                                <td>{{ horario.dia_semana }}</td>
+                                <td>{{ horario.hora_inicio }}-{{ horario.hora_fin }}</td>
+                                <td>{{ horario.curso_nombre }}</td>
+                                <td>{{ horario.salon }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4">No hay horarios disponibles.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
-    </div>
+
+    <!-- Footer -->
+    <footer class="animate-entrance" style="animation-delay: 0.6s;">
+        <i class="fas fa-clock"></i> Actualizado <span id="update-date">Cargando...</span> | © Dashboard System <!-- Actualizado a fecha actual -->
+    </footer>
+</div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Librería para gráficos -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    cargarHorarios();
-
-    function cargarHorarios() {
-        const container = document.querySelector('.table-responsive');
-        fetch('/profesor/api/mis-horarios')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.horarios.length > 0) {
-                    let tablaHTML = `
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Curso</th>
-                                    <th>Asignatura</th>
-                                    <th>Día</th>
-                                    <th>Hora</th>
-                                    <th>Salón</th>
-                                    <th>Sede</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
-                    
-                    data.horarios.forEach(horario => {
-                        tablaHTML += `
-                            <tr>
-                                <td>${horario.curso_nombre || 'N/A'}</td>
-                                <td>${horario.asignatura_nombre || 'N/A'}</td>
-                                <td>${horario.dia_semana || 'N/A'}</td>
-                                <td>${horario.hora_inicio || 'N/A'} - ${horario.hora_fin || 'N/A'}</td>
-                                <td>${horario.salon || 'N/A'}</td>
-                                <td>${horario.sede || 'N/A'}</td>
-                            </tr>
-                        `;
-                    });
-                    
-                    tablaHTML += '</tbody></table>';
-                    container.innerHTML = tablaHTML;
-                } else {
-                    container.innerHTML = '<p class="text-muted text-center">No hay horarios compartidos disponibles.</p>';
-                }
-            })
-            .catch(error => {
-                console.error('Error cargando horarios:', error);
-                container.innerHTML = '<p class="text-muted text-center">Error al cargar los horarios.</p>';
-            });
+    // Función para actualizar el reloj en vivo
+    function updateTime() {
+        const now = new Date(); // Obtener fecha actual
+        const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); // Formato español
+        document.getElementById('current-time').textContent = timeStr; // Actualizar elemento
     }
-});
+    setInterval(updateTime, 1000); // Ejecutar cada segundo
+    updateTime(); // Llamada inicial
+
+    // Actualizar fecha actual
+    function updateDate() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+        const dateStr = now.toLocaleDateString('es-ES', options);
+        document.getElementById('current-date').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+        const updateDateStr = now.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+        document.getElementById('update-date').textContent = updateDateStr;
+    }
+    updateDate();
+
+    // Timer simulada para clase en curso
+    let timer = 2700; // Tiempo inicial en segundos (45 minutos)
+    setInterval(() => {
+        if (timer > 0) {
+            timer--; // Decrementar
+            const min = Math.floor(timer / 60); // Minutos
+            const sec = timer % 60; // Segundos
+            document.getElementById('live-timer').textContent = `Quedan ${min}:${sec < 10 ? '0' + sec : sec} min`; // Actualizar texto
+        }
+    }, 1000); // Cada segundo
+
+    // Gráfica de Asistencia Mensual usando Chart.js
+    const ctxAsistencia = document.getElementById('asistenciaChart').getContext('2d'); // Contexto del canvas
+    new Chart(ctxAsistencia, {
+        type: 'line', // Tipo de gráfico: línea
+        data: {
+            labels: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio'], // Etiquetas
+            datasets: [{
+                label: 'Asistencia Promedio (%)', // Etiqueta del dataset
+                data: [90, 93, 88, 95, 92, 94, 91], // Datos
+                borderColor: '#F95738', // Color de borde
+                backgroundColor: 'rgba(249, 87, 56, 0.2)', // Fondo
+                fill: true, // Rellenar área
+                tension: 0.4, // Curvatura
+                pointBackgroundColor: '#0D3B66', // Color de puntos
+                pointBorderColor: '#fff', // Borde de puntos
+                pointBorderWidth: 2, // Ancho de borde
+                pointRadius: 5 // Radio reducido
+            }]
+        },
+        options: {
+            responsive: true, // Responsivo
+            maintainAspectRatio: false, // No mantener aspecto
+            scales: {
+                y: { beginAtZero: false, max: 100, grid: { color: 'rgba(13, 59, 102, 0.1)' }, ticks: { color: '#333' } }, // Eje Y
+                x: { grid: { color: 'rgba(13, 59, 102, 0.1)' }, ticks: { color: '#333' } } // Eje X
+            },
+            plugins: {
+                legend: { labels: { color: '#333', font: { size: 10 } } } // Leyenda con fuente reducida
+            }
+        }
+    });
+
+    // Gráfica de Notas Promedio por Curso usando Chart.js
+    const ctxPromedio = document.getElementById('promedioCursoChart').getContext('2d'); // Contexto del canvas
+    new Chart(ctxPromedio, {
+        type: 'bar', // Tipo de gráfico: barras
+        data: {
+            labels: [{% for curso in cursos %}'{{ curso.nombreCurso }}', {% endfor %}], // Etiquetas
+            datasets: [{
+                label: 'Nota Promedio', // Etiqueta
+                data: [88, 82, 90, 85], // Datos
+                backgroundColor: [ // Colores de fondo
+                    'rgba(249, 87, 56, 0.8)',
+                    'rgba(238, 150, 75, 0.8)',
+                    'rgba(244, 211, 94, 0.8)',
+                    'rgba(13, 59, 102, 0.8)'
+                ],
+                borderColor: [ // Colores de borde
+                    '#F95738',
+                    '#EE964B',
+                    '#F4D35E',
+                    '#0D3B66'
+                ],
+                borderWidth: 2 // Ancho de borde
+            }]
+        },
+        options: {
+            responsive: true, // Responsivo
+            maintainAspectRatio: false, // No mantener aspecto
+            scales: {
+                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(13, 59, 102, 0.1)' }, ticks: { color: '#333' } }, // Eje Y
+                x: { grid: { display: false }, ticks: { color: '#333' } } // Eje X sin grid
+            },
+            plugins: {
+                legend: { labels: { color: '#333', font: { size: 10 } } } // Leyenda
+            }
+        }
+    });
 </script>
 {% endblock %}

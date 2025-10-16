@@ -517,17 +517,19 @@ def dashboard():
     pendientes_total = calcular_pendientes(current_user.id_usuario, curso_id)
     mensajes_total = 0  # Placeholder hasta implementar modelo de mensajes
     proxima = obtener_proxima_clase(current_user.id_usuario)
+    cursos = obtener_cursos_del_profesor(current_user.id_usuario)
 
     # Devolver con nombres que usa la plantilla
     return render_template('profesores/dashboard.html',
-                         clases=clases,
-                         curso_actual=curso_actual,
-                         horarios_detallados=horarios_detallados,
-                         estudiantes_count=estudiantes_total,
-                         asignaturas_count=asignaturas_total,
-                         pendientes_count=pendientes_total,
-                         unread_messages=mensajes_total,
-                         proxima_clase=proxima)
+                           clases=clases,
+                           curso_actual=curso_actual,
+                           horarios_detallados=horarios_detallados,
+                           estudiantes_count=estudiantes_total,
+                           asignaturas_count=asignaturas_total,
+                           pendientes_count=pendientes_total,
+                           unread_messages=mensajes_total,
+                           proxima_clase=proxima,
+                           cursos=cursos)
 
 @profesor_bp.route('/seleccionar-curso')
 @login_required

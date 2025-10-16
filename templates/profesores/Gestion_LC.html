@@ -1377,6 +1377,102 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fecha seleccionada para vista diaria
         let selectedDateForDailyView = null;
 
+        // Variables para ordenamiento y búsqueda
+        let currentAttendanceSortOrder = 'asc';
+        let filteredAttendanceStudents = [...estudiantes];
+
+        // Crear elementos de UI para ordenamiento y búsqueda en asistencia
+        const createAttendanceSortAndSearchUI = () => {
+            const attendanceHeader = document.querySelector('.attendance-header');
+            
+            // Crear contenedor para controles de ordenamiento y búsqueda
+            const controlsContainer = document.createElement('div');
+            controlsContainer.style.cssText = 'display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;';
+            
+            // Buscador
+            const searchContainer = document.createElement('div');
+            searchContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            searchContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Buscar:</label>
+                <input type="text" id="attendance-student-search" placeholder="Nombre del estudiante..." 
+                       style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem; min-width: 200px;">
+            `;
+            
+            // Ordenamiento
+            const sortContainer = document.createElement('div');
+            sortContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            sortContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Ordenar:</label>
+                <select id="attendance-student-sort" style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem;">
+                    <option value="asc">A → Z</option>
+                    <option value="desc">Z → A</option>
+                </select>
+            `;
+            
+            controlsContainer.appendChild(searchContainer);
+            controlsContainer.appendChild(sortContainer);
+            
+            // Insertar después del month-navigation
+            const monthNavigation = attendanceHeader.querySelector('.month-navigation');
+            if (monthNavigation) {
+                attendanceHeader.insertBefore(controlsContainer, monthNavigation.nextSibling);
+            } else {
+                attendanceHeader.appendChild(controlsContainer);
+            }
+            
+            // Configurar event listeners
+            setupAttendanceSortAndSearchEvents();
+        };
+
+        // Configurar eventos para ordenamiento y búsqueda en asistencia
+        const setupAttendanceSortAndSearchEvents = () => {
+            const searchInput = document.getElementById('attendance-student-search');
+            const sortSelect = document.getElementById('attendance-student-sort');
+            
+            if (!searchInput || !sortSelect) return;
+            
+            // Búsqueda en tiempo real
+            searchInput.addEventListener('input', debounce((e) => {
+                filterAndSortAttendanceStudents(e.target.value, sortSelect.value);
+            }, 300));
+            
+            // Ordenamiento
+            sortSelect.addEventListener('change', (e) => {
+                filterAndSortAttendanceStudents(searchInput.value, e.target.value);
+            });
+            
+            // Establecer orden inicial
+            sortSelect.value = currentAttendanceSortOrder;
+        };
+
+        // Filtrar y ordenar estudiantes para asistencia
+        const filterAndSortAttendanceStudents = (searchTerm = '', sortOrder = 'asc') => {
+            // Filtrar
+            if (searchTerm.trim() === '') {
+                filteredAttendanceStudents = [...estudiantes];
+            } else {
+                const term = searchTerm.toLowerCase().trim();
+                filteredAttendanceStudents = estudiantes.filter(estudiante => 
+                    estudiante.nombre.toLowerCase().includes(term)
+                );
+            }
+            
+            // Ordenar
+            filteredAttendanceStudents.sort((a, b) => {
+                const nameA = a.nombre.toLowerCase();
+                const nameB = b.nombre.toLowerCase();
+                
+                if (sortOrder === 'asc') {
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return nameB.localeCompare(nameA);
+                }
+            });
+            
+            currentAttendanceSortOrder = sortOrder;
+            renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth());
+        };
+
         // Contar ausencias sin excusa para un estudiante en un mes
         const countUnexcusedAbsences = (studentId, year, month) => {
             const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1401,7 +1497,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `<th class="day-header ${isToday ? 'today' : ''}" data-day="${day}">${day}</th>`;
             }).join('')}</tr>`;
 
-            monthlyTableBody.innerHTML = estudiantes.map(estudiante => {
+            // Usar filteredAttendanceStudents en lugar de estudiantes
+            monthlyTableBody.innerHTML = filteredAttendanceStudents.map(estudiante => {
                 const unexcusedAbsences = countUnexcusedAbsences(estudiante.id, year, month);
                 const rowClass = unexcusedAbsences >= 3 ? 'highlight-absentee' : '';
                 const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => {
@@ -1428,7 +1525,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const populateStudentListForDay = (date) => {
             const studentListContainer = dailyView.querySelector('.student-list');
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            studentListContainer.innerHTML = `<div class="list-header"><span class="student-name-header-daily">Nombre del Estudiante</span><span class="attendance-status-header">Estado de Asistencia</span></div>${estudiantes.map(estudiante => {
+            
+            // Usar filteredAttendanceStudents para la vista diaria también
+            studentListContainer.innerHTML = `<div class="list-header"><span class="student-name-header-daily">Nombre del Estudiante</span><span class="attendance-status-header">Estado de Asistencia</span></div>${filteredAttendanceStudents.map(estudiante => {
                 const studentData = attendanceData[dateKey]?.[estudiante.id];
                 const isAusente = studentData?.ausente || false;
                 const isTarde = studentData?.tarde || false;
@@ -1589,8 +1688,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return { 
             init: () => { 
+                // Crear UI de búsqueda y ordenamiento para asistencia
+                createAttendanceSortAndSearchUI();
                 setupEventListeners(); 
-                renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth()); 
+                // Aplicar ordenamiento inicial
+                filterAndSortAttendanceStudents('', 'asc');
             } 
         };
     })();
@@ -1608,23 +1710,123 @@ document.addEventListener('DOMContentLoaded', () => {
         const minGradeInput = document.getElementById('min-grade');
         const maxGradeInput = document.getElementById('max-grade');
 
+        // Variables para ordenamiento y búsqueda
+        let currentSortOrder = 'asc'; // 'asc' o 'desc'
+        let filteredStudents = [...estudiantes];
+
+        // Crear elementos de UI para ordenamiento y búsqueda
+        const createSortAndSearchUI = () => {
+            const gradesActions = document.querySelector('.grades-actions');
+            
+            // Crear contenedor para controles de ordenamiento y búsqueda
+            const controlsContainer = document.createElement('div');
+            controlsContainer.style.cssText = 'display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;';
+            
+            // Buscador
+            const searchContainer = document.createElement('div');
+            searchContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            searchContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Buscar:</label>
+                <input type="text" id="student-search" placeholder="Nombre del estudiante..." 
+                       style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem; min-width: 200px;">
+            `;
+            
+            // Ordenamiento
+            const sortContainer = document.createElement('div');
+            sortContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            sortContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Ordenar:</label>
+                <select id="student-sort" style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem;">
+                    <option value="asc">A → Z</option>
+                    <option value="desc">Z → A</option>
+                </select>
+            `;
+            
+            controlsContainer.appendChild(searchContainer);
+            controlsContainer.appendChild(sortContainer);
+            
+            // Insertar después del primer elemento (configuración de notas)
+            if (gradesActions.firstChild) {
+                gradesActions.insertBefore(controlsContainer, gradesActions.children[1]);
+            } else {
+                gradesActions.appendChild(controlsContainer);
+            }
+            
+            // Configurar event listeners
+            setupSortAndSearchEvents();
+        };
+
+        // Configurar eventos para ordenamiento y búsqueda
+        const setupSortAndSearchEvents = () => {
+            const searchInput = document.getElementById('student-search');
+            const sortSelect = document.getElementById('student-sort');
+            
+            // Búsqueda en tiempo real
+            searchInput.addEventListener('input', debounce((e) => {
+                filterAndSortStudents(e.target.value, sortSelect.value);
+            }, 300));
+            
+            // Ordenamiento
+            sortSelect.addEventListener('change', (e) => {
+                filterAndSortStudents(searchInput.value, e.target.value);
+            });
+            
+            // Establecer orden inicial
+            sortSelect.value = currentSortOrder;
+        };
+
+        // Filtrar y ordenar estudiantes
+        const filterAndSortStudents = (searchTerm = '', sortOrder = 'asc') => {
+            // Filtrar
+            if (searchTerm.trim() === '') {
+                filteredStudents = [...estudiantes];
+            } else {
+                const term = searchTerm.toLowerCase().trim();
+                filteredStudents = estudiantes.filter(estudiante => 
+                    estudiante.nombre.toLowerCase().includes(term)
+                );
+            }
+            
+            // Ordenar
+            filteredStudents.sort((a, b) => {
+                const nameA = a.nombre.toLowerCase();
+                const nameB = b.nombre.toLowerCase();
+                
+                if (sortOrder === 'asc') {
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return nameB.localeCompare(nameA);
+                }
+            });
+            
+            currentSortOrder = sortOrder;
+            renderGradesTable();
+        };
+
         // Calcular promedios de todos los estudiantes
         const calculateAllAverages = () => {
             const passingGrade = parseFloat(passingGradeInput.value) || 60;
-
             const finals = [];
 
-            gradesTableBody.querySelectorAll('tr').forEach((row, studentIndex) => {
+            gradesTableBody.querySelectorAll('tr').forEach((row) => {
+                const studentId = row.dataset.studentId;
+                const estudiante = estudiantes.find(s => s.id == studentId);
+                if (!estudiante) return;
+
                 // Construir por categoría
-                const categoryBuckets = {}; // catId -> {sum, count}
+                const categoryBuckets = {};
                 row.querySelectorAll('.grade-input').forEach((input, gradeIndex) => {
                     const raw = input.value;
                     const value = raw === '' ? NaN : parseFloat(raw);
-                    estudiantes[studentIndex].calificaciones[gradeIndex] = isNaN(value) ? '' : value;
+                    estudiante.calificaciones[gradeIndex] = isNaN(value) ? '' : value;
                     const meta = assignmentMeta[gradeIndex];
                     const catId = meta && meta.categoria_id ? meta.categoria_id : null;
                     const key = catId || '__nocat__';
-                    if (!categoryBuckets[key]) categoryBuckets[key] = { sum: 0, count: 0, porcentaje: (meta && meta.porcentaje) ? parseFloat(meta.porcentaje) : (categoriesMap[catId] ? categoriesMap[catId].porcentaje : 0) };
+                    if (!categoryBuckets[key]) categoryBuckets[key] = { 
+                        sum: 0, 
+                        count: 0, 
+                        porcentaje: (meta && meta.porcentaje) ? parseFloat(meta.porcentaje) : (categoriesMap[catId] ? categoriesMap[catId].porcentaje : 0) 
+                    };
                     if (!isNaN(value)) {
                         categoryBuckets[key].sum += value;
                         categoryBuckets[key].count += 1;
@@ -1633,11 +1835,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Calcular promedio ponderado por categorías
                 let finalScore = 0;
-                // Si no hay categorías definidas, caemos al promedio simple
                 if (assignmentMeta.length === 0) {
                     finalScore = 0;
                 } else {
-                    // Sumar por categoria: (avg_in_category) * (categoria_porcentaje / 100)
                     Object.keys(categoryBuckets).forEach(k => {
                         const b = categoryBuckets[k];
                         const avgCat = b.count > 0 ? (b.sum / b.count) : 0;
@@ -1676,23 +1876,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // Construir encabezados con color según categoría
             const headers = assignmentMeta.map((a, idx) => {
                 const colorStyle = a.color ? `style="background:${a.color};color:#fff;padding:6px;border-radius:4px;display:inline-block;min-width:80px;"` : '';
-                return `<th><div ${colorStyle}>${a.name}</div> <div class="assignment-actions"><i class="fas fa-pencil-alt" data-action="edit-assignment" data-col="${idx}"></i><i class="fas fa-trash-alt delete-assignment-icon" data-action="delete-assignment" data-col="${idx}"></i></div></th>`;
+                return `<th><div ${colorStyle}>${a.name}</div> <div class="assignment-actions"><i class="fas fa-pencil-alt" data-action="edit-assignment" data-col="${idx}" title="Editar asignación"></i><i class="fas fa-trash-alt delete-assignment-icon" data-action="delete-assignment" data-col="${idx}" title="Eliminar asignación"></i></div></th>`;
             }).join('');
 
             gradesTableHead.innerHTML = `<tr><th class="student-name-header">Nombre</th>${headers}<th>Promedio</th></tr>`;
 
-            gradesTableBody.innerHTML = estudiantes.map(estudiante =>
-                `<tr data-student-id="${estudiante.id}"><td class="student-name-cell">${estudiante.nombre}</td>${estudiante.calificaciones.map(calificacion =>
+            // Usar filteredStudents en lugar de estudiantes
+            gradesTableBody.innerHTML = filteredStudents.map(estudiante => {
+                const estudianteOriginal = estudiantes.find(s => s.id === estudiante.id);
+                return `<tr data-student-id="${estudiante.id}"><td class="student-name-cell">${estudiante.nombre}</td>${estudianteOriginal.calificaciones.map(calificacion =>
                     `<td><input type="number" class="grade-input" value="${calificacion}"></td>`
-                ).join('')}<td class="average-cell">0</td></tr>`
-            ).join('');
+                ).join('')}<td class="average-cell">0</td></tr>`;
+            }).join('');
 
             calculateAllAverages();
         };
 
         // Configurar event listeners
         const setupEventListeners = () => {
-            // add-assignment: manejado por modal (assignmentModal)
+            // Crear UI de ordenamiento y búsqueda
+            createSortAndSearchUI();
 
             gradesTableHead.addEventListener('click', (e) => {
                 const action = e.target.dataset.action;
@@ -1705,7 +1908,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     UI.showConfirm(`¿Estás seguro de que quieres eliminar la columna "${currentMeta ? currentMeta.name : 'Asignación'}"?`, async (confirmed) => {
                         if (confirmed) {
                             try {
-                                // Llamar al backend para eliminar asignación
                                 const payload = { nombre_calificacion: currentMeta ? currentMeta.name : null };
                                 const resp = await fetch('/profesor/api/eliminar-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                                 const data = await resp.json();
@@ -1724,23 +1926,81 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 } else if (action === 'edit-assignment') {
-                    UI.showPrompt('Editar Asignación', `Introduce el nuevo nombre para "${currentMeta ? currentMeta.name : 'Asignación'}":`, async (newName) => {
-                        if (newName && newName.trim() !== '') {
+                    // Mostrar modal de edición con opciones de nombre y categoría
+                    const modal = document.createElement('div');
+                    modal.className = 'modal-overlay show';
+                    modal.style.zIndex = '100000';
+                    modal.innerHTML = `
+                        <div class="modal-content" style="z-index: 100001; max-width: 500px;">
+                            <h5 class="modal-title">Editar Asignación</h5>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">Nombre:</label>
+                                <input type="text" id="edit-assignment-name" class="modal-input" value="${currentMeta.name}" style="width: 100%;">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">Categoría:</label>
+                                <select id="edit-assignment-category" class="modal-input" style="height: 40px; padding: 6px; width: 100%;">
+                                    ${Object.values(categoriesMap).map(cat => 
+                                        `<option value="${cat.id}" ${cat.id === currentMeta.categoria_id ? 'selected' : ''}>${cat.nombre} (${cat.porcentaje}%)</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="modal-footer">
+                                <button id="edit-assignment-cancel" class="back-button">Cancelar</button>
+                                <button id="edit-assignment-confirm" class="save-button">Guardar Cambios</button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+
+                    document.getElementById('edit-assignment-cancel').addEventListener('click', () => {
+                        document.body.removeChild(modal);
+                    });
+
+                    document.getElementById('edit-assignment-confirm').addEventListener('click', async () => {
+                        const newName = document.getElementById('edit-assignment-name').value.trim();
+                        const newCategoryId = document.getElementById('edit-assignment-category').value;
+                        const newCategory = categoriesMap[newCategoryId];
+                        
+                        if (newName && newCategory) {
                             try {
-                                const oldName = currentMeta ? currentMeta.name : null;
-                                const resp = await fetch('/profesor/api/editar-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre_antiguo: oldName, nombre_nuevo: newName.trim() }) });
-                                const data = await resp.json();
-                                if (data && data.success) {
-                                    if (currentMeta) currentMeta.name = newName.trim();
-                                    renderGradesTable();
-                                    UI.showAlert('Asignación actualizada');
-                                } else {
-                                    UI.showAlert('Error actualizando asignación: ' + (data.message || 'Error desconocido'));
+                                const oldName = currentMeta.name;
+                                // Actualizar nombre
+                                if (newName !== oldName) {
+                                    const resp = await fetch('/profesor/api/editar-asignacion', { 
+                                        method: 'POST', 
+                                        headers: { 'Content-Type': 'application/json' }, 
+                                        body: JSON.stringify({ nombre_antiguo: oldName, nombre_nuevo: newName }) 
+                                    });
+                                    const data = await resp.json();
+                                    if (!data.success) {
+                                        throw new Error(data.message || 'Error actualizando nombre');
+                                    }
                                 }
+
+                                // Actualizar categoría localmente
+                                assignmentMeta[columnIndex].name = newName;
+                                assignmentMeta[columnIndex].categoria_id = newCategoryId;
+                                assignmentMeta[columnIndex].color = newCategory.color;
+                                assignmentMeta[columnIndex].porcentaje = newCategory.porcentaje;
+
+                                renderGradesTable();
+                                UI.showAlert('Asignación actualizada correctamente');
                             } catch (err) {
                                 console.error('Error actualizando asignación:', err);
-                                UI.showAlert('Error de red al actualizar asignación');
+                                UI.showAlert('Error al actualizar la asignación: ' + (err.message || 'Error desconocido'));
                             }
+                        } else {
+                            UI.showAlert('El nombre y la categoría son requeridos');
+                        }
+                        
+                        document.body.removeChild(modal);
+                    });
+
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            document.body.removeChild(modal);
                         }
                     });
                 }
@@ -1757,7 +2017,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
                     
-                    // Encontrar el estudiante y la columna
                     const row = e.target.closest('tr');
                     const studentId = row.dataset.studentId;
                     const estudiante = estudiantes.find(s => s.id == studentId);
@@ -1765,7 +2024,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const assignment = assignmentMeta[columnIndex];
                     
                     if (estudiante && assignment) {
-                        // Guardar en el backend
                         saveGradeToBackend(studentId, assignment.categoria_id, assignment.name, e.target.value);
                     }
                     
@@ -2096,7 +2354,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 setupEventListeners();
-                renderGradesTable();
+                // Aplicar ordenamiento inicial
+                filterAndSortStudents('', 'asc');
             } 
         };
     })();
