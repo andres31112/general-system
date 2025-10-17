@@ -510,7 +510,7 @@ def eliminar_estudiante(id):
             return jsonify({'success': False, 'error': 'Incidente no encontrado.'}), 404
         
         incidente = {
-            'id': incidente_db.id,
+            'id': incidente_db.id_incidente,
             'equipo_id': incidente_db.equipo_id,
             'usuario_reporte': incidente_db.usuario_reporte or '',
             'fecha': incidente_db.fecha.strftime('%Y-%m-%d %H:%M:%S') if incidente_db.fecha else None,
@@ -548,7 +548,7 @@ def api_listar_mantenimientos():
     """
     try:
         mantenimientos_db = db.session.query(
-            Mantenimiento.id,
+            Mantenimiento.id_mantenimiento,
             Mantenimiento.equipo_id,
             Mantenimiento.sede_id,
             Mantenimiento.fecha_programada,
@@ -560,16 +560,16 @@ def api_listar_mantenimientos():
             Equipo.nombre.label('equipo_nombre'),
             Salon.nombre.label('salon_nombre'), # Añadir nombre del salón
             Sede.nombre.label('sede_nombre')
-        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id)\
-         .join(Sede, Mantenimiento.sede_id == Sede.id)\
-         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id_equipo)\
+         .join(Sede, Mantenimiento.sede_id == Sede.id_sede)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
          .order_by(Mantenimiento.fecha_programada.desc())\
          .all()
 
         mantenimientos = []
         for mant in mantenimientos_db:
             mantenimientos.append({
-                'id': mant.id,
+                'id': mant.id_mantenimiento,
                 'equipo_id': mant.equipo_id,
                 'equipo_nombre': mant.equipo_nombre,
                 'sede_id': mant.sede_id,
@@ -597,46 +597,97 @@ def api_programar_mantenimiento():
     try:
         data = request.get_json()
         equipo_id = data.get('equipo_id')
-        sede_id = data.get('sede_id') # Asegurarse de recibir sede_id
+        sede_id = data.get('sede_id')
         fecha_programada_str = data.get('fecha_programada')
         tipo = data.get('tipo')
         descripcion = data.get('descripcion', '').strip()
         tecnico = data.get('tecnico', '').strip()
 
         if not all([equipo_id, sede_id, fecha_programada_str, tipo]):
-            return jsonify({'success': False, 'error': 'Faltan campos obligatorios.'}), 400
+            return jsonify({
+                'success': False, 
+                'error': 'Faltan campos obligatorios. Se requiere: equipo_id, sede_id, fecha_programada y tipo.'
+            }), 400
 
         equipo = Equipo.query.get(equipo_id)
         if not equipo:
-            return jsonify({'success': False, 'error': f'Equipo con ID {equipo_id} no encontrado.'}), 404
+            return jsonify({
+                'success': False, 
+                'error': f'Equipo con ID {equipo_id} no encontrado.'
+            }), 404
 
-        # Convertir fecha
-        fecha_programada = datetime.strptime(fecha_programada_str, '%Y-%m-%d').date()
+        sede = Sede.query.get(sede_id)
+        if not sede:
+            return jsonify({
+                'success': False, 
+                'error': f'Sede con ID {sede_id} no encontrada.'
+            }), 404
 
+        try:
+            fecha_programada = datetime.strptime(fecha_programada_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'success': False, 
+                'error': 'Formato de fecha inválido. Use: YYYY-MM-DD'
+            }), 400
+
+        
         nuevo_mantenimiento = Mantenimiento(
             equipo_id=equipo_id,
             sede_id=sede_id,
             fecha_programada=fecha_programada,
             tipo=tipo,
-            estado='pendiente', # Estado inicial
+            estado='pendiente',
             descripcion=descripcion,
             tecnico=tecnico
         )
         db.session.add(nuevo_mantenimiento)
-
-        # Actualizar estado del equipo a 'Mantenimiento'
-        equipo.estado = 'Mantenimiento'
+            
         db.session.commit()
 
         return jsonify({
             'success': True,
-            'message': 'Mantenimiento programado exitosamente.',
-            'mantenimiento': nuevo_mantenimiento.to_dict()
+            'message': f'Mantenimiento programado exitosamente para el equipo "{equipo.nombre}"',
+            'mantenimiento': {
+                'id': nuevo_mantenimiento.id_mantenimiento,  # o el nombre del campo ID en tu modelo
+                'equipo_id': nuevo_mantenimiento.equipo_id,
+                'equipo_nombre': equipo.nombre,
+                'sede': sede.nombre,
+                'fecha_programada': nuevo_mantenimiento.fecha_programada.strftime('%Y-%m-%d'),
+                'tipo': nuevo_mantenimiento.tipo,
+                'estado': nuevo_mantenimiento.estado,
+                'tecnico': nuevo_mantenimiento.tecnico or 'N/A'
+            }
         }), 201
+        
     except Exception as e:
         db.session.rollback()
         print(f"Error al programar mantenimiento: {e}")
-        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({
+            'success': False, 
+            'error': f'Error interno del servidor: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/equipos/con-mantenimientos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipos_con_mantenimientos():
+    """
+    Retorna los IDs de equipos que tienen mantenimientos activos (pendientes o en progreso).
+    """
+    try:
+        equipos_con_mantenimientos = db.session.query(Mantenimiento.equipo_id)\
+            .filter(Mantenimiento.estado.in_(['pendiente', 'en_progreso']))\
+            .distinct()\
+            .all()
+        
+        ids = [eq[0] for eq in equipos_con_mantenimientos]
+        
+        return jsonify({'equipos_con_mantenimientos': ids}), 200
+        
+    except Exception as e:
+        print(f"Error al obtener equipos con mantenimientos: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>', methods=['GET'])
 @login_required
@@ -647,7 +698,7 @@ def api_detalle_mantenimiento(mantenimiento_id):
     """
     try:
         mantenimiento = db.session.query(
-            Mantenimiento.id,
+            Mantenimiento.id_mantenimiento,
             Mantenimiento.equipo_id,
             Mantenimiento.sede_id,
             Mantenimiento.fecha_programada,
@@ -659,17 +710,17 @@ def api_detalle_mantenimiento(mantenimiento_id):
             Equipo.nombre.label('equipo_nombre'),
             Salon.nombre.label('salon_nombre'),
             Sede.nombre.label('sede_nombre')
-        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id)\
-         .join(Sede, Mantenimiento.sede_id == Sede.id)\
-         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
-         .filter(Mantenimiento.id == mantenimiento_id)\
+        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id_equipo)\
+         .join(Sede, Mantenimiento.sede_id == Sede.id_sede)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .filter(Mantenimiento.id_mantenimiento == mantenimiento_id)\
          .first()
 
         if not mantenimiento:
             return jsonify({'success': False, 'error': 'Mantenimiento no encontrado.'}), 404
 
         return jsonify({
-            'id': mantenimiento.id,
+            'id': mantenimiento.id_mantenimiento,
             'equipo_id': mantenimiento.equipo_id,
             'equipo_nombre': mantenimiento.equipo_nombre,
             'sede_id': mantenimiento.sede_id,
@@ -2185,28 +2236,38 @@ def api_equipos_todos():
 @role_required(1)
 def api_equipos_con_incidentes():
     """
-    Retorna los IDs de equipos que tienen incidentes activos (no resueltos/cerrados).
+    Retorna los IDs de equipos que tienen incidentes activos.
     """
     try:
+        todos_incidentes = db.session.query(
+            Incidente.equipo_id, 
+            Incidente.estado
+        ).all()
+        
+        print("DEBUG - Todos los incidentes en BD:")
+        for inc in todos_incidentes:
+            print(f"  Equipo ID: {inc.equipo_id}, Estado: '{inc.estado}'")
+        
         equipos_con_incidentes = db.session.query(Incidente.equipo_id)\
-            .filter(Incidente.estado.in_(['reportado', 'en_proceso']))\
             .distinct()\
             .all()
         
         ids = [eq[0] for eq in equipos_con_incidentes]
         
+        print(f"DEBUG - IDs con incidentes: {ids}")
+        
         return jsonify({'equipos_con_incidentes': ids}), 200
         
     except Exception as e:
-        print(f"Error al obtener equipos con incidentes: {e}")
+        print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/api/equipos/<int:equipo_id>', methods=['GET', 'PUT', 'DELETE'])
+@admin_bp.route('/api/equipos/<int:id_equipo>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 @role_required(1)
-def api_equipo_detalle(equipo_id):
+def api_equipo_detalle(id_equipo):
     """API para gestión detallada de equipos"""
-    equipo = Equipo.query.get_or_404(equipo_id)
+    equipo = Equipo.query.get_or_404(id_equipo)
     
     # Lógica de ELIMINACIÓN (DELETE)
     if request.method == 'DELETE':
@@ -2281,12 +2342,12 @@ def salones():
 # API Sedes, Salas y Equipos
 # ===============================
 
-@admin_bp.route('/api/sedes/<int:sede_id>/salas')
+@admin_bp.route('/api/sedes/<int:id_sede>/salas')
 @login_required
 @role_required(1)
-def api_salas_por_sede(sede_id):
+def api_salas_por_sede(id_sede):
     """API para obtener salas por sede"""
-    salones = Salon.query.filter_by(id_sede_fk=sede_id).all()
+    salones = Salon.query.filter_by(id_sede_fk=id_sede).all()
     return jsonify([{"id_salon": s.id_salon, "nombre": s.nombre, "tipo": s.tipo} for s in salones])
 
 @admin_bp.route('/api/salas_todas', methods=['GET'])
@@ -2304,13 +2365,13 @@ def api_salas_todas():
             'nombre': s.nombre,
             'tipo': s.tipo,
             'capacidad': s.capacidad,
-            'sede_id': s.id_sede_fk,
+            'id_sede': s.id_sede_fk,
             'sede_nombre': sede_nombre,
             'total_equipos': total_equipos
         })
     return jsonify(result)
 
-@admin_bp.route('/api/salones/<int:salon_id>', methods=['GET', 'PUT', 'DELETE'])
+@admin_bp.route('/api/salones/<int:id_salon>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 @role_required(1)
 def api_salon_detalle(salon_id):
@@ -2360,16 +2421,16 @@ def api_salon_detalle(salon_id):
             db.session.rollback()
             return jsonify({'success': False, 'error': f'Error al eliminar el salón: {str(e)}'}), 500
         
-@admin_bp.route('/api/sedes/<int:sede_id>/salas/<int:salon_id>/equipos')
+@admin_bp.route('/api/sedes/<int:id_sede>/salas/<int:id_salon>/equipos')
 @login_required
 @role_required(1)
-def api_equipos_por_sala(sede_id, salon_id):
+def api_equipos_por_sala(id_sede, id_salon):
     """API para obtener equipos por sala"""
-    equipos = Equipo.query.filter_by(id_salon_fk=salon_id).all()
+    equipos = Equipo.query.filter_by(id_salon_fk=id_salon).all()
     data = []
     for eq in equipos:
         data.append({
-            "id_equipo": eq.id_equipo,
+            "id": eq.id_equipo,
             "nombre": eq.nombre,
             "estado": eq.estado,
             "asignado_a": eq.asignado_a or ""
@@ -2390,26 +2451,51 @@ def api_reportes_estado_equipos():
     """
     Proporciona datos para el gráfico de estado de equipos y las métricas principales.
     """
-    # 1. Total de equipos
-    total = db.session.query(Equipo).count()
-    
-    # 2. Conteo por estado
-    estados_raw = db.session.query(Equipo.estado, db.func.count(Equipo.estado)).group_by(Equipo.estado).all()
-    estados = {e[0]: e[1] for e in estados_raw}
-    
-    data = {
-        'total_equipos': total,
-        'estados': {
-            'Disponible': estados.get('Disponible', 0),
-            'Mantenimiento': estados.get('Mantenimiento', 0),
-            'Incidente': estados.get('Incidente', 0),
-            'Asignado': estados.get('Asignado', 0),
-            'Revisión': estados.get('Revisión', 0),
-            **{k: v for k, v in estados.items() if k not in ['Disponible', 'Mantenimiento', 'Incidente', 'Asignado', 'Revisión']}
+    try:
+        # 1. Total de equipos
+        total = db.session.query(Equipo).count()
+        
+        # 2. Conteo por estado del equipo
+        estados_raw = db.session.query(Equipo.estado, db.func.count(Equipo.estado))\
+                                .group_by(Equipo.estado).all()
+        estados = {e[0]: e[1] for e in estados_raw}
+        
+        # ✅ 3. Contar equipos con incidentes activos (sin importar su estado)
+        equipos_con_incidentes = db.session.query(Incidente.equipo_id)\
+            .distinct()\
+            .count()
+        
+        # ✅ 4. Contar equipos con mantenimientos programados
+        equipos_con_mantenimientos = db.session.query(Mantenimiento.equipo_id)\
+            .filter(Mantenimiento.estado.in_(['pendiente', 'en_progreso']))\
+            .distinct()\
+            .count()
+            
+        # ✅ 5. Contar equipos con revisiones programadas
+        #equipos_con_revisiones = db.session.query(Revision.equipo_id)\
+            # .filter(Revision.estado.in_(['pendiente', 'en_progreso']))
+        
+        data = {
+            'total_equipos': total,
+            'estados': {
+                'Disponible': estados.get('Disponible', 0),
+                'Mantenimiento': estados.get('Mantenimiento', 0),
+                'Incidente': estados.get('Incidente', 0),
+                'Asignado': estados.get('Asignado', 0),
+                'Revisión': estados.get('Revisión', 0),
+                **{k: v for k, v in estados.items() if k not in ['Disponible', 'Mantenimiento', 'Incidente', 'Asignado', 'Revisión']}
+            },
+            'equipos_con_incidentes': equipos_con_incidentes,
+            'equipos_con_mantenimientos': equipos_con_mantenimientos
+            
         }
-    }
-    
-    return jsonify(data), 200
+        
+        return jsonify(data), 200
+        
+    except Exception as e:
+        print(f"Error en reportes estado equipos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
 
 @admin_bp.route('/api/reportes/equipos_por_sede', methods=['GET'])
 @login_required
@@ -2493,7 +2579,6 @@ def api_salones():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 1. API: OBTENER EQUIPOS CON ESTADO "INCIDENTE"
 @admin_bp.route('/api/equipos_para_incidente', methods=['GET'])
 @login_required
 @role_required(1)
@@ -2578,7 +2663,6 @@ def api_listar_incidentes():
         print(f"Error al listar incidentes: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
-# 3. API: CREAR NUEVO INCIDENTE (POST)
 @admin_bp.route('/api/incidentes', methods=['POST'])
 @login_required
 @role_required(1)
@@ -2628,7 +2712,7 @@ def api_crear_incidente():
 
         # Crear el incidente
         nuevo_incidente = Incidente(
-            equipo_id=equipo_id,
+            id_equipo=equipo_id,
             usuario_asignado=usuario_reporte,
             sede=sede_nombre,
             fecha=datetime.now(),
@@ -2665,17 +2749,16 @@ def api_crear_incidente():
         print(f"Error al crear incidente: {e}")
         return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
 
-# 4. API: CAMBIAR ESTADO DE INCIDENTE (PUT)
-@admin_bp.route('/api/incidentes/<int:incidente_id>/estado', methods=['PUT'])
+@admin_bp.route('/api/incidentes/<int:id_incidente>/estado', methods=['PUT'])
 @login_required
 @role_required(1)
-def api_actualizar_estado_incidente(incidente_id):
+def api_actualizar_estado_incidente(id_incidente):
     """API para actualizar estado de incidente"""
     try:
         data = request.get_json()
         nuevo_estado = data.get('estado')
         
-        incidente = Incidente.query.get_or_404(incidente_id)
+        incidente = Incidente.query.get_or_404(id_incidente)
         
         if not nuevo_estado or nuevo_estado not in ['reportado', 'en_proceso', 'resuelto', 'cerrado']:
              return jsonify({'success': False, 'error': 'Estado inválido.'}), 400
@@ -2702,16 +2785,15 @@ def api_actualizar_estado_incidente(incidente_id):
         print(f"Error al actualizar estado: {e}")
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
-# 5. API: ELIMINAR INCIDENTE (DELETE)
-@admin_bp.route('/api/incidentes/<int:incidente_id>', methods=['DELETE'])
+@admin_bp.route('/api/incidentes/<int:id_incidente>', methods=['DELETE'])
 @login_required
 @role_required(1)
-def api_eliminar_incidente(incidente_id):
+def api_eliminar_incidente(id_incidente):
     """
     Elimina un incidente por su ID.
     """
     try:
-        incidente = Incidente.query.get(incidente_id)
+        incidente = Incidente.query.get(id_incidente)
         
         if not incidente:
             return jsonify({'success': False, 'error': 'Incidente no encontrado.'}), 404
@@ -2719,18 +2801,17 @@ def api_eliminar_incidente(incidente_id):
         db.session.delete(incidente)
         db.session.commit()
         
-        return jsonify({'success': True, 'message': f'Incidente {incidente_id} eliminado exitosamente.'})
+        return jsonify({'success': True, 'message': f'Incidente {id_incidente} eliminado exitosamente.'})
 
     except Exception as e:
         db.session.rollback()
         print(f"Error al eliminar incidente: {e}")
         return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
 
-# 6. API: OBTENER DETALLE DE UN INCIDENTE (GET - OPCIONAL)
-@admin_bp.route('/api/incidentes/<int:incidente_id>', methods=['GET'])
+@admin_bp.route('/api/incidentes/<int:id_incidente>', methods=['GET'])
 @login_required
 @role_required(1)
-def api_detalle_incidente(incidente_id):
+def api_detalle_incidente(id_incidente):
     """
     Obtiene el detalle completo de un incidente específico.
     """
@@ -2750,7 +2831,7 @@ def api_detalle_incidente(incidente_id):
         ).join(Equipo, Incidente.equipo_id == Equipo.id_equipo)\
          .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
          .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
-         .filter(Incidente.id_incidente == incidente_id)\
+         .filter(Incidente.id_incidente == id_incidente)\
          .first()
         
         if not incidente_db:

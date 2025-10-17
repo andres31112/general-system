@@ -13,7 +13,7 @@
 {% block content %}
 
 <header class="main-header">
-    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
         <i class="fa-solid fa-arrow-left"></i>
     </a>
     <h1>Gestión Inventario</h1>
@@ -330,6 +330,7 @@ let paginaActual = 1;
 let registrosPorPagina = 5;
 let salasDisponibles = [];
 let equiposConIncidentes = [];
+let equiposConMantenimientos = [];
 
 // ========================================
 // INICIALIZACIÓN
@@ -337,6 +338,7 @@ let equiposConIncidentes = [];
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Iniciando aplicación...');
     await cargarEquiposConIncidentes();
+    await cargarEquiposConMantenimientos();
     await cargarSedes();
     configurarEventListeners();
 });
@@ -357,10 +359,27 @@ async function cargarEquiposConIncidentes() {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         equiposConIncidentes = data.equipos_con_incidentes || [];
-        console.log('✅ Equipos con incidentes:', equiposConIncidentes);
+        console.log('Equipos con incidentes:', equiposConIncidentes);
     } catch (error) {
-        console.error('❌ Error cargando equipos con incidentes:', error);
+        console.error('Error cargando equipos con incidentes:', error);
         equiposConIncidentes = [];
+    }
+}
+
+// ========================================
+// CARGAR EQUIPOS CON MANTENIMIENTOS
+// ========================================
+
+async function cargarEquiposConMantenimientos() {
+    try {
+        const res = await fetch('/admin/api/equipos/con-mantenimientos');
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        equiposConMantenimientos = data.equipos_con_mantenimientos || [];
+        console.log('Equipos con mantenimientos:', equiposConMantenimientos);
+    } catch (error) {
+        console.error('Error cargando equipos con mantenimientos:', error);
+        equiposConMantenimientos = [];
     }
 }
 
@@ -369,11 +388,12 @@ async function cargarEquiposConIncidentes() {
 // ========================================
 async function cargarSalas() {
     try {
-        const res = await fetch('/admin/api/salas_todas');
+        const res = await fetch('/api/salas_todas');
         const salas = await res.json();
         salasDisponibles = salas.map(sala => ({
-            id: sala.id,
+            id: sala.id_salon,
             nombre: sala.nombre,
+            sede_id: sala.sede_id,
             sede_nombre: sala.sede_nombre || 'Desconocida'
         }));
     } catch (error) {
@@ -397,10 +417,13 @@ function crearTabsSedes(sedes) {
         tabLink.id = `tab-sede${sede.id}`;
         tabLink.href = '#';
         tabLink.textContent = sede.nombre;
-        tabLink.onclick = (event) => {
+        tabLink.onclick = async (event) => {
             event.preventDefault();
-            mostrarSede(sede.id);
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            tabLink.classList.add('active');
+            await mostrarSede(sede.id_sede || sede.id);
         };
+
         
         tabItem.appendChild(tabLink);
         tabsContainer.appendChild(tabItem);
@@ -490,25 +513,25 @@ async function mostrarTodosLosEquipos() {
     }
 }
 
-async function mostrarEquiposDeSede(sedeId) {
+async function mostrarEquiposDeSede(id_sede) {
     equiposGlobal = [];
     paginaActual = 1;
     
     try {
         await cargarEquiposConIncidentes();
         
-        const resSalas = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+        const resSalas = await fetch(`/admin/api/sedes/${id_sede}/salas`);
         if (!resSalas.ok) throw new Error(`HTTP error! status: ${resSalas.status}`);
         const salas = await resSalas.json();
 
         for (const sala of salas) {
-            const resEquipos = await fetch(`/admin/api/sedes/${sedeId}/salas/${sala.id}/equipos`);
+            const resEquipos = await fetch(`/admin/api/sedes/${id_sede}/salas/${sala.id_salon}/equipos`);
             if (!resEquipos.ok) throw new Error(`HTTP error! status: ${resEquipos.status}`);
             const equipos = await resEquipos.json();
             equipos.forEach(eq => {
                 equiposGlobal.push({
                     ...eq,
-                    sede: sedesGlobal.find(s => s.id === sedeId)?.nombre || 'Desconocida',
+                    sede: sedesGlobal.find(s => s.id === id_sede)?.nombre || 'Desconocida',
                     sala: sala.nombre || 'Desconocida'
                 });
             });
@@ -523,19 +546,19 @@ async function mostrarEquiposDeSede(sedeId) {
     }
 }
 
-async function mostrarEquiposDeSala(sedeId, salonId) {
+async function mostrarEquiposDeSala(id_sede, id_salon) {
     equiposGlobal = [];
     paginaActual = 1;
     
     try {
         await cargarEquiposConIncidentes();
         
-        const res = await fetch(`/admin/api/sedes/${sedeId}/salas/${salonId}/equipos`);
+        const res = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const equipos = await res.json();
 
-        const sede = sedesGlobal.find(s => s.id === sedeId);
-        const sala = salasDisponibles.find(s => s.id === salonId);
+        const sede = sedesGlobal.find(s => s.id === id_sede);
+        const sala = salasDisponibles.find(s => s.id === id_salon);
 
         equipos.forEach(eq => {
             equiposGlobal.push({
@@ -575,8 +598,12 @@ function renderizarTabla() {
     }
 
     equiposPagina.forEach(eq => {
-        const tieneIncidente = equiposConIncidentes.includes(eq.id);
+        const equipoId = parseInt(eq.id_equipo);
+        const tieneIncidente = equiposConIncidentes.includes(eq.id_equipo);
+        const tieneMantenimiento = equiposConMantenimientos.includes(eq.id_equipo);
         
+        console.log(`Equipo: ${eq.nombre}, ID: ${equipoId}, Incidente: ${tieneIncidente}`);
+
         let estadoBadge = '';
         if (eq.estado === 'Disponible') estadoBadge = `<span class="badge text-bg-primary">Disponible</span>`;
         else if (eq.estado === 'Asignado') estadoBadge = `<span class="badge text-bg-secondary">Asignado</span>`;
@@ -589,11 +616,14 @@ function renderizarTabla() {
         
         if (tieneIncidente) {
             row.classList.add('equipo-con-incidente');
+        } else if (tieneMantenimiento) {
+            row.classList.add('equipo-con-mantenimiento');
         }
         
         row.innerHTML = `
             <td>
-                ${tieneIncidente ? '<i class="fa-solid fa-exclamation-triangle text-warning me-2" title="Tiene incidentes activos"></i>' : ''}
+                ${tieneIncidente ? '<i class="fa-solid fa-exclamation-triangle text-danger me-2" title="Tiene incidentes activos"></i>' : ''}
+                ${tieneMantenimiento && !tieneIncidente ? '<i class="fa-solid fa-wrench text-warning me-2" title="Tiene mantenimientos programados"></i>' : ''}
                 ${eq.nombre || '-'}
             </td>
             <td>${estadoBadge}</td>
@@ -601,16 +631,16 @@ function renderizarTabla() {
             <td>${eq.sala || '-'}</td>
             <td>${eq.asignado_a || '-'}</td>
             <td>
-                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id})">
+                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id_equipo})">
                     <i class="fa-solid fa-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id})">
+                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id_equipo})">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id})">
+                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id_equipo})">
                     <i class="fa-solid fa-trash"></i>
                 </button>
-            </td>
+            </td> 
         `;
         tbody.appendChild(row);
     });
@@ -651,13 +681,21 @@ function cambiarRegistrosPorPagina(e) {
 function actualizarResumen(equipos) {
     const total = equipos.length;
     const disponibles = equipos.filter(e => e.estado === 'Disponible').length;
-    const mantenimiento = equipos.filter(e => e.estado === 'Mantenimiento').length;
-    const incidentes = equipos.filter(e => e.estado === 'Incidente').length;
+    
+    // ✅ Contar equipos con mantenimientos activos (basado en el array)
+    const conMantenimiento = equipos.filter(e => 
+        equiposConMantenimientos.includes(parseInt(e.id_equipo))
+    ).length;
+    
+    // ✅ Contar equipos con incidentes activos (basado en el array)
+    const conIncidentes = equipos.filter(e => 
+        equiposConIncidentes.includes(parseInt(e.id_equipo))
+    ).length;
 
     document.getElementById('total-equipos').textContent = total;
     document.getElementById('equipos-disponibles').textContent = disponibles;
-    document.getElementById('equipos-mantenimiento').textContent = mantenimiento;
-    document.getElementById('equipos-incidentes').textContent = incidentes;
+    document.getElementById('equipos-mantenimiento').textContent = conMantenimiento;
+    document.getElementById('equipos-incidentes').textContent = conIncidentes;
 }
 
 // ========================================

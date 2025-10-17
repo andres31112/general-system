@@ -14,7 +14,7 @@
 {% block content %}
 
 <header class="main-header">
-    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
         <i class="fa-solid fa-arrow-left"></i>
     </a>
     <h1>Reportes de Inventario</h1>
@@ -231,7 +231,7 @@
             if (!resEquipos.ok) throw new Error(`HTTP error! status: ${resEquipos.status}`);
             const dataEquipos = await resEquipos.json();
             actualizarMetricas(dataEquipos);
-            crearEstadosChart(dataEquipos.estados);
+            crearEstadosChart(dataEquipos.estados, dataEquipos.equipos_con_incidentes, dataEquipos.equipos_con_mantenimientos);
 
             const resSedes = await fetch('/admin/api/reportes/equipos_por_sede');
             if (!resSedes.ok) throw new Error(`HTTP error! status: ${resSedes.status}`);
@@ -264,7 +264,9 @@
                 tipo: salon.tipo || 'N/A',
                 sede: salon.sede_nombre || 'Sin sede',     
                 capacidad: salon.capacidad || 'N/A',
-                total_equipos: salon.total_equipos || 0
+                total_equipos: salon.total_equipos || 0,
+                cantidad_sillas: salon.cantidad_sillas || 0,
+                cantidad_mesas: salon.cantidad_mesas || 0
             }));
             
         } catch (error) {
@@ -378,14 +380,33 @@
         const estados = data.estados;
         document.getElementById('totalEquipos').textContent = data.total_equipos;
         document.getElementById('equiposDisponibles').textContent = estados['Disponible'] || 0;
-        document.getElementById('equiposMantenimiento').textContent = estados['Mantenimiento'] || 0;
-        document.getElementById('equiposIncidente').textContent = estados['Incidente'] || 0;
+        document.getElementById('equiposMantenimiento').textContent = data.equipos_con_mantenimientos || 0;
+        document.getElementById('equiposIncidente').textContent = data.equipos_con_incidentes || 0;
     }
 
-    function crearEstadosChart(estados) {
-        const labels = Object.keys(estados);
-        const data = Object.values(estados);
-        const colores = labels.map(label => estadoColors[label] || estadoColors['Otro']);
+
+    function crearEstadosChart(estados, equipos_con_incidentes, equipos_con_mantenimientos) {
+        const labels = [
+            'Total de Equipos', 
+            'Equipos con Incidentes', 
+            'Equipos con Mantenimientos o en Revisión', 
+            'Asignado',
+        ];
+        
+        const data = [
+            estados['Disponible'] || 0,
+            equipos_con_incidentes || 0,
+            equipos_con_mantenimientos || 0,
+            estados['Asignado'] || 0
+        ];
+        
+        const colores = [
+            '#28a745',  // Verde
+            '#dc3545',  // Rojo
+            '#ffc107',  // Amarillo
+            '#0078ad',  // Azul
+            '#17a2b8'   // Cyan
+        ];
 
         const ctx = document.getElementById('estadosChart').getContext('2d');
         
@@ -398,17 +419,21 @@
             data: {
                 labels: labels,
                 datasets: [{
+                    label: 'Cantidad de Equipos',
                     data: data,
                     backgroundColor: colores,
-                    hoverOffset: 4
+                    borderColor: colores,
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right' },
-                    title: { display: true, text: 'Distribución de Equipos por Estado' }
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
                 }
             }
         });
@@ -454,51 +479,25 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4'); 
         let yOffset = 20;
-
-        doc.setFontSize(18);
-        doc.text('Reporte de Inventario', 14, yOffset);
-        yOffset += 10;
         
         try {
-            const canvasEstados = document.getElementById('estadosChart');
-            if (canvasEstados) {
-                const imgDataEstados = await html2canvas(canvasEstados, { scale: 2 });
-                const imgWidth = 80; 
-                const imgHeight = (imgDataEstados.height * imgWidth) / imgDataEstados.width;
-                
-                doc.setFontSize(14);
-                doc.text('1. Estado de Equipos', 14, yOffset);
-                yOffset += 6;
-                doc.addImage(imgDataEstados.toDataURL('image/png'), 'PNG', 14, yOffset, imgWidth, imgHeight);
-                yOffset += imgHeight + 10;
-            }
-            const canvasSedes = document.getElementById('sedesChart');
-            if (canvasSedes) {
-                const imgDataSedes = await html2canvas(canvasSedes, { scale: 2 });
-                const imgWidth = 80; 
-                const imgHeight = (imgDataSedes.height * imgWidth) / imgDataSedes.width;
-                
-                doc.setFontSize(14);
-                doc.text('2. Equipos por Sede', 14, yOffset);
-                yOffset += 6;
-                doc.addImage(imgDataSedes.toDataURL('image/png'), 'PNG', 14, yOffset, imgWidth, imgHeight);
-                yOffset += imgHeight + 10;
-            }
             if (tipo === 'salones') {
-                doc.setFontSize(14);
-                doc.text('3. Lista de Salones', 14, yOffset);
-                yOffset += 6;
+                doc.setFontSize(28);
+                doc.text('Lista de Salones', 14, yOffset);
+                yOffset += 5;
 
                 const tablaSalones = salonesData.map(salon => [
                     salon.nombre || '-',
                     salon.tipo || '-',
                     salon.sede || '-',
                     salon.capacidad || 'N/A',
-                    salon.total_equipos || 0
+                    salon.total_equipos || 0,
+                    salon.cantidad_sillas || 0,
+                    salon.cantidad_mesas || 0
                 ]);
 
                 doc.autoTable({
-                    head: [['Nombre', 'Tipo', 'Sede', 'Capacidad', 'Equipos']],
+                    head: [['Nombre', 'Tipo', 'Sede', 'Capacidad', 'Equipos', 'Cantidad Sillas', 'Cantidad Mesas']],
                     body: tablaSalones,
                     startY: yOffset,
                     styles: { fontSize: 8 },
@@ -583,9 +582,8 @@
     window.cargarEquiposData = cargarEquiposData;
     window.cargarSalonesData = cargarSalonesData;
 
-    // Recargar los datos con el mapeo corregido (estas llamadas se hacen dentro de cargarDatosReportes)
-    cargarEquiposData().then(() => renderizarEquipos());
-    cargarSalonesData().then(() => renderizarSalones());
+
+
 </script>
 {% endblock %}
 </body>

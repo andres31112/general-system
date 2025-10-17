@@ -16,7 +16,7 @@
 {% block content %}
 
 <header class="main-header">
-    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
         <i class="fa-solid fa-arrow-left"></i>
     </a>
     <h1>Gestión de Salones</h1>
@@ -156,10 +156,13 @@
     </div>
 </div>
 
-<script>let sedesGlobal = [];
+<script>
+    let sedesGlobal = [];
     let salonesGlobal = [];
 
-    // Cargar todas las sedes
+    // ===============================
+    // 🔹 Cargar todas las sedes
+    // ===============================
     async function cargarSedes() {
         try {
             const res = await fetch('/admin/api/sedes');
@@ -167,17 +170,19 @@
             sedesGlobal = sedes;
             
             crearPestanasSedes(sedes);
-            await cargarTodosLosSalones();
             
+            // 🔸 Cargar solo la primera sede (sin actualizar tarjetas)
             if (sedes.length > 0) {
-                mostrarSalonesDeSede(sedes[0].id);
+                await cargarSalonesPorSede(sedes[0].id_sede || sedes[0].id);
             }
         } catch (error) {
             console.error('Error cargando sedes:', error);
         }
     }
 
-    // Crear pestañas dinámicamente
+    // ===============================
+    // 🔹 Crear pestañas dinámicamente
+    // ===============================
     function crearPestanasSedes(sedes) {
         const pestanasContainer = document.getElementById('pestanas-sedes');
         const contenidoContainer = document.getElementById('contenido-sedes');
@@ -192,16 +197,18 @@
             const tabButton = document.createElement('button');
             tabButton.className = `nav-link ${index === 0 ? 'active' : ''}`;
             tabButton.setAttribute('data-bs-toggle', 'tab');
-            tabButton.setAttribute('data-bs-target', `#sede-${sede.id}-pane`);
+            tabButton.setAttribute('data-bs-target', `#sede-${sede.id_sede}-pane`);
             tabButton.textContent = `${sede.nombre}`;
-            tabButton.onclick = () => mostrarSalonesDeSede(sede.id);
+            
+            // 🔸 Al cambiar de sede, ya NO se actualizan las tarjetas
+            tabButton.onclick = () => cargarSalonesPorSede(sede.id_sede || sede.id);
             
             tabItem.appendChild(tabButton);
             pestanasContainer.appendChild(tabItem);
             
             const tabPane = document.createElement('div');
             tabPane.className = `tab-pane fade ${index === 0 ? 'show active' : ''}`;
-            tabPane.id = `sede-${sede.id}-pane`;
+            tabPane.id = `sede-${sede.id_sede}-pane`;
             
             tabPane.innerHTML = `
                 <div class="card shadow-sm mt-3">
@@ -210,13 +217,15 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>ID</th>
+                                        <th>#</th>
                                         <th>Nombre Salón</th>
                                         <th>Tipo</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tabla-sede-${sede.id}"></tbody>
+                                <tbody id="tabla-sede-${sede.id_sede}">
+                                    <tr><td colspan="5" class="text-center">Cargando...</td></tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -227,53 +236,81 @@
         });
     }
 
-    // Cargar todos los salones
+    // ===============================
+    // 🔹 Cargar todos los salones (para estadísticas globales)
+    // ===============================
     async function cargarTodosLosSalones() {
         try {
             const res = await fetch('/admin/api/salas_todas'); 
             const salones = await res.json();
             salonesGlobal = salones;
-            actualizarEstadisticas(salones);
+            actualizarEstadisticas(salones); // ✅ Solo aquí se actualizan las tarjetas
         } catch (error) {
             console.error('Error cargando salones:', error);
         }
     }
 
-    // Mostrar salones de una sede específica
-    async function mostrarSalonesDeSede(sedeId) {
+    // ===============================
+    // 🔹 Cargar salones por sede (sin afectar estadísticas)
+    // ===============================
+    async function cargarSalonesPorSede(sedeId) {
+        try {
+            const res = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+            if (!res.ok) throw new Error('Error al obtener salones de la sede');
+
+            const salones = await res.json();
+            salonesGlobal = salones;
+
+            // ❌ Ya no se actualizan las estadísticas aquí
+            mostrarSalonesDeSede(sedeId, salones);
+        } catch (error) {
+            console.error('Error cargando salones por sede:', error);
+        }
+    }
+
+    // ===============================
+    // 🔹 Mostrar salones de una sede
+    // ===============================
+    async function mostrarSalonesDeSede(sedeId, salones = null) {
         const tbody = document.getElementById(`tabla-sede-${sedeId}`);
         if (!tbody) return;
         
         tbody.innerHTML = '';
-        const salonesSede = salonesGlobal.filter(salon => salon.sede_id === sedeId); 
+
+        const salonesSede = salones
+            ? salones
+            : salonesGlobal.filter(salon => salon.sede_id === sedeId || salon.id_sede_fk === sedeId);
         
         if (salonesSede.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="text-center">No hay salones en esta sede</td></tr>`;
             return;
         }
 
-        for (const salon of salonesSede) {
+        salonesSede.forEach((salon, index) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${salon.id}</td>
+                <td>${index + 1}</td>
                 <td>${salon.nombre}</td>
-                <td>${obtenerBadgeTipo(salon.tipo)}</td>
+                <td>${obtenerBadgeTipo(salon.tipo || 'Sin tipo')}</td>
                 <td>
-                    <button class="btn btn-primary btn-sm me-2" onclick="editarSalon(${salon.id})">
+                    <button class="btn btn-primary btn-sm me-2" onclick="editarSalon(${salon.id_salon || salon.id})">
                         <i class="fa-solid fa-pen"></i>
                     </button>
-                    <button class="btn btn-secondary btn-sm me-2" onclick="verSalon(${salon.id})">
+                    <button class="btn btn-secondary btn-sm me-2" onclick="verSalon(${salon.id_salon || salon.id})">
                         <i class="fa-solid fa-eye"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="eliminarSalon(${salon.id})">
+                    <button class="btn btn-danger btn-sm" onclick="eliminarSalon(${salon.id_salon || salon.id})">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
             `;
             tbody.appendChild(row);
-        }
+        });
     }
 
+    // ===============================
+    // 🔹 Etiquetas visuales por tipo
+    // ===============================
     function obtenerBadgeTipo(tipo) {
         switch (tipo) {
             case 'sala_computo': return '<span class="badge bg-info">Sala de Cómputo</span>';
@@ -284,6 +321,9 @@
         }
     }
 
+    // ===============================
+    // 🔹 Actualizar estadísticas
+    // ===============================
     function actualizarEstadisticas(salones) {
         const total = salones.length;
         const salasComputo = salones.filter(s => s.tipo === 'sala_computo').length;
@@ -294,6 +334,9 @@
         document.getElementById('salas-generales').textContent = salasGenerales;
     }
 
+    // ===============================
+    // 🔹 Ver detalles del salón
+    // ===============================
     async function verSalon(salonId) {
         try {
             const res = await fetch(`/admin/api/salones/${salonId}`);
@@ -315,11 +358,14 @@
         }
     }
 
+    // ===============================
+    // 🔹 Editar salón
+    // ===============================
     async function editarSalon(salonId) {
-        const salon = salonesGlobal.find(s => s.id === salonId);
+        const salon = salonesGlobal.find(s => s.id === salonId || s.id_salon === salonId);
         if (!salon) return;
 
-        document.getElementById('salonId').value = salon.id;
+        document.getElementById('salonId').value = salon.id || salon.id_salon;
         document.getElementById('nombreSalon').value = salon.nombre;
         document.getElementById('tipoSalon').value = salon.tipo;
 
@@ -327,15 +373,18 @@
         sedeSelect.innerHTML = '';
         sedesGlobal.forEach(sede => {
             const option = document.createElement('option');
-            option.value = sede.id;
+            option.value = sede.id_sede || sede.id;
             option.textContent = sede.nombre;
-            option.selected = sede.id === salon.sede_id; 
+            option.selected = (sede.id_sede === salon.sede_id || sede.id === salon.sede_id);
             sedeSelect.appendChild(option);
         });
 
         new bootstrap.Modal(document.getElementById('editarSalonModal')).show();
     }
 
+    // ===============================
+    // 🔹 Eliminar salón
+    // ===============================
     async function eliminarSalon(salonId) {
         if (!confirm('¿Está seguro de que desea eliminar este salón? Esta acción no se puede deshacer.')) return;
 
@@ -344,11 +393,10 @@
 
             if (response.ok) {
                 alert('Salón eliminado correctamente.');
-                await cargarTodosLosSalones();
                 const activeTab = document.querySelector('.nav-link.active');
                 if (activeTab) {
                     const sedeIdMatch = activeTab.getAttribute('data-bs-target').match(/sede-(\d+)-pane/);
-                    if (sedeIdMatch) mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
+                    if (sedeIdMatch) await cargarSalonesPorSede(parseInt(sedeIdMatch[1]));
                 }
             } else {
                 const errorData = await response.json();
@@ -360,6 +408,9 @@
         }
     }
 
+    // ===============================
+    // 🔹 Guardar cambios al editar
+    // ===============================
     document.getElementById('editarSalonForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -376,11 +427,10 @@
 
             if (response.ok) {
                 alert('Salón actualizado correctamente.');
-                await cargarTodosLosSalones();
                 const activeTab = document.querySelector('.nav-link.active');
                 if (activeTab) {
                     const sedeIdMatch = activeTab.getAttribute('data-bs-target').match(/sede-(\d+)-pane/);
-                    if (sedeIdMatch) mostrarSalonesDeSede(parseInt(sedeIdMatch[1]));
+                    if (sedeIdMatch) await cargarSalonesPorSede(parseInt(sedeIdMatch[1]));
                 }
                 bootstrap.Modal.getInstance(document.getElementById('editarSalonModal')).hide();
             } else {
@@ -393,13 +443,15 @@
         }
     });
 
-    async function refrescarPestanasSalones() { await cargarSedes(); }
-
+    // ===============================
+    // 🔹 Inicialización al cargar la página
+    // ===============================
     document.addEventListener('DOMContentLoaded', async () => {
         if (typeof bootstrap === 'undefined') console.error("Bootstrap no está cargado.");
-        await cargarSedes();
-    });</script>
-
+        await cargarTodosLosSalones(); // ✅ estadísticas solo una vez
+        await cargarSedes();            // carga pestañas y salones
+    });
+</script>
 <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>
 {% endblock %}
 
