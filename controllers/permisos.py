@@ -5,7 +5,7 @@ ROLE_PERMISSIONS = {
         'gestion_usuarios', 'gestion_asignaturas', 'registro_calificaciones',
         'gestion_comunicados', 'gestion_inventario', 'gestion_matriculas',
         'gestion_electoral', 'crear_roles', 'ver_roles', 'editar_roles', 'eliminar_roles',
-        'gestion_eventos','jornada_electoral'
+        'gestion_eventos','jornada_electoral', 'acceso_reportes'
     ],
     # permisos para el rol profesor
     'Profesor': [

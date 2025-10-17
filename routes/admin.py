@@ -8,13 +8,13 @@ import json
 from werkzeug.utils import secure_filename
 from controllers.decorators import role_required
 from extensions import db
-from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email
+from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email, send_welcome_email_with_retry, get_verification_info
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
 from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, 
-    Evento, Candidato, HorarioVotacion
+    Evento, Candidato, HorarioVotacion, ReporteCalificaciones
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -424,14 +424,17 @@ def crear_estudiante():
             print(f"DEBUG: Enviando correo de verificación a {new_user.correo}")
             
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, verification_code)
+            email_result = send_welcome_email(new_user, verification_code)
             
-            if email_sent:
+            if email_result == True:
                 flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
                 print(f"DEBUG: Correo enviado exitosamente")
+            elif email_result == "limit_exceeded":
+                flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {verification_code}', 'warning')
+                print(f"DEBUG: Límite de correos excedido - Código: {verification_code}")
             else:
-                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
-                print(f"DEBUG: Error enviando correo")
+                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación. Código de verificación: {verification_code}', 'warning')
+                print(f"DEBUG: Error enviando correo - Código: {verification_code}")
             
             return redirect(url_for('admin.estudiantes'))
             
@@ -1048,12 +1051,14 @@ def crear_usuario():
             db.session.commit()
             print(f"DEBUG: Usuario creado - Contraseña temporal: {new_user.temp_password}")
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, new_user.verification_code)
+            email_result = send_welcome_email(new_user, new_user.verification_code)
             
-            if email_sent:
+            if email_result == True:
                 flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
+            elif email_result == "limit_exceeded":
+                flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {new_user.verification_code}', 'warning')
             else:
-                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
+                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación. Código de verificación: {new_user.verification_code}', 'warning')
             
             # Redirigir según el rol creado
             if is_student:
@@ -1270,14 +1275,19 @@ def api_crear_padre():
         db.session.commit()
         
         # Enviar correo de bienvenida con código de verificación
-        email_sent = send_welcome_email(nuevo_padre, verification_code)
+        email_result = send_welcome_email(nuevo_padre, verification_code)
         
-        if not email_sent:
+        if email_result == True:
+            message = 'Padre/acudiente creado exitosamente y correo de verificación enviado'
+        elif email_result == "limit_exceeded":
+            message = f'Padre/acudiente creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {verification_code}'
+        else:
+            message = f'Padre/acudiente creado exitosamente pero hubo un error enviando el correo de verificación. Código de verificación: {verification_code}'
             print(f"ADVERTENCIA: No se pudo enviar el correo de verificación al padre {nuevo_padre.correo}")
         
         return jsonify({
             'success': True,
-            'message': 'Padre/acudiente creado exitosamente' + (' y correo de verificación enviado' if email_sent else ' pero hubo un error enviando el correo de verificación'),
+            'message': message,
             'padre': {
                 'id_usuario': nuevo_padre.id_usuario,
                 'nombre_completo': nuevo_padre.nombre_completo,
@@ -3250,4 +3260,247 @@ def eliminar_candidato(candidato_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ============================================================================ #
+# RUTAS DE REPORTES DE CALIFICACIONES
+# ============================================================================ #
+
+@admin_bp.route('/reportes-calificaciones')
+@login_required
+@role_required(1)
+def reportes_calificaciones():
+    """Página principal de reportes de calificaciones."""
+    return render_template('superadmin/reportes/reportes.html')
+
+@admin_bp.route('/api/reportes-calificaciones', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_reportes():
+    """API para obtener todos los reportes de calificaciones."""
+    try:
+        # Obtener todos los reportes ordenados por fecha de generación (más recientes primero)
+        reportes = db.session.query(ReporteCalificaciones).order_by(
+            ReporteCalificaciones.fecha_generacion.desc()
+        ).all()
         
+        reportes_data = [reporte.to_dict() for reporte in reportes]
+        
+        return jsonify({
+            'success': True,
+            'reportes': reportes_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo reportes: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/reportes-calificaciones/<int:reporte_id>/estado', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_estado_reporte(reporte_id):
+    """API para actualizar el estado de un reporte."""
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        if nuevo_estado not in ['pendiente', 'revisado', 'archivado']:
+            return jsonify({
+                'success': False,
+                'message': 'Estado inválido'
+            }), 400
+        
+        reporte = ReporteCalificaciones.query.get(reporte_id)
+        if not reporte:
+            return jsonify({
+                'success': False,
+                'message': 'Reporte no encontrado'
+            }), 404
+        
+        reporte.estado = nuevo_estado
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado actualizado correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error actualizando estado: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/reportes-calificaciones/<int:reporte_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_reporte(reporte_id):
+    """API para eliminar un reporte."""
+    try:
+        reporte = ReporteCalificaciones.query.get(reporte_id)
+        if not reporte:
+            return jsonify({
+                'success': False,
+                'message': 'Reporte no encontrado'
+            }), 404
+        
+        db.session.delete(reporte)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Reporte eliminado correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando reporte: {str(e)}'
+        }), 500
+
+# ==================== GESTIÓN DE CÓDIGOS DE VERIFICACIÓN ====================
+
+@admin_bp.route('/verification-codes')
+@login_required
+@role_required(1)
+def verification_codes():
+    """Página para gestionar códigos de verificación pendientes"""
+    # Obtener usuarios con email no verificado
+    usuarios_pendientes = Usuario.query.filter(
+        Usuario.email_verified == False,
+        Usuario.verification_code.isnot(None)
+    ).all()
+    
+    return render_template('superadmin/verification_codes.html', 
+                         usuarios_pendientes=usuarios_pendientes)
+
+@admin_bp.route('/reenviar-verificacion', methods=['POST'])
+@login_required
+@role_required(1)
+def reenviar_verificacion():
+    """Reenvía el correo de verificación a un usuario"""
+    try:
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'ID de usuario requerido'
+            }), 400
+        
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.email_verified:
+            return jsonify({
+                'success': False,
+                'message': 'El usuario ya está verificado'
+            }), 400
+        
+        # Reenviar correo con reintentos
+        email_result = send_welcome_email_with_retry(usuario, usuario.verification_code)
+        
+        if email_result == True:
+            return jsonify({
+                'success': True,
+                'message': 'Correo de verificación reenviado exitosamente'
+            })
+        elif email_result == "limit_exceeded":
+            return jsonify({
+                'success': False,
+                'message': f'Límite diario de correos excedido. Código de verificación: {usuario.verification_code}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Error al reenviar correo. Código de verificación: {usuario.verification_code}'
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+@admin_bp.route('/verificar-manual', methods=['POST'])
+@login_required
+@role_required(1)
+def verificar_manual():
+    """Marca un usuario como verificado manualmente"""
+    try:
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'ID de usuario requerido'
+            }), 400
+        
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.email_verified:
+            return jsonify({
+                'success': False,
+                'message': 'El usuario ya está verificado'
+            }), 400
+        
+        # Marcar como verificado
+        usuario.email_verified = True
+        usuario.verification_code = None
+        usuario.verification_code_expires = None
+        usuario.verification_attempts = 0
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Usuario verificado exitosamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+@admin_bp.route('/verification-info/<int:user_id>')
+@login_required
+@role_required(1)
+def get_verification_info_route(user_id):
+    """Obtiene información de verificación para un usuario"""
+    try:
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.email_verified:
+            return jsonify({
+                'success': False,
+                'message': 'El usuario ya está verificado'
+            }), 400
+        
+        info = get_verification_info(usuario)
+        
+        return jsonify({
+            'success': True,
+            'data': info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500

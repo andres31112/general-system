@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
-    HorarioGeneral, Salon, Sede, Evento
+    HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones
 )
 from datetime import datetime, date
 import json
@@ -341,8 +341,18 @@ def generar_matriz_horario_profesor(profesor_id):
     Cada entrada es un dict con keys: curso_nombre, asignatura_nombre, hora_inicio, hora_fin, salon, sede, origen
     """
     entradas = []
+    entradas_unicas = set()  # Para evitar duplicados
 
-    # 1) Entradas desde HorarioCompartido / HorarioCurso
+    def _fmt_hora(val):
+        try:
+            if hasattr(val, 'strftime'):
+                return val.strftime('%H:%M')
+            s = str(val)
+            return s[:5] if len(s) >= 5 and s[2] == ':' else s
+        except Exception:
+            return None
+
+    # 1) Entradas desde HorarioCompartido / HorarioCurso (prioritario)
     try:
         hcomps = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
     except Exception:
@@ -375,8 +385,8 @@ def generar_matriz_horario_profesor(profesor_id):
 
         if horario_curso:
             dia = horario_curso.dia_semana
-            hora_inicio = horario_curso.hora_inicio
-            hora_fin = horario_curso.hora_fin
+            hora_inicio = _fmt_hora(horario_curso.hora_inicio)
+            hora_fin = _fmt_hora(horario_curso.hora_fin)
             salon_nombre = horario_curso.salon.nombre if getattr(horario_curso, 'salon', None) else None
         elif horario_general:
             # Si no hay horario_curso, intentar usar el horario_general (tomar horaInicio)
@@ -384,6 +394,10 @@ def generar_matriz_horario_profesor(profesor_id):
             hora_inicio = horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else None
             hora_fin = horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else None
 
+        # Crear clave única para evitar duplicados
+        clave_unica = f"{hcomp.curso_id}-{hcomp.asignatura_id}-{dia}-{hora_inicio}"
+        if clave_unica not in entradas_unicas:
+            entradas_unicas.add(clave_unica)
         entradas.append({
             'curso_id': getattr(curso, 'id_curso', None),
             'curso_nombre': curso.nombreCurso if curso else 'N/A',
@@ -397,13 +411,18 @@ def generar_matriz_horario_profesor(profesor_id):
             'origen': 'compartido'
         })
 
-    # 2) Entradas desde Clase (sistema tradicional)
+    # 2) Entradas desde Clase (sistema tradicional) - solo si no hay HorarioCompartido
     try:
         clases = Clase.query.filter_by(profesorId=profesor_id).all()
     except Exception:
         clases = []
 
     for clase in clases:
+        # Verificar si ya existe una entrada de HorarioCompartido para esta combinación
+        clave_clase = f"{clase.cursoId}-{clase.asignaturaId}"
+        if any(e.get('curso_id') == clase.cursoId and e.get('asignatura_id') == clase.asignaturaId for e in entradas):
+            continue  # Saltar si ya existe en HorarioCompartido
+            
         # Intentar localizar HorarioCurso asociado a la asignatura + curso
         horario_curso = HorarioCurso.query.filter_by(curso_id=clase.cursoId, asignatura_id=clase.asignaturaId).first()
         curso = Curso.query.get(clase.cursoId)
@@ -411,10 +430,14 @@ def generar_matriz_horario_profesor(profesor_id):
         horario_general = HorarioGeneral.query.get(clase.horarioId) if getattr(clase, 'horarioId', None) else None
 
         dia = horario_curso.dia_semana if horario_curso and getattr(horario_curso, 'dia_semana', None) else (horario_general.nombre if horario_general else None)
-        hora_inicio = horario_curso.hora_inicio if horario_curso and getattr(horario_curso, 'hora_inicio', None) else (horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else None)
-        hora_fin = horario_curso.hora_fin if horario_curso and getattr(horario_curso, 'hora_fin', None) else (horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else None)
+        hora_inicio = _fmt_hora(horario_curso.hora_inicio) if horario_curso and getattr(horario_curso, 'hora_inicio', None) else (horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else None)
+        hora_fin = _fmt_hora(horario_curso.hora_fin) if horario_curso and getattr(horario_curso, 'hora_fin', None) else (horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else None)
         salon_nombre = horario_curso.salon.nombre if horario_curso and getattr(horario_curso, 'salon', None) else None
 
+        # Crear clave única para evitar duplicados
+        clave_unica = f"{clase.cursoId}-{clase.asignaturaId}-{dia}-{hora_inicio}"
+        if clave_unica not in entradas_unicas:
+            entradas_unicas.add(clave_unica)
         entradas.append({
             'curso_id': getattr(curso, 'id_curso', None),
             'curso_nombre': curso.nombreCurso if curso else 'N/A',
@@ -494,13 +517,403 @@ def profesor_context():
         return {}
 
 # ============================================================================ #
+# FUNCIONES PARA ESTADÍSTICAS Y DATOS DEL DASHBOARD
+# ============================================================================ #
+
+def calcular_estadisticas_asistencia_curso(profesor_id, curso_id):
+    """Calcula estadísticas de asistencia para un curso específico."""
+    try:
+        if not curso_id:
+            return {'promedio': 0, 'total_clases': 0, 'total_estudiantes': 0}
+        
+        # Obtener todas las clases del profesor en este curso
+        clases = Clase.query.filter_by(
+            profesorId=profesor_id, 
+            cursoId=curso_id
+        ).all()
+        
+        if not clases:
+            return {'promedio': 0, 'total_clases': 0, 'total_estudiantes': 0}
+        
+        clase_ids = [clase.id_clase for clase in clases]
+        
+        # Obtener asistencias para estas clases
+        asistencias = Asistencia.query.filter(
+            Asistencia.claseId.in_(clase_ids)
+        ).all()
+        
+        # Calcular estadísticas
+        total_asistencias = len(asistencias)
+        asistencias_presente = len([a for a in asistencias if a.estado == 'presente'])
+        
+        promedio = (asistencias_presente / total_asistencias * 100) if total_asistencias > 0 else 0
+        
+        # Obtener total de estudiantes
+        total_estudiantes = len(obtener_estudiantes_por_curso(curso_id))
+        
+        return {
+            'promedio': round(promedio, 2),
+            'total_clases': len(clases),
+            'total_estudiantes': total_estudiantes
+        }
+    except Exception as e:
+        print(f"Error calculando estadísticas de asistencia: {e}")
+        return {'promedio': 0, 'total_clases': 0, 'total_estudiantes': 0}
+
+def calcular_estadisticas_calificaciones_curso(profesor_id, curso_id):
+    """Calcula estadísticas de calificaciones para un curso específico."""
+    try:
+        if not curso_id:
+            return {'promedio': 0, 'aprobacion': 0, 'total_calificaciones': 0}
+        
+        # Obtener calificaciones del curso
+        calificaciones = obtener_calificaciones_por_curso(curso_id)
+        
+        if not calificaciones:
+            return {'promedio': 0, 'aprobacion': 0, 'total_calificaciones': 0}
+        
+        # Filtrar calificaciones con valores numéricos
+        calificaciones_con_valor = [c for c in calificaciones if c.valor is not None]
+        
+        if not calificaciones_con_valor:
+            return {'promedio': 0, 'aprobacion': 0, 'total_calificaciones': 0}
+        
+        # Calcular promedio
+        valores = [float(c.valor) for c in calificaciones_con_valor]
+        promedio = sum(valores) / len(valores)
+        
+        # Obtener configuración de aprobación
+        config = ConfiguracionCalificacion.query.first()
+        nota_aprobacion = float(config.notaMinimaAprobacion) if config else 60.0
+        
+        # Calcular porcentaje de aprobación
+        aprobados = len([v for v in valores if v >= nota_aprobacion])
+        porcentaje_aprobacion = (aprobados / len(valores)) * 100
+        
+        return {
+            'promedio': round(promedio, 2),
+            'aprobacion': round(porcentaje_aprobacion, 2),
+            'total_calificaciones': len(calificaciones_con_valor)
+        }
+    except Exception as e:
+        print(f"Error calculando estadísticas de calificaciones: {e}")
+        return {'promedio': 0, 'aprobacion': 0, 'total_calificaciones': 0}
+
+def obtener_clase_actual(profesor_id):
+    """Obtiene la clase actual en curso basada en la hora y día actual."""
+    try:
+        from datetime import datetime
+        ahora = datetime.now()
+        dia_actual = ahora.strftime('%A').lower()
+        hora_actual = ahora.strftime('%H:%M')
+        
+        # Mapeo de días en español
+        dias_espanol = {
+            'monday': 'lunes',
+            'tuesday': 'martes', 
+            'wednesday': 'miércoles',
+            'thursday': 'jueves',
+            'friday': 'viernes',
+            'saturday': 'sábado',
+            'sunday': 'domingo'
+        }
+        
+        dia_actual_es = dias_espanol.get(dia_actual, '')
+        
+        if not dia_actual_es:
+            return None
+        
+        # Usar la matriz de horarios para obtener datos más precisos
+        dias_semana, horas_semana, matriz_horario = generar_matriz_horario_profesor(profesor_id)
+        
+        # Buscar en la matriz del día actual
+        if dia_actual_es in matriz_horario:
+            for hora_inicio, entradas in matriz_horario[dia_actual_es].items():
+                if entradas:  # Si hay entradas en esta hora
+                    # Verificar si la hora actual está dentro del rango de la clase
+                    for entrada in entradas:
+                        hora_inicio_clase = entrada.get('hora_inicio', '')
+                        hora_fin_clase = entrada.get('hora_fin', '')
+                        
+                        if hora_inicio_clase and hora_fin_clase:
+                            # Convertir a minutos para comparación
+                            def hora_a_minutos(hora_str):
+                                try:
+                                    h, m = map(int, hora_str.split(':'))
+                                    return h * 60 + m
+                                except:
+                                    return 0
+                            
+                            hora_actual_min = hora_a_minutos(hora_actual)
+                            hora_inicio_min = hora_a_minutos(hora_inicio_clase)
+                            hora_fin_min = hora_a_minutos(hora_fin_clase)
+                            
+                            # Verificar si estamos dentro del rango de la clase
+                            if hora_inicio_min <= hora_actual_min < hora_fin_min:
+                                return {
+                                    'asignatura_nombre': entrada.get('asignatura_nombre', 'N/A'),
+                                    'curso_nombre': entrada.get('curso_nombre', 'N/A'),
+                                    'hora_inicio': hora_inicio_clase,
+                                    'hora_fin': hora_fin_clase,
+                                    'salon': entrada.get('salon', 'N/A'),
+                                    'sede': entrada.get('sede', 'N/A')
+                                }
+        
+        return None
+    except Exception as e:
+        print(f"Error obteniendo clase actual: {e}")
+        return None
+
+def obtener_proxima_clase_mejorada(profesor_id):
+    """Obtiene la próxima clase del profesor de manera más precisa."""
+    try:
+        from datetime import datetime, time
+        ahora = datetime.now()
+        dia_actual = ahora.strftime('%A').lower()
+        hora_actual = ahora.time()
+        
+        # Mapeo de días en español
+        dias_espanol = {
+            'monday': 'lunes',
+            'tuesday': 'martes', 
+            'wednesday': 'miercoles',
+            'thursday': 'jueves',
+            'friday': 'viernes',
+            'saturday': 'sabado',
+            'sunday': 'domingo'
+        }
+        
+        dia_actual_es = dias_espanol.get(dia_actual, '')
+        
+        # Obtener todos los horarios del profesor
+        horarios = obtener_horarios_detallados_profesor(profesor_id)
+        
+        if not horarios:
+            return None
+        
+        # Ordenar horarios por día y hora
+        horarios_ordenados = []
+        for horario in horarios:
+            dia = horario.get('dia_semana', '').lower()
+            hora_str = horario.get('hora_inicio', '00:00')
+            
+            # Convertir hora string a objeto time
+            try:
+                hora_obj = datetime.strptime(hora_str, '%H:%M').time()
+            except:
+                continue
+            
+            # Asignar peso numérico al día
+            dias_semana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+            peso_dia = dias_semana.index(dia) if dia in dias_semana else 999
+            
+            horarios_ordenados.append({
+                'horario': horario,
+                'dia': dia,
+                'hora': hora_obj,
+                'peso_dia': peso_dia
+            })
+        
+        # Ordenar por día y hora
+        horarios_ordenados.sort(key=lambda x: (x['peso_dia'], x['hora']))
+        
+        # Buscar la próxima clase
+        for horario_info in horarios_ordenados:
+            dia = horario_info['dia']
+            hora = horario_info['hora']
+            
+            # Si es hoy y la hora es futura
+            if dia == dia_actual_es and hora > hora_actual:
+                return horario_info['horario']
+            
+            # Si es un día futuro
+            if dia != dia_actual_es:
+                peso_dia_actual = dias_semana.index(dia_actual_es) if dia_actual_es in dias_semana else -1
+                peso_dia_clase = horario_info['peso_dia']
+                
+                # Si el día de la clase es después del día actual
+                if peso_dia_clase > peso_dia_actual:
+                    return horario_info['horario']
+        
+        # Si no hay clases futuras esta semana, tomar la primera del siguiente ciclo
+        if horarios_ordenados:
+            return horarios_ordenados[0]['horario']
+        
+        return None
+        
+    except Exception as e:
+        print(f"Error obteniendo próxima clase: {e}")
+        return None
+
+def obtener_datos_grafico_asistencia(profesor_id, curso_id, meses=6):
+    """Obtiene datos históricos de asistencia para el gráfico."""
+    try:
+        if not curso_id:
+            return {'labels': [], 'data': []}
+        
+        # Obtener clases del profesor en este curso
+        clases = Clase.query.filter_by(
+            profesorId=profesor_id, 
+            cursoId=curso_id
+        ).all()
+        
+        if not clases:
+            return {'labels': [], 'data': []}
+        
+        clase_ids = [clase.id_clase for clase in clases]
+        
+        # Obtener asistencias de los últimos meses
+        from datetime import datetime, timedelta
+        fecha_limite = datetime.now().replace(day=1)  # Primer día del mes actual
+        for _ in range(meses-1):
+            fecha_limite = (fecha_limite.replace(day=1) - timedelta(days=1)).replace(day=1)
+        
+        asistencias = Asistencia.query.filter(
+            Asistencia.claseId.in_(clase_ids),
+            Asistencia.fecha >= fecha_limite
+        ).all()
+        
+        # Agrupar por mes
+        datos_mensuales = {}
+        for asistencia in asistencias:
+            mes_key = asistencia.fecha.strftime('%Y-%m')
+            if mes_key not in datos_mensuales:
+                datos_mensuales[mes_key] = {'total': 0, 'presente': 0}
+            
+            datos_mensuales[mes_key]['total'] += 1
+            if asistencia.estado == 'presente':
+                datos_mensuales[mes_key]['presente'] += 1
+        
+        # Ordenar y formatear datos
+        meses_ordenados = sorted(datos_mensuales.keys())
+        labels = []
+        data = []
+        
+        for mes in meses_ordenados:
+            mes_datos = datos_mensuales[mes]
+            porcentaje = (mes_datos['presente'] / mes_datos['total'] * 100) if mes_datos['total'] > 0 else 0
+            
+            # Formatear nombre del mes
+            fecha = datetime.strptime(mes + '-01', '%Y-%m-%d')
+            labels.append(fecha.strftime('%b').capitalize())
+            data.append(round(porcentaje, 2))
+        
+        return {'labels': labels, 'data': data}
+    except Exception as e:
+        print(f"Error obteniendo datos de gráfico de asistencia: {e}")
+        return {'labels': [], 'data': []}
+
+def obtener_datos_grafico_calificaciones(profesor_id, curso_id):
+    """Obtiene datos de calificaciones por asignatura para el gráfico."""
+    try:
+        if not curso_id:
+            return {'labels': [], 'data': []}
+        
+        # Obtener asignaturas del profesor en este curso
+        asignaturas = obtener_asignaturas_por_curso_y_profesor(curso_id, profesor_id)
+        
+        if not asignaturas:
+            return {'labels': [], 'data': []}
+        
+        labels = []
+        data = []
+        
+        for asignatura in asignaturas:
+            # Obtener calificaciones para esta asignatura
+            calificaciones = Calificacion.query.filter_by(
+                asignaturaId=asignatura.id_asignatura
+            ).all()
+            
+            calificaciones_con_valor = [c for c in calificaciones if c.valor is not None]
+            
+            if calificaciones_con_valor:
+                promedio = sum(float(c.valor) for c in calificaciones_con_valor) / len(calificaciones_con_valor)
+                labels.append(asignatura.nombre)
+                data.append(round(promedio, 2))
+        
+        return {'labels': labels, 'data': data}
+    except Exception as e:
+        print(f"Error obteniendo datos de gráfico de calificaciones: {e}")
+        return {'labels': [], 'data': []}
+
+def obtener_notificaciones_profesor(profesor_id, curso_id):
+    """Obtiene notificaciones específicas para el profesor."""
+    try:
+        notificaciones = []
+        
+        # Tareas pendientes (asistencias no registradas hoy)
+        pendientes = calcular_pendientes(profesor_id, curso_id)
+        if pendientes > 0:
+            notificaciones.append({
+                'tipo': 'tareas_pendientes',
+                'mensaje': f'{pendientes} tareas pendientes',
+                'icono': 'exclamation-triangle',
+                'color': 'accent1'
+            })
+        
+        # Estudiantes en riesgo (bajas calificaciones)
+        if curso_id:
+            estudiantes = obtener_estudiantes_por_curso(curso_id)
+            estudiantes_riesgo = 0
+            
+            for estudiante in estudiantes:
+                calificaciones = Calificacion.query.filter_by(
+                    estudianteId=estudiante.id_usuario
+                ).all()
+                
+                calificaciones_con_valor = [c for c in calificaciones if c.valor is not None]
+                if calificaciones_con_valor:
+                    promedio = sum(float(c.valor) for c in calificaciones_con_valor) / len(calificaciones_con_valor)
+                    if promedio < 60:  # Umbral de riesgo
+                        estudiantes_riesgo += 1
+            
+            if estudiantes_riesgo > 0:
+                notificaciones.append({
+                    'tipo': 'estudiantes_riesgo',
+                    'mensaje': f'{estudiantes_riesgo} est. riesgo',
+                    'icono': 'user-graduate',
+                    'color': 'accent1'
+                })
+        
+        # Mensajes no leídos (placeholder)
+        mensajes_no_leidos = 0  # Esto debería venir de un modelo de mensajes
+        if mensajes_no_leidos > 0:
+            notificaciones.append({
+                'tipo': 'mensajes',
+                'mensaje': f'{mensajes_no_leidos} mensajes nuevos',
+                'icono': 'envelope',
+                'color': 'accent2'
+            })
+        
+        # Eventos próximos
+        from datetime import date
+        hoy = date.today()
+        eventos = Evento.query.filter(
+            Evento.rol_destino == 'Profesor',
+            Evento.fecha >= hoy
+        ).order_by(Evento.fecha).limit(3).all()
+        
+        for evento in eventos:
+            notificaciones.append({
+                'tipo': 'evento',
+                'mensaje': evento.nombre,
+                'icono': 'calendar-event',
+                'color': 'accent2'
+            })
+        
+        return notificaciones
+    except Exception as e:
+        print(f"Error obteniendo notificaciones: {e}")
+        return []
+
+# ============================================================================ #
 # RUTAS PRINCIPALES
 # ============================================================================ #
 
 @profesor_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Panel principal del profesor con horarios compartidos."""
+    """Panel principal del profesor con datos reales."""
     curso_id = session.get('curso_seleccionado')
     curso_actual = Curso.query.get(curso_id) if curso_id else None
 
@@ -510,84 +923,153 @@ def dashboard():
         flash(f'Error al cargar horarios: {str(e)}', 'error')
         horarios_detallados = []
 
-    clases = Clase.query.filter_by(profesorId=current_user.id_usuario).all()
+    # Generar matriz semanal (días x horas) solo del profesor
+    try:
+        dias_semana, horas_semana, matriz_horario = generar_matriz_horario_profesor(current_user.id_usuario)
+    except Exception:
+        dias_semana, horas_semana, matriz_horario = [], [], {}
 
-    estudiantes_total = len(obtener_estudiantes_por_curso(curso_id)) if curso_id else 0
-    asignaturas_total = len(obtener_asignaturas_del_profesor(current_user.id_usuario))
-    pendientes_total = calcular_pendientes(current_user.id_usuario, curso_id)
-    mensajes_total = 0  # Placeholder hasta implementar modelo de mensajes
-    proxima = obtener_proxima_clase(current_user.id_usuario)
+    # Fallback: si no se pudo construir con la matriz (por datos parciales), derivar de horarios_detallados
+    if (not dias_semana or not horas_semana) and horarios_detallados:
+        try:
+            def _norm_dia(d):
+                try:
+                    return (d or '').strip()
+                except Exception:
+                    return d
+            def _norm_h(h):
+                try:
+                    s = str(h or '')
+                    # recorta a HH:MM
+                    return s[:5] if len(s) >= 5 and s[2] == ':' else s
+                except Exception:
+                    return h
+            dias_set_fb = set()
+            horas_set_fb = set()
+            matriz_fb = {}
+            for h in horarios_detallados:
+                d = _norm_dia(h.get('dia_semana') or h.get('dia') or h.get('diaSemana'))
+                hi = _norm_h(h.get('hora_inicio') or h.get('horaInicio') or h.get('hora'))
+                hf = _norm_h(h.get('hora_fin') or h.get('horaFin'))
+                if d:
+                    dias_set_fb.add(d)
+                if hi:
+                    horas_set_fb.add(hi)
+                if d and hi:
+                    matriz_fb.setdefault(d, {}).setdefault(hi, []).append({
+                        'asignatura_nombre': h.get('asignatura_nombre') or h.get('asignatura', 'N/A'),
+                        'curso_nombre': h.get('curso_nombre') or h.get('curso', 'N/A'),
+                        'salon': h.get('salon') or 'N/A',
+                        'hora_inicio': hi,
+                        'hora_fin': hf or ''
+                    })
+            # ordenar usando utilidades existentes
+            dias_semana = sorted(list(dias_set_fb), key=lambda x: (_dia_semana_a_indice(x) if _dia_semana_a_indice(x) is not None else 999, x))
+            horas_semana = sorted(list(horas_set_fb), key=lambda hh: (_hora_a_minutos(hh)))
+            matriz_horario = {d: {h: matriz_fb.get(d, {}).get(h, []) for h in horas_semana} for d in dias_semana}
+        except Exception:
+            pass
+
+    # Calcular estadísticas reales
+    estadisticas_asistencia = calcular_estadisticas_asistencia_curso(current_user.id_usuario, curso_id)
+    estadisticas_calificaciones = calcular_estadisticas_calificaciones_curso(current_user.id_usuario, curso_id)
+    
+    # Obtener datos para gráficos
+    datos_grafico_asistencia = obtener_datos_grafico_asistencia(current_user.id_usuario, curso_id)
+    datos_grafico_calificaciones = obtener_datos_grafico_calificaciones(current_user.id_usuario, curso_id)
+    
+    # Obtener clase actual y notificaciones
+    clase_actual = obtener_clase_actual(current_user.id_usuario)
+    notificaciones = obtener_notificaciones_profesor(current_user.id_usuario, curso_id)
+    
+    # Usar la función mejorada para la próxima clase
+    proxima_clase = obtener_proxima_clase_mejorada(current_user.id_usuario)
+    
     cursos = obtener_cursos_del_profesor(current_user.id_usuario)
 
-    # Devolver con nombres que usa la plantilla
     return render_template('profesores/dashboard.html',
-                           clases=clases,
                            curso_actual=curso_actual,
                            horarios_detallados=horarios_detallados,
-                           estudiantes_count=estudiantes_total,
-                           asignaturas_count=asignaturas_total,
-                           pendientes_count=pendientes_total,
-                           unread_messages=mensajes_total,
-                           proxima_clase=proxima,
+                           dias=dias_semana,
+                           horas=horas_semana,
+                           matriz=matriz_horario,
+                           estadisticas_asistencia=estadisticas_asistencia,
+                           estadisticas_calificaciones=estadisticas_calificaciones,
+                           datos_grafico_asistencia=datos_grafico_asistencia,
+                           datos_grafico_calificaciones=datos_grafico_calificaciones,
+                           clase_actual=clase_actual,
+                           notificaciones=notificaciones,
+                           estudiantes_count=estadisticas_asistencia.get('total_estudiantes', 0) if estadisticas_asistencia else 0,
+                           asignaturas_count=len(obtener_asignaturas_del_profesor(current_user.id_usuario)),
+                           pendientes_count=calcular_pendientes(current_user.id_usuario, curso_id),
+                           unread_messages=0,
+                           proxima_clase=proxima_clase,  # Usar la función mejorada
                            cursos=cursos)
+    """Panel principal del profesor con datos reales."""
+    curso_id = session.get('curso_seleccionado')
+    curso_actual = Curso.query.get(curso_id) if curso_id else None
 
-@profesor_bp.route('/seleccionar-curso')
-@login_required
-def seleccionar_curso():
-    """Permite al profesor seleccionar un curso para trabajar."""
     try:
-        cursos = obtener_cursos_del_profesor(current_user.id_usuario)
+        horarios_detallados = obtener_horarios_detallados_profesor(current_user.id_usuario)
     except Exception as e:
-        flash(f'Error al cargar cursos: {str(e)}', 'error')
-        cursos = []
-    return render_template('profesores/seleccionar_curso.html', cursos=cursos)
+        flash(f'Error al cargar horarios: {str(e)}', 'error')
+        horarios_detallados = []
 
-@profesor_bp.route('/guardar-curso-seleccionado', methods=['POST'])
-@login_required
-def guardar_curso_seleccionado():
-    """Guarda el curso seleccionado en la sesión y redirige a gestión LC."""
-    curso_id = request.form.get('curso_id')
+    # Calcular estadísticas reales
+    estadisticas_asistencia = calcular_estadisticas_asistencia_curso(current_user.id_usuario, curso_id)
+    estadisticas_calificaciones = calcular_estadisticas_calificaciones_curso(current_user.id_usuario, curso_id)
+    
+    # Obtener datos para gráficos
+    datos_grafico_asistencia = obtener_datos_grafico_asistencia(current_user.id_usuario, curso_id)
+    datos_grafico_calificaciones = obtener_datos_grafico_calificaciones(current_user.id_usuario, curso_id)
+    
+    # Obtener clase actual y notificaciones
+    clase_actual = obtener_clase_actual(current_user.id_usuario)
+    notificaciones = obtener_notificaciones_profesor(current_user.id_usuario, curso_id)
+    
+    cursos = obtener_cursos_del_profesor(current_user.id_usuario)
 
-    if not curso_id:
-        flash('Por favor selecciona un curso', 'error')
-        return redirect(url_for('profesor.seleccionar_curso'))
-
-    curso_id = int(curso_id)
-    try:
-        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
-            flash('No tienes acceso a este curso', 'error')
-            return redirect(url_for('profesor.seleccionar_curso'))
-        session['curso_seleccionado'] = curso_id
-        curso = Curso.query.get(curso_id)
-        flash(f'Curso "{curso.nombreCurso}" seleccionado correctamente', 'success')
-
-        # Manejar redirección segura usando el parámetro next opcional
-        destino = request.form.get('next') or request.args.get('next')
-        if destino and isinstance(destino, str) and destino.startswith('/'):
-            # evitar redirecciones externas
-            return redirect(destino)
-        return redirect(url_for('profesor.gestion_lc'))
-    except Exception as e:
-        flash(f'Error al seleccionar curso: {str(e)}', 'error')
-        return redirect(url_for('profesor.seleccionar_curso'))
+    return render_template('profesores/dashboard.html',
+                           curso_actual=curso_actual,
+                           horarios_detallados=horarios_detallados,
+                           estadisticas_asistencia=estadisticas_asistencia,
+                           estadisticas_calificaciones=estadisticas_calificaciones,
+                           datos_grafico_asistencia=datos_grafico_asistencia,
+                           datos_grafico_calificaciones=datos_grafico_calificaciones,
+                           clase_actual=clase_actual,
+                           notificaciones=notificaciones,
+                           estudiantes_count=estadisticas_asistencia.get('total_estudiantes', 0) if estadisticas_asistencia else 0,
+                           asignaturas_count=len(obtener_asignaturas_del_profesor(current_user.id_usuario)),
+                           pendientes_count=calcular_pendientes(current_user.id_usuario, curso_id),
+                           unread_messages=0,  # Placeholder hasta implementar mensajes
+                           proxima_clase=obtener_proxima_clase(current_user.id_usuario),
+                           cursos=cursos)
+    
 
 @profesor_bp.route('/gestion-lc')
 @login_required
 def gestion_lc():
     """Página unificada de gestión de listas y calificaciones."""
     curso_id = session.get('curso_seleccionado')
+    asignatura_id = session.get('asignatura_seleccionada')
 
-    if not curso_id:
-        flash('Primero debes seleccionar un curso', 'warning')
-        return redirect(url_for('profesor.seleccionar_curso'))
+    if not curso_id or not asignatura_id:
+        flash('Primero debes seleccionar un curso y una asignatura', 'warning')
+        return redirect(url_for('profesor.dashboard'))
 
     if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
         flash('No tienes acceso a este curso', 'error')
-        return redirect(url_for('profesor.seleccionar_curso'))
+        return redirect(url_for('profesor.dashboard'))
+
+    if not verificar_asignatura_profesor_en_curso(asignatura_id, current_user.id_usuario, curso_id):
+        flash('No tienes acceso a esta asignatura en el curso', 'error')
+        return redirect(url_for('profesor.dashboard'))
 
     curso = Curso.query.get(curso_id)
+    asignatura = Asignatura.query.get(asignatura_id)
     estudiantes = obtener_estudiantes_por_curso(curso_id)
-    asignaturas = obtener_asignaturas_por_curso_y_profesor(curso_id, current_user.id_usuario)
+    # Solo mostrar la asignatura seleccionada
+    asignaturas = [asignatura] if asignatura else []
     categorias = CategoriaCalificacion.query.all()
     calificaciones = obtener_calificaciones_por_curso(curso_id)
     # Preparar versiones serializables (dicts) para uso en JS dentro de la plantilla
@@ -663,7 +1145,8 @@ def gestion_lc():
         except Exception:
             sede_nombre = 'N/A'
 
-        course_info_text = f"{getattr(curso, 'nombreCurso', getattr(curso, 'nombre', 'Curso'))} - Director de Curso: {getattr(curso, 'director', 'No asignado')}"
+        # Información del curso y asignatura seleccionada
+        course_info_text = f"{getattr(curso, 'nombreCurso', getattr(curso, 'nombre', 'Curso'))} - {getattr(asignatura, 'nombre', 'Asignatura')}"
         representative = getattr(curso, 'representante', None) or getattr(curso, 'representante_de_curso', None) or 'N/A'
         total_students = len(estudiantes)
 
@@ -683,6 +1166,10 @@ def gestion_lc():
             'curso': {
                 'id': getattr(curso, 'id_curso', getattr(curso, 'id', None)),
                 'nombre': getattr(curso, 'nombreCurso', getattr(curso, 'nombre', ''))
+            },
+            'asignatura_seleccionada': {
+                'id': getattr(asignatura, 'id_asignatura', getattr(asignatura, 'id', None)),
+                'nombre': getattr(asignatura, 'nombre', '')
             },
             'estudiantes': estudiantes_json,
             'asignaturas': asignaturas_json,
@@ -905,6 +1392,82 @@ def api_mis_cursos():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener cursos: {str(e)}'}), 500
+
+@profesor_bp.route('/api/asignaturas-curso/<int:curso_id>')
+@login_required
+def api_asignaturas_curso(curso_id):
+    """API para obtener las asignaturas de un curso específico del profesor."""
+    try:
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+        
+        asignaturas = obtener_asignaturas_por_curso_y_profesor(curso_id, current_user.id_usuario)
+        asignaturas_data = [{
+            'id': asignatura.id_asignatura,
+            'nombre': asignatura.nombre
+        } for asignatura in asignaturas]
+        
+        return jsonify({
+            'success': True,
+            'asignaturas': asignaturas_data,
+            'total': len(asignaturas_data)
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener asignaturas: {str(e)}'}), 500
+
+@profesor_bp.route('/api/seleccionar-curso-asignatura', methods=['POST'])
+@login_required
+def api_seleccionar_curso_asignatura():
+    """API para seleccionar un curso y asignatura específicos."""
+    try:
+        data = request.get_json()
+        curso_id = data.get('curso_id')
+        asignatura_id = data.get('asignatura_id')
+
+        if not curso_id or not asignatura_id:
+            return jsonify({'success': False, 'message': 'Curso y asignatura son requeridos'}), 400
+
+        # Verificar acceso al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+
+        # Verificar acceso a la asignatura en el curso
+        if not verificar_asignatura_profesor_en_curso(asignatura_id, current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes esta asignatura en el curso'}), 403
+
+        # Guardar en la sesión
+        session['curso_seleccionado'] = curso_id
+        session['asignatura_seleccionada'] = asignatura_id
+
+        # Obtener información para la respuesta
+        curso = Curso.query.get(curso_id)
+        asignatura = Asignatura.query.get(asignatura_id)
+
+        return jsonify({
+            'success': True,
+            'message': f'Seleccionado: {curso.nombreCurso} - {asignatura.nombre}',
+            'curso': {
+                'id': curso_id,
+                'nombre': curso.nombreCurso
+            },
+            'asignatura': {
+                'id': asignatura_id,
+                'nombre': asignatura.nombre
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al seleccionar: {str(e)}'}), 500
+
+@profesor_bp.route('/api/limpiar-seleccion', methods=['POST'])
+@login_required
+def api_limpiar_seleccion():
+    """API para limpiar la selección actual de curso y asignatura."""
+    try:
+        session.pop('curso_seleccionado', None)
+        session.pop('asignatura_seleccionada', None)
+        return jsonify({'success': True, 'message': 'Selección limpiada correctamente'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al limpiar selección: {str(e)}'}), 500
 
 # ============================================================================ #
 # APIs - ASISTENCIAS
@@ -1425,6 +1988,53 @@ def obtener_estadisticas_calificaciones():
 
 
 # ============================================================================ #
+# API - RESUMEN DASHBOARD
+# ============================================================================ #
+
+@profesor_bp.route('/api/dashboard-resumen', methods=['GET'])
+@login_required
+def api_dashboard_resumen():
+    """Devuelve datos consolidados para el dashboard del profesor."""
+    try:
+        curso_id = session.get('curso_seleccionado')
+
+        # Horarios y próxima clase
+        horarios = obtener_horarios_detallados_profesor(current_user.id_usuario)
+        proxima = obtener_proxima_clase_mejorada(current_user.id_usuario)
+
+        # KPIs
+        estad_asist = calcular_estadisticas_asistencia_curso(current_user.id_usuario, curso_id)
+        estad_calif = calcular_estadisticas_calificaciones_curso(current_user.id_usuario, curso_id)
+
+        # Gráficos
+        graf_asist = obtener_datos_grafico_asistencia(current_user.id_usuario, curso_id)
+        graf_calif = obtener_datos_grafico_calificaciones(current_user.id_usuario, curso_id)
+
+        # Cursos del profesor
+        cursos = obtener_cursos_del_profesor(current_user.id_usuario)
+
+        resp = {
+            'success': True,
+            'horarios': horarios,
+            'proxima_clase': proxima,
+            'kpis': {
+                'cursos': len(cursos),
+                'estudiantes_count': estad_asist.get('total_estudiantes', 0) if estad_asist else 0,
+                'asistencia_promedio': estad_asist.get('promedio', 0) if estad_asist else 0,
+                'aprobacion_promedio': estad_calif.get('aprobacion', 0) if estad_calif else 0,
+                'horas': len(horarios) * 2 if horarios else 0,
+                'tareas_pendientes': calcular_pendientes(current_user.id_usuario, curso_id) if curso_id else 0
+            },
+            'graficos': {
+                'asistencia': graf_asist,
+                'calificaciones': graf_calif
+            }
+        }
+        return jsonify(resp)
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error obteniendo resumen: {str(e)}'}), 500
+
+# ============================================================================ #
 # APIs - CONFIGURACIÓN DE CALIFICACIONES
 # ============================================================================ #
 @profesor_bp.route('/api/configuracion-calificaciones', methods=['GET', 'POST'])
@@ -1460,6 +2070,187 @@ def api_configuracion_calificaciones():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error en configuración: {str(e)}'}), 500
+
+
+# ============================================================================ #
+# APIs - REPORTES DE CALIFICACIONES
+# ============================================================================ #
+
+@profesor_bp.route('/api/generar-reporte-calificaciones', methods=['POST'])
+@login_required
+def api_generar_reporte_calificaciones():
+    """API para generar y enviar reporte de calificaciones al administrador."""
+    try:
+        curso_id = session.get('curso_seleccionado')
+        asignatura_id = session.get('asignatura_seleccionada')
+        
+        if not curso_id or not asignatura_id:
+            return jsonify({'success': False, 'message': 'No hay curso o asignatura seleccionada'}), 400
+
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+
+        # Obtener datos del curso y asignatura
+        curso = Curso.query.get(curso_id)
+        asignatura = Asignatura.query.get(asignatura_id)
+        
+        if not curso or not asignatura:
+            return jsonify({'success': False, 'message': 'Curso o asignatura no encontrados'}), 404
+
+        # Obtener estudiantes del curso
+        estudiantes = db.session.query(Usuario).join(Matricula).filter(
+            Matricula.cursoId == curso_id,
+            Usuario.id_rol_fk == 3  # Rol de estudiante
+        ).all()
+
+        if not estudiantes:
+            return jsonify({'success': False, 'message': 'No hay estudiantes en este curso'}), 400
+
+        # Obtener configuración de calificaciones
+        config_calificaciones = ConfiguracionCalificacion.query.first()
+        configuracion_notas = {
+            'nota_minima': float(config_calificaciones.notaMinima) if config_calificaciones else 0,
+            'nota_maxima': float(config_calificaciones.notaMaxima) if config_calificaciones else 100,
+            'nota_aprobacion': float(config_calificaciones.notaMinimaAprobacion) if config_calificaciones else 60
+        }
+
+        # Obtener categorías de calificaciones
+        categorias = db.session.query(CategoriaCalificacion).all()
+        categorias_info = [{
+            'id': cat.id_categoria,
+            'nombre': cat.nombre,
+            'color': getattr(cat, 'color', '#cccccc'),
+            'porcentaje': float(getattr(cat, 'porcentaje', 0))
+        } for cat in categorias]
+
+        # Obtener todas las calificaciones únicas (asignaciones) para esta asignatura
+        asignaciones_unicas = db.session.query(
+            Calificacion.nombre_calificacion,
+            Calificacion.categoriaId
+        ).filter(
+            Calificacion.asignaturaId == asignatura_id
+        ).distinct().all()
+
+        # Obtener calificaciones detalladas de cada estudiante
+        datos_estudiantes = []
+        calificaciones_totales = []
+        
+        for estudiante in estudiantes:
+            # Obtener todas las calificaciones del estudiante en la asignatura
+            calificaciones = db.session.query(Calificacion).filter(
+                Calificacion.estudianteId == estudiante.id_usuario,
+                Calificacion.asignaturaId == asignatura_id
+            ).all()
+            
+            # Organizar calificaciones por asignación
+            calificaciones_por_asignacion = {}
+            for cal in calificaciones:
+                if cal.nombre_calificacion:
+                    calificaciones_por_asignacion[cal.nombre_calificacion] = {
+                        'valor': float(cal.valor) if cal.valor is not None else None,
+                        'categoria_id': cal.categoriaId,
+                        'categoria_nombre': next((cat['nombre'] for cat in categorias_info if cat['id'] == cal.categoriaId), 'Sin categoría'),
+                        'observaciones': cal.observaciones or ''
+                    }
+            
+            # Calcular promedio del estudiante por categorías
+            promedios_por_categoria = {}
+            for cat in categorias_info:
+                cat_id = cat['id']
+                valores_categoria = []
+                for cal in calificaciones:
+                    if cal.categoriaId == cat_id and cal.valor is not None:
+                        valores_categoria.append(float(cal.valor))
+                
+                if valores_categoria:
+                    promedios_por_categoria[cat_id] = {
+                        'promedio': round(sum(valores_categoria) / len(valores_categoria), 2),
+                        'cantidad': len(valores_categoria)
+                    }
+                else:
+                    promedios_por_categoria[cat_id] = {
+                        'promedio': 0,
+                        'cantidad': 0
+                    }
+            
+            # Calcular promedio ponderado final
+            promedio_ponderado = 0
+            total_porcentaje = 0
+            for cat_id, datos in promedios_por_categoria.items():
+                cat_info = next((cat for cat in categorias_info if cat['id'] == cat_id), None)
+                if cat_info and datos['cantidad'] > 0:
+                    peso = cat_info['porcentaje'] / 100
+                    promedio_ponderado += datos['promedio'] * peso
+                    total_porcentaje += peso
+            
+            if total_porcentaje > 0:
+                promedio_final = promedio_ponderado / total_porcentaje
+            else:
+                # Si no hay categorías, calcular promedio simple
+                valores = [float(c.valor) for c in calificaciones if c.valor is not None]
+                promedio_final = sum(valores) / len(valores) if valores else 0
+            
+            calificaciones_totales.append(promedio_final)
+            
+            datos_estudiantes.append({
+                'nombre': estudiante.nombre_completo,
+                'promedio_final': round(promedio_final, 2),
+                'calificaciones_detalladas': calificaciones_por_asignacion,
+                'promedios_por_categoria': promedios_por_categoria,
+                'estado': 'Aprobado' if promedio_final >= configuracion_notas['nota_aprobacion'] else 'Reprobado'
+            })
+
+        # Calcular estadísticas generales
+        if calificaciones_totales:
+            promedio_general = sum(calificaciones_totales) / len(calificaciones_totales)
+            nota_mas_alta = max(calificaciones_totales)
+            nota_mas_baja = min(calificaciones_totales)
+        else:
+            promedio_general = 0
+            nota_mas_alta = 0
+            nota_mas_baja = 0
+
+        # Crear el reporte con información completa
+        reporte_data = {
+            'estudiantes': datos_estudiantes,
+            'configuracion_notas': configuracion_notas,
+            'categorias': categorias_info,
+            'asignaciones': [{'nombre': a.nombre_calificacion, 'categoria_id': a.categoriaId} for a in asignaciones_unicas],
+            'estadisticas_generales': {
+                'promedio_general': round(promedio_general, 2),
+                'nota_mas_alta': round(nota_mas_alta, 2),
+                'nota_mas_baja': round(nota_mas_baja, 2),
+                'total_estudiantes': len(estudiantes),
+                'estudiantes_aprobados': len([e for e in datos_estudiantes if e['estado'] == 'Aprobado']),
+                'estudiantes_reprobados': len([e for e in datos_estudiantes if e['estado'] == 'Reprobado'])
+            }
+        }
+
+        reporte = ReporteCalificaciones(
+            profesor_id=current_user.id_usuario,
+            curso_id=curso_id,
+            asignatura_id=asignatura_id,
+            nombre_curso=curso.nombreCurso,
+            nombre_asignatura=asignatura.nombre,
+            datos_estudiantes=reporte_data,
+            promedio_general=round(promedio_general, 2),
+            nota_mas_alta=round(nota_mas_alta, 2),
+            nota_mas_baja=round(nota_mas_baja, 2),
+            estado='pendiente'
+        )
+        
+        db.session.add(reporte)
+        db.session.commit()
+
+        return jsonify({
+            'success': True, 
+            'message': 'Reporte generado y enviado al administrador correctamente',
+            'reporte_id': reporte.id_reporte
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error generando reporte: {str(e)}'}), 500
 
 
 # ============================================================================ #

@@ -753,3 +753,46 @@ class HorarioVotacion(db.Model):
 
     def __repr__(self):
         return f"<HorarioVotacion {self.inicio}-{self.fin}>"
+
+
+# ================================
+# Modelo de Reportes de Calificaciones
+# ================================
+
+class ReporteCalificaciones(db.Model):
+    __tablename__ = "reportes_calificaciones"
+    
+    id_reporte = db.Column(db.Integer, primary_key=True)
+    profesor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    curso_id = db.Column(db.Integer, db.ForeignKey("curso.id_curso"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id_asignatura"), nullable=False)
+    nombre_curso = db.Column(db.String(100), nullable=False)
+    nombre_asignatura = db.Column(db.String(100), nullable=False)
+    datos_estudiantes = db.Column(db.JSON, nullable=False)  # JSON con nombres y promedios
+    promedio_general = db.Column(db.Float, nullable=False)
+    nota_mas_alta = db.Column(db.Float, nullable=False)
+    nota_mas_baja = db.Column(db.Float, nullable=False)
+    fecha_generacion = db.Column(db.DateTime, default=datetime.utcnow)
+    estado = db.Column(db.String(20), default='pendiente')  # pendiente, revisado, archivado
+    
+    # Relaciones
+    profesor = db.relationship("Usuario", foreign_keys=[profesor_id])
+    curso = db.relationship("Curso", foreign_keys=[curso_id])
+    asignatura = db.relationship("Asignatura", foreign_keys=[asignatura_id])
+    
+    def to_dict(self):
+        return {
+            "id_reporte": self.id_reporte,
+            "profesor_nombre": self.profesor.nombre_completo if self.profesor else "Desconocido",
+            "curso_nombre": self.nombre_curso,
+            "asignatura_nombre": self.nombre_asignatura,
+            "datos_estudiantes": self.datos_estudiantes,
+            "promedio_general": self.promedio_general,
+            "nota_mas_alta": self.nota_mas_alta,
+            "nota_mas_baja": self.nota_mas_baja,
+            "fecha_generacion": self.fecha_generacion.strftime("%Y-%m-%d %H:%M") if self.fecha_generacion else "",
+            "estado": self.estado
+        }
+    
+    def __repr__(self):
+        return f"<ReporteCalificaciones {self.nombre_curso} - {self.nombre_asignatura}>"

@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes de Calificaciones{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">
+                    <i class="fas fa-chart-bar me-2"></i>Reportes de Calificaciones
+                </h1>
+                <div class="d-flex gap-2">
+                    <button id="refresh-btn" class="btn btn-outline-primary">
+                        <i class="fas fa-sync-alt me-1"></i>Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="filtro-estado" class="form-label">Estado:</label>
+                            <select id="filtro-estado" class="form-select">
+                                <option value="">Todos los estados</option>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="revisado">Revisado</option>
+                                <option value="archivado">Archivado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro-curso" class="form-label">Curso:</label>
+                            <input type="text" id="filtro-curso" class="form-control" placeholder="Buscar por curso...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro-profesor" class="form-label">Profesor:</label>
+                            <input type="text" id="filtro-profesor" class="form-control" placeholder="Buscar por profesor...">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button id="limpiar-filtros" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de reportes -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Reportes Recibidos</h5>
+                </div>
+                <div class="card-body">
+                    <div id="loading" class="text-center py-4" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando reportes...</p>
+                    </div>
+                    
+                    <div id="no-reports" class="text-center py-5" style="display: none;">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No hay reportes disponibles</h5>
+                        <p class="text-muted">Los profesores aún no han enviado reportes de calificaciones.</p>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="reportes-table" class="table table-hover" style="display: none;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Profesor</th>
+                                    <th>Curso</th>
+                                    <th>Asignatura</th>
+                                    <th>Estudiantes</th>
+                                    <th>Promedio General</th>
+                                    <th>Nota Más Alta</th>
+                                    <th>Nota Más Baja</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportes-tbody">
+                                <!-- Los reportes se cargarán aquí dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver detalles del reporte -->
+<div class="modal fade" id="detalleReporteModal" tabindex="-1" aria-labelledby="detalleReporteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detalleReporteModalLabel">Detalle del Reporte</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalle-contenido">
+                    <!-- El contenido del reporte se cargará aquí -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalLabel">Confirmar Acción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <!-- El mensaje de confirmación se cargará aquí -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-estado {
+    font-size: 0.8em;
+}
+
+.badge-pendiente {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.badge-revisado {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.badge-archivado {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.estudiante-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.estudiante-item:last-child {
+    border-bottom: none;
+}
+
+.estudiante-nombre {
+    font-weight: 500;
+}
+
+.estudiante-promedio {
+    font-weight: 600;
+    color: #495057;
+}
+
+.estadisticas-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+}
+
+.estadisticas-card .card-body {
+    padding: 1.5rem;
+}
+
+.estadisticas-valor {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.estadisticas-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let reportes = [];
+    let reportesFiltrados = [];
+
+    // Elementos del DOM
+    const loadingEl = document.getElementById('loading');
+    const noReportsEl = document.getElementById('no-reports');
+    const tableEl = document.getElementById('reportes-table');
+    const tbodyEl = document.getElementById('reportes-tbody');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const filtroEstado = document.getElementById('filtro-estado');
+    const filtroCurso = document.getElementById('filtro-curso');
+    const filtroProfesor = document.getElementById('filtro-profesor');
+    const limpiarFiltrosBtn = document.getElementById('limpiar-filtros');
+
+    // Cargar reportes
+    async function cargarReportes() {
+        try {
+            loadingEl.style.display = 'block';
+            tableEl.style.display = 'none';
+            noReportsEl.style.display = 'none';
+
+            const response = await fetch('/admin/api/reportes-calificaciones');
+            const data = await response.json();
+
+            if (data.success) {
+                reportes = data.reportes;
+                aplicarFiltros();
+            } else {
+                mostrarError('Error cargando reportes: ' + data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            mostrarError('Error de red al cargar reportes');
+        } finally {
+            loadingEl.style.display = 'none';
+        }
+    }
+
+    // Aplicar filtros
+    function aplicarFiltros() {
+        const estadoFiltro = filtroEstado.value.toLowerCase();
+        const cursoFiltro = filtroCurso.value.toLowerCase();
+        const profesorFiltro = filtroProfesor.value.toLowerCase();
+
+        reportesFiltrados = reportes.filter(reporte => {
+            const cumpleEstado = !estadoFiltro || reporte.estado === estadoFiltro;
+            const cumpleCurso = !cursoFiltro || reporte.curso_nombre.toLowerCase().includes(cursoFiltro);
+            const cumpleProfesor = !profesorFiltro || reporte.profesor_nombre.toLowerCase().includes(profesorFiltro);
+
+            return cumpleEstado && cumpleCurso && cumpleProfesor;
+        });
+
+        renderizarReportes();
+    }
+
+    // Renderizar reportes en la tabla
+    function renderizarReportes() {
+        if (reportesFiltrados.length === 0) {
+            noReportsEl.style.display = 'block';
+            tableEl.style.display = 'none';
+            return;
+        }
+
+        noReportsEl.style.display = 'none';
+        tableEl.style.display = 'table';
+        
+        tbodyEl.innerHTML = reportesFiltrados.map(reporte => {
+            const fecha = new Date(reporte.fecha_generacion).toLocaleDateString('es-ES');
+            const estadoBadge = getEstadoBadge(reporte.estado);
+            const numEstudiantes = reporte.datos_estudiantes ? reporte.datos_estudiantes.length : 0;
+
+            return `
+                <tr>
+                    <td>${fecha}</td>
+                    <td>${reporte.profesor_nombre}</td>
+                    <td>${reporte.curso_nombre}</td>
+                    <td>${reporte.asignatura_nombre}</td>
+                    <td>${numEstudiantes}</td>
+                    <td><strong>${reporte.promedio_general}</strong></td>
+                    <td><span class="text-success">${reporte.nota_mas_alta}</span></td>
+                    <td><span class="text-danger">${reporte.nota_mas_baja}</span></td>
+                    <td>${estadoBadge}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="verDetalle(${reporte.id_reporte})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Cambiar estado">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${reporte.id_reporte}, 'pendiente')">Marcar como Pendiente</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${reporte.id_reporte}, 'revisado')">Marcar como Revisado</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${reporte.id_reporte}, 'archivado')">Archivar</a></li>
+                                </ul>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarReporte(${reporte.id_reporte})" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Obtener badge de estado
+    function getEstadoBadge(estado) {
+        const badges = {
+            'pendiente': '<span class="badge badge-estado badge-pendiente">Pendiente</span>',
+            'revisado': '<span class="badge badge-estado badge-revisado">Revisado</span>',
+            'archivado': '<span class="badge badge-estado badge-archivado">Archivado</span>'
+        };
+        return badges[estado] || '<span class="badge badge-secondary">Desconocido</span>';
+    }
+
+    // Ver detalles del reporte
+    window.verDetalle = function(reporteId) {
+        const reporte = reportes.find(r => r.id_reporte === reporteId);
+        if (!reporte) return;
+
+        const fecha = new Date(reporte.fecha_generacion).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const estudiantesHtml = reporte.datos_estudiantes ? reporte.datos_estudiantes.map(est => `
+            <div class="estudiante-item d-flex justify-content-between align-items-center">
+                <span class="estudiante-nombre">${est.nombre}</span>
+                <span class="estudiante-promedio">${est.promedio}</span>
+            </div>
+        `).join('') : '<p class="text-muted">No hay datos de estudiantes disponibles.</p>';
+
+        document.getElementById('detalle-contenido').innerHTML = `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6><strong>Información General</strong></h6>
+                    <p><strong>Profesor:</strong> ${reporte.profesor_nombre}</p>
+                    <p><strong>Curso:</strong> ${reporte.curso_nombre}</p>
+                    <p><strong>Asignatura:</strong> ${reporte.asignatura_nombre}</p>
+                    <p><strong>Fecha:</strong> ${fecha}</p>
+                    <p><strong>Estado:</strong> ${getEstadoBadge(reporte.estado)}</p>
+                </div>
+                <div class="col-md-6">
+                    <div class="estadisticas-card">
+                        <div class="card-body text-center">
+                            <div class="estadisticas-valor">${reporte.promedio_general}</div>
+                            <div class="estadisticas-label">Promedio General</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">${reporte.nota_mas_alta}</h5>
+                            <small class="text-muted">Nota Más Alta</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-danger">${reporte.nota_mas_baja}</h5>
+                            <small class="text-muted">Nota Más Baja</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-primary">${reporte.datos_estudiantes ? reporte.datos_estudiantes.length : 0}</h5>
+                            <small class="text-muted">Total Estudiantes</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h6><strong>Calificaciones por Estudiante</strong></h6>
+            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                ${estudiantesHtml}
+            </div>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('detalleReporteModal'));
+        modal.show();
+    };
+
+    // Cambiar estado del reporte
+    window.cambiarEstado = function(reporteId, nuevoEstado) {
+        const reporte = reportes.find(r => r.id_reporte === reporteId);
+        if (!reporte) return;
+
+        const estados = {
+            'pendiente': 'Pendiente',
+            'revisado': 'Revisado',
+            'archivado': 'Archivado'
+        };
+
+        document.getElementById('confirmModalBody').innerHTML = `
+            ¿Estás seguro de que deseas cambiar el estado del reporte de <strong>${reporte.curso_nombre}</strong> 
+            a <strong>${estados[nuevoEstado]}</strong>?
+        `;
+
+        const confirmBtn = document.getElementById('confirmBtn');
+        confirmBtn.onclick = async function() {
+            try {
+                const response = await fetch(`/admin/api/reportes-calificaciones/${reporteId}/estado`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    reporte.estado = nuevoEstado;
+                    aplicarFiltros();
+                    mostrarExito('Estado actualizado correctamente');
+                } else {
+                    mostrarError('Error actualizando estado: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarError('Error de red al actualizar estado');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        };
+
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        modal.show();
+    };
+
+    // Eliminar reporte
+    window.eliminarReporte = function(reporteId) {
+        const reporte = reportes.find(r => r.id_reporte === reporteId);
+        if (!reporte) return;
+
+        document.getElementById('confirmModalBody').innerHTML = `
+            ¿Estás seguro de que deseas eliminar el reporte de <strong>${reporte.curso_nombre}</strong> 
+            de <strong>${reporte.profesor_nombre}</strong>?<br><br>
+            <small class="text-muted">Esta acción no se puede deshacer.</small>
+        `;
+
+        const confirmBtn = document.getElementById('confirmBtn');
+        confirmBtn.className = 'btn btn-danger';
+        confirmBtn.textContent = 'Eliminar';
+        confirmBtn.onclick = async function() {
+            try {
+                const response = await fetch(`/admin/api/reportes-calificaciones/${reporteId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    reportes = reportes.filter(r => r.id_reporte !== reporteId);
+                    aplicarFiltros();
+                    mostrarExito('Reporte eliminado correctamente');
+                } else {
+                    mostrarError('Error eliminando reporte: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarError('Error de red al eliminar reporte');
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        };
+
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        modal.show();
+    };
+
+    // Mostrar mensajes
+    function mostrarExito(mensaje) {
+        // Crear toast de éxito
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${mensaje}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        toast.addEventListener('hidden.bs.toast', () => {
+            document.body.removeChild(toast);
+        });
+    }
+
+    function mostrarError(mensaje) {
+        // Crear toast de error
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-danger border-0';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${mensaje}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        toast.addEventListener('hidden.bs.toast', () => {
+            document.body.removeChild(toast);
+        });
+    }
+
+    // Event listeners
+    refreshBtn.addEventListener('click', cargarReportes);
+    filtroEstado.addEventListener('change', aplicarFiltros);
+    filtroCurso.addEventListener('input', aplicarFiltros);
+    filtroProfesor.addEventListener('input', aplicarFiltros);
+    limpiarFiltrosBtn.addEventListener('click', function() {
+        filtroEstado.value = '';
+        filtroCurso.value = '';
+        filtroProfesor.value = '';
+        aplicarFiltros();
+    });
+
+    // Cargar reportes al inicializar
+    cargarReportes();
+});
+</script>
+{% endblock %}
