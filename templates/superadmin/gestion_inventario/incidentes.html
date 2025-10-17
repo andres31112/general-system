@@ -44,13 +44,6 @@
                     Reportados
                 </div>
             </div>
-            <div class="stat-card resueltos flex-fill me-3" style="max-width: 22%;">
-                <div class="stat-number" id="incidentesResueltos">0</div>
-                <div class="stat-label">
-                    <i class="fa-solid fa-check-circle me-2"></i>
-                    Resueltos
-                </div>
-            </div>
             <div class="stat-card criticos flex-fill" style="max-width: 22%;">
                 <div class="stat-number" id="incidentesCriticos">0</div>
                 <div class="stat-label">
@@ -245,7 +238,7 @@
             </div>
             <div class="modal-body">
                 <div class="row">
-                    <div class="col-md-8">
+                    <div class="col-md-12">
                         <!-- Información principal -->
                         <div class="card mb-3">
                             <div class="card-header bg-light">
@@ -273,36 +266,6 @@
                                 <div>
                                     <strong>Solución Propuesta:</strong>
                                     <p id="detalleSolucion" class="mt-2 p-3 bg-light rounded"></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <!-- Acciones rápidas -->
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Acciones</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-warning btn-sm" onclick="cambiarEstado('en_proceso')">
-                                        <i class="fa-solid fa-play me-1"></i>
-                                        Iniciar Trabajo
-                                    </button>
-                                    <button class="btn btn-success btn-sm" onclick="cambiarEstado('resuelto')">
-                                        <i class="fa-solid fa-check me-1"></i>
-                                        Marcar Resuelto
-                                    </button>
-                                    <button class="btn btn-secondary btn-sm" onclick="cambiarEstado('cerrado')">
-                                        <i class="fa-solid fa-lock me-1"></i>
-                                        Cerrar Incidente
-                                    </button>
-                                    <hr>
-                                    <button class="btn btn-outline-danger btn-sm" onclick="eliminarIncidenteActual()">
-                                        <i class="fa-solid fa-trash me-1"></i>
-                                        Eliminar
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -550,7 +513,6 @@ function actualizarEstadisticas() {
     
     document.getElementById('totalIncidentes').textContent = total;
     document.getElementById('incidentesPendientes').textContent = reportados;
-    document.getElementById('incidentesResueltos').textContent = resueltos;
     document.getElementById('incidentesCriticos').textContent = criticos;
 }
 

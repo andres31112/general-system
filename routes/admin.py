@@ -8,13 +8,13 @@ import json
 from werkzeug.utils import secure_filename
 from controllers.decorators import role_required
 from extensions import db
-from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email
+from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email, send_welcome_email_with_retry, get_verification_info
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
 from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, 
-    Evento, Candidato, HorarioVotacion
+    Evento, Candidato, HorarioVotacion, ReporteCalificaciones
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -270,14 +270,13 @@ def estudiantes():
     # Crear el formulario y configurar el rol predefinido como Estudiante
     form = RegistrationForm()
     
-    # Configurar el rol como Estudiante
-    rol_estudiante_obj = Rol.query.filter_by(nombre='Estudiante').first()
-    if rol_estudiante_obj:
-        form.rol.choices = [(str(rol_estudiante_obj.id_rol), rol_estudiante_obj.nombre)]
-        form.rol.data = str(rol_estudiante_obj.id_rol)
+    # ✅ CORREGIDO: Cargar choices para el rol
+    form.rol.choices = [(str(rol_estudiante.id_rol), rol_estudiante.nombre)] if rol_estudiante else []
+    form.rol.data = str(rol_estudiante.id_rol) if rol_estudiante else None
     
-    # Obtener cursos para el formulario
+    # ✅ CORREGIDO: Cargar choices para cursos
     cursos = Curso.query.all()
+    form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
     
     return render_template(
         'superadmin/gestion_usuarios/estudiantes.html', 
@@ -285,10 +284,9 @@ def estudiantes():
         form=form,  
         cursos=cursos,
         rol_predefinido='Estudiante',
-        rol_predefinido_id=str(rol_estudiante_obj.id_rol) if rol_estudiante_obj else None,
+        rol_predefinido_id=str(rol_estudiante.id_rol) if rol_estudiante else None,
         now=date.today
     )
-
 # API para estudiantes
 @admin_bp.route('/api/estudiantes')
 @login_required
@@ -344,6 +342,10 @@ def crear_estudiante():
     """Crear nuevo estudiante - Ruta específica para estudiantes"""
     form = RegistrationForm()
     
+    # ✅ CORREGIDO: SIEMPRE cargar las opciones de roles ANTES de validar
+    roles = Rol.query.all()
+    form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles] if roles else []
+    
     # Obtener el rol de Estudiante
     rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
     if not rol_estudiante:
@@ -351,13 +353,13 @@ def crear_estudiante():
         return redirect(url_for('admin.estudiantes'))
     
     # Configurar el formulario para estudiantes
-    form.rol.choices = [(str(rol_estudiante.id_rol), rol_estudiante.nombre)]
     form.rol.data = str(rol_estudiante.id_rol)
     
-    # Obtener cursos para el formulario
+    # ✅ CORREGIDO: Cargar opciones de cursos
     cursos = Curso.query.all()
     form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
     
+    # ✅ AHORA SÍ validar el formulario (con los choices ya cargados)
     if form.validate_on_submit():
         try:
             from datetime import datetime, timedelta
@@ -422,14 +424,17 @@ def crear_estudiante():
             print(f"DEBUG: Enviando correo de verificación a {new_user.correo}")
             
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, verification_code)
+            email_result = send_welcome_email(new_user, verification_code)
             
-            if email_sent:
+            if email_result == True:
                 flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
                 print(f"DEBUG: Correo enviado exitosamente")
+            elif email_result == "limit_exceeded":
+                flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {verification_code}', 'warning')
+                print(f"DEBUG: Límite de correos excedido - Código: {verification_code}")
             else:
-                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
-                print(f"DEBUG: Error enviando correo")
+                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación. Código de verificación: {verification_code}', 'warning')
+                print(f"DEBUG: Error enviando correo - Código: {verification_code}")
             
             return redirect(url_for('admin.estudiantes'))
             
@@ -488,14 +493,303 @@ def eliminar_estudiante(id):
         
         # Eliminar el estudiante
         db.session.delete(estudiante)
-        db.session.commit()
+        incidente_db = db.session.query(
+            Incidente.id,
+            Incidente.equipo_id,
+            Incidente.usuario_asignado.label('usuario_reporte'),
+            Incidente.fecha,
+            Incidente.descripcion,
+            Incidente.estado,
+            Incidente.prioridad,
+            Incidente.solucion_propuesta,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Incidente.equipo_id == Equipo.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id)\
+         .filter(Incidente.id == incidente_db)\
+         .first()
         
-        return jsonify({'success': True, 'message': 'Estudiante eliminado correctamente'})
+        if not incidente_db:
+            return jsonify({'success': False, 'error': 'Incidente no encontrado.'}), 404
+        
+        incidente = {
+            'id': incidente_db.id,
+            'equipo_id': incidente_db.equipo_id,
+            'usuario_reporte': incidente_db.usuario_reporte or '',
+            'fecha': incidente_db.fecha.strftime('%Y-%m-%d %H:%M:%S') if incidente_db.fecha else None,
+            'descripcion': incidente_db.descripcion or '',
+            'estado': incidente_db.estado or 'reportado',
+            'prioridad': incidente_db.prioridad or 'media',
+            'solucion_propuesta': incidente_db.solucion_propuesta or '',
+            'equipo_nombre': incidente_db.equipo_nombre or "",
+            'salon_nombre': incidente_db.salon_nombre or "Sin Salón",
+            'sede_nombre': incidente_db.sede_nombre or "Sin Sede"
+        }
+
+        return jsonify(incidente), 200
         
     except Exception as e:
+        print(f"Error al obtener detalle del incidente: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+@admin_bp.route('/mantenimiento')
+@role_required(1)
+def mantenimiento():
+    """Muestra la página de mantenimiento de equipos."""
+    return render_template('superadmin/gestion_inventario/mantenimiento.html')
+
+# ========================================
+# API DE MANTENIMIENTOS
+# ========================================
+
+@admin_bp.route('/api/mantenimientos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_listar_mantenimientos():
+    """
+    Lista todos los mantenimientos con información completa de equipo, sede y salón.
+    """
+    try:
+        mantenimientos_db = db.session.query(
+            Mantenimiento.id,
+            Mantenimiento.equipo_id,
+            Mantenimiento.sede_id,
+            Mantenimiento.fecha_programada,
+            Mantenimiento.tipo,
+            Mantenimiento.estado,
+            Mantenimiento.descripcion,
+            Mantenimiento.fecha_realizada,
+            Mantenimiento.tecnico,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'), # Añadir nombre del salón
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id)\
+         .join(Sede, Mantenimiento.sede_id == Sede.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .order_by(Mantenimiento.fecha_programada.desc())\
+         .all()
+
+        mantenimientos = []
+        for mant in mantenimientos_db:
+            mantenimientos.append({
+                'id': mant.id,
+                'equipo_id': mant.equipo_id,
+                'equipo_nombre': mant.equipo_nombre,
+                'sede_id': mant.sede_id,
+                'sede': mant.sede_nombre,
+                'salon_nombre': mant.salon_nombre or "N/A", # Incluir nombre del salón
+                'fecha_programada': mant.fecha_programada.strftime('%Y-%m-%d'),
+                'tipo': mant.tipo,
+                'estado': mant.estado,
+                'descripcion': mant.descripcion or '',
+                'fecha_realizada': mant.fecha_realizada.strftime('%Y-%m-%d') if mant.fecha_realizada else None,
+                'tecnico': mant.tecnico or ''
+            })
+        return jsonify(mantenimientos), 200
+    except Exception as e:
+        print(f"Error al listar mantenimientos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+@admin_bp.route('/api/mantenimientos/programar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_programar_mantenimiento():
+    """
+    Programa un nuevo mantenimiento y actualiza el estado del equipo.
+    """
+    try:
+        data = request.get_json()
+        equipo_id = data.get('equipo_id')
+        sede_id = data.get('sede_id') # Asegurarse de recibir sede_id
+        fecha_programada_str = data.get('fecha_programada')
+        tipo = data.get('tipo')
+        descripcion = data.get('descripcion', '').strip()
+        tecnico = data.get('tecnico', '').strip()
+
+        if not all([equipo_id, sede_id, fecha_programada_str, tipo]):
+            return jsonify({'success': False, 'error': 'Faltan campos obligatorios.'}), 400
+
+        equipo = Equipo.query.get(equipo_id)
+        if not equipo:
+            return jsonify({'success': False, 'error': f'Equipo con ID {equipo_id} no encontrado.'}), 404
+
+        # Convertir fecha
+        fecha_programada = datetime.strptime(fecha_programada_str, '%Y-%m-%d').date()
+
+        nuevo_mantenimiento = Mantenimiento(
+            equipo_id=equipo_id,
+            sede_id=sede_id,
+            fecha_programada=fecha_programada,
+            tipo=tipo,
+            estado='pendiente', # Estado inicial
+            descripcion=descripcion,
+            tecnico=tecnico
+        )
+        db.session.add(nuevo_mantenimiento)
+
+        # Actualizar estado del equipo a 'Mantenimiento'
+        equipo.estado = 'Mantenimiento'
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Mantenimiento programado exitosamente.',
+            'mantenimiento': nuevo_mantenimiento.to_dict()
+        }), 201
+    except Exception as e:
         db.session.rollback()
-        print(f"Error eliminando estudiante: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"Error al programar mantenimiento: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_detalle_mantenimiento(mantenimiento_id):
+    """
+    Obtiene el detalle de un mantenimiento específico.
+    """
+    try:
+        mantenimiento = db.session.query(
+            Mantenimiento.id,
+            Mantenimiento.equipo_id,
+            Mantenimiento.sede_id,
+            Mantenimiento.fecha_programada,
+            Mantenimiento.tipo,
+            Mantenimiento.estado,
+            Mantenimiento.descripcion,
+            Mantenimiento.fecha_realizada,
+            Mantenimiento.tecnico,
+            Equipo.nombre.label('equipo_nombre'),
+            Salon.nombre.label('salon_nombre'),
+            Sede.nombre.label('sede_nombre')
+        ).join(Equipo, Mantenimiento.equipo_id == Equipo.id)\
+         .join(Sede, Mantenimiento.sede_id == Sede.id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id)\
+         .filter(Mantenimiento.id == mantenimiento_id)\
+         .first()
+
+        if not mantenimiento:
+            return jsonify({'success': False, 'error': 'Mantenimiento no encontrado.'}), 404
+
+        return jsonify({
+            'id': mantenimiento.id,
+            'equipo_id': mantenimiento.equipo_id,
+            'equipo_nombre': mantenimiento.equipo_nombre,
+            'sede_id': mantenimiento.sede_id,
+            'sede': mantenimiento.sede_nombre,
+            'salon_nombre': mantenimiento.salon_nombre or "N/A",
+            'fecha_programada': mantenimiento.fecha_programada.strftime('%Y-%m-%d'),
+            'tipo': mantenimiento.tipo,
+            'estado': mantenimiento.estado,
+            'descripcion': mantenimiento.descripcion or '',
+            'fecha_realizada': mantenimiento.fecha_realizada.strftime('%Y-%m-%d') if mantenimiento.fecha_realizada else None,
+            'tecnico': mantenimiento.tecnico or ''
+        }), 200
+    except Exception as e:
+        print(f"Error al obtener detalle de mantenimiento: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>/actualizar', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_mantenimiento(mantenimiento_id):
+    """
+    Actualiza el estado, técnico y fecha de realización de un mantenimiento.
+    También actualiza el estado del equipo asociado.
+    """
+    try:
+        data = request.get_json()
+        mantenimiento = Mantenimiento.query.get_or_404(mantenimiento_id)
+        equipo = Equipo.query.get(mantenimiento.equipo_id) # Obtener el equipo asociado
+
+        nuevo_estado = data.get('estado', mantenimiento.estado)
+        tecnico = data.get('tecnico', mantenimiento.tecnico)
+        fecha_realizada_str = data.get('fecha_realizada')
+
+        if nuevo_estado not in ['pendiente', 'en_progreso', 'completado', 'cancelado']:
+            return jsonify({'success': False, 'error': 'Estado de mantenimiento inválido.'}), 400
+
+        mantenimiento.estado = nuevo_estado
+        mantenimiento.tecnico = tecnico
+
+        if fecha_realizada_str:
+            mantenimiento.fecha_realizada = datetime.strptime(fecha_realizada_str, '%Y-%m-%d').date()
+        elif nuevo_estado == 'completado' and not mantenimiento.fecha_realizada:
+            mantenimiento.fecha_realizada = date.today() # Establecer hoy si se completa y no hay fecha
+
+        # Lógica para actualizar el estado del equipo
+        if equipo:
+            if nuevo_estado == 'completado':
+                equipo.estado = 'Disponible' # O el estado que corresponda después del mantenimiento
+            elif nuevo_estado == 'cancelado':
+                # Si se cancela, el equipo vuelve a su estado anterior o a 'Disponible'
+                # Aquí asumimos 'Disponible' si no hay un estado anterior claro
+                equipo.estado = 'Disponible'
+            elif nuevo_estado == 'en_progreso':
+                equipo.estado = 'Mantenimiento' # Asegurarse de que el equipo esté en mantenimiento
+            # Si es 'pendiente', el estado del equipo ya debería ser 'Mantenimiento' desde la programación
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Mantenimiento actualizado exitosamente.',
+            'mantenimiento_actualizado': mantenimiento.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al actualizar mantenimiento: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_mantenimiento(mantenimiento_id):
+    """
+    Elimina un mantenimiento y restablece el estado del equipo si estaba en 'Mantenimiento'.
+    """
+    try:
+        mantenimiento = Mantenimiento.query.get_or_404(mantenimiento_id)
+        equipo = Equipo.query.get(mantenimiento.equipo_id)
+
+        # Si el mantenimiento estaba activo y el equipo en estado 'Mantenimiento',
+        # se restablece el estado del equipo a 'Disponible'.
+        if equipo and mantenimiento.estado in ['pendiente', 'en_progreso'] and equipo.estado == 'Mantenimiento':
+            equipo.estado = 'Disponible'
+
+        db.session.delete(mantenimiento)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Mantenimiento eliminado exitosamente.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al eliminar mantenimiento: {e}")
+        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
+
+@admin_bp.route('/api/mantenimientos/estadisticas', methods=['GET'])
+@login_required
+@role_required(1)
+def api_estadisticas_mantenimientos():
+    """
+    Proporciona estadísticas de mantenimientos por estado.
+    """
+    try:
+        total = db.session.query(Mantenimiento).count()
+        estados_raw = db.session.query(Mantenimiento.estado, db.func.count(Mantenimiento.estado))\
+                                .group_by(Mantenimiento.estado).all()
+        
+        stats = {e[0]: e[1] for e in estados_raw}
+        
+        return jsonify({
+            'total': total,
+            'pendiente': stats.get('pendiente', 0),
+            'en_progreso': stats.get('en_progreso', 0),
+            'completado': stats.get('completado', 0),
+            'cancelado': stats.get('cancelado', 0)
+        }), 200
+    except Exception as e:
+        print(f"Error al obtener estadísticas de mantenimientos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
 @admin_bp.route('/estudiantes/<int:id>/editar')
 @login_required
@@ -676,13 +970,17 @@ def crear_usuario():
     """Crear nuevo usuario con rol específico y verificación de email"""
     form = RegistrationForm()
     
+    # ✅ CORREGIDO: SIEMPRE cargar las opciones de roles ANTES de validar
+    roles = Rol.query.all()
+    form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles] if roles else []
+    
+    # ✅ CORREGIDO: Cargar opciones de cursos
+    cursos = Curso.query.all()
+    form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
+    
     # Obtener el rol predefinido desde la URL
     rol_predefinido = request.args.get('rol')
     
-    roles = Rol.query.all()
-    cursos = Curso.query.all()
-    form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles]
-
     # Si hay rol predefinido, establecerlo en el formulario
     rol_predefinido_id = None
     if rol_predefinido and request.method == 'GET':
@@ -702,6 +1000,7 @@ def crear_usuario():
             form.rol.data = str(rol_obj.id_rol)
             rol_predefinido_id = str(rol_obj.id_rol)
 
+    # ✅ AHORA SÍ validar el formulario (con los choices ya cargados)
     if form.validate_on_submit():
         selected_role_id = int(form.rol.data)
         
@@ -752,12 +1051,14 @@ def crear_usuario():
             db.session.commit()
             print(f"DEBUG: Usuario creado - Contraseña temporal: {new_user.temp_password}")
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, new_user.verification_code)
+            email_result = send_welcome_email(new_user, new_user.verification_code)
             
-            if email_sent:
+            if email_result == True:
                 flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
+            elif email_result == "limit_exceeded":
+                flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {new_user.verification_code}', 'warning')
             else:
-                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
+                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación. Código de verificación: {new_user.verification_code}', 'warning')
             
             # Redirigir según el rol creado
             if is_student:
@@ -785,7 +1086,7 @@ def crear_usuario():
         rol_predefinido=rol_predefinido,
         rol_predefinido_id=rol_predefinido_id
     )
-
+    
 @admin_bp.route('/api/verificar-identidad')
 @login_required
 @role_required(1)
@@ -805,6 +1106,7 @@ def api_verificar_identidad():
     except Exception as e:
         print(f"Error verificando identidad: {e}")
         return jsonify({'exists': False})
+    
 @admin_bp.route('/api/verificar-correo')
 @login_required
 @role_required(1)
@@ -973,14 +1275,19 @@ def api_crear_padre():
         db.session.commit()
         
         # Enviar correo de bienvenida con código de verificación
-        email_sent = send_welcome_email(nuevo_padre, verification_code)
+        email_result = send_welcome_email(nuevo_padre, verification_code)
         
-        if not email_sent:
+        if email_result == True:
+            message = 'Padre/acudiente creado exitosamente y correo de verificación enviado'
+        elif email_result == "limit_exceeded":
+            message = f'Padre/acudiente creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {verification_code}'
+        else:
+            message = f'Padre/acudiente creado exitosamente pero hubo un error enviando el correo de verificación. Código de verificación: {verification_code}'
             print(f"ADVERTENCIA: No se pudo enviar el correo de verificación al padre {nuevo_padre.correo}")
         
         return jsonify({
             'success': True,
-            'message': 'Padre/acudiente creado exitosamente' + (' y correo de verificación enviado' if email_sent else ' pero hubo un error enviando el correo de verificación'),
+            'message': message,
             'padre': {
                 'id_usuario': nuevo_padre.id_usuario,
                 'nombre_completo': nuevo_padre.nombre_completo,
@@ -1568,83 +1875,182 @@ def gestion_horarios_cursos():
 @login_required
 @role_required(1)
 def api_guardar_horario_curso():
-    """API para guardar horario de curso"""
+    """API para guardar horario de curso - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
-        curso_id = data.get('curso_id')
-        horario_general_id = data.get('horario_general_id')
+        
+        print("=" * 50)
+        print("DEBUG - DATOS RECIBIDOS EN EL BACKEND:")
+        print("=" * 50)
+        print(f"Data completa: {data}")
+        print(f"Curso ID: {data.get('curso_id')}")
+        print(f"Horario General ID: {data.get('horario_general_id')}")
+        
         asignaciones = data.get('asignaciones', {})
         salones_asignaciones = data.get('salones_asignaciones', {})
+        
+        print(f"Asignaciones recibidas: {asignaciones}")
+        print(f"Salones recibidos: {salones_asignaciones}")
+        print(f"Total asignaciones: {len(asignaciones)}")
+        print(f"Total salones: {len(salones_asignaciones)}")
+        
+        # Mostrar las primeras 5 asignaciones para debug
+        if asignaciones:
+            print("Primeras 5 asignaciones:")
+            for i, (clave, valor) in enumerate(list(asignaciones.items())[:5]):
+                print(f"   {i+1}. {clave} -> {valor}")
 
+        curso_id = data.get('curso_id')
         if not curso_id:
+            print("ERROR: No hay curso_id")
             return jsonify({'success': False, 'error': 'ID de curso requerido'}), 400
 
+        # Verificar que el curso existe
         curso = Curso.query.get(curso_id)
         if not curso:
+            print(f"ERROR: Curso {curso_id} no encontrado")
             return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
 
-        if horario_general_id:
-            horario = HorarioGeneral.query.get(horario_general_id)
-            if not horario:
-                return jsonify({'success': False, 'error': 'Horario general no encontrado'}), 404
-            curso.horario_general_id = horario_general_id
+        # Obtener asignaciones existentes
+        asignaciones_existentes = HorarioCurso.query.filter_by(curso_id=curso_id).all()
+        print(f"Asignaciones existentes en BD: {len(asignaciones_existentes)}")
 
-        # Eliminar asignaciones existentes
-        HorarioCurso.query.filter_by(curso_id=curso_id).delete()
+        # Crear diccionario de asignaciones existentes
+        asignaciones_existentes_dict = {}
+        for asignacion in asignaciones_existentes:
+            clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
+            asignaciones_existentes_dict[clave] = asignacion
+            print(f"   {clave} -> Asignatura: {asignacion.asignatura_id}, Salon: {asignacion.id_salon_fk}")
 
         asignaciones_creadas = 0
-        # Procesar asignaciones de materias
+        asignaciones_actualizadas = 0
+        asignaciones_eliminadas = 0
+
+        # Procesar CADA asignación del request
+        print("Procesando asignaciones del request...")
         for clave, asignatura_id in asignaciones.items():
             try:
+                print(f"   Procesando: {clave} -> {asignatura_id}")
+                
+                # Parsear la clave
                 partes = clave.split('-')
-                if len(partes) >= 2:
-                    dia = partes[0]
-                    hora = partes[1]
+                if len(partes) < 2:
+                    print(f"   Clave inválida: {clave}")
+                    continue
+                    
+                dia = partes[0]
+                hora_inicio = partes[1]
 
-                    if not asignatura_id:
-                        continue
+                # Si no hay asignatura_id, eliminar
+                if not asignatura_id:
+                    if clave in asignaciones_existentes_dict:
+                        db.session.delete(asignaciones_existentes_dict[clave])
+                        asignaciones_eliminadas += 1
+                        print(f"   Eliminada asignación vacía: {clave}")
+                    continue
 
-                    # Obtener el salon_id correspondiente
-                    salon_id = salones_asignaciones.get(clave)
+                # Verificar asignatura
+                asignatura = Asignatura.query.get(asignatura_id)
+                if not asignatura:
+                    print(f"   Asignatura no encontrada: {asignatura_id}")
+                    continue
 
+                # Obtener salon
+                salon_id = salones_asignaciones.get(clave)
+                if salon_id:
+                    salon = Salon.query.get(salon_id)
+                    if not salon:
+                        print(f"   Salón no encontrado: {salon_id}")
+                        salon_id = None
+
+                # Calcular hora_fin (versión simplificada)
+                hora_fin = "08:00"  # Valor por defecto
+                try:
+                    from datetime import datetime, timedelta
+                    hora_inicio_dt = datetime.strptime(hora_inicio, '%H:%M')
+                    hora_fin_dt = hora_inicio_dt + timedelta(minutes=45)
+                    hora_fin = hora_fin_dt.strftime('%H:%M')
+                except:
+                    pass
+
+                # Crear o actualizar asignación
+                if clave in asignaciones_existentes_dict:
+                    asignacion_existente = asignaciones_existentes_dict[clave]
+                    asignacion_existente.asignatura_id = asignatura_id
+                    asignacion_existente.hora_fin = hora_fin
+                    asignacion_existente.id_salon_fk = salon_id
+                    asignaciones_actualizadas += 1
+                    print(f"   ACTUALIZADA: {clave}")
+                else:
                     nueva_asignacion = HorarioCurso(
                         curso_id=curso_id,
                         asignatura_id=asignatura_id,
                         dia_semana=dia,
-                        hora_inicio=hora,
-                        horario_general_id=horario_general_id,
-                        id_salon_fk=salon_id
+                        hora_inicio=hora_inicio,
+                        hora_fin=hora_fin,
+                        horario_general_id=data.get('horario_general_id'),
+                        id_salon_fk=salon_id,
+                        fecha_creacion=datetime.now()
                     )
                     db.session.add(nueva_asignacion)
                     asignaciones_creadas += 1
+                    print(f"   CREADA: {clave}")
 
             except Exception as e:
-                print(f"Error procesando asignación {clave}: {str(e)}")
+                print(f"   Error procesando {clave}: {str(e)}")
                 continue
 
+        # Eliminar asignaciones obsoletas
+        claves_request = set(asignaciones.keys())
+        for clave, asignacion_existente in list(asignaciones_existentes_dict.items()):
+            if clave not in claves_request or not asignaciones.get(clave):
+                db.session.delete(asignacion_existente)
+                asignaciones_eliminadas += 1
+                print(f"   ELIMINADA: {clave}")
+
+        # Hacer commit
         db.session.commit()
+        
+        # Verificar resultado final
+        total_final = HorarioCurso.query.filter_by(curso_id=curso_id).count()
+        
+        print("=" * 50)
+        print("RESUMEN FINAL:")
+        print(f"   Creadas: {asignaciones_creadas}")
+        print(f"   Actualizadas: {asignaciones_actualizadas}")
+        print(f"   Eliminadas: {asignaciones_eliminadas}")
+        print(f"   Total en BD: {total_final}")
+        print("=" * 50)
 
         return jsonify({
             'success': True,
-            'message': f'Horario del curso guardado correctamente ({asignaciones_creadas} asignaciones)',
-            'asignaciones_creadas': asignaciones_creadas
+            'message': f'Horario guardado: {asignaciones_creadas} nuevas, {asignaciones_actualizadas} actualizadas, {asignaciones_eliminadas} eliminadas',
+            'stats': {
+                'creadas': asignaciones_creadas,
+                'actualizadas': asignaciones_actualizadas,
+                'eliminadas': asignaciones_eliminadas,
+                'total': total_final
+            }
         })
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error guardando horario del curso: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"ERROR CRÍTICO: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
     
 @admin_bp.route('/api/horario_curso/cargar/<int:curso_id>')
 @login_required
 @role_required(1)
 def api_cargar_horario_curso(curso_id):
-    """API para cargar horario de curso"""
+    """API para cargar horario de curso - VERSIÓN MEJORADA"""
     try:
         curso = Curso.query.get(curso_id)
         if not curso:
             return jsonify({'error': 'Curso no encontrado'}), 404
 
+        # Obtener asignaciones existentes
         asignaciones_db = HorarioCurso.query.filter_by(curso_id=curso_id).all()
 
         asignaciones = {}
@@ -1656,6 +2062,7 @@ def api_cargar_horario_curso(curso_id):
             if asignacion.id_salon_fk:
                 salones_asignaciones[clave] = asignacion.id_salon_fk
 
+        # Obtener bloques del horario general
         bloques_horario = []
         if curso.horario_general_id:
             bloques = BloqueHorario.query.filter_by(
@@ -1673,6 +2080,11 @@ def api_cargar_horario_curso(curso_id):
                 'break_type': b.break_type
             } for b in bloques]
 
+        print(f"📥 Cargando horario para curso {curso_id}:")
+        print(f"   Asignaciones: {len(asignaciones)}")
+        print(f"   Salones: {len(salones_asignaciones)}")
+        print(f"   Bloques: {len(bloques_horario)}")
+
         return jsonify({
             'curso_id': curso_id,
             'horario_general_id': curso.horario_general_id,
@@ -1684,7 +2096,7 @@ def api_cargar_horario_curso(curso_id):
         })
 
     except Exception as e:
-        print(f"Error cargando horario del curso: {str(e)}")
+        print(f"❌ Error cargando horario del curso: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/horario_curso/compartir', methods=['POST'])
@@ -2152,13 +2564,6 @@ def api_reportes_equipos_por_sede():
 def incidentes():
     """Muestra la página de gestión de incidentes."""
     return render_template('superadmin/gestion_inventario/incidentes.html')
-
-@admin_bp.route('/mantenimiento')
-@login_required
-@role_required(1)
-def mantenimiento():
-    """Muestra la página de mantenimiento de equipos."""
-    return render_template('superadmin/gestion_inventario/mantenimiento.html')
 
 @admin_bp.route('/gestion-salones')
 @login_required
@@ -2818,3 +3223,5 @@ def eliminar_candidato(candidato_id):
         db.session.rollback()
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+        

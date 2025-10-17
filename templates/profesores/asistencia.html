@@ -1,20 +1,14 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Asistencia y Calificaciones</title>
-    <!-- Google Fonts -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/asistencia_notas.css') }}">
-</head>
-<body>
-    {% extends "./base.html" %}
-    {% block content %}
-   
-    <a href="{{ url_for('profesor.cursos') }}" class="back-btn"><i class="fas fa-arrow-left"></i> Volver a la de asignaturas</a>
+{% extends "profesores/base.html" %}
+
+{% block title %}Asistencia y Calificaciones{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/asistencia_notas.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<a href="{{ url_for('profesor.cursos') }}" class="back-btn"><i class="fas fa-arrow-left"></i> Volver a la de asignaturas</a>
     
     <div class="page-container">
         <div class="container">
@@ -155,7 +149,7 @@
             </main>
         </div>
     </div>
-    
+
     <!-- Custom Modals -->
     <div id="alertModal" class="modal-overlay">
         <div class="modal-content">
@@ -189,7 +183,9 @@
             </div>
         </div>
     </div>
-    <script src="{{ url_for('static', filename='js/Profesor/asistencia_notas.js') }}"></script>
-    {% endblock %}
-</body>
-</html>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/Profesor/asistencia_notas.js') }}"></script>
+{% endblock %}

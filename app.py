@@ -14,7 +14,10 @@ import os
 
 app = Flask(__name__)
 app.config.from_object(Config)
-init_app(app) 
+init_app(app)
+
+# Add getattr to Jinja2 environment
+app.jinja_env.globals.update(getattr=getattr)
 
 login_manager = LoginManager()
 login_manager.init_app(app)

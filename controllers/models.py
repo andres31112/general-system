@@ -257,6 +257,7 @@ class Asistencia(db.Model):
     fecha = db.Column(db.Date, nullable=False)
     estado = db.Column(db.String(20), nullable=False, default='presente')
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    excusa = db.Column(db.Boolean, default=False)  # ✅ NUEVO CAMPO AÑADIDO
     
     # Relaciones
     estudiante_rel = db.relationship('Usuario', back_populates='asistencias', foreign_keys=[estudianteId])
@@ -300,7 +301,10 @@ class Calificacion(db.Model):
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
     asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     categoriaId = db.Column(db.Integer, db.ForeignKey('categoria_calificacion.id_categoria'), nullable=False)
-    valor = db.Column(db.Numeric(5,2), nullable=False)
+    # Allow null initially (assignments may be created before grades are entered)
+    valor = db.Column(db.Numeric(5,2), nullable=True)
+    # Nombre libre para identificar la calificación / asignación (por ejemplo: 'Parcial 1')
+    nombre_calificacion = db.Column(db.String(200), nullable=True)
     observaciones = db.Column(db.Text)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -403,7 +407,7 @@ class HorarioCurso(db.Model):
     asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
-    hora_fin = db.Column(db.String(5), nullable=False)
+    hora_fin = db.Column(db.String(5), nullable=False)  # ✅ YA ESTÁ DEFINIDO CORRECTAMENTE
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'))
     id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id_salon'), nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
@@ -413,6 +417,19 @@ class HorarioCurso(db.Model):
     asignatura = db.relationship('Asignatura', back_populates='horarios_asignados')
     horario_general = db.relationship('HorarioGeneral', back_populates='horarios_cursos')
     salon = db.relationship('Salon', back_populates='horarios_asignados')
+    
+    def to_dict(self):
+        return {
+            'id_horario_curso': self.id_horario_curso,
+            'curso_id': self.curso_id,
+            'asignatura_id': self.asignatura_id,
+            'dia_semana': self.dia_semana,
+            'hora_inicio': self.hora_inicio,
+            'hora_fin': self.hora_fin,  # ✅ INCLUIR HORA_FIN
+            'horario_general_id': self.horario_general_id,
+            'id_salon_fk': self.id_salon_fk,
+            'fecha_creacion': self.fecha_creacion.isoformat() if self.fecha_creacion else None
+        }
     
     def __repr__(self):
         return f'<HorarioCurso {self.curso_id} - {self.asignatura_id}>'
@@ -573,23 +590,29 @@ class Mantenimiento(db.Model):
     # Relaciones
     equipo = db.relationship('Equipo', back_populates='programaciones')
     sede = db.relationship('Sede', back_populates='mantenimientos')
-    
+
+
     def to_dict(self):
+        salon_nombre = self.equipo.salon.nombre if self.equipo and self.equipo.salon else "N/A"
+        
         return {
             "id_mantenimiento": self.id_mantenimiento,
             "equipo_id": self.equipo_id,
             "equipo_nombre": self.equipo.nombre if self.equipo else "",
+            "sede_id": self.sede_id,
             "sede": self.sede.nombre if self.sede else "",
+            "salon_nombre": salon_nombre,
             "fecha_programada": self.fecha_programada.strftime("%Y-%m-%d"),
             "tipo": self.tipo,
             "estado": self.estado,
             "descripcion": self.descripcion or "",
-            "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else "",
+            "fecha_realizada": self.fecha_realizada.strftime("%Y-%m-%d") if self.fecha_realizada else None,
             "tecnico": self.tecnico or ""
         }
-
-    def __repr__(self):
-        return f"<Mantenimiento {self.id_mantenimiento} - {self.equipo.nombre}>"
+        
+#==========================================================================================================#
+#Eventos y votaciones
+#==========================================================================================================#
 
 # ================================
 # Modelos de Eventos y Comunicaciones
@@ -718,3 +741,46 @@ class HorarioVotacion(db.Model):
 
     def __repr__(self):
         return f"<HorarioVotacion {self.inicio}-{self.fin}>"
+
+
+# ================================
+# Modelo de Reportes de Calificaciones
+# ================================
+
+class ReporteCalificaciones(db.Model):
+    __tablename__ = "reportes_calificaciones"
+    
+    id_reporte = db.Column(db.Integer, primary_key=True)
+    profesor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    curso_id = db.Column(db.Integer, db.ForeignKey("curso.id_curso"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id_asignatura"), nullable=False)
+    nombre_curso = db.Column(db.String(100), nullable=False)
+    nombre_asignatura = db.Column(db.String(100), nullable=False)
+    datos_estudiantes = db.Column(db.JSON, nullable=False)  # JSON con nombres y promedios
+    promedio_general = db.Column(db.Float, nullable=False)
+    nota_mas_alta = db.Column(db.Float, nullable=False)
+    nota_mas_baja = db.Column(db.Float, nullable=False)
+    fecha_generacion = db.Column(db.DateTime, default=datetime.utcnow)
+    estado = db.Column(db.String(20), default='pendiente')  # pendiente, revisado, archivado
+    
+    # Relaciones
+    profesor = db.relationship("Usuario", foreign_keys=[profesor_id])
+    curso = db.relationship("Curso", foreign_keys=[curso_id])
+    asignatura = db.relationship("Asignatura", foreign_keys=[asignatura_id])
+    
+    def to_dict(self):
+        return {
+            "id_reporte": self.id_reporte,
+            "profesor_nombre": self.profesor.nombre_completo if self.profesor else "Desconocido",
+            "curso_nombre": self.nombre_curso,
+            "asignatura_nombre": self.nombre_asignatura,
+            "datos_estudiantes": self.datos_estudiantes,
+            "promedio_general": self.promedio_general,
+            "nota_mas_alta": self.nota_mas_alta,
+            "nota_mas_baja": self.nota_mas_baja,
+            "fecha_generacion": self.fecha_generacion.strftime("%Y-%m-%d %H:%M") if self.fecha_generacion else "",
+            "estado": self.estado
+        }
+    
+    def __repr__(self):
+        return f"<ReporteCalificaciones {self.nombre_curso} - {self.nombre_asignatura}>"

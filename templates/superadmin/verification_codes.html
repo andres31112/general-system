@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Códigos de Verificación Pendientes{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-envelope-open-text"></i>
+                        Códigos de Verificación Pendientes
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Información:</strong> Esta página muestra los usuarios que no pudieron recibir el correo de verificación. 
+                        Puedes proporcionarles manualmente el código de verificación o reenviar el correo.
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" id="verificationTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Correo</th>
+                                    <th>Rol</th>
+                                    <th>Código de Verificación</th>
+                                    <th>Expira</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for usuario in usuarios_pendientes %}
+                                <tr>
+                                    <td>{{ usuario.no_identidad }}</td>
+                                    <td>{{ usuario.nombre_completo }}</td>
+                                    <td>{{ usuario.correo }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ 'primary' if usuario.rol.nombre == 'Estudiante' else 'success' if usuario.rol.nombre == 'Profesor' else 'warning' if usuario.rol.nombre == 'Padre' else 'info' }}">
+                                            {{ usuario.rol.nombre }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <code class="bg-light p-2 rounded">{{ usuario.verification_code }}</code>
+                                        <button class="btn btn-sm btn-outline-secondary ml-2" onclick="copyToClipboard('{{ usuario.verification_code }}')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        {% if usuario.verification_code_expires %}
+                                            <span class="text-{{ 'danger' if usuario.verification_code_expires < moment().utcnow() else 'warning' }}">
+                                                {{ usuario.verification_code_expires.strftime('%d/%m/%Y %H:%M') }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">No expira</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-primary" onclick="reenviarCorreo({{ usuario.id_usuario }})">
+                                                <i class="fas fa-paper-plane"></i> Reenviar
+                                            </button>
+                                            <button class="btn btn-sm btn-success" onclick="verificarManual({{ usuario.id_usuario }})">
+                                                <i class="fas fa-check"></i> Verificar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para mostrar información de verificación -->
+<div class="modal fade" id="verificationModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Información de Verificación</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>Código de Verificación:</strong>
+                    <code id="modalCode" class="bg-light p-2 rounded d-block mt-2"></code>
+                </div>
+                <div class="alert alert-info">
+                    <strong>URL de Verificación:</strong>
+                    <a id="modalUrl" href="#" target="_blank" class="d-block mt-2"></a>
+                </div>
+                <p><strong>Instrucciones:</strong></p>
+                <ol>
+                    <li>Proporciona el código al usuario</li>
+                    <li>O comparte el enlace de verificación</li>
+                    <li>El usuario puede verificar su cuenta en la página de login</li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="copyToClipboard(document.getElementById('modalCode').textContent)">Copiar Código</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $('#verificationTable').DataTable({
+        "responsive": true,
+        "lengthChange": false,
+        "autoWidth": false,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+        }
+    });
+});
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        toastr.success('Código copiado al portapapeles');
+    }, function(err) {
+        console.error('Error al copiar: ', err);
+        toastr.error('Error al copiar el código');
+    });
+}
+
+function reenviarCorreo(userId) {
+    if (confirm('¿Estás seguro de que quieres reenviar el correo de verificación?')) {
+        $.ajax({
+            url: '/admin/reenviar-verificacion',
+            method: 'POST',
+            data: {
+                user_id: userId,
+                csrf_token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    toastr.success('Correo reenviado exitosamente');
+                } else {
+                    toastr.error('Error al reenviar el correo: ' + response.message);
+                }
+            },
+            error: function() {
+                toastr.error('Error de conexión');
+            }
+        });
+    }
+}
+
+function verificarManual(userId) {
+    if (confirm('¿Estás seguro de que quieres marcar este usuario como verificado manualmente?')) {
+        $.ajax({
+            url: '/admin/verificar-manual',
+            method: 'POST',
+            data: {
+                user_id: userId,
+                csrf_token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    toastr.success('Usuario verificado exitosamente');
+                    location.reload();
+                } else {
+                    toastr.error('Error al verificar: ' + response.message);
+                }
+            },
+            error: function() {
+                toastr.error('Error de conexión');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

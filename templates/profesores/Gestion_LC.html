@@ -3,541 +3,2459 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Listas y Calificaciones</title>
-    <!-- Google Fonts -->
+    <title>Gestión de Asistencia y Calificaciones</title>
+    
+    <!-- Fuentes e iconos -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/Gestion_LC.css') }}">
+    
+    <style>
+        /* --- VARIABLES DE COLOR --- */
+        :root {
+            --color-primario: #0078ad;
+            --color-primario-oscuro: #00628e;
+            --color-texto-principal: #2c3e50;
+            --color-texto-secundario: #7f8c8d;
+            --color-blanco: #FFFFFF;
+            --color-fondo-seccion: #f8f9fa;
+            --color-borde-suave: #ecf0f1;
+            --color-presente: #28a745;
+            --color-ausente: #dc3545;
+            --color-ausente-claro: #f8d7da;
+            --color-tarde: #ffc107;
+            --color-hoy: #ffc107;
+        }
+
+        /* --- ESTILOS GENERALES --- */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--color-fondo-seccion);
+            margin: 0;
+            color: var(--color-texto-principal);
+        }
+
+        /* --- BARRA DE NAVEGACIÓN --- */
+        .navbar {
+            background-color: var(--color-blanco);
+            border-bottom: 1px solid var(--color-borde-suave);
+            box-shadow: 0 .125rem .25rem rgba(0,0,0,.08);
+            padding: 10px 30px;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            display: flex;
+            justify-content: center;
+        }
+
+        .navbar-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            gap: 0.75rem;
+        }
+
+        .navbar-brand .logo-circle {
+            width: 30px;
+            height: 30px;
+            background-color: var(--color-primario);
+            border-radius: 50%;
+        }
+
+        .navbar-brand h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--color-texto-principal);
+            margin: 0;
+        }
+        
+        .page-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* --- CONTENIDO PRINCIPAL --- */
+        main {
+            padding: 20px 50px;
+        }
+
+        .main-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .profile-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .avatar-large {
+            width: 90px;
+            height: 90px;
+            background-color: var(--color-borde-suave);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            color: var(--color-texto-secundario);
+        }
+
+        .profile-info h2 {
+            margin: 0;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--color-texto-principal);
+        }
+
+        .profile-info p {
+            margin: 5px 0;
+            color: var(--color-texto-secundario);
+        }
+
+        .info-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--color-blanco);
+            border: 1px solid var(--color-borde-suave);
+            border-radius: 0.75rem;
+            padding: 15px;
+            min-width: 220px;
+            box-shadow: 0 2px 5px rgba(0,0,0,.05);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,.1);
+        }
+
+        .students-card .card-title {
+            margin: 0;
+            color: var(--color-texto-secundario);
+            font-weight: 600;
+        }
+
+        .students-card .card-content {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--color-texto-principal);
+            margin: 10px 0;
+        }
+
+        .students-card .card-footer {
+            margin: 0;
+            color: var(--color-texto-secundario);
+        }
+
+        .course-card {
+            padding: 20px;
+        }
+        .course-card p {
+            margin: 5px 0;
+        }
+
+        .subject-card {
+            padding: 20px;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border-left: 4px solid #9c27b0;
+        }
+        .subject-card p {
+            margin: 5px 0;
+        }
+
+        /* --- PESTAÑAS DE CONTENIDO --- */
+        .content-tabs {
+            margin-top: 30px;
+            border-bottom: 1px solid var(--color-borde-suave);
+        }
+
+        .tab-link {
+            text-decoration: none;
+            color: var(--color-texto-secundario);
+            padding: 10px 20px;
+            display: inline-block;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -1px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .tab-link.active, .tab-link:hover {
+            color: var(--color-primario);
+            border-bottom: 3px solid var(--color-primario);
+        }
+
+        /* --- SECCIÓN ASISTENCIA Y CALIFICACIONES --- */
+        .content-section {
+            background-color: var(--color-blanco);
+            border: 1px solid var(--color-borde-suave);
+            border-radius: 0.75rem;
+            margin-top: 20px;
+            padding: 25px;
+            box-shadow: 0 2px 5px rgba(0,0,0,.05);
+        }
+        
+        .attendance-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .attendance-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            color: var(--color-texto-principal);
+        }
+        
+        .month-navigation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-grow: 1;
+        }
+
+        .month-navigation .nav-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--color-primario);
+            cursor: pointer;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .back-button {
+            padding: 9px 20px;
+            background-color: var(--color-fondo-seccion);
+            border: 1px solid var(--color-borde-suave);
+            border-radius: 0.5rem;
+            font-weight: 600;
+            color: var(--color-texto-principal);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .back-button:hover {
+            background-color: #e9ecef;
+        }
+
+        /* --- TARJETAS RESUMEN --- */
+        .summary-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            border-radius: 0.75rem;
+            background-color: var(--color-fondo-seccion);
+            border: 1px solid var(--color-borde-suave);
+            font-weight: 600;
+        }
+        .summary-card .count {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .summary-card.presente .count { color: var(--color-presente); }
+        .summary-card.ausente .count { color: var(--color-ausente); }
+        .summary-card.tarde .count { color: var(--color-tarde); }
+
+        /* --- VISTA MENSUAL --- */
+        .monthly-list-container {
+            overflow-x: auto;
+        }
+        .monthly-grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        .monthly-grid-table th, .monthly-grid-table td {
+            border: 1px solid var(--color-borde-suave);
+            text-align: center;
+            padding: 5px;
+        }
+        .monthly-grid-table thead th {
+            padding: 10px 5px;
+            font-weight: 700;
+            background-color: var(--color-fondo-seccion);
+            position: sticky;
+            top: 0;
+        }
+        .monthly-grid-table th.student-name-header {
+            text-align: left;
+            min-width: 200px;
+            position: sticky;
+            left: 0;
+            z-index: 2;
+        }
+        .monthly-grid-table td.student-name-cell {
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            left: 0;
+            background-color: var(--color-blanco);
+            z-index: 1;
+            transition: background-color 0.3s;
+        }
+        .monthly-grid-table tr.highlight-absentee td.student-name-cell {
+            background-color: var(--color-ausente-claro);
+            color: var(--color-ausente);
+        }
+        .monthly-grid-table th.day-header {
+            min-width: 40px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .monthly-grid-table th.day-header:hover {
+            background-color: var(--color-primario);
+            color: var(--color-blanco);
+        }
+        .monthly-grid-table th.today {
+            background-color: var(--color-hoy);
+            color: var(--color-texto-principal);
+        }
+        .monthly-grid-table .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: auto;
+            position: relative;
+        }
+        .status-indicator.presente { background-color: var(--color-presente); }
+        .status-indicator.ausente { background-color: var(--color-ausente); }
+        .status-indicator.tarde { background-color: var(--color-tarde); }
+        
+        .excuse-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background-color: var(--color-primario);
+            border-radius: 50%;
+            border: 1px solid var(--color-blanco);
+        }
+
+        /* --- LISTA DIARIA DE ESTUDIANTES --- */
+        .student-list {
+            margin-top: 25px;
+            overflow-x: auto;
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            color: var(--color-texto-secundario);
+            font-weight: 600;
+            padding: 0 20px 10px 20px;
+            border-bottom: 2px solid var(--color-borde-suave);
+            min-width: 650px;
+        }
+
+        .student-name-header-daily {
+            flex-basis: 40%;
+        }
+        
+        .attendance-status-header {
+            flex-basis: 60%;
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        .student-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--color-borde-suave);
+            min-width: 650px;
+        }
+
+        .student-row:last-child {
+            border-bottom: none;
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-basis: 40%;
+        }
+
+        .avatar-small {
+            width: 35px;
+            height: 35px;
+            background-color: var(--color-borde-suave);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--color-texto-secundario);
+            flex-shrink: 0;
+        }
+
+        .attendance-controls {
+            display: flex;
+            gap: 10px;
+            flex-basis: 60%;
+            justify-content: flex-start;
+            align-items: center;
+        }
+
+        .status-btn {
+            padding: 6px 18px;
+            border-radius: 15px;
+            border: 1px solid var(--color-borde-suave);
+            background-color: var(--color-blanco);
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--color-texto-secundario);
+        }
+
+        .status-btn:hover {
+            background-color: var(--color-fondo-seccion);
+            border-color: #d4d9db;
+        }
+
+        .status-btn.selected.presente { background-color: var(--color-presente); border-color: var(--color-presente); color: var(--color-blanco); }
+        .status-btn.selected.ausente { background-color: var(--color-ausente); border-color: var(--color-ausente); color: var(--color-blanco); }
+        .status-btn.selected.tarde { background-color: var(--color-tarde); border-color: var(--color-tarde); color: var(--color-texto-principal); }
+
+        .excuse-container {
+            display: flex;
+            align-items: center;
+            margin-left: 15px;
+            transition: opacity 0.3s ease;
+        }
+        .excuse-label {
+            font-weight: 600;
+            color: var(--color-texto-secundario);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .excuse-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* --- SECCIÓN CALIFICACIONES --- */
+        .grades-summary-cards {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .grades-summary-card {
+            border: 1px solid var(--color-borde-suave);
+            padding: 15px;
+            border-radius: 0.75rem;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+        .grades-summary-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-primario);
+        }
+        .grades-summary-card .label {
+            color: var(--color-texto-secundario);
+            font-weight: 600;
+        }
+        .grades-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .grades-settings {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .grades-settings label {
+            font-weight: 600;
+        }
+        .grades-settings input {
+            width: 60px;
+            padding: 4px 8px;
+            border-radius: 0.5rem;
+            border: 1px solid var(--color-borde-suave);
+        }
+        .grades-table-container {
+            overflow-x: auto;
+        }
+        .grades-table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+        }
+        .grades-table th, .grades-table td {
+            border: 1px solid var(--color-borde-suave);
+            padding: 8px 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .grades-table thead th {
+            background-color: var(--color-fondo-seccion);
+            font-weight: 700;
+        }
+        .grades-table .student-name-cell {
+            text-align: left;
+            font-weight: 600;
+        }
+        .grades-table tr.failing-student td.student-name-cell, .grades-table .average-cell.failing {
+            color: var(--color-ausente);
+            font-weight: 700;
+        }
+        .grades-table tr.failing-student td.student-name-cell {
+            background-color: var(--color-ausente-claro);
+        }
+        .grades-table input.grade-input {
+            width: 50px;
+            border: 1px solid transparent;
+            text-align: center;
+            border-radius: 4px;
+            padding: 4px;
+        }
+        .grades-table input.grade-input:focus {
+            outline: none;
+            border-color: var(--color-primario);
+            background-color: #eef;
+        }
+        .grades-table .assignment-actions i {
+            cursor: pointer;
+            margin: 0 4px;
+            color: var(--color-texto-secundario);
+            transition: color 0.2s;
+        }
+        .grades-table .assignment-actions i:hover {
+            color: var(--color-primario);
+        }
+        .grades-table .delete-assignment-icon:hover {
+            color: var(--color-ausente);
+        }
+
+        /* --- PIE DE PÁGINA PARA GUARDAR --- */
+        .save-footer {
+            text-align: right;
+            margin-top: 25px;
+        }
+
+        .save-button {
+            background-color: var(--color-primario);
+            color: var(--color-blanco);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 0.5rem;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .save-button:hover {
+            background-color: var(--color-primario-oscuro);
+        }
+
+        .save-button i {
+            margin-left: 8px;
+        }
+
+        /* --- ESTILOS DE MODALES --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999 !important;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            pointer-events: none;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background-color: var(--color-blanco);
+            padding: 25px;
+            border-radius: 0.75rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,.3);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+            position: relative;
+            z-index: 100000 !important;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+        .modal-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 700;
+            color: var(--color-texto-principal);
+        }
+        .modal-content p {
+            margin-bottom: 25px;
+        }
+        .modal-footer {
+            text-align: center;
+        }
+        .modal-input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 0.5rem;
+            border: 1px solid var(--color-borde-suave);
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('profesor.dashboard') }}">
-                <i class="fas fa-graduation-cap me-2"></i>
-                Sistema Académico
-            </a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    <i class="fas fa-user me-1"></i>
-                    {{ current_user.nombre_completo }}
-                </span>
-                <a class="nav-link" href="{{ url_for('profesor.seleccionar_curso') }}">
-                    <i class="fas fa-sync-alt me-1"></i>Cambiar Curso
-                </a>
-                <a class="nav-link" href="{{ url_for('auth.logout') }}">
-                    <i class="fas fa-sign-out-alt me-1"></i>Salir
-                </a>
+    <!-- Barra de navegación -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <!-- Acción izquierda: volver al inicio -->
+            <div class="left-actions">
+                <a href="/profesor/dashboard" class="back-button" style="margin-right:10px;">&larr; Volver al inicio</a>
             </div>
+            <a class="navbar-brand" href="#">
+                <div class="logo-circle"></div>
+                <h1>Gestión Académica</h1>
+            </a>
         </div>
     </nav>
-
-    <div class="container-fluid py-4">
-        <!-- Header Información -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h4 class="card-title mb-1">
-                                    <i class="fas fa-clipboard-list text-primary me-2"></i>
-                                    Gestión Académica
-                                </h4>
-                                <p class="text-muted mb-0">
-                                    Curso: <strong>{{ curso.nombreCurso if curso else 'No seleccionado' }}</strong> | 
-                                    Sede: <strong>{{ curso.sede.nombre if curso and curso.sede else 'No asignada' }}</strong> | 
-                                    Estudiantes: <strong>{{ estudiantes|length }}</strong>
-                                </p>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <div class="btn-group">
-                                    <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-outline-primary btn-sm">
-                                        <i class="fas fa-sync-alt me-1"></i>Cambiar Curso
-                                    </a>
-                                    <a href="{{ url_for('profesor.dashboard') }}" class="btn btn-outline-secondary btn-sm">
-                                        <i class="fas fa-home me-1"></i>Dashboard
-                                    </a>
-                                </div>
-                            </div>
+    
+    <!-- Contenedor principal -->
+    <div class="page-container">
+        <div class="container">
+            <main>
+                <!-- Encabezado con información del profesor y curso -->
+                <section class="main-header">
+                    <div class="profile-card">
+                        <div class="avatar-large">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="profile-info">
+                            <h2 id="professor-name">Nombre Profesor</h2>
+                            <p id="professor-campus">Sede Correspondiente</p>
+                            <p><strong>Rol:</strong> Profesor</p>
+                            <button class="btn btn-outline-primary btn-sm mt-2" onclick="cambiarSeleccion()">
+                                <i class="fas fa-sync-alt me-1"></i>Cambiar Curso/Asignatura
+                            </button>
                         </div>
                     </div>
+                    <div class="info-cards">
+                        <div class="card students-card">
+                            <div class="card-body">
+                                <p class="card-title">Estudiantes</p>
+                                <p class="card-content" id="total-students">0</p>
+                                <p class="card-footer mb-0 text-muted small">Total de estudiantes</p>
+                            </div>
+                        </div>
+                        <div class="card course-card">
+                             <div class="card-body">
+                                <p class="fw-bold mb-1">Curso</p>
+                                <p class="mb-1" id="course-info">Curso - Director de Curso: </p>
+                                <p class="mb-0 text-muted small" id="course-representative">Representante de curso: </p>
+                             </div>
+                        </div>
+                        <div class="card subject-card">
+                             <div class="card-body">
+                                <p class="fw-bold mb-1">Asignatura</p>
+                                <p class="mb-1" id="subject-info">Asignatura seleccionada</p>
+                                <p class="mb-0 text-muted small">Materia a gestionar</p>
+                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Pestañas de navegación -->
+                <nav class="content-tabs">
+                    <a id="attendance-tab" class="tab-link active">Asistencia</a>
+                    <a id="grades-tab" class="tab-link">Calificaciones</a>
+                </nav>
+
+                <!-- Contenido de Asistencia -->
+                <div id="attendance-content">
+                    <!-- Vista Mensual (por defecto) -->
+                    <section id="monthly-view" class="content-section">
+                        <div class="attendance-header">
+                            <div class="month-navigation">
+                                <button id="prev-month-btn" class="nav-btn"><i class="fas fa-chevron-left"></i></button>
+                                <h2 id="month-year-display"></h2>
+                                <button id="next-month-btn" class="nav-btn"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="controls">
+                               <button id="go-to-today-btn" class="save-button">Tomar Asistencia de Hoy</button>
+                            </div>
+                        </div>
+                        <div class="monthly-list-container">
+                            <table class="monthly-grid-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Vista Diaria (oculta por defecto) -->
+                    <section id="daily-view" class="content-section" style="display: none;">
+                        <div class="attendance-header">
+                            <h2 id="daily-view-title">Asistencia</h2>
+                            <div class="controls">
+                                <button id="back-to-monthly-btn" class="back-button">Volver al Mes</button>
+                            </div>
+                        </div>
+
+                        <!-- Tarjetas de resumen de asistencia -->
+                        <div class="summary-cards">
+                            <div class="summary-card presente">
+                                <span class="count" id="presente-count">0</span>
+                                <span>Presentes</span>
+                            </div>
+                            <div class="summary-card ausente">
+                                <span class="count" id="ausente-count">0</span>
+                                <span>Ausentes</span>
+                            </div>
+                            <div class="summary-card tarde">
+                                <span class="count" id="tarde-count">0</span>
+                                <span>Tardes</span>
+                            </div>
+                        </div>
+
+                        <!-- Lista de estudiantes para asistencia diaria -->
+                        <div class="student-list">
+                            <!-- Las filas de estudiantes se llenarán con JavaScript -->
+                        </div>
+
+                        <!-- Pie de página para guardar -->
+                        <div class="save-footer">
+                            <button id="save-daily-attendance-btn" class="save-button">Guardar Asistencia <i class="fas fa-check-circle"></i></button>
+                        </div>
+                    </section>
                 </div>
-            </div>
-        </div>
 
-        <!-- Alertas -->
-        {% if not curso %}
-        <div class="alert alert-danger alert-dismissible fade show">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Error:</strong> No se pudo cargar la información del curso. 
-            <a href="{{ url_for('profesor.seleccionar_curso') }}" class="alert-link">
-                Selecciona un curso para continuar
-            </a>
-        </div>
-        {% endif %}
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Pestañas principales -->
-        <div class="card shadow">
-            <div class="card-header bg-white">
-                <ul class="nav nav-tabs card-header-tabs" id="mainTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                            <i class="fas fa-clipboard-check me-2"></i>Asistencia
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="grades-tab" data-bs-toggle="tab" data-bs-target="#grades" type="button" role="tab">
-                            <i class="fas fa-chart-bar me-2"></i>Calificaciones
-                        </button>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="card-body">
-                <div class="tab-content" id="mainTabsContent">
-                    
-                    <!-- Pestaña de Asistencia -->
-                    <div class="tab-pane fade show active" id="attendance" role="tabpanel">
-                        {% if curso and estudiantes %}
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-calendar-alt me-2 text-primary"></i>
-                                        Control de Asistencia
-                                    </h5>
-                                    <div class="btn-group">
-                                        <button id="prev-month-btn" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fas fa-chevron-left"></i>
-                                        </button>
-                                        <button class="btn btn-outline-primary disabled" id="month-year-display">
-                                            Cargando...
-                                        </button>
-                                        <button id="next-month-btn" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fas fa-chevron-right"></i>
-                                        </button>
-                                        <button id="go-to-today-btn" class="btn btn-primary btn-sm ms-2">
-                                            <i class="fas fa-calendar-day me-1"></i>Hoy
-                                        </button>
-                                    </div>
-                                </div>
+                <!-- Contenido de Calificaciones -->
+                <div id="grades-content" style="display: none;">
+                    <section class="content-section">
+                        <!-- Tarjetas de resumen de calificaciones -->
+                        <div class="grades-summary-cards">
+                            <div class="grades-summary-card">
+                                <div id="lowest-grade" class="value">0</div>
+                                <div class="label">Calificación Más Baja</div>
+                            </div>
+                            <div class="grades-summary-card">
+                                <div id="highest-grade" class="value">0</div>
+                                <div class="label">Calificación Más Alta</div>
+                            </div>
+                            <div class="grades-summary-card">
+                                <div id="average-grade" class="value">0</div>
+                                <div class="label">Promedio de Clase</div>
                             </div>
                         </div>
-
-                        <!-- Vista Mensual -->
-                        <div id="monthly-view">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm" id="monthly-grid-table">
-                                    <thead class="table-light">
-                                        <!-- Cabecera generada por JavaScript -->
-                                    </thead>
-                                    <tbody>
-                                        <!-- Contenido generado por JavaScript -->
-                                    </tbody>
-                                </table>
+                        
+                        <!-- Configuración y acciones de calificaciones -->
+                        <div class="grades-actions">
+                             <div class="grades-settings">
+                                <label for="min-grade">Nota Mín:</label>
+                                <input type="number" id="min-grade" value="0">
+                                <label for="max-grade">Nota Máx:</label>
+                                <input type="number" id="max-grade" value="100">
+                                <label for="passing-grade">Nota Aprob:</label>
+                                <input type="number" id="passing-grade" value="60">
+                            </div>
+                           <div id="categoriesPctWarningInline" style="display:none;margin-left:18px;margin-top:6px;color:#b71c1c;font-weight:700;">Has superado el 100%, reduce porcentajes</div>
+                            <div id="categories-list" style="display:inline-block; margin-left:18px; vertical-align: middle;"></div>
+                            <div>
+                                <button id="generate-report-btn" class="back-button">Generar Reporte</button>
+                                <button id="manage-categories-btn" class="back-button">Categorías</button>
+                                <button id="add-assignment-btn" class="save-button">Añadir Asignación</button>
                             </div>
                         </div>
-
-                        <!-- Vista Diaria (Oculta inicialmente) -->
-                        <div id="daily-view" style="display: none;">
-                            <div class="row mb-4">
-                                <div class="col-12">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h5 id="daily-view-title" class="mb-0">Asistencia del Día</h5>
-                                        <button id="back-to-monthly-btn" class="btn btn-outline-secondary btn-sm">
-                                            <i class="fas fa-arrow-left me-1"></i>Volver al Mes
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Resumen de Asistencias -->
-                            <div class="row mb-4">
-                                <div class="col-md-3">
-                                    <div class="card bg-success text-white">
-                                        <div class="card-body text-center py-3">
-                                            <h3 id="present-count" class="mb-0">0</h3>
-                                            <small>Presentes</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card bg-danger text-white">
-                                        <div class="card-body text-center py-3">
-                                            <h3 id="absent-count" class="mb-0">0</h3>
-                                            <small>Ausentes</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card bg-warning text-white">
-                                        <div class="card-body text-center py-3">
-                                            <h3 id="late-count" class="mb-0">0</h3>
-                                            <small>Tardanzas</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card bg-info text-white">
-                                        <div class="card-body text-center py-3">
-                                            <h3 id="justified-count" class="mb-0">0</h3>
-                                            <small>Justificados</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Lista de Estudiantes -->
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0">Registro de Asistencia</h6>
-                                </div>
-                                <div class="card-body">
-                                    {% for estudiante in estudiantes %}
-                                    <div class="student-row mb-3 p-3 border rounded" data-student-id="{{ estudiante.id_usuario }}">
-                                        <div class="row align-items-center">
-                                            <div class="col-md-6">
-                                                <h6 class="mb-1">{{ estudiante.nombre }} {{ estudiante.apellido }}</h6>
-                                                <small class="text-muted">ID: {{ estudiante.no_identidad }}</small>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="btn-group btn-group-sm w-100" role="group">
-                                                    <button type="button" class="btn btn-outline-success attendance-btn" data-status="presente">
-                                                        <i class="fas fa-check me-1"></i>Presente
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-danger attendance-btn" data-status="ausente">
-                                                        <i class="fas fa-times me-1"></i>Ausente
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-warning attendance-btn" data-status="tardanza">
-                                                        <i class="fas fa-clock me-1"></i>Tarde
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-info attendance-btn" data-status="justificado">
-                                                        <i class="fas fa-file-medical me-1"></i>Justificado
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            <!-- Botón Guardar -->
-                            <div class="text-end mt-4">
-                                <button id="save-daily-attendance-btn" class="btn btn-success btn-lg">
-                                    <i class="fas fa-save me-2"></i>Guardar Asistencia
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Datos del curso para JavaScript -->
-                        <div id="course-data" 
-                             data-curso-id="{{ curso.id }}"
-                             data-profesor-id="{{ current_user.id_usuario }}"
-                             style="display: none;">
-                        </div>
-
-                        {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
-                            <h4 class="text-muted">
-                                {% if not curso %}
-                                No hay curso seleccionado
-                                {% else %}
-                                No hay estudiantes en este curso
-                                {% endif %}
-                            </h4>
-                            <p class="text-muted">
-                                {% if not curso %}
-                                <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-primary mt-3">
-                                    Seleccionar Curso
-                                </a>
-                                {% else %}
-                                Contacta con el administrador para agregar estudiantes al curso.
-                                {% endif %}
-                            </p>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Pestaña de Calificaciones -->
-                    <div class="tab-pane fade" id="grades" role="tabpanel">
-                        {% if curso and estudiantes and asignaturas %}
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-chart-bar me-2 text-primary"></i>
-                                    Gestión de Calificaciones
-                                </h5>
-                            </div>
-                        </div>
-
-                        <!-- Estadísticas -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="card border-primary">
-                                    <div class="card-body text-center">
-                                        <h2 id="lowest-grade" class="text-primary mb-0">0.0</h2>
-                                        <small class="text-muted">Nota Más Baja</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card border-success">
-                                    <div class="card-body text-center">
-                                        <h2 id="highest-grade" class="text-success mb-0">0.0</h2>
-                                        <small class="text-muted">Nota Más Alta</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card border-info">
-                                    <div class="card-body text-center">
-                                        <h2 id="average-grade" class="text-info mb-0">0.0</h2>
-                                        <small class="text-muted">Promedio General</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card border-warning">
-                                    <div class="card-body text-center">
-                                        <h2 id="total-grades" class="text-warning mb-0">0</h2>
-                                        <small class="text-muted">Total Calificaciones</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Filtros y Acciones -->
-                        <div class="row mb-4">
-                            <div class="col-md-8">
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Asignatura:</label>
-                                        <select id="subject-select" class="form-select">
-                                            <option value="">Todas las asignaturas</option>
-                                            {% for asignatura in asignaturas %}
-                                            <option value="{{ asignatura.id }}">{{ asignatura.nombre }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Categoría:</label>
-                                        <select id="category-select" class="form-select">
-                                            <option value="">Todas las categorías</option>
-                                            {% for categoria in categorias %}
-                                            <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.porcentaje }}%)</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-grid gap-2">
-                                    <button id="add-grade-btn" class="btn btn-primary">
-                                        <i class="fas fa-plus me-1"></i>Nueva Calificación
-                                    </button>
-                                    <div class="btn-group">
-                                        <button id="generate-report-btn" class="btn btn-outline-secondary">
-                                            <i class="fas fa-file-pdf me-1"></i>Reporte
-                                        </button>
-                                        <button id="export-grades-btn" class="btn btn-outline-secondary">
-                                            <i class="fas fa-download me-1"></i>Exportar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Tabla de Calificaciones -->
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover" id="grades-table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Estudiante</th>
-                                        <th>Identificación</th>
-                                        {% for asignatura in asignaturas %}
-                                        <th class="text-center">{{ asignatura.nombre }}</th>
-                                        {% endfor %}
-                                        <th class="text-center">Promedio</th>
-                                        <th width="100">Acciones</th>
-                                    </tr>
+                        
+                        <!-- Tabla de calificaciones -->
+                        <div class="grades-table-container">
+                            <table class="grades-table">
+                                <thead>
+                                    <!-- Encabezados generados por JavaScript -->
                                 </thead>
                                 <tbody>
-                                    {% for estudiante in estudiantes %}
-                                    <tr data-student-id="{{ estudiante.id_usuario }}">
-                                        <td>
-                                            <strong>{{ estudiante.nombre }} {{ estudiante.apellido }}</strong>
-                                        </td>
-                                        <td>{{ estudiante.no_identidad }}</td>
-                                        {% for asignatura in asignaturas %}
-                                        <td class="text-center grade-cell" 
-                                            data-student-id="{{ estudiante.id_usuario }}" 
-                                            data-subject-id="{{ asignatura.id }}">
-                                            {% set grade_found = false %}
-                                            {% for calificacion in calificaciones %}
-                                                {% if calificacion.estudianteId == estudiante.id_usuario and calificacion.asignaturaId == asignatura.id %}
-                                                    <span class="badge bg-primary">{{ calificacion.valor }}</span>
-                                                    {% set grade_found = true %}
-                                                {% endif %}
-                                            {% endfor %}
-                                            {% if not grade_found %}
-                                            <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        {% endfor %}
-                                        <td class="text-center">
-                                            <span class="badge bg-secondary average-grade">-</span>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary btn-grade-edit" 
-                                                    data-student-id="{{ estudiante.id_usuario }}"
-                                                    title="Editar calificaciones">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
+                                    <!-- Filas de calificaciones se llenarán con JavaScript -->
                                 </tbody>
                             </table>
                         </div>
-
-                        {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
-                            <h4 class="text-muted">
-                                {% if not curso %}
-                                No hay curso seleccionado
-                                {% elif not estudiantes %}
-                                No hay estudiantes en este curso
-                                {% else %}
-                                No hay asignaturas asignadas
-                                {% endif %}
-                            </h4>
-                            <p class="text-muted">
-                                {% if not curso %}
-                                <a href="{{ url_for('profesor.seleccionar_curso') }}" class="btn btn-primary mt-3">
-                                    Seleccionar Curso
-                                </a>
-                                {% endif %}
-                            </p>
-                        </div>
-                        {% endif %}
-                    </div>
+                    </section>
                 </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Modales personalizados -->
+    
+    <!-- Modal de alerta -->
+    <div id="alertModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 class="modal-title">Notificación</h5>
+            <p id="alertModalBody"></p>
+            <div class="modal-footer">
+                <button id="alertModalAcceptBtn" class="save-button">Aceptar</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal para Calificaciones -->
-    <div class="modal fade" id="gradeModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="gradeModalTitle">
-                        <i class="fas fa-edit me-2"></i>Registrar Calificación
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="gradeForm">
-                        <div class="mb-3">
-                            <label for="gradeStudent" class="form-label">Estudiante:</label>
-                            <select id="gradeStudent" class="form-select" required>
-                                <option value="">Seleccionar estudiante...</option>
-                                {% for estudiante in estudiantes %}
-                                <option value="{{ estudiante.id_usuario }}">{{ estudiante.nombre }} {{ estudiante.apellido }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="gradeSubject" class="form-label">Asignatura:</label>
-                            <select id="gradeSubject" class="form-select" required>
-                                <option value="">Seleccionar asignatura...</option>
-                                {% for asignatura in asignaturas %}
-                                <option value="{{ asignatura.id }}">{{ asignatura.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="gradeCategory" class="form-label">Categoría:</label>
-                            <select id="gradeCategory" class="form-select" required>
-                                <option value="">Seleccionar categoría...</option>
-                                {% for categoria in categorias %}
-                                <option value="{{ categoria.id }}">{{ categoria.nombre }} ({{ categoria.porcentaje }}%)</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="gradeValue" class="form-label">Calificación:</label>
-                            <input type="number" id="gradeValue" class="form-control" min="0" max="100" step="0.1" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="gradeObservations" class="form-label">Observaciones:</label>
-                            <textarea id="gradeObservations" class="form-control" rows="3" placeholder="Observaciones adicionales..."></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" id="gradeModalConfirmBtn" class="btn btn-primary">Guardar Calificación</button>
-                </div>
+    <!-- Modal de entrada -->
+    <div id="promptModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 id="promptModalTitle" class="modal-title"></h5>
+            <p id="promptModalBody"></p>
+            <input type="text" id="promptModalInput" class="modal-input">
+            <div class="modal-footer">
+                <button id="promptModalCancelBtn" class="back-button">Cancelar</button>
+                <button id="promptModalConfirmBtn" class="save-button">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/profesor/Gestion_LC.js') }}"></script>
+    <!-- Modal de confirmación -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 class="modal-title">Confirmar Acción</h5>
+            <p id="confirmModalBody"></p>
+            <div class="modal-footer">
+                <button id="confirmModalCancelBtn" class="back-button">Cancelar</button>
+                <button id="confirmModalConfirmBtn" class="save-button">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
-    <script>
-        // Inicialización cuando el DOM está listo
-        document.addEventListener('DOMContentLoaded', function() {
-            // Activar pestañas de Bootstrap
-            const triggerTabList = [].slice.call(document.querySelectorAll('#mainTabs button'));
-            triggerTabList.forEach(function (triggerEl) {
-                var tabTrigger = new bootstrap.Tab(triggerEl);
-                triggerEl.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    tabTrigger.show();
-                });
-            });
+    <!-- Modal para crear/editar categoría -->
+    <div id="categoryModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 class="modal-title">Crear Categoría</h5>
+            <p id="categoryModalBody">Rellena los datos de la categoría</p>
+            <div id="categoryPctWarning" style="display:none;margin-top:6px;color:#b71c1c;font-weight:700;">Has superado el 100%, reduce porcentajes</div>
+            <div id="categoryListContainer" style="text-align:left; margin-bottom:12px; max-height:160px; overflow:auto; border:1px solid var(--color-borde-suave); padding:8px; border-radius:6px; background:#fff;">
+                <!-- Lista de categorías con editar/eliminar se renderiza aquí -->
+            </div>
+            <input type="text" id="categoryNameInput" class="modal-input" placeholder="Nombre de la categoría">
+            <input type="color" id="categoryColorInput" class="modal-input" style="height:40px; padding:4px;">
+            <input type="number" id="categoryPctInput" class="modal-input" placeholder="Porcentaje (ej. 20)">
+            <div class="modal-footer">
+                <button id="categoryModalCancelBtn" class="back-button">Cancelar</button>
+                <button id="categoryModalConfirmBtn" class="save-button">Guardar</button>
+            </div>
+        </div>
+    </div>
 
-            // Inicializar modal de calificaciones
-            const gradeModal = new bootstrap.Modal(document.getElementById('gradeModal'));
+    <!-- Modal para crear asignación -->
+    <div id="assignmentModal" class="modal-overlay">
+        <div class="modal-content">
+            <h5 class="modal-title">Nueva Asignación</h5>
+            <p id="assignmentModalBody">Introduce el nombre y selecciona la categoría</p>
+            <input type="text" id="assignmentNameInput" class="modal-input" placeholder="Nombre de la asignación">
+            <select id="assignmentCategorySelect" class="modal-input" style="height:40px;padding:6px;"></select>
+            <div class="modal-footer">
+                <button id="assignmentModalCancelBtn" class="back-button">Cancelar</button>
+                <button id="assignmentModalConfirmBtn" class="save-button">Crear</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// Inicialización cuando el DOM está listo
+document.addEventListener('DOMContentLoaded', () => {
+    // --- MÓDULO DE UTILIDADES (MODALES Y VISTAS) ---
+    const UI = (() => {
+        // Referencias a elementos del DOM
+        const attendanceTab = document.getElementById('attendance-tab');
+        const gradesTab = document.getElementById('grades-tab');
+        const attendanceContent = document.getElementById('attendance-content');
+        const gradesContent = document.getElementById('grades-content');
+
+        const alertModal = document.getElementById('alertModal');
+        const alertModalBody = document.getElementById('alertModalBody');
+        const promptModal = document.getElementById('promptModal');
+        const confirmModal = document.getElementById('confirmModal');
+
+        // Cambiar entre vistas de asistencia y calificaciones
+        const switchView = (activeTab, activeContent, inactiveTab, inactiveContent) => {
+            activeTab.classList.add('active');
+            inactiveTab.classList.remove('active');
+            activeContent.style.display = 'block';
+            inactiveContent.style.display = 'none';
+        };
+
+        // Variables para controlar modales superpuestos
+        let _temporarilyHiddenOverlays = [];
+
+        // Mostrar modal con configuración específica
+        const showModal = (modal, setup) => {
+            if (!modal) return;
             
-            // Botón para abrir modal de calificaciones
-            document.getElementById('add-grade-btn')?.addEventListener('click', function() {
-                document.getElementById('gradeModalTitle').textContent = 'Nueva Calificación';
-                document.getElementById('gradeForm').reset();
-                gradeModal.show();
-            });
+            // Mover el modal al body para evitar problemas de contexto
+            try { 
+                if (modal.parentNode !== document.body) document.body.appendChild(modal); 
+            } catch (e) { /* ignorar */ }
 
-            // Botones de edición en la tabla
-            document.querySelectorAll('.btn-grade-edit').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const studentId = this.getAttribute('data-student-id');
-                    document.getElementById('gradeModalTitle').textContent = 'Editar Calificaciones';
-                    document.getElementById('gradeStudent').value = studentId;
-                    gradeModal.show();
+            // Calcular z-index máximo para asegurar que el modal esté por encima
+            let maxZ = 0;
+            try {
+                const els = document.querySelectorAll('body *');
+                els.forEach(el => {
+                    const z = window.getComputedStyle(el).getPropertyValue('z-index');
+                    const zi = parseInt(z, 10);
+                    if (!isNaN(zi)) maxZ = Math.max(maxZ, zi);
+                });
+            } catch (err) {
+                maxZ = 10000;
+            }
+
+            const overlayZ = Math.max(10000, maxZ + 10);
+            const contentZ = overlayZ + 10;
+
+            // Aplicar estilos al overlay y contenido
+            modal.style.zIndex = String(overlayZ);
+            modal.style.pointerEvents = 'auto';
+            const content = modal.querySelector('.modal-content');
+            if (content) {
+                content.style.position = 'fixed';
+                content.style.zIndex = String(contentZ);
+                // Centrar
+                content.style.top = '50%';
+                content.style.left = '50%';
+                content.style.transform = 'translate(-50%, -50%)';
+            }
+
+            // Ocultar otros modales visibles temporalmente
+            try {
+                _temporarilyHiddenOverlays = Array.from(document.querySelectorAll('.modal-overlay.show')).filter(m => m !== modal);
+                _temporarilyHiddenOverlays.forEach(m => {
+                    m.dataset._wasShown = '1';
+                    m.classList.remove('show');
+                    m.style.display = 'none';
+                });
+            } catch (e) { _temporarilyHiddenOverlays = []; }
+
+            setup();
+            modal.classList.add('show');
+        };
+
+        // Ocultar modal
+        const hideModal = (modal) => {
+            modal.classList.remove('show');
+            try {
+                // Restablecer estilos en línea
+                modal.style.zIndex = '';
+                modal.style.pointerEvents = '';
+                const content = modal.querySelector('.modal-content');
+                if (content) {
+                    content.style.position = '';
+                    content.style.zIndex = '';
+                    content.style.top = '';
+                    content.style.left = '';
+                    content.style.transform = '';
+                }
+            } catch (err) { /* ignorar */ }
+
+            // Restaurar overlays temporalmente ocultos
+            try {
+                if (_temporarilyHiddenOverlays && _temporarilyHiddenOverlays.length > 0) {
+                    _temporarilyHiddenOverlays.forEach(m => {
+                        try {
+                            m.style.display = '';
+                            if (m.dataset._wasShown) {
+                                m.classList.add('show');
+                                delete m.dataset._wasShown;
+                            }
+                        } catch (e) { /* ignorar */ }
+                    });
+                    _temporarilyHiddenOverlays = [];
+                }
+            } catch (e) { /* ignorar */ }
+        };
+
+        // Mostrar alerta
+        const showAlert = (message) => {
+            showModal(alertModal, () => {
+                alertModalBody.innerHTML = message.replace(/\n/g, '<br>');
+                document.getElementById('alertModalAcceptBtn').onclick = () => hideModal(alertModal);
+            });
+        };
+
+        // Mostrar prompt con entrada de texto
+        const showPrompt = (title, body, callback) => {
+            showModal(promptModal, () => {
+                promptModal.querySelector('#promptModalTitle').textContent = title;
+                promptModal.querySelector('#promptModalBody').textContent = body;
+                const input = promptModal.querySelector('#promptModalInput');
+                input.value = '';
+
+                const confirmBtn = promptModal.querySelector('#promptModalConfirmBtn');
+                const cancelBtn = promptModal.querySelector('#promptModalCancelBtn');
+                confirmBtn.onclick = () => { hideModal(promptModal); callback(input.value); };
+                cancelBtn.onclick = () => { hideModal(promptModal); callback(null); };
+            });
+        };
+
+        // Mostrar confirmación
+        const showConfirm = (body, callback) => {
+            showModal(confirmModal, () => {
+                confirmModal.querySelector('#confirmModalBody').textContent = body;
+                const confirmBtn = confirmModal.querySelector('#confirmModalConfirmBtn');
+                const cancelBtn = confirmModal.querySelector('#confirmModalCancelBtn');
+                confirmBtn.onclick = () => { hideModal(confirmModal); callback(true); };
+                cancelBtn.onclick = () => { hideModal(confirmModal); callback(false); };
+            });
+        };
+
+        return { 
+            switchView, 
+            showAlert, 
+            showPrompt, 
+            showConfirm, 
+            attendanceTab, 
+            gradesTab, 
+            attendanceContent, 
+            gradesContent 
+        };
+    })();
+
+    // --- DATOS GLOBALES ---
+    // Si el servidor inyectó datos en window.SERVER_DATA, inicializar desde allí
+    let estudiantes = (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.estudiantes)) ?
+        window.SERVER_DATA.estudiantes.map(s => ({ 
+            id: s.id, 
+            nombre: ((s.nombre || '') + ' ' + (s.apellido || '')).trim(), 
+            calificaciones: [] 
+        })) : [];
+
+    // Metadatos de asignaciones
+    let assignmentMeta = [];
+    
+    // Mapa de categorías: id -> {id, nombre, color, porcentaje}
+    let categoriesMap = {};
+    
+    // Datos de asistencia
+    let attendanceData = {};
+    
+    // Datos del profesor
+    let professorData = {};
+    
+    // Datos del curso
+    let courseData = {};
+
+    // Función para retrasar ejecución (debounce)
+    function debounce(fn, wait) {
+        let t;
+        return function(...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    // Función global para renderizar la lista de categorías
+    function renderCategoriesList() {
+        const container = document.getElementById('categories-list');
+        if (!container) return;
+        const cats = Object.values(categoriesMap || {});
+        if (!cats || cats.length === 0) {
+            container.innerHTML = '<small>No hay categorías</small>';
+            return;
+        }
+        container.innerHTML = cats.map(c => {
+            const color = c.color || '#cccccc';
+            const name = c.nombre || 'Sin nombre';
+            const pct = (c.porcentaje !== undefined && c.porcentaje !== null) ? `${c.porcentaje}%` : '';
+            return `<div style="display:inline-flex;align-items:center;margin-right:8px;font-size:0.9em;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;margin-right:6px;border:1px solid rgba(0,0,0,0.05);"></span><span>${name} ${pct}</span></div>`;
+        }).join('');
+    }
+
+    // Normalizar array de categorías (acepta distintos nombres de campos)
+    function normalizeCategoriesArray(arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(c => {
+            const id = c.id || c.id_categoria || c.idCategoria || null;
+            return {
+                id: id,
+                nombre: c.nombre || c.name || '',
+                color: c.color || c.colour || '#cccccc',
+                porcentaje: parseFloat(c.porcentaje || c.pct || c.percentage || 0) || 0
+            };
+        });
+    }
+
+    // --- FUNCIONES PARA CARGAR DATOS ---
+    const DataLoader = (() => {
+        // Cargar datos del profesor
+        const loadProfessorData = async () => {
+            // Preferir datos inyectados por el servidor
+            if (window.SERVER_DATA && window.SERVER_DATA.profesor) {
+                professorData = {
+                    nombre: window.SERVER_DATA.profesor.nombre || 'Profesor',
+                    campus: window.SERVER_DATA.profesor.sede || 'N/A'
+                };
+            } else {
+                professorData = { nombre: 'Nombre Profesor', campus: 'Sede Correspondiente' };
+            }
+            document.getElementById('professor-name').textContent = professorData.nombre;
+            document.getElementById('professor-campus').textContent = professorData.campus;
+        };
+
+        // Cargar datos del curso
+        const loadCourseData = async () => {
+            if (window.SERVER_DATA && window.SERVER_DATA.curso) {
+                courseData = {
+                    id: window.SERVER_DATA.curso.id,
+                    nombre: window.SERVER_DATA.curso.nombre || 'Curso',
+                    director: window.SERVER_DATA.curso.director || 'No asignado',
+                    representante: window.SERVER_DATA.curso.representante || 'N/A',
+                    totalEstudiantes: estudiantes.length
+                };
+            } else {
+                courseData = {
+                    nombre: '',
+                    director: '',
+                    representante: '',
+                    totalEstudiantes: estudiantes.length
+                };
+            }
+            document.getElementById('course-info').textContent = `${courseData.nombre} - Director de Curso: ${courseData.director}`;
+            document.getElementById('course-representative').textContent = `Representante de curso: ${courseData.representante}`;
+            
+            // Actualizar información de la asignatura seleccionada
+            if (window.SERVER_DATA && window.SERVER_DATA.asignatura_seleccionada) {
+                const asignatura = window.SERVER_DATA.asignatura_seleccionada;
+                document.getElementById('subject-info').textContent = asignatura.nombre;
+            } else {
+                document.getElementById('subject-info').textContent = 'Asignatura no seleccionada';
+            }
+        };
+
+        // Cargar lista de estudiantes
+        const loadStudents = async () => {
+            document.getElementById('total-students').textContent = estudiantes.length;
+        };
+
+        // Cargar datos de asistencia
+        const loadAttendanceData = async () => {
+            attendanceData = {};
+            try {
+                const año = new Date().getFullYear();
+                const mes = new Date().getMonth() + 1;
+                const resp = await fetch(`/profesor/api/obtener-asistencias?año=${año}&mes=${mes}`);
+                const data = await resp.json();
+                if (data && data.success && Array.isArray(data.asistencias)) {
+                    data.asistencias.forEach(a => {
+                        attendanceData[a.fecha] = attendanceData[a.fecha] || {};
+                        attendanceData[a.fecha][a.estudiante_id] = { 
+                            presente: a.estado === 'presente', 
+                            ausente: a.estado === 'ausente', 
+                            tarde: a.estado === 'tarde', 
+                            excusa: !!a.excusa 
+                        };
+                    });
+                    return;
+                }
+            } catch (err) {
+                console.warn('No se pudieron obtener asistencias vía API, usando datos inyectados si existen', err);
+            }
+
+            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asistencias)) {
+                window.SERVER_DATA.asistencias.forEach(a => {
+                    attendanceData[a.fecha] = attendanceData[a.fecha] || {};
+                    attendanceData[a.fecha][a.estudiante_id] = { 
+                        presente: a.estado === 'presente', 
+                        ausente: a.estado === 'ausente', 
+                        tarde: a.estado === 'tarde', 
+                        excusa: !!a.excusa 
+                    };
+                });
+            }
+        };
+
+        // Cargar datos de calificaciones
+        const loadGradesData = async () => {
+            // Inicializar
+            assignmentMeta = [];
+            estudiantes.forEach(estudiante => estudiante.calificaciones = []);
+
+            // Si el servidor inyectó calificaciones, construir columnas y valores
+            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.calificaciones)) {
+                const califs = window.SERVER_DATA.calificaciones;
+
+                // Unificar por nombre_calificacion (o por id si falta nombre)
+                const byName = {};
+                califs.forEach(c => {
+                    const name = c.nombre_calificacion || (`Asignación ${c.id || ''}`);
+                    if (!byName[name]) byName[name] = { name: name, categoria_id: c.categoria_id || c.categoriaId || null, entries: [] };
+                    byName[name].entries.push(c);
+                });
+
+                // Obtener categorías completas
+                let categoriasMap = {};
+                if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.categorias) && window.SERVER_DATA.categorias.length > 0 && window.SERVER_DATA.categorias[0].color) {
+                    window.SERVER_DATA.categorias.forEach(cat => { categoriasMap[cat.id] = cat; });
+                } else {
+                    try {
+                        const resp = await fetch('/profesor/api/categorias');
+                        const data = await resp.json();
+                        if (data && data.success && Array.isArray(data.categorias)) {
+                            data.categorias.forEach(cat => { categoriasMap[cat.id] = cat; });
+                        }
+                    } catch (err) {
+                        console.warn('No se pudieron obtener categorías completas:', err);
+                    }
+                }
+
+                // Construir assignmentMeta en orden de aparición
+                Object.keys(byName).forEach(name => {
+                    const info = byName[name];
+                    const catId = info.categoria_id || (info.entries[0] && (info.entries[0].categoria_id || info.entries[0].categoriaId)) || null;
+                    const cat = categoriasMap[catId] || null;
+                    const color = cat ? (cat.color || '#cccccc') : '#cccccc';
+                    const porcentaje = cat ? (cat.porcentaje || 0) : 0;
+                    assignmentMeta.push({ name: name, categoria_id: catId, color: color, porcentaje: porcentaje });
+                });
+
+                // Preparar mapa de estudiantes y llenar arrays de calificaciones
+                const studentMap = {};
+                estudiantes.forEach(s => { studentMap[s.id] = s; s.calificaciones = Array(assignmentMeta.length).fill(''); });
+
+                califs.forEach(c => {
+                    const name = c.nombre_calificacion || (`Asignación ${c.id || ''}`);
+                    const idx = assignmentMeta.findIndex(a => a.name === name);
+                    const s = studentMap[c.estudiante_id];
+                    if (s && idx >= 0) {
+                        s.calificaciones[idx] = c.valor !== null && c.valor !== undefined ? c.valor : '';
+                    }
+                });
+            }
+
+            // Construir categoriesMap global
+            categoriesMap = {};
+            if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.categorias)) {
+                window.SERVER_DATA.categorias.forEach(cat => {
+                    categoriesMap[cat.id] = { id: cat.id, nombre: cat.nombre, color: cat.color || '#cccccc', porcentaje: parseFloat(cat.porcentaje) || 0 };
+                });
+            }
+            
+            // Si no hay colores/porcentajes, intentar obtener via API
+            if (Object.keys(categoriesMap).length === 0) {
+                try {
+                    const resp = await fetch('/profesor/api/categorias');
+                    const data = await resp.json();
+                    if (data && data.success && Array.isArray(data.categorias)) {
+                        data.categorias.forEach(cat => {
+                            categoriesMap[cat.id] = { id: cat.id, nombre: cat.nombre, color: cat.color || '#cccccc', porcentaje: parseFloat(cat.porcentaje) || 0 };
+                        });
+                    }
+                } catch (err) {
+                    console.warn('No se pudieron obtener categorías para el mapa global:', err);
+                }
+            }
+
+            // Renderizar lista de categorías junto a las opciones
+            renderCategoriesList();
+        };
+
+        // Inicializar todos los datos
+        const initializeAllData = async () => {
+            try {
+                try {
+                    await loadProfessorData();
+                } catch (err) {
+                    console.error('Error cargando datos del profesor:', err);
+                    UI.showAlert('Error al cargar datos del profesor: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadCourseData();
+                } catch (err) {
+                    console.error('Error cargando datos del curso:', err);
+                    UI.showAlert('Error al cargar datos del curso: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadStudents();
+                } catch (err) {
+                    console.error('Error cargando lista de estudiantes:', err);
+                    UI.showAlert('Error al cargar lista de estudiantes: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadAttendanceData();
+                } catch (err) {
+                    console.error('Error cargando asistencias:', err);
+                    UI.showAlert('Error al cargar asistencias: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                try {
+                    await loadGradesData();
+                    // Cargar configuración de notas desde servidor
+                    try {
+                        await loadGradeConfig();
+                    } catch (err) { console.warn('No se pudo cargar configuración de calificaciones', err); }
+                } catch (err) {
+                    console.error('Error cargando calificaciones:', err);
+                    UI.showAlert('Error al cargar calificaciones: ' + (err && err.message ? err.message : String(err)));
+                    return;
+                }
+
+                // Inicializar módulos después de cargar datos
+                try {
+                    AttendanceModule.init();
+                } catch (err) {
+                    console.error('AttendanceModule.init error:', err);
+                    UI.showAlert('Error en módulo de asistencia: ' + (err && err.message ? err.message : String(err)));
+                }
+
+                try {
+                    GradesModule.init();
+                } catch (err) {
+                    console.error('GradesModule.init error:', err);
+                    UI.showAlert('Error en módulo de calificaciones: ' + (err && err.message ? err.message : String(err)));
+                }
+
+            } catch (error) {
+                console.error('Error inesperado inicializando datos:', error);
+                UI.showAlert('Error inesperado al inicializar la página: ' + (error && error.message ? error.message : String(error)));
+            }
+        };
+
+        return { initializeAllData };
+    })();
+
+    // --- MÓDULO DE ASISTENCIA ---
+    const AttendanceModule = (() => {
+        // Referencias a elementos del DOM
+        const monthlyView = document.getElementById('monthly-view');
+        const dailyView = document.getElementById('daily-view');
+        const monthYearDisplay = document.getElementById('month-year-display');
+        const monthlyTableHead = document.querySelector('.monthly-grid-table thead');
+        const monthlyTableBody = document.querySelector('.monthly-grid-table tbody');
+        const dailyViewTitle = document.getElementById('daily-view-title');
+
+        // Fecha actual para mostrar
+        let currentDisplayDate = new Date();
+        
+        // Fecha seleccionada para vista diaria
+        let selectedDateForDailyView = null;
+
+        // Variables para ordenamiento y búsqueda
+        let currentAttendanceSortOrder = 'asc';
+        let filteredAttendanceStudents = [...estudiantes];
+
+        // Crear elementos de UI para ordenamiento y búsqueda en asistencia
+        const createAttendanceSortAndSearchUI = () => {
+            const attendanceHeader = document.querySelector('.attendance-header');
+            
+            // Crear contenedor para controles de ordenamiento y búsqueda
+            const controlsContainer = document.createElement('div');
+            controlsContainer.style.cssText = 'display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;';
+            
+            // Buscador
+            const searchContainer = document.createElement('div');
+            searchContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            searchContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Buscar:</label>
+                <input type="text" id="attendance-student-search" placeholder="Nombre del estudiante..." 
+                       style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem; min-width: 200px;">
+            `;
+            
+            // Ordenamiento
+            const sortContainer = document.createElement('div');
+            sortContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            sortContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Ordenar:</label>
+                <select id="attendance-student-sort" style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem;">
+                    <option value="asc">A → Z</option>
+                    <option value="desc">Z → A</option>
+                </select>
+            `;
+            
+            controlsContainer.appendChild(searchContainer);
+            controlsContainer.appendChild(sortContainer);
+            
+            // Insertar después del month-navigation
+            const monthNavigation = attendanceHeader.querySelector('.month-navigation');
+            if (monthNavigation) {
+                attendanceHeader.insertBefore(controlsContainer, monthNavigation.nextSibling);
+            } else {
+                attendanceHeader.appendChild(controlsContainer);
+            }
+            
+            // Configurar event listeners
+            setupAttendanceSortAndSearchEvents();
+        };
+
+        // Configurar eventos para ordenamiento y búsqueda en asistencia
+        const setupAttendanceSortAndSearchEvents = () => {
+            const searchInput = document.getElementById('attendance-student-search');
+            const sortSelect = document.getElementById('attendance-student-sort');
+            
+            if (!searchInput || !sortSelect) return;
+            
+            // Búsqueda en tiempo real
+            searchInput.addEventListener('input', debounce((e) => {
+                filterAndSortAttendanceStudents(e.target.value, sortSelect.value);
+            }, 300));
+            
+            // Ordenamiento
+            sortSelect.addEventListener('change', (e) => {
+                filterAndSortAttendanceStudents(searchInput.value, e.target.value);
+            });
+            
+            // Establecer orden inicial
+            sortSelect.value = currentAttendanceSortOrder;
+        };
+
+        // Filtrar y ordenar estudiantes para asistencia
+        const filterAndSortAttendanceStudents = (searchTerm = '', sortOrder = 'asc') => {
+            // Filtrar
+            if (searchTerm.trim() === '') {
+                filteredAttendanceStudents = [...estudiantes];
+            } else {
+                const term = searchTerm.toLowerCase().trim();
+                filteredAttendanceStudents = estudiantes.filter(estudiante => 
+                    estudiante.nombre.toLowerCase().includes(term)
+                );
+            }
+            
+            // Ordenar
+            filteredAttendanceStudents.sort((a, b) => {
+                const nameA = a.nombre.toLowerCase();
+                const nameB = b.nombre.toLowerCase();
+                
+                if (sortOrder === 'asc') {
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return nameB.localeCompare(nameA);
+                }
+            });
+            
+            currentAttendanceSortOrder = sortOrder;
+            renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth());
+        };
+
+        // Contar ausencias sin excusa para un estudiante en un mes
+        const countUnexcusedAbsences = (studentId, year, month) => {
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let unexcusedCount = 0;
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const studentData = attendanceData[dateKey]?.[studentId];
+                if (studentData?.ausente && !studentData.excusa) {
+                    unexcusedCount++;
+                }
+            }
+            return unexcusedCount;
+        };
+
+        // Renderizar vista mensual de asistencia
+        const renderMonthlyList = (year, month) => {
+            monthYearDisplay.textContent = new Date(year, month).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            monthlyTableHead.innerHTML = `<tr><th class="student-name-header">Estudiante</th>${Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => {
+                const day = i + 1;
+                const date = new Date(year, month, day);
+                const isToday = date.setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0);
+                return `<th class="day-header ${isToday ? 'today' : ''}" data-day="${day}">${day}</th>`;
+            }).join('')}</tr>`;
+
+            // Usar filteredAttendanceStudents en lugar de estudiantes
+            monthlyTableBody.innerHTML = filteredAttendanceStudents.map(estudiante => {
+                const unexcusedAbsences = countUnexcusedAbsences(estudiante.id, year, month);
+                const rowClass = unexcusedAbsences >= 3 ? 'highlight-absentee' : '';
+                const days = Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, i) => {
+                    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+                    const studentData = attendanceData[dateKey]?.[estudiante.id];
+                    const status = studentData ? (studentData.ausente ? 'ausente' : (studentData.tarde ? 'tarde' : (studentData.presente ? 'presente' : null))) : '';
+                    const hasExcuse = studentData?.excusa ? '<div class="excuse-dot"></div>' : '';
+                    return `<td><div class="status-indicator ${status}">${hasExcuse}</div></td>`;
+                }).join('');
+                return `<tr class="${rowClass}"><td class="student-name-cell">${estudiante.nombre}</td>${days}</tr>`;
+            }).join('');
+        };
+
+        // Mostrar vista diaria de asistencia
+        const showDailyView = (date) => {
+            selectedDateForDailyView = date;
+            dailyViewTitle.textContent = `Asistencia para ${date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}`;
+            populateStudentListForDay(date);
+            monthlyView.style.display = 'none';
+            dailyView.style.display = 'block';
+        };
+
+        // Poblar lista de estudiantes para un día específico
+        const populateStudentListForDay = (date) => {
+            const studentListContainer = dailyView.querySelector('.student-list');
+            const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            
+            // Usar filteredAttendanceStudents para la vista diaria también
+            studentListContainer.innerHTML = `<div class="list-header"><span class="student-name-header-daily">Nombre del Estudiante</span><span class="attendance-status-header">Estado de Asistencia</span></div>${filteredAttendanceStudents.map(estudiante => {
+                const studentData = attendanceData[dateKey]?.[estudiante.id];
+                const isAusente = studentData?.ausente || false;
+                const isTarde = studentData?.tarde || false;
+                const isPresente = studentData?.presente || false;
+                const hasExcusa = studentData?.excusa || false;
+                return `<div class="student-row" data-student-id="${estudiante.id}"><div class="student-info"><div class="avatar-small">${estudiante.id}</div><span>${estudiante.nombre}</span></div><div class="attendance-controls"><button class="status-btn presente ${isPresente ? 'selected' : ''}">Presente</button><button class="status-btn ausente ${isAusente ? 'selected' : ''}">Ausente</button><button class="status-btn tarde ${isTarde ? 'selected' : ''}">Tarde</button><div class="excuse-container" style="display: ${isAusente || isTarde ? 'flex' : 'none'};"><label class="excuse-label"><input type="checkbox" class="excuse-checkbox" ${hasExcusa ? 'checked' : ''}> Trajo Excusa</label></div></div></div>`;
+            }).join('')}`;
+            setupDailyViewLogic();
+        };
+
+        // Configurar lógica de la vista diaria
+        const setupDailyViewLogic = () => {
+            const studentRows = dailyView.querySelectorAll('.student-row');
+            const presenteCountEl = document.getElementById('presente-count');
+            const ausenteCountEl = document.getElementById('ausente-count');
+            const tardeCountEl = document.getElementById('tarde-count');
+            
+            // Actualizar resumen de conteos
+            const updateSummary = () => {
+                let presente = 0, ausente = 0, tarde = 0;
+                studentRows.forEach(row => {
+                    if (row.querySelector('.status-btn.presente').classList.contains('selected')) presente++;
+                    if (row.querySelector('.status-btn.ausente').classList.contains('selected')) ausente++;
+                    if (row.querySelector('.status-btn.tarde').classList.contains('selected')) tarde++;
+                });
+                presenteCountEl.textContent = presente;
+                ausenteCountEl.textContent = ausente;
+                tardeCountEl.textContent = tarde;
+            };
+
+            // Actualizar visibilidad de excusa según estado
+            const updateExcuseVisibility = (row) => {
+                const isAusenteOrTarde = row.querySelector('.status-btn.ausente').classList.contains('selected') || row.querySelector('.status-btn.tarde').classList.contains('selected');
+                row.querySelector('.excuse-container').style.display = isAusenteOrTarde ? 'flex' : 'none';
+                if (!isAusenteOrTarde) row.querySelector('.excuse-checkbox').checked = false;
+            };
+
+            // Configurar eventos para botones de estado
+            studentRows.forEach(row => {
+                const btns = row.querySelectorAll('.status-btn');
+                btns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const status = btn.classList[1]; // presente, ausente, tarde
+                        const presenteBtn = row.querySelector('.status-btn.presente');
+                        const ausenteBtn = row.querySelector('.status-btn.ausente');
+                        const tardeBtn = row.querySelector('.status-btn.tarde');
+
+                        if (status === 'presente') {
+                            presenteBtn.classList.toggle('selected');
+                            ausenteBtn.classList.remove('selected');
+                            if (!presenteBtn.classList.contains('selected')) tardeBtn.classList.remove('selected');
+                        } else if (status === 'ausente') {
+                            ausenteBtn.classList.toggle('selected');
+                            if (ausenteBtn.classList.contains('selected')) {
+                                presenteBtn.classList.remove('selected');
+                                tardeBtn.classList.remove('selected');
+                            }
+                        } else if (status === 'tarde') {
+                            tardeBtn.classList.toggle('selected');
+                            if (tardeBtn.classList.contains('selected')) {
+                                presenteBtn.classList.add('selected');
+                                ausenteBtn.classList.remove('selected');
+                            }
+                        }
+                        updateExcuseVisibility(row);
+                        updateSummary();
+                    });
                 });
             });
+            updateSummary();
+        };
+
+        // Guardar asistencia diaria
+        const saveDailyAttendance = async () => {
+            const date = selectedDateForDailyView;
+            const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            attendanceData[dateKey] = {};
+            
+            dailyView.querySelectorAll('.student-row').forEach(row => {
+                const studentId = row.dataset.studentId;
+                const isPresente = row.querySelector('.status-btn.presente').classList.contains('selected');
+                const isAusente = row.querySelector('.status-btn.ausente').classList.contains('selected');
+                const isTarde = row.querySelector('.status-btn.tarde').classList.contains('selected');
+                const hasExcusa = row.querySelector('.excuse-checkbox').checked;
+                
+                // Determinar el estado final
+                let estado = '';
+                if (isPresente && !isTarde) estado = 'presente';
+                else if (isAusente) estado = 'ausente';
+                else if (isTarde) estado = 'tarde';
+                
+                if (estado) {
+                    attendanceData[dateKey][studentId] = { 
+                        presente: isPresente, 
+                        ausente: isAusente, 
+                        tarde: isTarde, 
+                        excusa: hasExcusa,
+                        estado: estado
+                    };
+                }
+            });
+
+            // Intentar persistir via API
+            try {
+                const payload = { 
+                    fecha: dateKey, 
+                    asistencias: Object.keys(attendanceData[dateKey]).map(stId => ({ 
+                        estudiante_id: stId, 
+                        estado: attendanceData[dateKey][stId].estado,
+                        excusa: attendanceData[dateKey][stId].excusa
+                    })) 
+                };
+                const resp = await fetch('/profesor/api/guardar-asistencia', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    UI.showAlert('Asistencia guardada correctamente!');
+                } else {
+                    UI.showAlert('Error guardando asistencia en el servidor: ' + (data.message || 'Error desconocido'));
+                }
+            } catch (err) {
+                console.error('Error guardando asistencias via API:', err);
+                UI.showAlert('Error de red al guardar asistencia');
+            }
+            showMonthlyView();
+        };
+
+        // Mostrar vista mensual
+        const showMonthlyView = () => {
+            dailyView.style.display = 'none';
+            monthlyView.style.display = 'block';
+            renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth());
+        };
+
+        // Configurar event listeners
+        const setupEventListeners = () => {
+            document.getElementById('prev-month-btn').addEventListener('click', () => {
+                currentDisplayDate.setMonth(currentDisplayDate.getMonth() - 1);
+                renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth());
+            });
+            document.getElementById('next-month-btn').addEventListener('click', () => {
+                currentDisplayDate.setMonth(currentDisplayDate.getMonth() + 1);
+                renderMonthlyList(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth());
+            });
+            document.getElementById('go-to-today-btn').addEventListener('click', () => showDailyView(new Date()));
+            document.getElementById('back-to-monthly-btn').addEventListener('click', () => showMonthlyView());
+            document.getElementById('save-daily-attendance-btn').addEventListener('click', saveDailyAttendance);
+            monthlyTableHead.addEventListener('click', (e) => {
+                if (e.target.dataset.day) {
+                    const day = parseInt(e.target.dataset.day);
+                    showDailyView(new Date(currentDisplayDate.getFullYear(), currentDisplayDate.getMonth(), day));
+                }
+            });
+        };
+
+        return { 
+            init: () => { 
+                // Crear UI de búsqueda y ordenamiento para asistencia
+                createAttendanceSortAndSearchUI();
+                setupEventListeners(); 
+                // Aplicar ordenamiento inicial
+                filterAndSortAttendanceStudents('', 'asc');
+            } 
+        };
+    })();
+
+    // --- MÓDULO DE CALIFICACIONES ---
+    const GradesModule = (() => {
+        // Referencias a elementos del DOM
+        const gradesTable = document.querySelector('.grades-table');
+        const gradesTableHead = gradesTable.querySelector('thead');
+        const gradesTableBody = gradesTable.querySelector('tbody');
+        const lowestGradeEl = document.getElementById('lowest-grade');
+        const highestGradeEl = document.getElementById('highest-grade');
+        const averageGradeEl = document.getElementById('average-grade');
+        const passingGradeInput = document.getElementById('passing-grade');
+        const minGradeInput = document.getElementById('min-grade');
+        const maxGradeInput = document.getElementById('max-grade');
+
+        // Variables para ordenamiento y búsqueda
+        let currentSortOrder = 'asc'; // 'asc' o 'desc'
+        let filteredStudents = [...estudiantes];
+
+        // Crear elementos de UI para ordenamiento y búsqueda
+        const createSortAndSearchUI = () => {
+            const gradesActions = document.querySelector('.grades-actions');
+            
+            // Crear contenedor para controles de ordenamiento y búsqueda
+            const controlsContainer = document.createElement('div');
+            controlsContainer.style.cssText = 'display: flex; align-items: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;';
+            
+            // Buscador
+            const searchContainer = document.createElement('div');
+            searchContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            searchContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Buscar:</label>
+                <input type="text" id="student-search" placeholder="Nombre del estudiante..." 
+                       style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem; min-width: 200px;">
+            `;
+            
+            // Ordenamiento
+            const sortContainer = document.createElement('div');
+            sortContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            sortContainer.innerHTML = `
+                <label style="font-weight: 600; color: var(--color-texto-principal);">Ordenar:</label>
+                <select id="student-sort" style="padding: 8px 12px; border: 1px solid var(--color-borde-suave); border-radius: 0.5rem;">
+                    <option value="asc">A → Z</option>
+                    <option value="desc">Z → A</option>
+                </select>
+            `;
+            
+            controlsContainer.appendChild(searchContainer);
+            controlsContainer.appendChild(sortContainer);
+            
+            // Insertar después del primer elemento (configuración de notas)
+            if (gradesActions.firstChild) {
+                gradesActions.insertBefore(controlsContainer, gradesActions.children[1]);
+            } else {
+                gradesActions.appendChild(controlsContainer);
+            }
+            
+            // Configurar event listeners
+            setupSortAndSearchEvents();
+        };
+
+        // Configurar eventos para ordenamiento y búsqueda
+        const setupSortAndSearchEvents = () => {
+            const searchInput = document.getElementById('student-search');
+            const sortSelect = document.getElementById('student-sort');
+            
+            // Búsqueda en tiempo real
+            searchInput.addEventListener('input', debounce((e) => {
+                filterAndSortStudents(e.target.value, sortSelect.value);
+            }, 300));
+            
+            // Ordenamiento
+            sortSelect.addEventListener('change', (e) => {
+                filterAndSortStudents(searchInput.value, e.target.value);
+            });
+            
+            // Establecer orden inicial
+            sortSelect.value = currentSortOrder;
+        };
+
+        // Filtrar y ordenar estudiantes
+        const filterAndSortStudents = (searchTerm = '', sortOrder = 'asc') => {
+            // Filtrar
+            if (searchTerm.trim() === '') {
+                filteredStudents = [...estudiantes];
+            } else {
+                const term = searchTerm.toLowerCase().trim();
+                filteredStudents = estudiantes.filter(estudiante => 
+                    estudiante.nombre.toLowerCase().includes(term)
+                );
+            }
+            
+            // Ordenar
+            filteredStudents.sort((a, b) => {
+                const nameA = a.nombre.toLowerCase();
+                const nameB = b.nombre.toLowerCase();
+                
+                if (sortOrder === 'asc') {
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return nameB.localeCompare(nameA);
+                }
+            });
+            
+            currentSortOrder = sortOrder;
+            renderGradesTable();
+        };
+
+        // Calcular promedios de todos los estudiantes
+        const calculateAllAverages = () => {
+            const passingGrade = parseFloat(passingGradeInput.value) || 60;
+            const finals = [];
+
+            gradesTableBody.querySelectorAll('tr').forEach((row) => {
+                const studentId = row.dataset.studentId;
+                const estudiante = estudiantes.find(s => s.id == studentId);
+                if (!estudiante) return;
+
+                // Construir por categoría
+                const categoryBuckets = {};
+                row.querySelectorAll('.grade-input').forEach((input, gradeIndex) => {
+                    const raw = input.value;
+                    const value = raw === '' ? NaN : parseFloat(raw);
+                    estudiante.calificaciones[gradeIndex] = isNaN(value) ? '' : value;
+                    const meta = assignmentMeta[gradeIndex];
+                    const catId = meta && meta.categoria_id ? meta.categoria_id : null;
+                    const key = catId || '__nocat__';
+                    if (!categoryBuckets[key]) categoryBuckets[key] = { 
+                        sum: 0, 
+                        count: 0, 
+                        porcentaje: (meta && meta.porcentaje) ? parseFloat(meta.porcentaje) : (categoriesMap[catId] ? categoriesMap[catId].porcentaje : 0) 
+                    };
+                    if (!isNaN(value)) {
+                        categoryBuckets[key].sum += value;
+                        categoryBuckets[key].count += 1;
+                    }
+                });
+
+                // Calcular promedio ponderado por categorías
+                let finalScore = 0;
+                if (assignmentMeta.length === 0) {
+                    finalScore = 0;
+                } else {
+                    Object.keys(categoryBuckets).forEach(k => {
+                        const b = categoryBuckets[k];
+                        const avgCat = b.count > 0 ? (b.sum / b.count) : 0;
+                        const weight = b.porcentaje ? (b.porcentaje / 100) : 0;
+                        finalScore += avgCat * weight;
+                    });
+                }
+
+                const averageCell = row.querySelector('.average-cell');
+                const display = isNaN(finalScore) ? 'N/A' : (Math.round(finalScore * 10) / 10).toFixed(1);
+                averageCell.textContent = display;
+                const numericFinal = isNaN(finalScore) ? null : finalScore;
+                if (numericFinal !== null) {
+                    averageCell.classList.toggle('failing', numericFinal < passingGrade);
+                    row.classList.toggle('failing-student', numericFinal < passingGrade);
+                    finals.push(numericFinal);
+                } else {
+                    averageCell.classList.remove('failing');
+                    row.classList.remove('failing-student');
+                }
+            });
+
+            if (finals.length > 0) {
+                lowestGradeEl.textContent = Math.min(...finals).toFixed(1);
+                highestGradeEl.textContent = Math.max(...finals).toFixed(1);
+                averageGradeEl.textContent = (finals.reduce((a, b) => a + b, 0) / finals.length).toFixed(1);
+            } else {
+                lowestGradeEl.textContent = '0';
+                highestGradeEl.textContent = '0';
+                averageGradeEl.textContent = '0';
+            }
+        };
+
+        // Renderizar tabla de calificaciones
+        const renderGradesTable = () => {
+            // Construir encabezados con color según categoría
+            const headers = assignmentMeta.map((a, idx) => {
+                const colorStyle = a.color ? `style="background:${a.color};color:#fff;padding:6px;border-radius:4px;display:inline-block;min-width:80px;"` : '';
+                return `<th><div ${colorStyle}>${a.name}</div> <div class="assignment-actions"><i class="fas fa-pencil-alt" data-action="edit-assignment" data-col="${idx}" title="Editar asignación"></i><i class="fas fa-trash-alt delete-assignment-icon" data-action="delete-assignment" data-col="${idx}" title="Eliminar asignación"></i></div></th>`;
+            }).join('');
+
+            gradesTableHead.innerHTML = `<tr><th class="student-name-header">Nombre</th>${headers}<th>Promedio</th></tr>`;
+
+            // Usar filteredStudents en lugar de estudiantes
+            gradesTableBody.innerHTML = filteredStudents.map(estudiante => {
+                const estudianteOriginal = estudiantes.find(s => s.id === estudiante.id);
+                return `<tr data-student-id="${estudiante.id}"><td class="student-name-cell">${estudiante.nombre}</td>${estudianteOriginal.calificaciones.map(calificacion =>
+                    `<td><input type="number" class="grade-input" value="${calificacion}"></td>`
+                ).join('')}<td class="average-cell">0</td></tr>`;
+            }).join('');
+
+            calculateAllAverages();
+        };
+
+        // Configurar event listeners
+        const setupEventListeners = () => {
+            // Crear UI de ordenamiento y búsqueda
+            createSortAndSearchUI();
+
+            gradesTableHead.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                if (!action) return;
+                const headerCell = e.target.closest('th');
+                const columnIndex = Array.from(headerCell.parentNode.children).indexOf(headerCell) - 1;
+                const currentMeta = assignmentMeta[columnIndex];
+
+                if (action === 'delete-assignment') {
+                    UI.showConfirm(`¿Estás seguro de que quieres eliminar la columna "${currentMeta ? currentMeta.name : 'Asignación'}"?`, async (confirmed) => {
+                        if (confirmed) {
+                            try {
+                                const payload = { nombre_calificacion: currentMeta ? currentMeta.name : null };
+                                const resp = await fetch('/profesor/api/eliminar-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                                const data = await resp.json();
+                                if (data && data.success) {
+                                    assignmentMeta.splice(columnIndex, 1);
+                                    estudiantes.forEach(estudiante => estudiante.calificaciones.splice(columnIndex, 1));
+                                    renderGradesTable();
+                                    UI.showAlert('Asignación eliminada');
+                                } else {
+                                    UI.showAlert('Error eliminando asignación: ' + (data.message || 'Error desconocido'));
+                                }
+                            } catch (err) {
+                                console.error('Error eliminando asignación:', err);
+                                UI.showAlert('Error de red al eliminar asignación');
+                            }
+                        }
+                    });
+                } else if (action === 'edit-assignment') {
+                    // Mostrar modal de edición con opciones de nombre y categoría
+                    const modal = document.createElement('div');
+                    modal.className = 'modal-overlay show';
+                    modal.style.zIndex = '100000';
+                    modal.innerHTML = `
+                        <div class="modal-content" style="z-index: 100001; max-width: 500px;">
+                            <h5 class="modal-title">Editar Asignación</h5>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">Nombre:</label>
+                                <input type="text" id="edit-assignment-name" class="modal-input" value="${currentMeta.name}" style="width: 100%;">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: 600;">Categoría:</label>
+                                <select id="edit-assignment-category" class="modal-input" style="height: 40px; padding: 6px; width: 100%;">
+                                    ${Object.values(categoriesMap).map(cat => 
+                                        `<option value="${cat.id}" ${cat.id === currentMeta.categoria_id ? 'selected' : ''}>${cat.nombre} (${cat.porcentaje}%)</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="modal-footer">
+                                <button id="edit-assignment-cancel" class="back-button">Cancelar</button>
+                                <button id="edit-assignment-confirm" class="save-button">Guardar Cambios</button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+
+                    document.getElementById('edit-assignment-cancel').addEventListener('click', () => {
+                        document.body.removeChild(modal);
+                    });
+
+                    document.getElementById('edit-assignment-confirm').addEventListener('click', async () => {
+                        const newName = document.getElementById('edit-assignment-name').value.trim();
+                        const newCategoryId = document.getElementById('edit-assignment-category').value;
+                        const newCategory = categoriesMap[newCategoryId];
+                        
+                        if (newName && newCategory) {
+                            try {
+                                const oldName = currentMeta.name;
+                                // Actualizar nombre
+                                if (newName !== oldName) {
+                                    const resp = await fetch('/profesor/api/editar-asignacion', { 
+                                        method: 'POST', 
+                                        headers: { 'Content-Type': 'application/json' }, 
+                                        body: JSON.stringify({ nombre_antiguo: oldName, nombre_nuevo: newName }) 
+                                    });
+                                    const data = await resp.json();
+                                    if (!data.success) {
+                                        throw new Error(data.message || 'Error actualizando nombre');
+                                    }
+                                }
+
+                                // Actualizar categoría localmente
+                                assignmentMeta[columnIndex].name = newName;
+                                assignmentMeta[columnIndex].categoria_id = newCategoryId;
+                                assignmentMeta[columnIndex].color = newCategory.color;
+                                assignmentMeta[columnIndex].porcentaje = newCategory.porcentaje;
+
+                                renderGradesTable();
+                                UI.showAlert('Asignación actualizada correctamente');
+                            } catch (err) {
+                                console.error('Error actualizando asignación:', err);
+                                UI.showAlert('Error al actualizar la asignación: ' + (err.message || 'Error desconocido'));
+                            }
+                        } else {
+                            UI.showAlert('El nombre y la categoría son requeridos');
+                        }
+                        
+                        document.body.removeChild(modal);
+                    });
+
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            document.body.removeChild(modal);
+                        }
+                    });
+                }
+            });
+
+            gradesTableBody.addEventListener('change', debounce((e) => {
+                if (e.target.classList.contains('grade-input')) {
+                    const value = parseFloat(e.target.value);
+                    const min = parseFloat(minGradeInput.value);
+                    const max = parseFloat(maxGradeInput.value);
+                    if (e.target.value !== '' && (value < min || value > max)) {
+                        e.target.value = '';
+                        UI.showAlert(`La calificación debe estar entre ${min} y ${max}`);
+                        return;
+                    }
+                    
+                    const row = e.target.closest('tr');
+                    const studentId = row.dataset.studentId;
+                    const estudiante = estudiantes.find(s => s.id == studentId);
+                    const columnIndex = Array.from(row.querySelectorAll('.grade-input')).indexOf(e.target);
+                    const assignment = assignmentMeta[columnIndex];
+                    
+                    if (estudiante && assignment) {
+                        saveGradeToBackend(studentId, assignment.categoria_id, assignment.name, e.target.value);
+                    }
+                    
+                    calculateAllAverages();
+                }
+            }, 500));
+
+            document.querySelectorAll('.grades-settings input').forEach(input => {
+                input.addEventListener('change', calculateAllAverages);
+            });
+
+            // Autoguardar configuración de calificaciones (min/max/aprobación)
+            const saveGradeConfig = debounce(async () => {
+                try {
+                    const payload = {
+                        notaMinima: parseFloat(minGradeInput.value) || 0,
+                        notaMaxima: parseFloat(maxGradeInput.value) || 100,
+                        notaMinimaAprobacion: parseFloat(passingGradeInput.value) || 60
+                    };
+                    const resp = await fetch('/profesor/api/configuracion-calificaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const data = await resp.json();
+                    if (!(data && data.success)) console.warn('No se pudo guardar configuración de calificaciones', data);
+                } catch (err) {
+                    console.error('Error guardando configuración de calificaciones:', err);
+                }
+            }, 700);
+
+            [minGradeInput, maxGradeInput, passingGradeInput].forEach(inp => inp.addEventListener('input', () => { calculateAllAverages(); saveGradeConfig(); }));
+
+            const exportGradesBtn = document.getElementById('export-grades-btn');
+            if (exportGradesBtn) {
+                exportGradesBtn.addEventListener('click', () => {
+                    UI.showAlert('Funcionalidad de exportación en desarrollo');
+                });
+            }
+
+            document.getElementById('generate-report-btn').addEventListener('click', async () => {
+                UI.showConfirm('¿Deseas generar y enviar un reporte de calificaciones al administrador?', async (confirmed) => {
+                    if (confirmed) {
+                        try {
+                            const response = await fetch('/profesor/api/generar-reporte-calificaciones', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                }
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                UI.showAlert('Reporte generado y enviado al administrador correctamente');
+                            } else {
+                                UI.showAlert('Error al generar el reporte: ' + (data.message || 'Error desconocido'));
+                            }
+                        } catch (error) {
+                            console.error('Error generando reporte:', error);
+                            UI.showAlert('Error de red al generar el reporte');
+                        }
+                    }
+                });
+            });
+
+            // Manejo de categorías con modal (crear y listar)
+            const manageCategoriesBtn = document.getElementById('manage-categories-btn');
+            if (manageCategoriesBtn) {
+                manageCategoriesBtn.addEventListener('click', async () => {
+                    // Abrir modal de categorías; rellenar inputs vacíos para crear
+                    document.getElementById('categoryNameInput').value = '';
+                    document.getElementById('categoryColorInput').value = '#2d8cff';
+                    document.getElementById('categoryPctInput').value = 10;
+                    // Renderizar lista de categorías dentro del modal
+                    await refreshCategoryListInModal();
+                    // Recalcular y mostrar warning si corresponde
+                    try { updateCategoryPctWarning(); } catch (e) { /* ignorar */ }
+                    document.getElementById('categoryModal').classList.add('show');
+                });
+
+                // Cancelar categoría
+                document.getElementById('categoryModalCancelBtn').addEventListener('click', () => document.getElementById('categoryModal').classList.remove('show'));
+
+                // Confirmar creación/actualización de categoría
+                document.getElementById('categoryModalConfirmBtn').addEventListener('click', async () => {
+                    const nombre = document.getElementById('categoryNameInput').value.trim();
+                    const color = document.getElementById('categoryColorInput').value;
+                    const porcentaje = parseFloat(document.getElementById('categoryPctInput').value) || 0;
+                    if (!nombre) { UI.showAlert('El nombre es requerido'); return; }
+                    const editingId = document.getElementById('categoryModal').dataset.editingId || null;
+                    try {
+                        if (editingId) {
+                            // PUT actualizar
+                            const resp = await fetch(`/profesor/api/categorias/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombre, color: color, porcentaje: porcentaje }) });
+                            const data = await resp.json();
+                            if (data && data.success && data.categoria) {
+                                const cat = data.categoria;
+                                const normalized = normalizeCategoriesArray([cat])[0];
+                                categoriesMap[normalized.id] = normalized;
+                                renderCategoriesList();
+                                await refreshCategoryListInModal();
+                                updateCategoryPctWarning();
+                                document.getElementById('categoryModal').classList.remove('show');
+                                UI.showAlert('Categoría actualizada');
+                                document.getElementById('categoryModal').dataset.editingId = '';
+                            } else {
+                                UI.showAlert('Error actualizando categoría: ' + (data.message || 'Error desconocido'));
+                            }
+                        } else {
+                            // POST crear
+                            const resp = await fetch('/profesor/api/categorias', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: nombre, color: color, porcentaje: porcentaje }) });
+                            const data = await resp.json();
+                            if (data && data.success && data.categoria) {
+                                const cat = data.categoria;
+                                const normalized = normalizeCategoriesArray([cat])[0];
+                                categoriesMap[normalized.id] = normalized;
+                                renderCategoriesList();
+                                await refreshCategoryListInModal();
+                                updateCategoryPctWarning();
+                                document.getElementById('categoryModal').classList.remove('show');
+                                UI.showAlert('Categoría creada');
+                            } else {
+                                UI.showAlert('Error creando categoría: ' + (data.message || 'Error desconocido'));
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error creando/actualizando categoría:', err);
+                        UI.showAlert('Error de red al crear/actualizar la categoría.');
+                    }
+                });
+            }
+
+            // Helper: renderizar lista dentro del modal con botones editar/eliminar
+            async function refreshCategoryListInModal() {
+                const container = document.getElementById('categoryListContainer');
+                container.innerHTML = 'Cargando...';
+                try {
+                    const resp = await fetch('/profesor/api/categorias');
+                    const data = await resp.json();
+                    if (data && data.success && Array.isArray(data.categorias)) {
+                        // Actualizar mapa global de categorías (normalizado)
+                        const normalized = normalizeCategoriesArray(data.categorias);
+                        normalized.forEach(c => { categoriesMap[c.id] = c; });
+
+                        const list = normalized.map(cat => {
+                            const id = cat.id || cat.id_categoria || cat.idCategoria;
+                            const color = cat.color || '#cccccc';
+                            const pct = (cat.porcentaje !== undefined && cat.porcentaje !== null) ? `${cat.porcentaje}%` : '';
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px solid var(--color-borde-suave);"><div style="display:flex;gap:8px;align-items:center;"><span style="width:14px;height:14px;background:${color};display:inline-block;border-radius:3px;border:1px solid rgba(0,0,0,0.05);"></span><strong>${cat.nombre}</strong> <small style="color:var(--color-texto-secundario);margin-left:6px;">${pct}</small></div><div><button data-id="${id}" class="edit-cat-btn back-button" style="margin-right:6px;">Editar</button><button data-id="${id}" class="delete-cat-btn back-button">Eliminar</button></div></div>`;
+                        }).join('');
+                        container.innerHTML = list || '<small>No hay categorías</small>';
+                        // Adjuntar eventos
+                        container.querySelectorAll('.edit-cat-btn').forEach(b => b.addEventListener('click', onEditCategory));
+                        container.querySelectorAll('.delete-cat-btn').forEach(b => b.addEventListener('click', onDeleteCategory));
+                    } else {
+                        container.innerHTML = '<small>No hay categorías</small>';
+                    }
+                } catch (err) {
+                    console.error('Error cargando categorías en modal:', err);
+                    container.innerHTML = '<small>Error cargando categorías</small>';
+                }
+                // Después de cargar la lista, actualizar aviso según suma de porcentajes
+                try { updateCategoryPctWarning(); } catch (e) { /* ignorar */ }
+            }
+
+            async function onEditCategory(e) {
+                const id = e.currentTarget.dataset.id;
+                try {
+                    const resp = await fetch('/profesor/api/categorias');
+                    const data = await resp.json();
+                    const found = (data.categorias || []).find(c => String(c.id || c.id_categoria) === String(id));
+                    if (found) {
+                        document.getElementById('categoryNameInput').value = found.nombre || '';
+                        document.getElementById('categoryColorInput').value = found.color || '#2d8cff';
+                        document.getElementById('categoryPctInput').value = found.porcentaje || 0;
+                        document.getElementById('categoryModal').dataset.editingId = id;
+                        // Mantener modal abierto
+                    } else {
+                        UI.showAlert('Categoría no encontrada');
+                    }
+                } catch (err) {
+                    console.error('Error obteniendo categoría para editar:', err);
+                    UI.showAlert('Error al obtener datos de la categoría');
+                }
+            }
+
+            async function onDeleteCategory(e) {
+                const id = e.currentTarget.dataset.id;
+                UI.showConfirm('¿Eliminar esta categoría? Las categorías con calificaciones asociadas no se pueden eliminar.', async (ok) => {
+                    if (!ok) return;
+                    try {
+                        const resp = await fetch(`/profesor/api/categorias/${id}`, { method: 'DELETE' });
+                        const data = await resp.json();
+                        if (data && data.success) {
+                            delete categoriesMap[id];
+                            renderCategoriesList();
+                            await refreshCategoryListInModal();
+                            updateCategoryPctWarning();
+                            UI.showAlert('Categoría eliminada');
+                        } else {
+                            UI.showAlert(data.message || 'Error eliminando categoría');
+                        }
+                    } catch (err) {
+                        console.error('Error eliminando categoría:', err);
+                        UI.showAlert('Error de red al eliminar categoría');
+                    }
+                });
+            }
+
+            // Añadir asignación con modal y select de categorías
+            const addAssignmentBtn = document.getElementById('add-assignment-btn');
+            if (addAssignmentBtn) {
+                addAssignmentBtn.addEventListener('click', async () => {
+                    // Poblar select con categorías actuales
+                    const select = document.getElementById('assignmentCategorySelect');
+                    select.innerHTML = '';
+                    const cats = Object.values(categoriesMap || {});
+                    if (cats.length === 0) {
+                        // Intentar obtener vía API
+                        try {
+                            const resp = await fetch('/profesor/api/categorias');
+                            const data = await resp.json();
+                            if (data && data.success) {
+                                const normalized = normalizeCategoriesArray(data.categorias);
+                                normalized.forEach(c => { categoriesMap[c.id] = c; });
+                            }
+                        } catch (err) { console.warn('No se pudieron cargar categorías', err); }
+                    }
+                    Object.values(categoriesMap).forEach(c => {
+                        const opt = document.createElement('option'); 
+                        opt.value = c.id; 
+                        opt.textContent = `${c.nombre} (${c.porcentaje}%)`; 
+                        select.appendChild(opt);
+                    });
+                    document.getElementById('assignmentNameInput').value = '';
+                    document.getElementById('assignmentModal').classList.add('show');
+                });
+
+                document.getElementById('assignmentModalCancelBtn').addEventListener('click', () => document.getElementById('assignmentModal').classList.remove('show'));
+
+                document.getElementById('assignmentModalConfirmBtn').addEventListener('click', async () => {
+                    const name = document.getElementById('assignmentNameInput').value.trim();
+                    const catId = document.getElementById('assignmentCategorySelect').value || null;
+                    if (!name) { UI.showAlert('El nombre es requerido'); return; }
+                    // Asignatura por defecto
+                    let asignatura_id = null;
+                    if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) asignatura_id = window.SERVER_DATA.asignaturas[0].id;
+                    try {
+                        const resp = await fetch('/profesor/api/crear-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ asignatura_id: asignatura_id, nombre_calificacion: name, categoria_id: catId }) });
+                        const data = await resp.json();
+                        if (data && data.success) {
+                            // Agregar meta local
+                            const cat = categoriesMap[catId] || null;
+                            assignmentMeta.push({ name: name, categoria_id: catId, color: cat ? cat.color : '#cccccc', porcentaje: cat ? cat.porcentaje : 0 });
+                            estudiantes.forEach(s => s.calificaciones.push(''));
+                            renderGradesTable();
+                            document.getElementById('assignmentModal').classList.remove('show');
+                            UI.showAlert('Asignación creada');
+                        } else {
+                            UI.showAlert('Error creando asignación: ' + (data.message || 'Error desconocido'));
+                        }
+                    } catch (err) {
+                        console.error('Error creando asignación:', err);
+                        UI.showAlert('Error de red al crear asignación');
+                    }
+                });
+            }
+        };
+
+        // Función para guardar calificación en el backend
+        async function saveGradeToBackend(estudianteId, categoriaId, nombreCalificacion, valor) {
+            try {
+                // Asignatura por defecto
+                let asignatura_id = null;
+                if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) {
+                    asignatura_id = window.SERVER_DATA.asignaturas[0].id;
+                }
+                
+                const payload = {
+                    estudiante_id: estudianteId,
+                    asignatura_id: asignatura_id,
+                    categoria_id: categoriaId,
+                    nombre_calificacion: nombreCalificacion,
+                    valor: valor === '' ? null : parseFloat(valor)
+                };
+                
+                const resp = await fetch('/profesor/api/guardar-calificacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await resp.json();
+                if (!data.success) {
+                    console.error('Error guardando calificación:', data.message);
+                    UI.showAlert('Error guardando calificación: ' + (data.message || 'Error desconocido'));
+                }
+            } catch (err) {
+                console.error('Error de red guardando calificación:', err);
+                UI.showAlert('Error de red al guardar calificación');
+            }
+        }
+
+        // ------------------ Helpers para porcentaje de categorías ------------------
+        function computeTotalCategoriesPercentage(includeEditingId = null, editingValue = null) {
+            // Sumar los porcentajes de categoriesMap, opcionalmente reemplazando el valor de una categoría que se está editando
+            let total = 0;
+            try {
+                Object.keys(categoriesMap || {}).forEach(k => {
+                    const c = categoriesMap[k];
+                    if (!c) return;
+                    // Si estamos editando y coincide con editingId, tomar editingValue
+                    if (includeEditingId && String(c.id) === String(includeEditingId) && editingValue !== null && editingValue !== undefined) {
+                        total += parseFloat(editingValue) || 0;
+                    } else {
+                        total += parseFloat(c.porcentaje) || 0;
+                    }
+                });
+            } catch (e) {
+                console.warn('computeTotalCategoriesPercentage error', e);
+            }
+            return total;
+        }
+
+        function updateCategoryPctWarning() {
+            const modalWarningEl = document.getElementById('categoryPctWarning');
+            const inlineWarningEl = document.getElementById('categoriesPctWarningInline');
+            // Si ninguno existe, no hacer nada
+            if (!modalWarningEl && !inlineWarningEl) return;
+            // Considerar valor actual del input (por si estamos creando/actualizando una categoría)
+            const editingId = document.getElementById('categoryModal') ? (document.getElementById('categoryModal').dataset.editingId || null) : null;
+            const inputEl = document.getElementById('categoryPctInput');
+            const inputVal = inputEl ? (parseFloat(inputEl.value) || 0) : 0;
+            const total = computeTotalCategoriesPercentage(editingId, inputVal);
+            const shouldShow = total > 100;
+            try { if (modalWarningEl) modalWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignorar */ }
+            try { if (inlineWarningEl) inlineWarningEl.style.display = shouldShow ? 'block' : 'none'; } catch (e) { /* ignorar */ }
+        }
+
+        // Vincular eventos para recalcular al modificar el input de porcentaje
+        const categoryPctInput = document.getElementById('categoryPctInput');
+        if (categoryPctInput) {
+            categoryPctInput.addEventListener('input', () => {
+                try { updateCategoryPctWarning(); } catch (e) { /* ignorar */ }
+            });
+        }
+
+        return { 
+            init: () => { 
+                // Comprobar elementos críticos
+                if (!gradesTable || !gradesTableHead || !gradesTableBody) {
+                    console.warn('GradesModule: elementos de tabla de calificaciones no encontrados, omitiendo inicialización.');
+                    return;
+                }
+                setupEventListeners();
+                // Aplicar ordenamiento inicial
+                filterAndSortStudents('', 'asc');
+            } 
+        };
+    })();
+
+    // Cargar configuración de calificaciones desde backend
+    async function loadGradeConfig() {
+        try {
+            const resp = await fetch('/profesor/api/configuracion-calificaciones');
+            const data = await resp.json();
+            if (data && data.success && data.configuracion) {
+                const cfg = data.configuracion;
+                const minEl = document.getElementById('min-grade');
+                const maxEl = document.getElementById('max-grade');
+                const passEl = document.getElementById('passing-grade');
+                if (minEl && cfg.notaMinima !== undefined) minEl.value = parseFloat(cfg.notaMinima);
+                if (maxEl && cfg.notaMaxima !== undefined) maxEl.value = parseFloat(cfg.notaMaxima);
+                if (passEl && cfg.notaMinimaAprobacion !== undefined) passEl.value = parseFloat(cfg.notaMinimaAprobacion);
+            }
+        } catch (err) {
+            console.warn('Error cargando configuración de calificaciones', err);
+        }
+    }
+
+    // --- INICIALIZACIÓN GENERAL ---
+    UI.attendanceTab.addEventListener('click', () => UI.switchView(UI.attendanceTab, UI.attendanceContent, UI.gradesTab, UI.gradesContent));
+    UI.gradesTab.addEventListener('click', () => UI.switchView(UI.gradesTab, UI.gradesContent, UI.attendanceTab, UI.attendanceContent));
+
+    // Función para cambiar la selección de curso/asignatura
+    function cambiarSeleccion() {
+        // Limpiar la sesión actual
+        fetch('/profesor/api/limpiar-seleccion', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(() => {
+            // Redirigir al dashboard para que el usuario pueda seleccionar nuevamente
+            window.location.href = '/profesor/dashboard';
+        }).catch(error => {
+            console.error('Error limpiando selección:', error);
+            // Redirigir de todas formas
+            window.location.href = '/profesor/dashboard';
         });
-    </script>
+    }
+
+    // Hacer la función globalmente accesible
+    window.cambiarSeleccion = cambiarSeleccion;
+
+    // Iniciar carga de datos
+    DataLoader.initializeAllData();
+});
+</script>
 </body>
 </html>
