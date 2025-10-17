@@ -621,44 +621,32 @@ class Evento(db.Model):
 
 
 class Comunicacion(db.Model):
-    __tablename__ = "comunicaciones"
-
+    __tablename__ = 'comunicaciones'
+    
     id_comunicacion = db.Column(db.Integer, primary_key=True)
-    remitente_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
-    destinatario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=True)
-    asunto = db.Column(db.String(200), nullable=True)
-    mensaje = db.Column(db.Text, nullable=False)
+    remitente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
+    destinatario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
+    asunto = db.Column(db.String(200))
+    mensaje = db.Column(db.Text)
     fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
-    estado = db.Column(
-        db.Enum("inbox", "sent", "draft", "deleted", name="estado_comunicacion_enum"),
-        default="inbox",
-        nullable=False
-    )
-
-    remitente = db.relationship("Usuario", foreign_keys=[remitente_id])
-    destinatario = db.relationship("Usuario", foreign_keys=[destinatario_id])
-
+    estado = db.Column(db.String(20), default='inbox')  # inbox, sent, draft, deleted
+    
+    # Relaciones
+    remitente = db.relationship('Usuario', foreign_keys=[remitente_id], backref='comunicaciones_enviadas')
+    destinatario = db.relationship('Usuario', foreign_keys=[destinatario_id], backref='comunicaciones_recibidas')
+    
     def to_dict(self):
         return {
-            "id_comunicacion": self.id_comunicacion,
-            "remitente": self.remitente.nombre if self.remitente else "Desconocido",
-            "destinatario": self.destinatario.nombre if self.destinatario else "Desconocido",
-            "asunto": self.asunto or "(Sin asunto)",
-            "mensaje": self.mensaje,
-            "fecha_envio": self.fecha_envio.strftime("%Y-%m-%d %H:%M") if self.fecha_envio else "",
-            "estado": self.estado
+            'id_comunicacion': self.id_comunicacion,
+            'remitente_id': self.remitente_id,
+            'remitente_nombre': self.remitente.nombre,
+            'destinatario_id': self.destinatario_id,
+            'destinatario_nombre': self.destinatario.nombre,
+            'asunto': self.asunto,
+            'mensaje': self.mensaje,
+            'fecha_envio': self.fecha_envio.isoformat(),
+            'estado': self.estado,
         }
-
-class Comunicado(db.Model):
-    __tablename__ = 'comunicados'
-
-    id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(150), nullable=False)
-    contenido = db.Column(db.Text, nullable=False)
-    destinatarios = db.Column(db.String(50), nullable=False)
-    prioridad = db.Column(db.String(20), default='normal')
-    fecha = db.Column(db.DateTime, default=datetime.now)
-
 
 
 # ================================

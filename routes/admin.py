@@ -2584,42 +2584,6 @@ def crear_evento():
 
 
 
-@admin_bp.route('/comunicado', methods=['GET', 'POST'])
-def comunicado():
-    if request.method == 'POST':
-        try:
-            # Obtener datos del formulario
-            titulo = request.form.get('titulo', '').strip()
-            mensaje = request.form.get('mensaje', '').strip()
-            destinatarios = request.form.getlist('destinatarios')
-            prioridad = request.form.get('prioridad', 'normal')
-            
-            # Validaciones básicas
-            if not titulo:
-                flash('El título es requerido', 'error')
-                return render_template('superadmin/comunicados.html')
-            
-            if not mensaje:
-                flash('El mensaje es requerido', 'error')
-                return render_template('superadmin/comunicados.html')
-            
-            if not destinatarios:
-                flash('Selecciona al menos un destinatario', 'error')
-                return render_template('superadmin/comunicados.html')
-            
-            # Aquí tu lógica para guardar en la base de datos
-            # nuevo_comunicado = Comunicado(...)
-            # db.session.add(nuevo_comunicado)
-            # db.session.commit()
-            
-            flash('Comunicado enviado exitosamente!', 'success')
-            return redirect(url_for('admin_bp.comunicado'))
-            
-        except Exception as e:
-            flash(f'Error al enviar el comunicado: {str(e)}', 'error')
-    
-    return render_template('superadmin/comunicados.html')
-
 # ==================== SISTEMA DE VOTACIÓN ====================
 
 @admin_bp.route('/sistema-votaciones')
@@ -2854,5 +2818,3 @@ def eliminar_candidato(candidato_id):
         db.session.rollback()
         return jsonify({"ok": False, "error": str(e)}), 500
 
-
-        

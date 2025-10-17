@@ -1,41 +1,52 @@
 /* --- Variables y Estilos Globales --- */
 :root {
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-texto-principal: #2c3e50;
-    --color-texto-secundario: #7f8c8d;
+    --color-primario: #0D3B66; /* Azul oscuro */
+    --color-primario-oscuro: #EE964B; /* Naranja suave */
+    --color-texto-principal: #333333;
+    --color-texto-secundario: #666666;
     --color-blanco: #FFFFFF;
-    --color-fondo-seccion: #f8f9fa;
-    --color-borde-suave: #ecf0f1;
+    --color-fondo-seccion: #FAF0CA; /* Beige claro */
+    --color-borde-suave: #E9ECEF;
+
+    /* NUEVAS VARIABLES AÑADIDAS */
+    --color-acento: #F95738; /* Rojo vibrante */
+    --color-mostaza: #F4D35E;
+    --color-sombra: rgba(0, 0, 0, 0.1);
+    --color-sombra-hover: rgba(13, 59, 102, 0.25);
 }
 
 body {
-    background-color: var(--color-blanco);
+    background: linear-gradient(135deg, var(--color-fondo-seccion), var(--color-mostaza), var(--color-primario-oscuro));
+    background-attachment: fixed;
     font-family: 'Montserrat', sans-serif;
     margin: 0;
-    /* QUITAMOS display:flex, justify-content y align-items.
-       El centrado se hará en .card */
+    color: var(--color-texto-principal);
+    transition: background 0.8s ease;
 }
-
 
 /* --- Tarjeta de Login --- */
 .card {
-    /* ESTA ES LA CLAVE PARA CENTRARLO CORRECTAMENTE */
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 10; /* Para que esté por encima de .circles */
-
+    z-index: 10;
     width: 300px;
     padding: 1.9rem 1.2rem;
     text-align: center;
     background: var(--color-fondo-seccion);
-    border-radius: 15px; /* Un poco más suave */
+    border-radius: 15px;
     border: 2px solid var(--color-primario);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px var(--color-sombra);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
 }
 
+/* NUEVO: efecto hover sobre la tarjeta */
+.card:hover {
+    transform: translate(-50%, -52%);
+    box-shadow: 0 12px 35px var(--color-sombra-hover);
+    background: var(--color-blanco);
+}
 
 /* --- Campos de Input --- */
 .field {
@@ -43,21 +54,28 @@ body {
     display: flex;
     align-items: center;
     gap: .5em;
-    background-color: #f0f0f0; /* Un gris más claro para mejor contraste */
+    background-color: #F8F9FA;
     border-radius: 8px;
     padding: .5em 1em;
     border: 1px solid transparent;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
+/* NUEVO: efecto al enfocar input */
 .field:focus-within {
     border-color: var(--color-primario);
+    box-shadow: 0 0 5px rgba(13, 59, 102, 0.2);
 }
 
 .input-icon {
     height: 1em;
     width: 1em;
     fill: var(--color-texto-secundario);
+    transition: fill 0.3s;
+}
+
+.field:focus-within .input-icon {
+    fill: var(--color-primario);
 }
 
 .input-field {
@@ -72,13 +90,32 @@ body {
     color: var(--color-texto-secundario);
 }
 
+/* NUEVO: animación al hacer clic en el input */
+.input-field:focus {
+    animation: pulseInput 0.4s ease;
+}
+
+@keyframes pulseInput {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
 
 /* --- Texto --- */
 .title {
     margin-bottom: 1rem;
     font-size: 1.5em;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--color-primario);
+    letter-spacing: 0.5px;
+}
+
+/* NUEVO subtítulo opcional */
+.subtitle {
+    font-size: 0.85em;
+    color: var(--color-texto-secundario);
+    margin-bottom: 1.2rem;
 }
 
 
@@ -93,12 +130,33 @@ body {
     border: 2px solid var(--color-primario);
     color: var(--color-blanco);
     cursor: pointer;
-    transition: background-color 0.3s, box-shadow 0.3s;
+    transition: background-color 0.3s, box-shadow 0.3s, transform 0.2s;
 }
 
+/* NUEVO: efecto flotante y colores más vibrantes */
 .btn:hover {
+    background-color: var(--color-acento);
+    border-color: var(--color-acento);
+    box-shadow: 0 8px 24px 0 rgba(249, 87, 56, 0.3);
+    transform: translateY(-2px);
+}
+
+/* NUEVO: efecto al presionar */
+.btn:active {
+    transform: scale(0.97);
+}
+
+/* NUEVO: botón alternativo */
+.btn-alt {
+    background-color: var(--color-mostaza);
+    border: 2px solid var(--color-mostaza);
+    color: var(--color-primario);
+}
+
+.btn-alt:hover {
     background-color: var(--color-primario-oscuro);
-    box-shadow: 0 8px 24px 0 rgba(0, 120, 173, 0.2);
+    border-color: var(--color-primario-oscuro);
+    color: var(--color-blanco);
 }
 
 .btn-link {
@@ -113,16 +171,15 @@ body {
     color: var(--color-primario);
 }
 
-
 /* --- Fondo Animado --- */
 .circles {
-    position: fixed; /* 'fixed' es mejor para fondos que no se mueven con el scroll */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    z-index: 1; /* Detrás del contenido */
+    z-index: 1;
 }
 
 .circles li {
@@ -131,9 +188,18 @@ body {
     list-style: none;
     width: 20px;
     height: 20px;
-    background: rgba(0, 120, 173, 0.2);
+    background: rgba(13, 59, 102, 0.2);
     animation: animate 25s linear infinite;
     bottom: -150px;
+    border-radius: 50%;
+}
+
+/* NUEVO: degradado de color en los círculos */
+.circles li:nth-child(even) {
+    background: rgba(238, 150, 75, 0.25);
+}
+.circles li:nth-child(odd) {
+    background: rgba(244, 211, 94, 0.25);
 }
 
 .circles li:nth-child(1){ left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
@@ -150,4 +216,20 @@ body {
 @keyframes animate {
     0% { transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 0; }
     100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
+}
+
+/* --- NUEVO: Responsividad --- */
+@media (max-width: 400px) {
+    .card {
+        width: 90%;
+        padding: 1.8rem 1rem;
+    }
+
+    .title {
+        font-size: 1.3em;
+    }
+
+    .btn {
+        font-size: 0.85em;
+    }
 }
