@@ -8,13 +8,13 @@ import json
 from werkzeug.utils import secure_filename
 from controllers.decorators import role_required
 from extensions import db
-from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email
+from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email, send_welcome_email_with_retry, get_verification_info
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
 from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, 
-    Evento, Candidato, HorarioVotacion
+    Evento, Candidato, HorarioVotacion, ReporteCalificaciones
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -270,14 +270,13 @@ def estudiantes():
     # Crear el formulario y configurar el rol predefinido como Estudiante
     form = RegistrationForm()
     
-    # Configurar el rol como Estudiante
-    rol_estudiante_obj = Rol.query.filter_by(nombre='Estudiante').first()
-    if rol_estudiante_obj:
-        form.rol.choices = [(str(rol_estudiante_obj.id_rol), rol_estudiante_obj.nombre)]
-        form.rol.data = str(rol_estudiante_obj.id_rol)
+    # ✅ CORREGIDO: Cargar choices para el rol
+    form.rol.choices = [(str(rol_estudiante.id_rol), rol_estudiante.nombre)] if rol_estudiante else []
+    form.rol.data = str(rol_estudiante.id_rol) if rol_estudiante else None
     
-    # Obtener cursos para el formulario
+    # ✅ CORREGIDO: Cargar choices para cursos
     cursos = Curso.query.all()
+    form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
     
     return render_template(
         'superadmin/gestion_usuarios/estudiantes.html', 
@@ -285,10 +284,9 @@ def estudiantes():
         form=form,  
         cursos=cursos,
         rol_predefinido='Estudiante',
-        rol_predefinido_id=str(rol_estudiante_obj.id_rol) if rol_estudiante_obj else None,
+        rol_predefinido_id=str(rol_estudiante.id_rol) if rol_estudiante else None,
         now=date.today
     )
-
 # API para estudiantes
 @admin_bp.route('/api/estudiantes')
 @login_required
@@ -344,6 +342,10 @@ def crear_estudiante():
     """Crear nuevo estudiante - Ruta específica para estudiantes"""
     form = RegistrationForm()
     
+    # ✅ CORREGIDO: SIEMPRE cargar las opciones de roles ANTES de validar
+    roles = Rol.query.all()
+    form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles] if roles else []
+    
     # Obtener el rol de Estudiante
     rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
     if not rol_estudiante:
@@ -351,13 +353,13 @@ def crear_estudiante():
         return redirect(url_for('admin.estudiantes'))
     
     # Configurar el formulario para estudiantes
-    form.rol.choices = [(str(rol_estudiante.id_rol), rol_estudiante.nombre)]
     form.rol.data = str(rol_estudiante.id_rol)
     
-    # Obtener cursos para el formulario
+    # ✅ CORREGIDO: Cargar opciones de cursos
     cursos = Curso.query.all()
     form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
     
+    # ✅ AHORA SÍ validar el formulario (con los choices ya cargados)
     if form.validate_on_submit():
         try:
             from datetime import datetime, timedelta
@@ -422,14 +424,17 @@ def crear_estudiante():
             print(f"DEBUG: Enviando correo de verificación a {new_user.correo}")
             
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, verification_code)
+            email_result = send_welcome_email(new_user, verification_code)
             
-            if email_sent:
+            if email_result == True:
                 flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
                 print(f"DEBUG: Correo enviado exitosamente")
+            elif email_result == "limit_exceeded":
+                flash(f'Estudiante "{new_user.nombre_completo}" creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {verification_code}', 'warning')
+                print(f"DEBUG: Límite de correos excedido - Código: {verification_code}")
             else:
-                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
-                print(f"DEBUG: Error enviando correo")
+                flash(f'Estudiante "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación. Código de verificación: {verification_code}', 'warning')
+                print(f"DEBUG: Error enviando correo - Código: {verification_code}")
             
             return redirect(url_for('admin.estudiantes'))
             
@@ -1016,13 +1021,17 @@ def crear_usuario():
     """Crear nuevo usuario con rol específico y verificación de email"""
     form = RegistrationForm()
     
+    # ✅ CORREGIDO: SIEMPRE cargar las opciones de roles ANTES de validar
+    roles = Rol.query.all()
+    form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles] if roles else []
+    
+    # ✅ CORREGIDO: Cargar opciones de cursos
+    cursos = Curso.query.all()
+    form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
+    
     # Obtener el rol predefinido desde la URL
     rol_predefinido = request.args.get('rol')
     
-    roles = Rol.query.all()
-    cursos = Curso.query.all()
-    form.rol.choices = [(str(r.id_rol), r.nombre) for r in roles]
-
     # Si hay rol predefinido, establecerlo en el formulario
     rol_predefinido_id = None
     if rol_predefinido and request.method == 'GET':
@@ -1042,6 +1051,7 @@ def crear_usuario():
             form.rol.data = str(rol_obj.id_rol)
             rol_predefinido_id = str(rol_obj.id_rol)
 
+    # ✅ AHORA SÍ validar el formulario (con los choices ya cargados)
     if form.validate_on_submit():
         selected_role_id = int(form.rol.data)
         
@@ -1092,12 +1102,14 @@ def crear_usuario():
             db.session.commit()
             print(f"DEBUG: Usuario creado - Contraseña temporal: {new_user.temp_password}")
             # Enviar correo de bienvenida con código de verificación
-            email_sent = send_welcome_email(new_user, new_user.verification_code)
+            email_result = send_welcome_email(new_user, new_user.verification_code)
             
-            if email_sent:
+            if email_result == True:
                 flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! Se ha enviado un correo de verificación.', 'success')
+            elif email_result == "limit_exceeded":
+                flash(f'Usuario "{new_user.nombre_completo}" creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {new_user.verification_code}', 'warning')
             else:
-                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación.', 'warning')
+                flash(f'Usuario "{new_user.nombre_completo}" creado pero hubo un error enviando el correo de verificación. Código de verificación: {new_user.verification_code}', 'warning')
             
             # Redirigir según el rol creado
             if is_student:
@@ -1125,7 +1137,7 @@ def crear_usuario():
         rol_predefinido=rol_predefinido,
         rol_predefinido_id=rol_predefinido_id
     )
-
+    
 @admin_bp.route('/api/verificar-identidad')
 @login_required
 @role_required(1)
@@ -1145,6 +1157,7 @@ def api_verificar_identidad():
     except Exception as e:
         print(f"Error verificando identidad: {e}")
         return jsonify({'exists': False})
+    
 @admin_bp.route('/api/verificar-correo')
 @login_required
 @role_required(1)
@@ -1313,14 +1326,19 @@ def api_crear_padre():
         db.session.commit()
         
         # Enviar correo de bienvenida con código de verificación
-        email_sent = send_welcome_email(nuevo_padre, verification_code)
+        email_result = send_welcome_email(nuevo_padre, verification_code)
         
-        if not email_sent:
+        if email_result == True:
+            message = 'Padre/acudiente creado exitosamente y correo de verificación enviado'
+        elif email_result == "limit_exceeded":
+            message = f'Padre/acudiente creado exitosamente! ⚠️ Límite diario de correos excedido. Código de verificación: {verification_code}'
+        else:
+            message = f'Padre/acudiente creado exitosamente pero hubo un error enviando el correo de verificación. Código de verificación: {verification_code}'
             print(f"ADVERTENCIA: No se pudo enviar el correo de verificación al padre {nuevo_padre.correo}")
         
         return jsonify({
             'success': True,
-            'message': 'Padre/acudiente creado exitosamente' + (' y correo de verificación enviado' if email_sent else ' pero hubo un error enviando el correo de verificación'),
+            'message': message,
             'padre': {
                 'id_usuario': nuevo_padre.id_usuario,
                 'nombre_completo': nuevo_padre.nombre_completo,
@@ -1908,83 +1926,182 @@ def gestion_horarios_cursos():
 @login_required
 @role_required(1)
 def api_guardar_horario_curso():
-    """API para guardar horario de curso"""
+    """API para guardar horario de curso - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
-        curso_id = data.get('curso_id')
-        horario_general_id = data.get('horario_general_id')
+        
+        print("=" * 50)
+        print("DEBUG - DATOS RECIBIDOS EN EL BACKEND:")
+        print("=" * 50)
+        print(f"Data completa: {data}")
+        print(f"Curso ID: {data.get('curso_id')}")
+        print(f"Horario General ID: {data.get('horario_general_id')}")
+        
         asignaciones = data.get('asignaciones', {})
         salones_asignaciones = data.get('salones_asignaciones', {})
+        
+        print(f"Asignaciones recibidas: {asignaciones}")
+        print(f"Salones recibidos: {salones_asignaciones}")
+        print(f"Total asignaciones: {len(asignaciones)}")
+        print(f"Total salones: {len(salones_asignaciones)}")
+        
+        # Mostrar las primeras 5 asignaciones para debug
+        if asignaciones:
+            print("Primeras 5 asignaciones:")
+            for i, (clave, valor) in enumerate(list(asignaciones.items())[:5]):
+                print(f"   {i+1}. {clave} -> {valor}")
 
+        curso_id = data.get('curso_id')
         if not curso_id:
+            print("ERROR: No hay curso_id")
             return jsonify({'success': False, 'error': 'ID de curso requerido'}), 400
 
+        # Verificar que el curso existe
         curso = Curso.query.get(curso_id)
         if not curso:
+            print(f"ERROR: Curso {curso_id} no encontrado")
             return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
 
-        if horario_general_id:
-            horario = HorarioGeneral.query.get(horario_general_id)
-            if not horario:
-                return jsonify({'success': False, 'error': 'Horario general no encontrado'}), 404
-            curso.horario_general_id = horario_general_id
+        # Obtener asignaciones existentes
+        asignaciones_existentes = HorarioCurso.query.filter_by(curso_id=curso_id).all()
+        print(f"Asignaciones existentes en BD: {len(asignaciones_existentes)}")
 
-        # Eliminar asignaciones existentes
-        HorarioCurso.query.filter_by(curso_id=curso_id).delete()
+        # Crear diccionario de asignaciones existentes
+        asignaciones_existentes_dict = {}
+        for asignacion in asignaciones_existentes:
+            clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
+            asignaciones_existentes_dict[clave] = asignacion
+            print(f"   {clave} -> Asignatura: {asignacion.asignatura_id}, Salon: {asignacion.id_salon_fk}")
 
         asignaciones_creadas = 0
-        # Procesar asignaciones de materias
+        asignaciones_actualizadas = 0
+        asignaciones_eliminadas = 0
+
+        # Procesar CADA asignación del request
+        print("Procesando asignaciones del request...")
         for clave, asignatura_id in asignaciones.items():
             try:
+                print(f"   Procesando: {clave} -> {asignatura_id}")
+                
+                # Parsear la clave
                 partes = clave.split('-')
-                if len(partes) >= 2:
-                    dia = partes[0]
-                    hora = partes[1]
+                if len(partes) < 2:
+                    print(f"   Clave inválida: {clave}")
+                    continue
+                    
+                dia = partes[0]
+                hora_inicio = partes[1]
 
-                    if not asignatura_id:
-                        continue
+                # Si no hay asignatura_id, eliminar
+                if not asignatura_id:
+                    if clave in asignaciones_existentes_dict:
+                        db.session.delete(asignaciones_existentes_dict[clave])
+                        asignaciones_eliminadas += 1
+                        print(f"   Eliminada asignación vacía: {clave}")
+                    continue
 
-                    # Obtener el salon_id correspondiente
-                    salon_id = salones_asignaciones.get(clave)
+                # Verificar asignatura
+                asignatura = Asignatura.query.get(asignatura_id)
+                if not asignatura:
+                    print(f"   Asignatura no encontrada: {asignatura_id}")
+                    continue
 
+                # Obtener salon
+                salon_id = salones_asignaciones.get(clave)
+                if salon_id:
+                    salon = Salon.query.get(salon_id)
+                    if not salon:
+                        print(f"   Salón no encontrado: {salon_id}")
+                        salon_id = None
+
+                # Calcular hora_fin (versión simplificada)
+                hora_fin = "08:00"  # Valor por defecto
+                try:
+                    from datetime import datetime, timedelta
+                    hora_inicio_dt = datetime.strptime(hora_inicio, '%H:%M')
+                    hora_fin_dt = hora_inicio_dt + timedelta(minutes=45)
+                    hora_fin = hora_fin_dt.strftime('%H:%M')
+                except:
+                    pass
+
+                # Crear o actualizar asignación
+                if clave in asignaciones_existentes_dict:
+                    asignacion_existente = asignaciones_existentes_dict[clave]
+                    asignacion_existente.asignatura_id = asignatura_id
+                    asignacion_existente.hora_fin = hora_fin
+                    asignacion_existente.id_salon_fk = salon_id
+                    asignaciones_actualizadas += 1
+                    print(f"   ACTUALIZADA: {clave}")
+                else:
                     nueva_asignacion = HorarioCurso(
                         curso_id=curso_id,
                         asignatura_id=asignatura_id,
                         dia_semana=dia,
-                        hora_inicio=hora,
-                        horario_general_id=horario_general_id,
-                        id_salon_fk=salon_id
+                        hora_inicio=hora_inicio,
+                        hora_fin=hora_fin,
+                        horario_general_id=data.get('horario_general_id'),
+                        id_salon_fk=salon_id,
+                        fecha_creacion=datetime.now()
                     )
                     db.session.add(nueva_asignacion)
                     asignaciones_creadas += 1
+                    print(f"   CREADA: {clave}")
 
             except Exception as e:
-                print(f"Error procesando asignación {clave}: {str(e)}")
+                print(f"   Error procesando {clave}: {str(e)}")
                 continue
 
+        # Eliminar asignaciones obsoletas
+        claves_request = set(asignaciones.keys())
+        for clave, asignacion_existente in list(asignaciones_existentes_dict.items()):
+            if clave not in claves_request or not asignaciones.get(clave):
+                db.session.delete(asignacion_existente)
+                asignaciones_eliminadas += 1
+                print(f"   ELIMINADA: {clave}")
+
+        # Hacer commit
         db.session.commit()
+        
+        # Verificar resultado final
+        total_final = HorarioCurso.query.filter_by(curso_id=curso_id).count()
+        
+        print("=" * 50)
+        print("RESUMEN FINAL:")
+        print(f"   Creadas: {asignaciones_creadas}")
+        print(f"   Actualizadas: {asignaciones_actualizadas}")
+        print(f"   Eliminadas: {asignaciones_eliminadas}")
+        print(f"   Total en BD: {total_final}")
+        print("=" * 50)
 
         return jsonify({
             'success': True,
-            'message': f'Horario del curso guardado correctamente ({asignaciones_creadas} asignaciones)',
-            'asignaciones_creadas': asignaciones_creadas
+            'message': f'Horario guardado: {asignaciones_creadas} nuevas, {asignaciones_actualizadas} actualizadas, {asignaciones_eliminadas} eliminadas',
+            'stats': {
+                'creadas': asignaciones_creadas,
+                'actualizadas': asignaciones_actualizadas,
+                'eliminadas': asignaciones_eliminadas,
+                'total': total_final
+            }
         })
 
     except Exception as e:
         db.session.rollback()
-        print(f"Error guardando horario del curso: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"ERROR CRÍTICO: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
     
 @admin_bp.route('/api/horario_curso/cargar/<int:curso_id>')
 @login_required
 @role_required(1)
 def api_cargar_horario_curso(curso_id):
-    """API para cargar horario de curso"""
+    """API para cargar horario de curso - VERSIÓN MEJORADA"""
     try:
         curso = Curso.query.get(curso_id)
         if not curso:
             return jsonify({'error': 'Curso no encontrado'}), 404
 
+        # Obtener asignaciones existentes
         asignaciones_db = HorarioCurso.query.filter_by(curso_id=curso_id).all()
 
         asignaciones = {}
@@ -1996,6 +2113,7 @@ def api_cargar_horario_curso(curso_id):
             if asignacion.id_salon_fk:
                 salones_asignaciones[clave] = asignacion.id_salon_fk
 
+        # Obtener bloques del horario general
         bloques_horario = []
         if curso.horario_general_id:
             bloques = BloqueHorario.query.filter_by(
@@ -2013,6 +2131,11 @@ def api_cargar_horario_curso(curso_id):
                 'break_type': b.break_type
             } for b in bloques]
 
+        print(f"📥 Cargando horario para curso {curso_id}:")
+        print(f"   Asignaciones: {len(asignaciones)}")
+        print(f"   Salones: {len(salones_asignaciones)}")
+        print(f"   Bloques: {len(bloques_horario)}")
+
         return jsonify({
             'curso_id': curso_id,
             'horario_general_id': curso.horario_general_id,
@@ -2024,7 +2147,7 @@ def api_cargar_horario_curso(curso_id):
         })
 
     except Exception as e:
-        print(f"Error cargando horario del curso: {str(e)}")
+        print(f"❌ Error cargando horario del curso: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/horario_curso/compartir', methods=['POST'])
@@ -2947,42 +3070,6 @@ def crear_evento():
 
 
 
-@admin_bp.route('/comunicado', methods=['GET', 'POST'])
-def comunicado():
-    if request.method == 'POST':
-        try:
-            # Obtener datos del formulario
-            titulo = request.form.get('titulo', '').strip()
-            mensaje = request.form.get('mensaje', '').strip()
-            destinatarios = request.form.getlist('destinatarios')
-            prioridad = request.form.get('prioridad', 'normal')
-            
-            # Validaciones básicas
-            if not titulo:
-                flash('El título es requerido', 'error')
-                return render_template('superadmin/comunicados.html')
-            
-            if not mensaje:
-                flash('El mensaje es requerido', 'error')
-                return render_template('superadmin/comunicados.html')
-            
-            if not destinatarios:
-                flash('Selecciona al menos un destinatario', 'error')
-                return render_template('superadmin/comunicados.html')
-            
-            # Aquí tu lógica para guardar en la base de datos
-            # nuevo_comunicado = Comunicado(...)
-            # db.session.add(nuevo_comunicado)
-            # db.session.commit()
-            
-            flash('Comunicado enviado exitosamente!', 'success')
-            return redirect(url_for('admin_bp.comunicado'))
-            
-        except Exception as e:
-            flash(f'Error al enviar el comunicado: {str(e)}', 'error')
-    
-    return render_template('superadmin/comunicados.html')
-
 # ==================== SISTEMA DE VOTACIÓN ====================
 
 @admin_bp.route('/sistema-votaciones')
@@ -3218,4 +3305,249 @@ def eliminar_candidato(candidato_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+
+# ============================================================================ #
+# RUTAS DE REPORTES DE CALIFICACIONES
+# ============================================================================ #
+
+@admin_bp.route('/reportes-calificaciones')
+@login_required
+@role_required(1)
+def reportes_calificaciones():
+    """Página principal de reportes de calificaciones."""
+    return render_template('superadmin/reportes/reportes.html')
+
+@admin_bp.route('/api/reportes-calificaciones', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_reportes():
+    """API para obtener todos los reportes de calificaciones."""
+    try:
+        # Obtener todos los reportes ordenados por fecha de generación (más recientes primero)
+        reportes = db.session.query(ReporteCalificaciones).order_by(
+            ReporteCalificaciones.fecha_generacion.desc()
+        ).all()
         
+        reportes_data = [reporte.to_dict() for reporte in reportes]
+        
+        return jsonify({
+            'success': True,
+            'reportes': reportes_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo reportes: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/reportes-calificaciones/<int:reporte_id>/estado', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_estado_reporte(reporte_id):
+    """API para actualizar el estado de un reporte."""
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        
+        if nuevo_estado not in ['pendiente', 'revisado', 'archivado']:
+            return jsonify({
+                'success': False,
+                'message': 'Estado inválido'
+            }), 400
+        
+        reporte = ReporteCalificaciones.query.get(reporte_id)
+        if not reporte:
+            return jsonify({
+                'success': False,
+                'message': 'Reporte no encontrado'
+            }), 404
+        
+        reporte.estado = nuevo_estado
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado actualizado correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error actualizando estado: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/reportes-calificaciones/<int:reporte_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_reporte(reporte_id):
+    """API para eliminar un reporte."""
+    try:
+        reporte = ReporteCalificaciones.query.get(reporte_id)
+        if not reporte:
+            return jsonify({
+                'success': False,
+                'message': 'Reporte no encontrado'
+            }), 404
+        
+        db.session.delete(reporte)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Reporte eliminado correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando reporte: {str(e)}'
+        }), 500
+
+# ==================== GESTIÓN DE CÓDIGOS DE VERIFICACIÓN ====================
+
+@admin_bp.route('/verification-codes')
+@login_required
+@role_required(1)
+def verification_codes():
+    """Página para gestionar códigos de verificación pendientes"""
+    # Obtener usuarios con email no verificado
+    usuarios_pendientes = Usuario.query.filter(
+        Usuario.email_verified == False,
+        Usuario.verification_code.isnot(None)
+    ).all()
+    
+    return render_template('superadmin/verification_codes.html', 
+                        usuarios_pendientes=usuarios_pendientes)
+
+@admin_bp.route('/reenviar-verificacion', methods=['POST'])
+@login_required
+@role_required(1)
+def reenviar_verificacion():
+    """Reenvía el correo de verificación a un usuario"""
+    try:
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'ID de usuario requerido'
+            }), 400
+        
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.email_verified:
+            return jsonify({
+                'success': False,
+                'message': 'El usuario ya está verificado'
+            }), 400
+        
+        # Reenviar correo con reintentos
+        email_result = send_welcome_email_with_retry(usuario, usuario.verification_code)
+        
+        if email_result == True:
+            return jsonify({
+                'success': True,
+                'message': 'Correo de verificación reenviado exitosamente'
+            })
+        elif email_result == "limit_exceeded":
+            return jsonify({
+                'success': False,
+                'message': f'Límite diario de correos excedido. Código de verificación: {usuario.verification_code}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Error al reenviar correo. Código de verificación: {usuario.verification_code}'
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+@admin_bp.route('/verificar-manual', methods=['POST'])
+@login_required
+@role_required(1)
+def verificar_manual():
+    """Marca un usuario como verificado manualmente"""
+    try:
+        user_id = request.form.get('user_id')
+        if not user_id:
+            return jsonify({
+                'success': False,
+                'message': 'ID de usuario requerido'
+            }), 400
+        
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.email_verified:
+            return jsonify({
+                'success': False,
+                'message': 'El usuario ya está verificado'
+            }), 400
+        
+        # Marcar como verificado
+        usuario.email_verified = True
+        usuario.verification_code = None
+        usuario.verification_code_expires = None
+        usuario.verification_attempts = 0
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Usuario verificado exitosamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+@admin_bp.route('/verification-info/<int:user_id>')
+@login_required
+@role_required(1)
+def get_verification_info_route(user_id):
+    """Obtiene información de verificación para un usuario"""
+    try:
+        usuario = Usuario.query.get(user_id)
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario no encontrado'
+            }), 404
+        
+        if usuario.email_verified:
+            return jsonify({
+                'success': False,
+                'message': 'El usuario ya está verificado'
+            }), 400
+        
+        info = get_verification_info(usuario)
+        
+        return jsonify({
+            'success': True,
+            'data': info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+

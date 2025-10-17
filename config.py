@@ -17,3 +17,8 @@ class Config:
     MAIL_USERNAME = 'Gestion.Acentrax@gmail.com'
     MAIL_PASSWORD = 'bgycesijhhnoqhac'  
     MAIL_DEFAULT_SENDER = 'Gestion.Acentrax@gmail.com'
+    
+    # Configuración para URLs externas (necesario para envío de correos)
+    SERVER_NAME = 'localhost:5000'  # Cambiar por tu dominio en producción
+    APPLICATION_ROOT = '/'
+    PREFERRED_URL_SCHEME = 'http'  # Cambiar a 'https' en producción

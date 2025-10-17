@@ -257,6 +257,7 @@ class Asistencia(db.Model):
     fecha = db.Column(db.Date, nullable=False)
     estado = db.Column(db.String(20), nullable=False, default='presente')
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    excusa = db.Column(db.Boolean, default=False)  # ✅ NUEVO CAMPO AÑADIDO
     
     # Relaciones
     estudiante_rel = db.relationship('Usuario', back_populates='asistencias', foreign_keys=[estudianteId])
@@ -300,7 +301,10 @@ class Calificacion(db.Model):
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
     asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     categoriaId = db.Column(db.Integer, db.ForeignKey('categoria_calificacion.id_categoria'), nullable=False)
-    valor = db.Column(db.Numeric(5,2), nullable=False)
+    # Allow null initially (assignments may be created before grades are entered)
+    valor = db.Column(db.Numeric(5,2), nullable=True)
+    # Nombre libre para identificar la calificación / asignación (por ejemplo: 'Parcial 1')
+    nombre_calificacion = db.Column(db.String(200), nullable=True)
     observaciones = db.Column(db.Text)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -403,7 +407,7 @@ class HorarioCurso(db.Model):
     asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
-    hora_fin = db.Column(db.String(5), nullable=False)
+    hora_fin = db.Column(db.String(5), nullable=False)  # ✅ YA ESTÁ DEFINIDO CORRECTAMENTE
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'))
     id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id_salon'), nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
@@ -413,6 +417,19 @@ class HorarioCurso(db.Model):
     asignatura = db.relationship('Asignatura', back_populates='horarios_asignados')
     horario_general = db.relationship('HorarioGeneral', back_populates='horarios_cursos')
     salon = db.relationship('Salon', back_populates='horarios_asignados')
+    
+    def to_dict(self):
+        return {
+            'id_horario_curso': self.id_horario_curso,
+            'curso_id': self.curso_id,
+            'asignatura_id': self.asignatura_id,
+            'dia_semana': self.dia_semana,
+            'hora_inicio': self.hora_inicio,
+            'hora_fin': self.hora_fin,  # ✅ INCLUIR HORA_FIN
+            'horario_general_id': self.horario_general_id,
+            'id_salon_fk': self.id_salon_fk,
+            'fecha_creacion': self.fecha_creacion.isoformat() if self.fecha_creacion else None
+        }
     
     def __repr__(self):
         return f'<HorarioCurso {self.curso_id} - {self.asignatura_id}>'
@@ -627,44 +644,32 @@ class Evento(db.Model):
 
 
 class Comunicacion(db.Model):
-    __tablename__ = "comunicaciones"
-
+    __tablename__ = 'comunicaciones'
+    
     id_comunicacion = db.Column(db.Integer, primary_key=True)
-    remitente_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
-    destinatario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=True)
-    asunto = db.Column(db.String(200), nullable=True)
-    mensaje = db.Column(db.Text, nullable=False)
+    remitente_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
+    destinatario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
+    asunto = db.Column(db.String(200))
+    mensaje = db.Column(db.Text)
     fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
-    estado = db.Column(
-        db.Enum("inbox", "sent", "draft", "deleted", name="estado_comunicacion_enum"),
-        default="inbox",
-        nullable=False
-    )
-
-    remitente = db.relationship("Usuario", foreign_keys=[remitente_id])
-    destinatario = db.relationship("Usuario", foreign_keys=[destinatario_id])
-
+    estado = db.Column(db.String(20), default='inbox')  # inbox, sent, draft, deleted
+    
+    # Relaciones
+    remitente = db.relationship('Usuario', foreign_keys=[remitente_id], backref='comunicaciones_enviadas')
+    destinatario = db.relationship('Usuario', foreign_keys=[destinatario_id], backref='comunicaciones_recibidas')
+    
     def to_dict(self):
         return {
-            "id_comunicacion": self.id_comunicacion,
-            "remitente": self.remitente.nombre if self.remitente else "Desconocido",
-            "destinatario": self.destinatario.nombre if self.destinatario else "Desconocido",
-            "asunto": self.asunto or "(Sin asunto)",
-            "mensaje": self.mensaje,
-            "fecha_envio": self.fecha_envio.strftime("%Y-%m-%d %H:%M") if self.fecha_envio else "",
-            "estado": self.estado
+            'id_comunicacion': self.id_comunicacion,
+            'remitente_id': self.remitente_id,
+            'remitente_nombre': self.remitente.nombre,
+            'destinatario_id': self.destinatario_id,
+            'destinatario_nombre': self.destinatario.nombre,
+            'asunto': self.asunto,
+            'mensaje': self.mensaje,
+            'fecha_envio': self.fecha_envio.isoformat(),
+            'estado': self.estado,
         }
-
-class Comunicado(db.Model):
-    __tablename__ = 'comunicados'
-
-    id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(150), nullable=False)
-    contenido = db.Column(db.Text, nullable=False)
-    destinatarios = db.Column(db.String(50), nullable=False)
-    prioridad = db.Column(db.String(20), default='normal')
-    fecha = db.Column(db.DateTime, default=datetime.now)
-
 
 
 # ================================
@@ -736,3 +741,46 @@ class HorarioVotacion(db.Model):
 
     def __repr__(self):
         return f"<HorarioVotacion {self.inicio}-{self.fin}>"
+
+
+# ================================
+# Modelo de Reportes de Calificaciones
+# ================================
+
+class ReporteCalificaciones(db.Model):
+    __tablename__ = "reportes_calificaciones"
+    
+    id_reporte = db.Column(db.Integer, primary_key=True)
+    profesor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    curso_id = db.Column(db.Integer, db.ForeignKey("curso.id_curso"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id_asignatura"), nullable=False)
+    nombre_curso = db.Column(db.String(100), nullable=False)
+    nombre_asignatura = db.Column(db.String(100), nullable=False)
+    datos_estudiantes = db.Column(db.JSON, nullable=False)  # JSON con nombres y promedios
+    promedio_general = db.Column(db.Float, nullable=False)
+    nota_mas_alta = db.Column(db.Float, nullable=False)
+    nota_mas_baja = db.Column(db.Float, nullable=False)
+    fecha_generacion = db.Column(db.DateTime, default=datetime.utcnow)
+    estado = db.Column(db.String(20), default='pendiente')  # pendiente, revisado, archivado
+    
+    # Relaciones
+    profesor = db.relationship("Usuario", foreign_keys=[profesor_id])
+    curso = db.relationship("Curso", foreign_keys=[curso_id])
+    asignatura = db.relationship("Asignatura", foreign_keys=[asignatura_id])
+    
+    def to_dict(self):
+        return {
+            "id_reporte": self.id_reporte,
+            "profesor_nombre": self.profesor.nombre_completo if self.profesor else "Desconocido",
+            "curso_nombre": self.nombre_curso,
+            "asignatura_nombre": self.nombre_asignatura,
+            "datos_estudiantes": self.datos_estudiantes,
+            "promedio_general": self.promedio_general,
+            "nota_mas_alta": self.nota_mas_alta,
+            "nota_mas_baja": self.nota_mas_baja,
+            "fecha_generacion": self.fecha_generacion.strftime("%Y-%m-%d %H:%M") if self.fecha_generacion else "",
+            "estado": self.estado
+        }
+    
+    def __repr__(self):
+        return f"<ReporteCalificaciones {self.nombre_curso} - {self.nombre_asignatura}>"

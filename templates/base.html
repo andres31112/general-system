@@ -72,7 +72,7 @@
             </a>
             {% endif %}
             {% if current_user.has_permission('acceso_reportes') %}
-            <a href="#" class="nav-link rounded my-1">
+            <a href="{{ url_for('admin.reportes_calificaciones') }}" class="nav-link rounded my-1 {% if 'reportes_calificaciones' in request.endpoint %}active{% endif %}">
                 <i class="fas fa-chart-bar fa-fw me-2"></i>Reportes
             </a>
             {% endif %}

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +12,12 @@
         <!-- Header -->
         <header class="email-header">
             <div class="header-left">
+                <!-- Usa el nombre correcto de la ruta -->
+                <a href="{{ url_for('estudiante.estudiante_panel') }}" class="back-to-dashboard">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Dashboard</span>
+                </a>
+
                 <button class="menu-toggle" id="menuToggle">
                     <i class="fas fa-bars"></i>
                 </button>
@@ -25,7 +31,7 @@
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="Buscar correos..." id="searchInput">
-                    <button class="search-btn">
+                    <button class="search-btn" id="searchBtn">
                         <i class="fas fa-filter"></i>
                     </button>
                 </div>
@@ -33,8 +39,9 @@
             
             <div class="header-right">
                 <div class="user-menu">
-                    <img src="{{ url_for('static', filename='images/default-avatar.png') }}" 
-                        alt="Usuario" class="user-avatar">
+                    <div class="user-avatar">
+                        {{ current_user.nombre[0] if current_user else 'U' }}
+                    </div>
                     <span>{{ current_user.nombre if current_user else 'Usuario' }}</span>
                 </div>
             </div>
@@ -44,10 +51,12 @@
         <div class="email-layout">
             <!-- Sidebar -->
             <aside class="email-sidebar" id="sidebar">
-                <button class="compose-btn" id="composeBtn">
-                    <i class="fas fa-edit"></i>
-                    Redactar
-                </button>
+                <div class="sidebar-header">
+                    <button class="compose-btn" id="composeBtn">
+                        <i class="fas fa-edit"></i>
+                        <span>Redactar</span>
+                    </button>
+                </div>
                 
                 <nav class="folder-nav">
                     <ul>
@@ -56,20 +65,16 @@
                             <span>Bandeja de entrada</span>
                             <span class="email-count" id="inboxCount">0</span>
                         </li>
-                        <li class="folder-item" data-folder="starred">
-                            <i class="fas fa-star"></i>
-                            <span>Destacados</span>
-                        </li>
                         <li class="folder-item" data-folder="sent">
                             <i class="fas fa-paper-plane"></i>
                             <span>Enviados</span>
                         </li>
-                        <li class="folder-item" data-folder="drafts">
+                        <li class="folder-item" data-folder="draft">
                             <i class="fas fa-file-alt"></i>
                             <span>Borradores</span>
                             <span class="email-count" id="draftsCount">0</span>
                         </li>
-                        <li class="folder-item" data-folder="trash">
+                        <li class="folder-item" data-folder="deleted">
                             <i class="fas fa-trash-alt"></i>
                             <span>Papelera</span>
                         </li>
@@ -78,11 +83,12 @@
 
                 <div class="sidebar-footer">
                     <div class="user-info">
-                        <img src="{{ url_for('static', filename='images/default-avatar.png') }}" 
-                            alt="Usuario" class="user-avatar-small">
+                        <div class="user-avatar-small">
+                            {{ current_user.nombre[0] if current_user else 'U' }}
+                        </div>
                         <div class="user-details">
                             <strong>{{ current_user.nombre if current_user else 'Usuario' }}</strong>
-                            <span>{{ current_user.correo if current_user else 'usuario@acentrax.com' }}</span>
+                            <span>{{ current_user.email if current_user else 'usuario@acentrax.com' }}</span>
                         </div>
                     </div>
                 </div>
@@ -98,27 +104,21 @@
                                 <input type="checkbox" id="selectAll">
                                 <label for="selectAll"></label>
                             </div>
-                            <button class="control-btn" id="refreshBtn">
+                            <button class="control-btn" id="refreshBtn" title="Actualizar">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
-                            <button class="control-btn" id="archiveBtn">
-                                <i class="fas fa-archive"></i>
-                            </button>
-                            <button class="control-btn" id="deleteBtn">
+                            <button class="control-btn" id="deleteBtn" title="Eliminar">
                                 <i class="fas fa-trash"></i>
-                            </button>
-                            <button class="control-btn" id="markReadBtn">
-                                <i class="fas fa-envelope-open"></i>
                             </button>
                         </div>
                         
                         <div class="list-pagination">
-                            <span id="emailRange">1-50 de 0</span>
+                            <span id="emailRange">0-0 de 0</span>
                             <div class="pagination-controls">
-                                <button class="pagination-btn" id="prevPage">
+                                <button class="pagination-btn" id="prevPage" disabled>
                                     <i class="fas fa-chevron-left"></i>
                                 </button>
-                                <button class="pagination-btn" id="nextPage">
+                                <button class="pagination-btn" id="nextPage" disabled>
                                     <i class="fas fa-chevron-right"></i>
                                 </button>
                             </div>
@@ -140,18 +140,16 @@
                     <div class="email-view-header">
                         <button class="back-btn" id="backToList">
                             <i class="fas fa-arrow-left"></i>
+                            <span>Volver</span>
                         </button>
                         <div class="email-actions">
-                            <button class="action-btn" id="starEmail">
-                                <i class="far fa-star"></i>
-                            </button>
-                            <button class="action-btn" id="replyEmail">
+                            <button class="action-btn" id="replyEmail" title="Responder">
                                 <i class="fas fa-reply"></i>
                             </button>
-                            <button class="action-btn" id="forwardEmail">
+                            <button class="action-btn" id="forwardEmail" title="Reenviar">
                                 <i class="fas fa-share"></i>
                             </button>
-                            <button class="action-btn" id="deleteEmail">
+                            <button class="action-btn" id="deleteEmail" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -166,15 +164,12 @@
     </div>
 
     <!-- Modal para redactar email -->
-    <div class="compose-modal" id="composeModal">
+    <div class="compose-modal" id="composeModal" style="display: none;">
         <div class="compose-header">
             <h3>Nuevo mensaje</h3>
             <div class="compose-actions">
                 <button class="modal-btn" id="minimizeCompose">
                     <i class="fas fa-minus"></i>
-                </button>
-                <button class="modal-btn" id="maximizeCompose">
-                    <i class="fas fa-expand"></i>
                 </button>
                 <button class="modal-btn" id="closeCompose">
                     <i class="fas fa-times"></i>
@@ -184,10 +179,13 @@
         
         <form class="compose-form" id="composeForm">
             <div class="compose-field">
-                <input type="email" placeholder="Para" id="composeTo" required>
+                <label for="composeTo">Para:</label>
+                <input type="text" placeholder="Buscar usuario..." id="composeTo" required>
+                <div class="suggestions" id="userSuggestions"></div>
             </div>
             <div class="compose-field">
-                <input type="text" placeholder="Asunto" id="composeSubject" required>
+                <label for="composeSubject">Asunto:</label>
+                <input type="text" placeholder="Asunto del mensaje" id="composeSubject" required>
             </div>
             <div class="compose-body">
                 <textarea placeholder="Escribe tu mensaje aquí..." id="composeBody" required></textarea>
@@ -208,8 +206,9 @@
         </form>
     </div>
 
-  <script src="{{ url_for('static', filename='js/estudiantes/comunicaciones.js') }}"></script>
+    <!-- Notificaciones -->
+    <div class="notifications" id="notifications"></div>
 
-
+    <script src="{{ url_for('static', filename='js/estudiantes/comunicaciones.js') }}"></script>
 </body>
 </html>

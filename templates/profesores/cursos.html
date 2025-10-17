@@ -1,0 +1,26 @@
+{% extends "profesores/base.html" %}
+
+{% block title %}Mis Cursos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4">Mis Cursos</h2>
+
+    {% if cursos and cursos|length > 0 %}
+    <div class="list-group">
+        {% for curso in cursos %}
+        <a href="{{ url_for('profesor.gestion_lc') }}" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ curso.nombreCurso or curso.nombre or 'Sin nombre' }}</h5>
+                <small>{{ curso.sede.nombre if curso.sede else 'Sin sede' }}</small>
+            </div>
+            <p class="mb-1">Estudiantes: {{ curso.total_estudiantes if curso.total_estudiantes is defined else 0 }}</p>
+            <small>ID: {{ curso.id_curso or curso.id or 'N/A' }}</small>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No tienes cursos asignados.</p>
+    {% endif %}
+</div>
+{% endblock %}
