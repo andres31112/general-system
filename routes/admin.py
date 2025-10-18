@@ -3240,18 +3240,52 @@ def reportes_calificaciones():
 @login_required
 @role_required(1)
 def api_obtener_reportes():
-    """API para obtener todos los reportes de calificaciones."""
+    """API para obtener reportes de calificaciones con paginación y filtros."""
     try:
-        # Obtener todos los reportes ordenados por fecha de generación (más recientes primero)
-        reportes = db.session.query(ReporteCalificaciones).order_by(
-            ReporteCalificaciones.fecha_generacion.desc()
-        ).all()
+        # Parámetros de paginación
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        estado = request.args.get('estado', '', type=str)
+        curso = request.args.get('curso', '', type=str)
+        profesor = request.args.get('profesor', '', type=str)
         
-        reportes_data = [reporte.to_dict() for reporte in reportes]
+        # Construir consulta base
+        query = db.session.query(ReporteCalificaciones)
+        
+        # Aplicar filtros
+        if estado:
+            query = query.filter(ReporteCalificaciones.estado == estado)
+        if curso:
+            query = query.filter(ReporteCalificaciones.nombre_curso.ilike(f'%{curso}%'))
+        if profesor:
+            query = query.join(Usuario, ReporteCalificaciones.profesor_id == Usuario.id_usuario)
+            query = query.filter(Usuario.nombre_completo.ilike(f'%{profesor}%'))
+        
+        # Ordenar por fecha de generación (más recientes primero)
+        query = query.order_by(ReporteCalificaciones.fecha_generacion.desc())
+        
+        # Aplicar paginación
+        pagination = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        
+        reportes_data = [reporte.to_dict() for reporte in pagination.items]
         
         return jsonify({
             'success': True,
-            'reportes': reportes_data
+            'reportes': reportes_data,
+            'pagination': {
+                'page': pagination.page,
+                'pages': pagination.pages,
+                'per_page': pagination.per_page,
+                'total': pagination.total,
+                'has_next': pagination.has_next,
+                'has_prev': pagination.has_prev,
+                'next_num': pagination.next_num,
+                'prev_num': pagination.prev_num
+            }
         })
         
     except Exception as e:
@@ -3259,6 +3293,682 @@ def api_obtener_reportes():
             'success': False,
             'message': f'Error obteniendo reportes: {str(e)}'
         }), 500
+
+@admin_bp.route('/api/enviar-comunicado-profesor', methods=['POST'])
+@login_required
+@role_required(1)
+def api_enviar_comunicado_profesor():
+    """API para enviar comunicado del admin al profesor sobre un reporte."""
+    try:
+        data = request.get_json()
+        profesor_id = data.get('profesor_id')
+        reporte_id = data.get('reporte_id')
+        asunto = data.get('asunto')
+        mensaje = data.get('mensaje')
+        
+        if not all([profesor_id, reporte_id, asunto, mensaje]):
+            return jsonify({
+                'success': False,
+                'message': 'Faltan campos requeridos'
+            }), 400
+        
+        # Verificar que el reporte existe
+        reporte = ReporteCalificaciones.query.get(reporte_id)
+        if not reporte:
+            return jsonify({
+                'success': False,
+                'message': 'Reporte no encontrado'
+            }), 404
+        
+        # Verificar que el profesor existe
+        profesor = Usuario.query.get(profesor_id)
+        if not profesor:
+            return jsonify({
+                'success': False,
+                'message': 'Profesor no encontrado'
+            }), 404
+        
+        # Crear el comunicado
+        from controllers.models import Comunicacion
+        comunicado = Comunicacion(
+            remitente_id=current_user.id_usuario,
+            destinatario_id=profesor_id,
+            asunto=f"[Reporte de Calificaciones] {asunto}",
+            mensaje=f"Reporte: {reporte.nombre_curso} - {reporte.nombre_asignatura}\n\n{mensaje}",
+            estado='inbox'
+        )
+        
+        db.session.add(comunicado)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Comunicado enviado correctamente',
+            'comunicado_id': comunicado.id_comunicacion
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error enviando comunicado: {str(e)}'
+        }), 500
+
+# ==================== COMUNICACIONES PARA ADMINISTRADORES ====================
+
+@admin_bp.route('/comunicaciones')
+@login_required
+@role_required(1)
+def comunicaciones():
+    """Página de comunicaciones para administradores."""
+    return render_template('admin/comunicaciones.html')
+
+@admin_bp.route('/api/comunicaciones', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_comunicaciones():
+    """API para obtener comunicaciones del administrador."""
+    try:
+        folder = request.args.get('folder', 'inbox')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))  # Reducido para mejor rendimiento
+        
+        # Obtener comunicaciones según la carpeta con paginación
+        if folder == 'inbox':
+            # Comunicaciones recibidas (donde el admin es destinatario)
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.destinatario_id == current_user.id_usuario,
+                Comunicacion.estado == 'inbox'
+            ).order_by(Comunicacion.fecha_envio.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            ).items
+            
+            # Convertir a diccionarios de manera más eficiente
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'recibida'
+                })
+                
+        elif folder == 'sent':
+            # Comunicaciones enviadas (donde el admin es remitente)
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado.in_(['inbox', 'sent'])
+            ).order_by(Comunicacion.fecha_envio.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            ).items
+            
+            # Agrupar comunicaciones por grupo_id (como Gmail)
+            grupos = {}
+            for com in comunicaciones:
+                grupo_key = com.grupo_id or f"individual_{com.id_comunicacion}"
+                if grupo_key not in grupos:
+                    grupos[grupo_key] = {
+                        'id': com.id_comunicacion,
+                        'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                        'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                        'remitente_email': com.remitente.correo if com.remitente else '',
+                        'asunto': com.asunto,
+                        'mensaje': com.mensaje,
+                        'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                        'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                        'estado': com.estado,
+                        'tipo': 'enviada',
+                        'destinatarios': [],
+                        'destinatarios_count': 0
+                    }
+                
+                # Agregar destinatario al grupo
+                destinatario_info = {
+                    'nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'email': com.destinatario.correo if com.destinatario else '',
+                    'id': com.destinatario.id_usuario if com.destinatario else None
+                }
+                grupos[grupo_key]['destinatarios'].append(destinatario_info)
+                grupos[grupo_key]['destinatarios_count'] += 1
+            
+            # Convertir grupos a lista
+            comunicaciones_data = []
+            for grupo in grupos.values():
+                # Crear texto de destinatarios múltiples
+                if grupo['destinatarios_count'] > 1:
+                    grupo['destinatario'] = f"{grupo['destinatarios'][0]['nombre']} y {grupo['destinatarios_count'] - 1} más"
+                    grupo['destinatario_nombre'] = grupo['destinatario']
+                else:
+                    grupo['destinatario'] = grupo['destinatarios'][0]['nombre']
+                    grupo['destinatario_nombre'] = grupo['destinatario']
+                
+                comunicaciones_data.append(grupo)
+                
+        elif folder == 'draft':
+            # Borradores del admin
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado == 'draft'
+            ).order_by(Comunicacion.fecha_envio.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            ).items
+            
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'borrador'
+                })
+                
+        elif folder == 'deleted':
+            # Comunicaciones eliminadas
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado == 'deleted'
+            ).order_by(Comunicacion.fecha_envio.desc()).paginate(
+                page=page, per_page=per_page, error_out=False
+            ).items
+            
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'eliminada'
+                })
+        else:
+            return jsonify({'success': False, 'message': 'Carpeta no válida'}), 400
+
+        return jsonify({
+            'success': True,
+            'recibidas': comunicaciones_data if folder == 'inbox' else [],
+            'enviadas': comunicaciones_data if folder == 'sent' else [],
+            'data': comunicaciones_data if folder in ['draft', 'deleted'] else []
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo comunicaciones: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo comunicaciones: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones', methods=['POST'])
+@login_required
+@role_required(1)
+def api_enviar_comunicacion():
+    """API para enviar comunicaciones del administrador."""
+    try:
+        data = request.get_json()
+        recipient_type = data.get('recipient_type')
+        recipient_types = data.get('recipient_types') or []
+        to_email = data.get('to')
+        asunto = data.get('asunto')
+        mensaje = data.get('mensaje')
+        
+        if not all([asunto, mensaje]):
+            return jsonify({
+                'success': False,
+                'message': 'Faltan campos requeridos'
+            }), 400
+        
+        # Determinar destinatarios según el tipo (soporta múltiples)
+        destinatarios = []
+        tipos = []
+        if isinstance(recipient_types, list) and len(recipient_types) > 0:
+            tipos = recipient_types
+        elif isinstance(recipient_type, str) and recipient_type:
+            tipos = [recipient_type]
+        
+        if 'all' in tipos:
+            # Enviar a todos los usuarios activos
+            destinatarios = Usuario.query.filter_by(estado_cuenta='activa').all()
+        elif len(tipos) > 0:
+            # Construir conjunto de destinatarios según roles múltiples
+            usuarios_set = set()
+            if 'profesores' in tipos:
+                rol_profesor = Rol.query.filter_by(nombre='Profesor').first()
+                if rol_profesor:
+                    for u in Usuario.query.filter_by(id_rol_fk=rol_profesor.id_rol, estado_cuenta='activa').all():
+                        usuarios_set.add(u)
+            if 'estudiantes' in tipos:
+                rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+                if rol_estudiante:
+                    for u in Usuario.query.filter_by(id_rol_fk=rol_estudiante.id_rol, estado_cuenta='activa').all():
+                        usuarios_set.add(u)
+            if 'padres' in tipos:
+                rol_padre = Rol.query.filter_by(nombre='Padre').first()
+                if rol_padre:
+                    for u in Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol, estado_cuenta='activa').all():
+                        usuarios_set.add(u)
+            if 'specific' in tipos and to_email:
+                destinatario = Usuario.query.filter_by(correo=to_email).first()
+                if destinatario:
+                    usuarios_set.add(destinatario)
+            destinatarios = list(usuarios_set)
+        elif recipient_type == 'profesores':
+            # Enviar solo a profesores
+            rol_profesor = Rol.query.filter_by(nombre='Profesor').first()
+            if rol_profesor:
+                destinatarios = Usuario.query.filter_by(id_rol_fk=rol_profesor.id_rol, estado_cuenta='activa').all()
+        elif recipient_type == 'estudiantes':
+            # Enviar solo a estudiantes
+            rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+            if rol_estudiante:
+                destinatarios = Usuario.query.filter_by(id_rol_fk=rol_estudiante.id_rol, estado_cuenta='activa').all()
+        elif recipient_type == 'padres':
+            # Enviar solo a padres
+            rol_padre = Rol.query.filter_by(nombre='Padre').first()
+            if rol_padre:
+                destinatarios = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol, estado_cuenta='activa').all()
+        elif recipient_type == 'specific' and to_email:
+            # Enviar a usuario específico
+            destinatario = Usuario.query.filter_by(correo=to_email).first()
+            if destinatario:
+                destinatarios = [destinatario]
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': 'Usuario destinatario no encontrado'
+                }), 404
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Tipo de destinatario no válido'
+            }), 400
+        
+        if not destinatarios:
+            return jsonify({
+                'success': False,
+                'message': 'No se encontraron destinatarios válidos'
+            }), 404
+        
+        # Crear comunicaciones para cada destinatario (excluyendo al remitente)
+        import uuid
+        grupo_id = str(uuid.uuid4())  # ID único para agrupar este envío
+        comunicaciones_creadas = []
+        
+        for destinatario in destinatarios:
+            # Evitar que el administrador reciba sus propios comunicados
+            if destinatario.id_usuario != current_user.id_usuario:
+                nueva_comunicacion = Comunicacion(
+                    remitente_id=current_user.id_usuario,
+                    destinatario_id=destinatario.id_usuario,
+                    asunto=asunto,
+                    mensaje=mensaje,
+                    estado='inbox',
+                    grupo_id=grupo_id
+                )
+                db.session.add(nueva_comunicacion)
+                comunicaciones_creadas.append(nueva_comunicacion)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Mensaje enviado a {len(destinatarios)} destinatario(s)',
+            'destinatarios_count': len(destinatarios)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error enviando comunicación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error enviando comunicación: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones/cleanup', methods=['POST'])
+@login_required
+@role_required(1)
+def api_cleanup_comunicaciones_admin():
+    """API para limpiar comunicaciones automáticamente (admin)."""
+    try:
+        from controllers.models import Comunicacion
+        from datetime import datetime, timedelta
+        
+        # Fecha actual
+        now = datetime.utcnow()
+        
+        # Mensajes de más de 1 mes (30 días) - mover a papelera
+        one_month_ago = now - timedelta(days=30)
+        
+        # Mensajes de más de 2 meses (60 días) en papelera - eliminar permanentemente
+        two_months_ago = now - timedelta(days=60)
+        
+        # Mover mensajes antiguos a papelera
+        mensajes_a_papelera = Comunicacion.query.filter(
+            Comunicacion.estado.in_(['inbox', 'sent', 'draft']),
+            Comunicacion.fecha_envio < one_month_ago
+        ).all()
+        
+        moved_to_trash = 0
+        for mensaje in mensajes_a_papelera:
+            mensaje.estado = 'deleted'
+            moved_to_trash += 1
+        
+        # Eliminar permanentemente mensajes muy antiguos en papelera
+        mensajes_a_eliminar = Comunicacion.query.filter(
+            Comunicacion.estado == 'deleted',
+            Comunicacion.fecha_envio < two_months_ago
+        ).all()
+        
+        permanently_deleted = 0
+        for mensaje in mensajes_a_eliminar:
+            db.session.delete(mensaje)
+            permanently_deleted += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Limpieza completada: {moved_to_trash} mensajes movidos a papelera, {permanently_deleted} eliminados permanentemente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error en limpieza automática: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones/<int:comunicacion_id>/marcar-leida', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_marcar_comunicacion_leida(comunicacion_id):
+    """API para marcar una comunicación como leída."""
+    try:
+        comunicacion = Comunicacion.query.get(comunicacion_id)
+        
+        if not comunicacion:
+            return jsonify({
+                'success': False,
+                'message': 'Comunicación no encontrada'
+            }), 404
+        
+        if comunicacion.destinatario_id != current_user.id_usuario:
+            return jsonify({
+                'success': False,
+                'message': 'No tienes permisos para esta comunicación'
+            }), 403
+        
+        comunicacion.estado = 'sent'  # Cambiar de 'inbox' a 'sent' para indicar que fue leída
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Comunicación marcada como leída'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error marcando comunicación: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones/<int:comunicacion_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_comunicacion(comunicacion_id):
+    """API para eliminar una comunicación."""
+    try:
+        comunicacion = Comunicacion.query.get(comunicacion_id)
+        
+        if not comunicacion:
+            return jsonify({
+                'success': False,
+                'message': 'Comunicación no encontrada'
+            }), 404
+        
+        # Verificar permisos: remitente o destinatario pueden eliminar
+        if (comunicacion.remitente_id != current_user.id_usuario and 
+            comunicacion.destinatario_id != current_user.id_usuario):
+            return jsonify({
+                'success': False,
+                'message': 'No tienes permisos para eliminar esta comunicación'
+            }), 403
+        
+        # Si ya está en papelera, eliminar permanentemente
+        if comunicacion.estado == 'deleted':
+            db.session.delete(comunicacion)
+            message = 'Comunicación eliminada permanentemente'
+        else:
+            # Marcar como eliminada en lugar de eliminar físicamente
+            comunicacion.estado = 'deleted'
+            message = 'Comunicación movida a papelera'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando comunicación: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones/bulk-delete', methods=['POST'])
+@login_required
+@role_required(1)
+def api_eliminar_solicitudes_masivas():
+    """API para eliminar múltiples comunicaciones."""
+    try:
+        data = request.get_json()
+        comunicacion_ids = data.get('ids', [])
+        
+        if not comunicacion_ids:
+            return jsonify({
+                'success': False,
+                'message': 'No se proporcionaron IDs de comunicaciones'
+            }), 400
+        
+        # Verificar que todas las comunicaciones pertenecen al usuario actual
+        comunicaciones = Comunicacion.query.filter(
+            Comunicacion.id_comunicacion.in_(comunicacion_ids),
+            db.or_(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.destinatario_id == current_user.id_usuario
+            )
+        ).all()
+        
+        if len(comunicaciones) != len(comunicacion_ids):
+            return jsonify({
+                'success': False,
+                'message': 'Algunas comunicaciones no se encontraron o no tienes permisos'
+            }), 403
+        
+        # Eliminar comunicaciones
+        eliminadas = 0
+        movidas_a_papelera = 0
+        
+        for comunicacion in comunicaciones:
+            if comunicacion.estado == 'deleted':
+                # Eliminar permanentemente si ya está en papelera
+                db.session.delete(comunicacion)
+                eliminadas += 1
+            else:
+                # Mover a papelera
+                comunicacion.estado = 'deleted'
+                movidas_a_papelera += 1
+        
+        db.session.commit()
+        
+        mensaje = []
+        if movidas_a_papelera > 0:
+            mensaje.append(f'{movidas_a_papelera} comunicación(es) movida(s) a papelera')
+        if eliminadas > 0:
+            mensaje.append(f'{eliminadas} comunicación(es) eliminada(s) permanentemente')
+        
+        return jsonify({
+            'success': True,
+            'message': '; '.join(mensaje)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando comunicaciones: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones/<int:comunicacion_id>/restore', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_restaurar_comunicacion(comunicacion_id):
+    """API para restaurar una comunicación desde la papelera."""
+    try:
+        comunicacion = Comunicacion.query.get(comunicacion_id)
+        
+        if not comunicacion:
+            return jsonify({
+                'success': False,
+                'message': 'Comunicación no encontrada'
+            }), 404
+        
+        # Verificar permisos: remitente o destinatario pueden restaurar
+        if (comunicacion.remitente_id != current_user.id_usuario and 
+            comunicacion.destinatario_id != current_user.id_usuario):
+            return jsonify({
+                'success': False,
+                'message': 'No tienes permisos para restaurar esta comunicación'
+            }), 403
+        
+        # Restaurar el email cambiando su estado a 'inbox'
+        comunicacion.estado = 'inbox'
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Comunicación restaurada'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error restaurando comunicación: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/comunicaciones/draft', methods=['POST'])
+@login_required
+@role_required(1)
+def api_guardar_borrador():
+    """API para guardar un borrador de comunicación."""
+    try:
+        data = request.get_json()
+        to_email = data.get('to')
+        asunto = data.get('asunto')
+        mensaje = data.get('mensaje')
+        
+        if not asunto and not mensaje:
+            return jsonify({
+                'success': False,
+                'message': 'No hay contenido para guardar como borrador'
+            }), 400
+        
+        # Buscar usuario destinatario si se especifica
+        destinatario_id = None
+        if to_email:
+            destinatario = Usuario.query.filter_by(correo=to_email).first()
+            if destinatario:
+                destinatario_id = destinatario.id_usuario
+        
+        # Crear borrador
+        borrador = Comunicacion(
+            remitente_id=current_user.id_usuario,
+            destinatario_id=destinatario_id or current_user.id_usuario,  # Si no hay destinatario, usar admin
+            asunto=asunto or '(Sin asunto)',
+            mensaje=mensaje or '',
+            estado='draft'
+        )
+        
+        db.session.add(borrador)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Borrador guardado correctamente',
+            'id': borrador.id_comunicacion
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error guardando borrador: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/usuarios/buscar')
+@login_required
+@role_required(1)
+def api_buscar_usuarios():
+    """API para buscar usuarios para el autocompletado."""
+    try:
+        query = request.args.get('q', '').strip()
+        
+        if len(query) < 2:
+            return jsonify([])
+        
+        # Buscar usuarios por nombre, apellido o correo
+        usuarios = Usuario.query.filter(
+            or_(
+                Usuario.nombre.contains(query),
+                Usuario.apellido.contains(query),
+                Usuario.correo.contains(query)
+            ),
+            Usuario.estado_cuenta == 'activa'
+        ).limit(10).all()
+        
+        usuarios_data = []
+        for usuario in usuarios:
+            usuarios_data.append({
+                'id': usuario.id_usuario,
+                'nombre': usuario.nombre_completo,
+                'email': usuario.correo,
+                'correo': usuario.correo,
+                'rol': usuario.rol_nombre
+            })
+        
+        return jsonify(usuarios_data)
+        
+    except Exception as e:
+        print(f"Error buscando usuarios: {str(e)}")
+        return jsonify([]), 500
 
 @admin_bp.route('/api/reportes-calificaciones/<int:reporte_id>/estado', methods=['PUT'])
 @login_required

@@ -90,8 +90,8 @@ class Usuario(db.Model, UserMixin):
     votos_realizados = db.relationship('Voto', back_populates='estudiante')
     
     # Relación con comunicaciones
-    mensajes_enviados = db.relationship('Comunicacion', foreign_keys='Comunicacion.remitente_id', back_populates='remitente')
-    mensajes_recibidos = db.relationship('Comunicacion', foreign_keys='Comunicacion.destinatario_id', back_populates='destinatario')
+    mensajes_enviados = db.relationship('Comunicacion', foreign_keys='Comunicacion.remitente_id', back_populates='remitente', overlaps="comunicaciones_enviadas")
+    mensajes_recibidos = db.relationship('Comunicacion', foreign_keys='Comunicacion.destinatario_id', back_populates='destinatario', overlaps="comunicaciones_recibidas")
 
     @property
     def nombre_completo(self):
@@ -273,9 +273,14 @@ class Asistencia(db.Model):
 class ConfiguracionCalificacion(db.Model):
     __tablename__ = 'configuracion_calificacion'
     id_configuracion = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=True)  # NULL para configuración global
     notaMinima = db.Column(db.Numeric(5,2), nullable=False)
     notaMaxima = db.Column(db.Numeric(5,2), nullable=False)
     notaMinimaAprobacion = db.Column(db.Numeric(5,2), nullable=False)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    asignatura = db.relationship('Asignatura', foreign_keys=[asignatura_id])
 
     def __repr__(self):
         return f'<ConfiguracionCalificacion {self.notaMinimaAprobacion}>'
@@ -653,6 +658,7 @@ class Comunicacion(db.Model):
     mensaje = db.Column(db.Text)
     fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(db.String(20), default='inbox')  # inbox, sent, draft, deleted
+    grupo_id = db.Column(db.String(100), nullable=True)  # Para agrupar comunicados como Gmail
     
     # Relaciones
     remitente = db.relationship('Usuario', foreign_keys=[remitente_id], backref='comunicaciones_enviadas')

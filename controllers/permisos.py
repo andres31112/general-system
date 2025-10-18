@@ -10,7 +10,7 @@ ROLE_PERMISSIONS = {
     # permisos para el rol profesor
     'Profesor': [
         'ver_calificaciones_propias', 'ver_horario_clases', 'ver_lista_estudiantes',
-        'registrar_calificaciones', 'gestion_comunicados_profesor'
+        'registrar_calificaciones', 'gestion_comunicados_profesor', 'gestion_comunicaciones'
     ],
     # permisos para el rol estudiante
     'Estudiante': [
@@ -21,6 +21,6 @@ ROLE_PERMISSIONS = {
     # permisos para el rol padre
     'Padre': [
         'ver_calificaciones_hijo', 'ver_horario_hijo', 'ver_comunicaciones_padre',
-        'acceso_soporte'
+        'gestion_comunicaciones', 'acceso_soporte'
     ]
 }

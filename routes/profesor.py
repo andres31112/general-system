@@ -1308,6 +1308,410 @@ def comunicaciones():
     """Página para ver y enviar comunicaciones a estudiantes y padres."""
     return render_template('profesores/comunicaciones.html')
 
+@profesor_bp.route('/api/comunicaciones', methods=['GET'])
+@login_required
+def api_obtener_comunicaciones():
+    """API para obtener comunicaciones del profesor."""
+    try:
+        from controllers.models import Comunicacion
+        
+        folder = request.args.get('folder', 'inbox')
+        
+        # Obtener comunicaciones según la carpeta
+        if folder == 'inbox':
+            # Comunicaciones recibidas (donde el profesor es destinatario)
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.destinatario_id == current_user.id_usuario,
+                Comunicacion.estado == 'inbox'
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
+            
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'recibida'
+                })
+                
+        elif folder == 'sent':
+            # Comunicaciones enviadas (donde el profesor es remitente)
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado.in_(['inbox', 'sent'])
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
+            
+            # Agrupar comunicaciones por grupo_id (como Gmail)
+            grupos = {}
+            for com in comunicaciones:
+                grupo_key = com.grupo_id or f"individual_{com.id_comunicacion}"
+                if grupo_key not in grupos:
+                    grupos[grupo_key] = {
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                        'tipo': 'enviada',
+                        'destinatarios': [],
+                        'destinatarios_count': 0
+                    }
+                
+                # Agregar destinatario al grupo
+                destinatario_info = {
+                    'nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'email': com.destinatario.correo if com.destinatario else '',
+                    'id': com.destinatario.id_usuario if com.destinatario else None
+                }
+                grupos[grupo_key]['destinatarios'].append(destinatario_info)
+                grupos[grupo_key]['destinatarios_count'] += 1
+            
+            # Convertir grupos a lista
+            comunicaciones_data = []
+            for grupo in grupos.values():
+                # Crear texto de destinatarios múltiples
+                if grupo['destinatarios_count'] > 1:
+                    grupo['destinatario'] = f"{grupo['destinatarios'][0]['nombre']} y {grupo['destinatarios_count'] - 1} más"
+                    grupo['destinatario_nombre'] = grupo['destinatario']
+                else:
+                    grupo['destinatario'] = grupo['destinatarios'][0]['nombre']
+                    grupo['destinatario_nombre'] = grupo['destinatario']
+                
+                comunicaciones_data.append(grupo)
+                
+        elif folder == 'draft':
+            # Borradores
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado == 'draft'
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
+            
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'borrador'
+                })
+                
+        elif folder == 'deleted':
+            # Comunicaciones eliminadas
+            comunicaciones = db.session.query(Comunicacion).filter(
+                (Comunicacion.remitente_id == current_user.id_usuario) |
+                (Comunicacion.destinatario_id == current_user.id_usuario),
+                Comunicacion.estado == 'deleted'
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
+            
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'eliminada'
+                })
+        else:
+            comunicaciones_data = []
+        
+        # Estandarizar respuesta según la estructura del admin
+        return jsonify({
+            'success': True,
+            'recibidas': comunicaciones_data if folder == 'inbox' else [],
+            'enviadas': comunicaciones_data if folder == 'sent' else [],
+            'data': comunicaciones_data if folder in ['draft', 'deleted'] else []
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo comunicaciones: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/comunicaciones/<int:comunicacion_id>/marcar-leida', methods=['PUT'])
+@login_required
+def api_marcar_comunicacion_leida(comunicacion_id):
+    """API para marcar una comunicación como leída."""
+    try:
+        from controllers.models import Comunicacion
+        
+        comunicacion = Comunicacion.query.filter_by(
+            id_comunicacion=comunicacion_id,
+            destinatario_id=current_user.id_usuario
+        ).first()
+        
+        if not comunicacion:
+            return jsonify({
+                'success': False,
+                'message': 'Comunicación no encontrada'
+            }), 404
+        
+        comunicacion.estado = 'sent'  # Cambiar de 'inbox' a 'sent' para indicar que fue leída
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Comunicación marcada como leída'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error marcando comunicación: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/comunicaciones', methods=['POST'])
+@login_required
+def api_enviar_comunicacion():
+    """API para enviar comunicaciones del profesor."""
+    try:
+        from controllers.models import Comunicacion
+        
+        data = request.get_json()
+        to_email = data.get('to')
+        asunto = data.get('asunto')
+        mensaje = data.get('mensaje')
+        
+        if not all([to_email, asunto, mensaje]):
+            return jsonify({
+                'success': False,
+                'message': 'Faltan campos requeridos'
+            }), 400
+        
+        # Buscar usuario destinatario por correo
+        destinatario = Usuario.query.filter_by(correo=to_email).first()
+        
+        if not destinatario:
+            return jsonify({
+                'success': False,
+                'message': 'Usuario destinatario no encontrado'
+            }), 404
+        
+        # Crear comunicación
+        nueva_comunicacion = Comunicacion(
+            remitente_id=current_user.id_usuario,
+            destinatario_id=destinatario.id_usuario,
+            asunto=asunto,
+            mensaje=mensaje,
+            estado='inbox'
+        )
+        
+        db.session.add(nueva_comunicacion)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Mensaje enviado correctamente',
+            'id': nueva_comunicacion.id_comunicacion
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error enviando comunicación: {str(e)}'
+        }), 500
+@profesor_bp.route('/api/comunicaciones/cleanup', methods=['POST'])
+@login_required
+def api_cleanup_comunicaciones():
+    """API para limpiar comunicaciones automáticamente."""
+    try:
+        from controllers.models import Comunicacion
+        from datetime import datetime, timedelta
+        
+        # Fecha actual
+        now = datetime.utcnow()
+        
+        # Mensajes de más de 1 mes (30 días) - mover a papelera
+        one_month_ago = now - timedelta(days=30)
+        
+        # Mensajes de más de 2 meses (60 días) en papelera - eliminar permanentemente
+        two_months_ago = now - timedelta(days=60)
+        
+        # Mover mensajes antiguos a papelera
+        mensajes_a_papelera = Comunicacion.query.filter(
+            Comunicacion.estado.in_(['inbox', 'sent', 'draft']),
+            Comunicacion.fecha_envio < one_month_ago
+        ).all()
+        
+        moved_to_trash = 0
+        for mensaje in mensajes_a_papelera:
+            mensaje.estado = 'deleted'
+            moved_to_trash += 1
+        
+        # Eliminar permanentemente mensajes muy antiguos en papelera
+        mensajes_a_eliminar = Comunicacion.query.filter(
+            Comunicacion.estado == 'deleted',
+            Comunicacion.fecha_envio < two_months_ago
+        ).all()
+        
+        permanently_deleted = 0
+        for mensaje in mensajes_a_eliminar:
+            db.session.delete(mensaje)
+            permanently_deleted += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Limpieza completada: {moved_to_trash} mensajes movidos a papelera, {permanently_deleted} eliminados permanentemente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error en limpieza automática: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/comunicaciones/draft', methods=['POST'])
+@login_required
+def api_guardar_borrador():
+    """API para guardar borradores de comunicaciones."""
+    try:
+        from controllers.models import Comunicacion
+        
+        data = request.get_json()
+        to_email = data.get('to', '')
+        asunto = data.get('asunto', '(Sin asunto)')
+        mensaje = data.get('mensaje', '')
+        
+        # Crear borrador (sin destinatario específico)
+        borrador = Comunicacion(
+            remitente_id=current_user.id_usuario,
+            destinatario_id=current_user.id_usuario,  # Auto-enviado como borrador
+            asunto=asunto,
+            mensaje=mensaje,
+            estado='draft'
+        )
+        
+        db.session.add(borrador)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Borrador guardado correctamente',
+            'id': borrador.id_comunicacion
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error guardando borrador: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/comunicaciones/<int:comunicacion_id>', methods=['DELETE'])
+@login_required
+def api_eliminar_comunicacion(comunicacion_id):
+    """API para eliminar una comunicación."""
+    try:
+        from controllers.models import Comunicacion
+        
+        comunicacion = Comunicacion.query.filter_by(
+            id_comunicacion=comunicacion_id
+        ).filter(
+            (Comunicacion.remitente_id == current_user.id_usuario) |
+            (Comunicacion.destinatario_id == current_user.id_usuario)
+        ).first()
+        
+        if not comunicacion:
+            return jsonify({
+                'success': False,
+                'message': 'Comunicación no encontrada'
+            }), 404
+        
+        # Si ya está en papelera, eliminar permanentemente
+        if comunicacion.estado == 'deleted':
+            db.session.delete(comunicacion)
+            message = 'Comunicación eliminada permanentemente'
+        else:
+            # Marcar como eliminada en lugar de eliminar físicamente
+            comunicacion.estado = 'deleted'
+            message = 'Comunicación movida a papelera'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando comunicación: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/usuarios/buscar', methods=['GET'])
+@login_required
+def api_buscar_usuarios():
+    """API para buscar usuarios por nombre o email."""
+    try:
+        query = request.args.get('q', '').strip()
+        
+        if len(query) < 2:
+            return jsonify([])
+        
+        # Buscar usuarios que coincidan con el query
+        usuarios = Usuario.query.filter(
+            (Usuario.nombre.ilike(f'%{query}%')) |
+            (Usuario.apellido.ilike(f'%{query}%')) |
+            (Usuario.correo.ilike(f'%{query}%'))
+        ).limit(10).all()
+        
+        usuarios_data = []
+        for usuario in usuarios:
+            usuarios_data.append({
+                'id': usuario.id_usuario,
+                'nombre': usuario.nombre_completo,
+                'email': usuario.correo,
+                'rol': usuario.rol_nombre
+            })
+        
+        return jsonify(usuarios_data)
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Error buscando usuarios: {str(e)}'
+        }), 500
+
 @profesor_bp.route('/cursos')
 @login_required
 def cursos():
@@ -2040,16 +2444,43 @@ def api_dashboard_resumen():
 @profesor_bp.route('/api/configuracion-calificaciones', methods=['GET', 'POST'])
 @login_required
 def api_configuracion_calificaciones():
-    """GET: devuelve la configuración (única fila esperada)
+    """GET: devuelve la configuración específica de la asignatura o global
        POST: crea o actualiza la configuración con payload { notaMinima, notaMaxima, notaMinimaAprobacion }
     """
     try:
+        asignatura_id = session.get('asignatura_seleccionada')
+        
         if request.method == 'GET':
-            cfg = ConfiguracionCalificacion.query.first()
+            # Buscar configuración específica de la asignatura primero
+            cfg = None
+            if asignatura_id:
+                cfg = ConfiguracionCalificacion.query.filter_by(asignatura_id=asignatura_id).first()
+            
+            # Si no hay configuración específica, usar la global
+            if not cfg:
+                cfg = ConfiguracionCalificacion.query.filter_by(asignatura_id=None).first()
+            
             if not cfg:
                 # valores por defecto
-                return jsonify({'success': True, 'configuracion': {'notaMinima': 0, 'notaMaxima': 100, 'notaMinimaAprobacion': 60}})
-            return jsonify({'success': True, 'configuracion': {'notaMinima': float(cfg.notaMinima), 'notaMaxima': float(cfg.notaMaxima), 'notaMinimaAprobacion': float(cfg.notaMinimaAprobacion)}})
+                return jsonify({
+                    'success': True, 
+                    'configuracion': {
+                        'notaMinima': 0, 
+                        'notaMaxima': 100, 
+                        'notaMinimaAprobacion': 60,
+                        'es_especifica': False
+                    }
+                })
+            
+            return jsonify({
+                'success': True, 
+                'configuracion': {
+                    'notaMinima': float(cfg.notaMinima), 
+                    'notaMaxima': float(cfg.notaMaxima), 
+                    'notaMinimaAprobacion': float(cfg.notaMinimaAprobacion),
+                    'es_especifica': cfg.asignatura_id is not None
+                }
+            })
 
         # POST: upsert
         data = request.get_json() or {}
@@ -2057,16 +2488,32 @@ def api_configuracion_calificaciones():
         notaMaxima = data.get('notaMaxima', 100)
         notaMinimaAprobacion = data.get('notaMinimaAprobacion', 60)
 
-        cfg = ConfiguracionCalificacion.query.first()
-        if cfg:
-            cfg.notaMinima = notaMinima
-            cfg.notaMaxima = notaMaxima
-            cfg.notaMinimaAprobacion = notaMinimaAprobacion
-        else:
-            cfg = ConfiguracionCalificacion(notaMinima=notaMinima, notaMaxima=notaMaxima, notaMinimaAprobacion=notaMinimaAprobacion)
+        # Validar rangos
+        if notaMinima >= notaMaxima:
+            return jsonify({'success': False, 'message': 'La nota mínima debe ser menor que la máxima'}), 400
+        
+        if notaMinimaAprobacion < notaMinima or notaMinimaAprobacion > notaMaxima:
+            return jsonify({'success': False, 'message': 'La nota de aprobación debe estar entre la mínima y máxima'}), 400
+
+        # Obtener o crear configuración específica de la asignatura
+        cfg = None
+        if asignatura_id:
+            cfg = ConfiguracionCalificacion.query.filter_by(asignatura_id=asignatura_id).first()
+        
+        if not cfg:
+            cfg = ConfiguracionCalificacion(asignatura_id=asignatura_id)
             db.session.add(cfg)
+        
+        cfg.notaMinima = notaMinima
+        cfg.notaMaxima = notaMaxima
+        cfg.notaMinimaAprobacion = notaMinimaAprobacion
+        
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Configuración guardada'})
+        return jsonify({
+            'success': True, 
+            'message': 'Configuración guardada correctamente',
+            'es_especifica': cfg.asignatura_id is not None
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Error en configuración: {str(e)}'}), 500
@@ -2106,29 +2553,43 @@ def api_generar_reporte_calificaciones():
         if not estudiantes:
             return jsonify({'success': False, 'message': 'No hay estudiantes en este curso'}), 400
 
-        # Obtener configuración de calificaciones
-        config_calificaciones = ConfiguracionCalificacion.query.first()
+        # Obtener configuración de calificaciones específica por asignatura
+        # Si no existe configuración específica, usar la global
+        config_calificaciones = ConfiguracionCalificacion.query.filter_by(
+            asignatura_id=asignatura_id
+        ).first()
+        
+        if not config_calificaciones:
+            config_calificaciones = ConfiguracionCalificacion.query.first()
+        
         configuracion_notas = {
             'nota_minima': float(config_calificaciones.notaMinima) if config_calificaciones else 0,
             'nota_maxima': float(config_calificaciones.notaMaxima) if config_calificaciones else 100,
             'nota_aprobacion': float(config_calificaciones.notaMinimaAprobacion) if config_calificaciones else 60
         }
 
-        # Obtener categorías de calificaciones
-        categorias = db.session.query(CategoriaCalificacion).all()
+        # Obtener categorías de calificaciones específicas de esta asignatura
+        # Primero obtener las categorías que se usan en esta asignatura
+        categorias_usadas = db.session.query(CategoriaCalificacion).join(
+            Calificacion, Calificacion.categoriaId == CategoriaCalificacion.id_categoria
+        ).filter(
+            Calificacion.asignaturaId == asignatura_id
+        ).distinct().all()
+        
         categorias_info = [{
             'id': cat.id_categoria,
             'nombre': cat.nombre,
             'color': getattr(cat, 'color', '#cccccc'),
             'porcentaje': float(getattr(cat, 'porcentaje', 0))
-        } for cat in categorias]
+        } for cat in categorias_usadas]
 
         # Obtener todas las calificaciones únicas (asignaciones) para esta asignatura
         asignaciones_unicas = db.session.query(
             Calificacion.nombre_calificacion,
             Calificacion.categoriaId
         ).filter(
-            Calificacion.asignaturaId == asignatura_id
+            Calificacion.asignaturaId == asignatura_id,
+            Calificacion.nombre_calificacion.isnot(None)
         ).distinct().all()
 
         # Obtener calificaciones detalladas de cada estudiante
@@ -2142,15 +2603,19 @@ def api_generar_reporte_calificaciones():
                 Calificacion.asignaturaId == asignatura_id
             ).all()
             
-            # Organizar calificaciones por asignación
+            # Organizar calificaciones por asignación con detalles completos
             calificaciones_por_asignacion = {}
             for cal in calificaciones:
                 if cal.nombre_calificacion:
+                    categoria_info = next((cat for cat in categorias_info if cat['id'] == cal.categoriaId), None)
                     calificaciones_por_asignacion[cal.nombre_calificacion] = {
                         'valor': float(cal.valor) if cal.valor is not None else None,
                         'categoria_id': cal.categoriaId,
-                        'categoria_nombre': next((cat['nombre'] for cat in categorias_info if cat['id'] == cal.categoriaId), 'Sin categoría'),
-                        'observaciones': cal.observaciones or ''
+                        'categoria_nombre': categoria_info['nombre'] if categoria_info else 'Sin categoría',
+                        'categoria_color': categoria_info['color'] if categoria_info else '#cccccc',
+                        'categoria_porcentaje': categoria_info['porcentaje'] if categoria_info else 0,
+                        'observaciones': cal.observaciones or '',
+                        'fecha_registro': cal.fecha_registro.strftime('%Y-%m-%d %H:%M') if cal.fecha_registro else None
                     }
             
             # Calcular promedio del estudiante por categorías
@@ -2165,40 +2630,52 @@ def api_generar_reporte_calificaciones():
                 if valores_categoria:
                     promedios_por_categoria[cat_id] = {
                         'promedio': round(sum(valores_categoria) / len(valores_categoria), 2),
-                        'cantidad': len(valores_categoria)
+                        'cantidad': len(valores_categoria),
+                        'categoria_nombre': cat['nombre'],
+                        'categoria_color': cat['color'],
+                        'categoria_porcentaje': cat['porcentaje'],
+                        'valores': valores_categoria
                     }
                 else:
                     promedios_por_categoria[cat_id] = {
                         'promedio': 0,
-                        'cantidad': 0
+                        'cantidad': 0,
+                        'categoria_nombre': cat['nombre'],
+                        'categoria_color': cat['color'],
+                        'categoria_porcentaje': cat['porcentaje'],
+                        'valores': []
                     }
             
             # Calcular promedio ponderado final
             promedio_ponderado = 0
             total_porcentaje = 0
             for cat_id, datos in promedios_por_categoria.items():
-                cat_info = next((cat for cat in categorias_info if cat['id'] == cat_id), None)
-                if cat_info and datos['cantidad'] > 0:
-                    peso = cat_info['porcentaje'] / 100
+                if datos['cantidad'] > 0:
+                    peso = float(datos['categoria_porcentaje']) / 100
                     promedio_ponderado += datos['promedio'] * peso
-                    total_porcentaje += peso
+                    total_porcentaje += float(datos['categoria_porcentaje'])
             
-            if total_porcentaje > 0:
-                promedio_final = promedio_ponderado / total_porcentaje
-            else:
-                # Si no hay categorías, calcular promedio simple
-                valores = [float(c.valor) for c in calificaciones if c.valor is not None]
-                promedio_final = sum(valores) / len(valores) if valores else 0
+            # Ajustar si el total de porcentajes no es 100%
+            if total_porcentaje > 0 and total_porcentaje != 100:
+                promedio_ponderado = (promedio_ponderado / total_porcentaje) * 100
             
-            calificaciones_totales.append(promedio_final)
+            promedio_final = round(promedio_ponderado, 2)
+            estado = 'Aprobado' if promedio_final >= configuracion_notas['nota_aprobacion'] else 'Reprobado'
             
-            datos_estudiantes.append({
+            datos_estudiante = {
+                'id': estudiante.id_usuario,
                 'nombre': estudiante.nombre_completo,
-                'promedio_final': round(promedio_final, 2),
-                'calificaciones_detalladas': calificaciones_por_asignacion,
+                'correo': estudiante.correo,
+                'calificaciones_por_asignacion': calificaciones_por_asignacion,
                 'promedios_por_categoria': promedios_por_categoria,
-                'estado': 'Aprobado' if promedio_final >= configuracion_notas['nota_aprobacion'] else 'Reprobado'
-            })
+                'promedio_final': promedio_final,
+                'estado': estado,
+                'total_asignaciones': len(calificaciones_por_asignacion),
+                'asignaciones_completadas': len([c for c in calificaciones_por_asignacion.values() if c['valor'] is not None])
+            }
+            
+            datos_estudiantes.append(datos_estudiante)
+            calificaciones_totales.append(promedio_final)
 
         # Calcular estadísticas generales
         if calificaciones_totales:
@@ -2210,19 +2687,42 @@ def api_generar_reporte_calificaciones():
             nota_mas_alta = 0
             nota_mas_baja = 0
 
-        # Crear el reporte con información completa
+        # Crear el reporte con información completa y detallada
         reporte_data = {
-            'estudiantes': datos_estudiantes,
+            'metadatos': {
+                'profesor_id': current_user.id_usuario,
+                'profesor_nombre': current_user.nombre_completo,
+                'curso_id': curso_id,
+                'curso_nombre': curso.nombreCurso,
+                'asignatura_id': asignatura_id,
+                'asignatura_nombre': asignatura.nombre,
+                'fecha_generacion': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+                'total_estudiantes': len(estudiantes)
+            },
             'configuracion_notas': configuracion_notas,
             'categorias': categorias_info,
-            'asignaciones': [{'nombre': a.nombre_calificacion, 'categoria_id': a.categoriaId} for a in asignaciones_unicas],
+            'asignaciones': [{
+                'nombre': a.nombre_calificacion, 
+                'categoria_id': a.categoriaId,
+                'categoria_nombre': next((cat['nombre'] for cat in categorias_info if cat['id'] == a.categoriaId), 'Sin categoría')
+            } for a in asignaciones_unicas],
+            'estudiantes': datos_estudiantes,
             'estadisticas_generales': {
                 'promedio_general': round(promedio_general, 2),
                 'nota_mas_alta': round(nota_mas_alta, 2),
                 'nota_mas_baja': round(nota_mas_baja, 2),
                 'total_estudiantes': len(estudiantes),
                 'estudiantes_aprobados': len([e for e in datos_estudiantes if e['estado'] == 'Aprobado']),
-                'estudiantes_reprobados': len([e for e in datos_estudiantes if e['estado'] == 'Reprobado'])
+                'estudiantes_reprobados': len([e for e in datos_estudiantes if e['estado'] == 'Reprobado']),
+                'porcentaje_aprobacion': round((len([e for e in datos_estudiantes if e['estado'] == 'Aprobado']) / len(estudiantes)) * 100, 2) if estudiantes else 0
+            },
+            'resumen_por_categoria': {
+                cat['id']: {
+                    'nombre': cat['nombre'],
+                    'color': cat['color'],
+                    'porcentaje': cat['porcentaje'],
+                    'promedio_general': round(sum([e['promedios_por_categoria'][cat['id']]['promedio'] for e in datos_estudiantes if cat['id'] in e['promedios_por_categoria']]) / len([e for e in datos_estudiantes if cat['id'] in e['promedios_por_categoria']]), 2) if any(cat['id'] in e['promedios_por_categoria'] for e in datos_estudiantes) else 0
+                } for cat in categorias_info
             }
         }
 
@@ -2245,7 +2745,14 @@ def api_generar_reporte_calificaciones():
         return jsonify({
             'success': True, 
             'message': 'Reporte generado y enviado al administrador correctamente',
-            'reporte_id': reporte.id_reporte
+            'reporte_id': reporte.id_reporte,
+            'resumen': {
+                'total_estudiantes': len(estudiantes),
+                'estudiantes_aprobados': len([e for e in datos_estudiantes if e['estado'] == 'Aprobado']),
+                'promedio_general': round(promedio_general, 2),
+                'total_asignaciones': len(asignaciones_unicas),
+                'total_categorias': len(categorias_info)
+            }
         })
 
     except Exception as e:
