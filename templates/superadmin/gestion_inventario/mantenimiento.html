@@ -24,7 +24,7 @@
     {% block content %}
 
     <header class="main-header">
-        <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+        <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
             <i class="fa-solid fa-arrow-left"></i>
         </a>
         <h1>Gestión de Mantenimientos</h1>
@@ -37,28 +37,21 @@
     <div class="container-fluid px-4">
         <!-- Tarjetas de estadísticas -->
         <div class="d-flex justify-content-between flex-wrap mb-4">
-            <div class="stat-card flex-fill me-3" style="max-width: 22%;">
+            <div class="stat-card flex-fill col-md-4 me-3" style="max-width: 30%;">
                 <div class="stat-number" id="totalMantenimientos">0</div>
                 <div class="stat-label">
                     <i class="fa-solid fa-wrench me-2"></i>
                     Total Mantenimientos
                 </div>
             </div>
-            <div class="stat-card pendientes flex-fill me-3" style="max-width: 22%;">
+            <div class="stat-card pendientes flex-fill col-md-4 me-3" style="max-width: 30%;">
                 <div class="stat-number" id="mantenimientosPendientes">0</div>
                 <div class="stat-label">
                     <i class="fa-solid fa-clock me-2"></i>
                     Pendientes
                 </div>
             </div>
-            <div class="stat-card en-progreso flex-fill me-3" style="max-width: 22%;">
-                <div class="stat-number" id="mantenimientosEnProgreso">0</div>
-                <div class="stat-label">
-                    <i class="fa-solid fa-hourglass-half me-2"></i>
-                    En Progreso
-                </div>
-            </div>
-            <div class="stat-card completados flex-fill" style="max-width: 22%;">
+            <div class="stat-card completados flex-fill" style="max-width: 30%;">
                 <div class="stat-number" id="mantenimientosCompletados">0</div>
                 <div class="stat-label">
                     <i class="fa-solid fa-check-double me-2"></i>
@@ -399,7 +392,7 @@
                 if (result && result.length > 0) {
                     result.forEach(sede => {
                         const option = document.createElement('option');
-                        option.value = sede.id;
+                        option.value = sede.id_sede;
                         option.textContent = sede.nombre;
                         selectSede.appendChild(option);
                     });
@@ -412,16 +405,16 @@
             }
         }
 
-        async function cargarSalonesMantenimiento(sedeId) {
+        async function cargarSalonesMantenimiento(id_sede) {
             try {
-                const response = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+                const response = await fetch(`/admin/api/sedes/${id_sede}/salas`);
                 const result = await response.json();
                 const selectSalon = document.getElementById('salon_id_mantenimiento');
                 selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
                 if (result && result.length > 0) {
                     result.forEach(salon => {
                         const option = document.createElement('option');
-                        option.value = salon.id;
+                        option.value = salon.id_salon;
                         option.textContent = salon.nombre;
                         selectSalon.appendChild(option);
                     });
@@ -436,16 +429,16 @@
             }
         }
 
-        async function cargarEquiposMantenimiento(sedeId, salonId) {
+        async function cargarEquiposMantenimiento(id_sede, id_salon) {
             try {
-                const response = await fetch(`/admin/api/sedes/${sedeId}/salas/${salonId}/equipos`);
+                const response = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
                 const result = await response.json();
                 const selectEquipo = document.getElementById('equipo_id_mantenimiento');
                 selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
                 if (result && result.length > 0) {
                     result.forEach(equipo => {
                         const option = document.createElement('option');
-                        option.value = equipo.id;
+                        option.value = equipo.id_equipo  || equipo.id;
                         option.textContent = `${equipo.nombre} - ${equipo.estado}`;
                         selectEquipo.appendChild(option);
                     });
@@ -564,7 +557,7 @@
 
             mantenimientosPagina.forEach(mantenimiento => {
                 const row = document.createElement('tr');
-                row.id = `mantenimiento-fila-${mantenimiento.id}`; // Añadir ID para fácil actualización
+                row.id = `mantenimiento-fila-${mantenimiento.id_mantenimiento}`; // Añadir ID para fácil actualización
                 row.innerHTML = `
                     <td>
                         <div><strong>${mantenimiento.equipo_nombre}</strong></div>
@@ -585,12 +578,12 @@
                     <td>
                         <div class="btn-group" role="group">
                             <button class="btn btn-sm btn-outline-info"
-                                    onclick="verDetalleMantenimiento(${mantenimiento.id})"
+                                    onclick="verDetalleMantenimiento(${mantenimiento.id_mantenimiento})"
                                     title="Ver Detalle">
                                 <i class="fa-solid fa-eye"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger"
-                                    onclick="eliminarMantenimiento(${mantenimiento.id})"
+                                    onclick="eliminarMantenimiento(${mantenimiento.id_mantenimiento})"
                                     title="Eliminar">
                                 <i class="fa-solid fa-trash"></i>
                             </button>

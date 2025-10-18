@@ -221,6 +221,22 @@ tr.equipo-con-incidente:hover {
 /* Ícono de advertencia */
 tr.equipo-con-incidente .fa-exclamation-triangle {
     animation: pulse 2s infinite;
+    color: #ffc107 !important;
+}
+
+tr.equipo-con-mantenimiento {
+    background-color: #cdefff !important;
+    border-left: 4px solid #108bff !important;
+}
+
+tr.equipo-con-mantenimiento:hover {
+    background-color: #cdefff !important;
+}
+
+/* Ícono de advertencia */
+tr.equipo-con-mantenimiento .fa-wrench {
+    animation: pulse 2s infinite;
+    color: #108bff !important;
 }
 
 @keyframes pulse {

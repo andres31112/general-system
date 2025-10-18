@@ -17,7 +17,7 @@
 {% block content %}
 
 <header class="main-header">
-    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
         <i class="fa-solid fa-arrow-left"></i>
     </a>
     <h1>Gestión Inventario</h1>
@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result && result.length > 0) {
                 result.forEach(sede => {
                     const option = document.createElement('option');
-                    option.value = sede.id;
+                    option.value = sede.id_sede;
                     option.textContent = sede.nombre;
                     selectSede.appendChild(option);
                 });
@@ -349,9 +349,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ------------------------------------------
     // 3. Cargar SALONES (filtrados por Sede)
     // ------------------------------------------
-    async function cargarSalones(sedeId) {
+    async function cargarSalones(id_sede) {
         try {
-            const response = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+            const response = await fetch(`/admin/api/sedes/${id_sede}/salas`);
             const result = await response.json();
 
             selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result && result.length > 0) {
                 result.forEach(salon => {
                     const option = document.createElement('option');
-                    option.value = salon.id;
+                    option.value = salon.id_salon;
                     option.textContent = salon.nombre;
                     selectSalon.appendChild(option);
                 });
@@ -390,9 +390,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ------------------------------------------
     // 5. Cargar EQUIPOS (filtrados por Salón)
     // ------------------------------------------
-    async function cargarEquipos(sedeId, salonId) {
+    async function cargarEquipos(id_sede, id_salon) {
         try {
-            const response = await fetch(`/admin/api/sedes/${sedeId}/salas/${salonId}/equipos`);
+            const response = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
             const result = await response.json();
 
             selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result && result.length > 0) {
                 result.forEach(equipo => {
                     const option = document.createElement('option');
-                    option.value = equipo.id;
+                    option.value = equipo.id_equipo;
                     option.textContent = `${equipo.nombre} - ${equipo.estado}`;
                     selectEquipo.appendChild(option);
                 });
@@ -466,7 +466,7 @@ async function cargarEquipos() {
         
         equipos.forEach(equipo => {
             const option = document.createElement('option');
-            option.value = equipo.id;
+            option.value = equipo.id_equipo;
             option.textContent = `${equipo.nombre} - ${equipo.salon_nombre} (${equipo.sede_nombre})`;
             selectEquipos.appendChild(option);
         });
