@@ -95,6 +95,7 @@ def estado(usuario_id):
 
 
 # 📌 Obtener candidatos por categoría
+# 📌 Obtener candidatos por categoría
 @estudiante_bp.route("/candidatos", methods=["GET"])
 @login_required
 def listar_candidatos():
@@ -107,7 +108,7 @@ def listar_candidatos():
 
         # Solo enviamos el nombre del archivo en "foto"
         data[c.categoria].append({
-            "id": c.id,
+            "id": c.id_candidato,  # ✅ Campo corregido
             "nombre": c.nombre,
             "tarjeton": c.tarjeton,
             "propuesta": c.propuesta,
@@ -118,6 +119,8 @@ def listar_candidatos():
     return jsonify(data), 200
 
 
+
+# 📌 Registrar voto
 # 📌 Registrar voto
 @estudiante_bp.route("/votar", methods=["POST"])
 @login_required
@@ -127,48 +130,54 @@ def votar():
     votos = data.get("votos")  # dict {categoria: candidato_id}
 
     # --- Validar horario ---
-    horario = HorarioVotacion.query.order_by(HorarioVotacion.id.desc()).first()
+    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
     if horario:
         ahora = datetime.now().time()
         if horario.inicio <= horario.fin:
             if not (horario.inicio <= ahora <= horario.fin):
-                return jsonify({"error": "La votación no está abierta"}), 403
+                return jsonify({"error": "⏰ La votación no está abierta"}), 403
         else:
             if not (ahora >= horario.inicio or ahora <= horario.fin):
-                return jsonify({"error": "La votación no está abierta"}), 403
+                return jsonify({"error": "⏰ La votación no está abierta"}), 403
 
     try:
         for categoria, candidato_id in votos.items():
             if candidato_id == "blanco":
                 continue  # No se guarda nada en la tabla
-               
-            # Revisar si ya votó en esta categoría
-            voto_existente = Voto.query.join(Candidato).filter(
-                Voto.estudiante_id == estudiante_id,
-                Candidato.categoria == categoria
-            ).first()
-            if voto_existente:
-                return jsonify({"error": f"Ya votaste en {categoria}"}), 400
 
-            # Registrar voto
+            # 🔍 Verificar si ya votó en esta categoría
+            voto_existente = (
+                Voto.query.join(Candidato, Voto.candidato_id == Candidato.id_candidato)
+                .filter(
+                    Voto.estudiante_id == estudiante_id,
+                    Candidato.categoria == categoria
+                )
+                .first()
+            )
+
+            if voto_existente:
+                return jsonify({"error": f"⚠️ Ya votaste en la categoría {categoria}"}), 400
+
+            # 🗳️ Registrar el nuevo voto
             nuevo_voto = Voto(
                 estudiante_id=estudiante_id,
                 candidato_id=int(candidato_id)
             )
             db.session.add(nuevo_voto)
 
-            # Sumar +1 al candidato
-            candidato = Candidato.query.get(int(candidato_id))
+            # 🧮 Sumar 1 voto al candidato
+            candidato = Candidato.query.filter_by(id_candidato=int(candidato_id)).first()
             if candidato:
                 if candidato.votos is None:
                     candidato.votos = 0
                 candidato.votos += 1
 
         db.session.commit()
-        return jsonify({"mensaje": "Voto registrado correctamente ✅"}), 201
+        return jsonify({"mensaje": "✅ Voto registrado correctamente"}), 201
 
     except Exception as e:
         db.session.rollback()
+        print("❌ Error al registrar voto:", e)
         return jsonify({"error": str(e)}), 400
 
 

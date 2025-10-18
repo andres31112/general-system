@@ -16,7 +16,105 @@
   --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
   --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
+/* Estilos para resultados */
+.result-category {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
 
+.category-title {
+    color: var(--color-azul);
+    border-bottom: 2px solid var(--color-mostaza);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.total-votes {
+    font-size: 0.8rem;
+    color: var(--color-gris-oscuro);
+    margin-left: auto;
+}
+
+.results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--color-gris-claro);
+    border-radius: 8px;
+    border-left: 4px solid var(--color-azul);
+    transition: all 0.3s ease;
+}
+
+.result-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.result-item.winner {
+    background: linear-gradient(135deg, var(--color-beige) 0%, #fff8e1 100%);
+    border-left-color: var(--color-naranja);
+}
+
+.candidate-info {
+    flex: 1;
+}
+
+.candidate-details {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+}
+
+.tarjeton {
+    color: var(--color-azul);
+    font-weight: 600;
+}
+
+.votes {
+    color: var(--color-verde);
+    font-weight: 600;
+}
+
+.winner-badge {
+    background: var(--color-naranja);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .result-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .candidate-details {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    
+    .winner-badge {
+        align-self: flex-end;
+    }
+}
 /* --- Estilos generales --- */
 * {
   margin: 0;

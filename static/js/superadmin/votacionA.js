@@ -1,4 +1,4 @@
-// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN
+// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN - VERSIÓN CORREGIDA
 
 // Configuración
 const API_URLS = {
@@ -22,7 +22,11 @@ let elementos = {};
 
 // FUNCIONES DE UTILIDAD
 function mostrarNotificacion(mensaje, tipo = 'success') {
-    // Crear notificación temporal
+    // Eliminar notificaciones existentes
+    document.querySelectorAll('.alert').forEach(alert => {
+        if (alert.parentNode) alert.remove();
+    });
+    
     const notification = document.createElement('div');
     notification.className = `alert alert-${tipo} alert-dismissible fade show`;
     notification.innerHTML = `
@@ -31,11 +35,9 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
-    // Insertar después del header
     const header = document.querySelector('.admin-header');
     header.parentNode.insertBefore(notification, header.nextSibling);
     
-    // Auto-eliminar después de 5 segundos
     setTimeout(() => {
         if (notification.parentNode) {
             notification.remove();
@@ -45,26 +47,19 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
 
 async function apiRequest(url, options = {}) {
     try {
-        const config = {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            ...options
-        };
-
-        if (config.body && typeof config.body === 'object') {
-            config.body = JSON.stringify(config.body);
-        }
-
-        const response = await fetch(url, config);
+        console.log(`🔄 Haciendo petición a: ${url}`);
+        const response = await fetch(url, options);
         
         if (!response.ok) {
             throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        const data = await response.json();
+        console.log(`✅ Respuesta de ${url}:`, data);
+        return data;
+        
     } catch (error) {
-        console.error('Error en la petición:', error);
+        console.error(`❌ Error en petición a ${url}:`, error);
         throw error;
     }
 }
@@ -84,53 +79,53 @@ async function cargarHorarioActual() {
     }
 }
 
-// GESTIÓN DE CANDIDATOS
+// GESTIÓN DE CANDIDATOS - VERSIÓN MEJORADA
 async function cargarCandidatos() {
     try {
+        console.log('🔄 Cargando candidatos...');
         const data = await apiRequest(API_URLS.candidatos);
-        console.log('Datos de candidatos recibidos:', data);
         
-        // Verificar la estructura de los datos
-        estado.candidatos = Array.isArray(data) ? data : [];
+        // Validar que data sea un array
+        if (!Array.isArray(data)) {
+            throw new Error('Formato de datos inválido');
+        }
         
-        // Mapear los datos para asegurar que tengan id
-        estado.candidatos = estado.candidatos.map(candidato => {
-            // Si no tiene id, intentar usar id_candidato u otro campo
-            const id = candidato.id || candidato.id_candidato || candidato.ID || Date.now() + Math.random();
+        estado.candidatos = data.map(candidato => {
+            // Asegurar que todos los campos tengan valores por defecto
             return {
-                id: id,
-                nombre: candidato.nombre,
-                tarjeton: candidato.tarjeton,
-                propuesta: candidato.propuesta,
-                categoria: candidato.categoria,
-                foto: candidato.foto,
+                id: candidato.id || candidato.id_candidato,
+                nombre: candidato.nombre || 'Sin nombre',
+                tarjeton: candidato.tarjeton || 'Sin tarjetón',
+                propuesta: candidato.propuesta || 'Sin propuesta',
+                categoria: candidato.categoria || 'Sin categoría',
+                foto: candidato.foto || null,
                 votos: candidato.votos || 0
             };
         });
         
-        console.log('Candidatos procesados:', estado.candidatos);
-        
-        // Debug temporal - verificar la estructura completa de los datos
-        if (estado.candidatos.length > 0) {
-            console.log('Estructura completa del primer candidato:', estado.candidatos[0]);
-            console.log('Todos los campos disponibles:', Object.keys(estado.candidatos[0]));
-        }
-        
+        console.log(`✅ Cargados ${estado.candidatos.length} candidatos:`, estado.candidatos);
         actualizarListaCandidatos();
         actualizarResultados();
+        
     } catch (error) {
-        console.error('Error cargando candidatos:', error);
+        console.error('❌ Error cargando candidatos:', error);
         estado.candidatos = [];
         actualizarListaCandidatos();
+        mostrarNotificacion('Error al cargar los candidatos: ' + error.message, 'error');
     }
 }
 
 function actualizarListaCandidatos() {
+    console.log('🔄 Actualizando lista de candidatos en el DOM...');
+    
     if (!estado.candidatos || estado.candidatos.length === 0) {
         elementos.listaCandidatos.innerHTML = `
             <div class="text-center text-muted py-4">
                 <i class="fas fa-users fa-3x mb-3"></i>
                 <p>No hay candidatos registrados.</p>
+                <button class="btn btn-primary mt-2" onclick="cargarCandidatos()">
+                    <i class="fas fa-sync-alt"></i> Reintentar
+                </button>
             </div>
         `;
         elementos.candidatesCount.textContent = '(0)';
@@ -139,50 +134,62 @@ function actualizarListaCandidatos() {
 
     elementos.candidatesCount.textContent = `(${estado.candidatos.length})`;
     
-    // Verificar que todos los candidatos tengan ID antes de renderizar
-    console.log('IDs de candidatos a renderizar:', estado.candidatos.map(c => ({id: c.id, nombre: c.nombre})));
-    
-    elementos.listaCandidatos.innerHTML = estado.candidatos.map(candidato => {
-        // Verificar que el candidato tenga ID
+    const candidatosHTML = estado.candidatos.map(candidato => {
+        // Validar que el candidato tenga ID
         if (!candidato.id) {
             console.error('Candidato sin ID:', candidato);
             return '';
         }
         
         return `
-        <div class="candidate-card">
+        <div class="candidate-card" data-id="${candidato.id}">
             <div class="candidate-info">
                 <h3>${candidato.nombre}</h3>
                 <div class="candidate-meta">
-                    <p><strong><i class="fas fa-tag"></i> Categoría:</strong> ${candidato.categoria}</p>
-                    <p><strong><i class="fas fa-hashtag"></i> Tarjetón:</strong> ${candidato.tarjeton}</p>
+                    <p><strong><i class="fas fa-tag"></i> Categoría:</strong> 
+                       <span class="badge bg-primary">${candidato.categoria}</span>
+                    </p>
+                    <p><strong><i class="fas fa-hashtag"></i> Tarjetón:</strong> 
+                       <span class="badge bg-secondary">${candidato.tarjeton}</span>
+                    </p>
                     <p><strong><i class="fas fa-bullhorn"></i> Propuesta:</strong> ${candidato.propuesta}</p>
+                    <p><strong><i class="fas fa-chart-bar"></i> Votos:</strong> 
+                       <span class="badge bg-success">${candidato.votos}</span>
+                    </p>
                 </div>
                 ${candidato.foto ? `
                     <div class="candidate-photo">
-                        <img src="/static/images/candidatos/${candidato.foto}" alt="${candidato.nombre}">
+                        <img src="/static/images/candidatos/${candidato.foto}" 
+                             alt="${candidato.nombre}" 
+                             onerror="this.src='/static/images/candidatos/default.png'">
                     </div>
                 ` : ''}
             </div>
             <div class="candidate-actions">
-                <button class="btn btn-warning btn-editar" data-id="${candidato.id}">
+                <button class="btn btn-warning btn-sm btn-editar" data-id="${candidato.id}">
                     <i class="fas fa-edit"></i> Editar
                 </button>
-                <button class="btn btn-danger btn-eliminar" data-id="${candidato.id}">
+                <button class="btn btn-danger btn-sm btn-eliminar" data-id="${candidato.id}">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
         </div>
         `;
     }).join('');
+
+    elementos.listaCandidatos.innerHTML = candidatosHTML;
+    console.log('✅ Lista de candidatos actualizada en el DOM');
 }
 
+// ACTUALIZACIÓN DE RESULTADOS
 function actualizarResultados() {
+    console.log('🔄 Actualizando resultados...');
+    
     if (!estado.candidatos || estado.candidatos.length === 0) {
         elementos.resultados.innerHTML = `
             <div class="text-center text-muted py-4">
                 <i class="fas fa-chart-bar fa-3x mb-3"></i>
-                <p>No hay resultados disponibles.</p>
+                <p>No hay candidatos registrados para mostrar resultados.</p>
             </div>
         `;
         return;
@@ -198,32 +205,73 @@ function actualizarResultados() {
     });
 
     let resultadosHTML = '';
-    
+    let hayResultados = false;
+
     Object.keys(categorias).forEach(categoria => {
+        const candidatosCategoria = categorias[categoria];
+        
         // Ordenar por votos descendente
-        const candidatosCategoria = categorias[categoria].sort((a, b) => (b.votos || 0) - (a.votos || 0));
+        candidatosCategoria.sort((a, b) => (b.votos || 0) - (a.votos || 0));
         const maxVotos = Math.max(...candidatosCategoria.map(c => c.votos || 0));
+        
+        const totalVotosCategoria = candidatosCategoria.reduce((sum, c) => sum + (c.votos || 0), 0);
+        
+        if (totalVotosCategoria > 0) {
+            hayResultados = true;
+        }
 
         resultadosHTML += `
             <div class="result-category">
-                <h4>${categoria.charAt(0).toUpperCase() + categoria.slice(1)}</h4>
-                ${candidatosCategoria.map(candidato => {
-                    const esGanador = (candidato.votos || 0) === maxVotos && maxVotos > 0;
-                    return `
-                        <div class="result-item ${esGanador ? 'winner' : ''}">
-                            <div>
-                                <strong>${candidato.nombre}</strong>
-                                <div class="text-muted">Tarjetón: ${candidato.tarjeton}</div>
+                <h4 class="category-title">
+                    <i class="fas fa-${getIconoCategoria(categoria)}"></i>
+                    ${categoria.charAt(0).toUpperCase() + categoria.slice(1)}
+                    <span class="total-votes">(${totalVotosCategoria} votos totales)</span>
+                </h4>
+                <div class="results-list">
+                    ${candidatosCategoria.map(candidato => {
+                        const esGanador = (candidato.votos || 0) === maxVotos && maxVotos > 0;
+                        const porcentaje = totalVotosCategoria > 0 ? 
+                            Math.round((candidato.votos / totalVotosCategoria) * 100) : 0;
+                        
+                        return `
+                            <div class="result-item ${esGanador ? 'winner' : ''}">
+                                <div class="candidate-info">
+                                    <strong>${candidato.nombre}</strong>
+                                    <div class="candidate-details">
+                                        <span class="tarjeton">Tarjetón: ${candidato.tarjeton}</span>
+                                        <span class="votes">${candidato.votos || 0} votos (${porcentaje}%)</span>
+                                    </div>
+                                </div>
+                                ${esGanador ? '<span class="winner-badge"><i class="fas fa-trophy"></i> Ganador</span>' : ''}
                             </div>
-                            <span class="vote-count">${candidato.votos || 0} votos</span>
-                        </div>
-                    `;
-                }).join('')}
+                        `;
+                    }).join('')}
+                </div>
             </div>
         `;
     });
 
+    if (!hayResultados) {
+        resultadosHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                <p>No hay votos registrados todavía.</p>
+                <small>Los resultados aparecerán aquí cuando los estudiantes comiencen a votar.</small>
+            </div>
+        `;
+    }
+
     elementos.resultados.innerHTML = resultadosHTML;
+    console.log('✅ Resultados actualizados');
+}
+
+function getIconoCategoria(categoria) {
+    const iconos = {
+        'personero': 'user-tie',
+        'contralor': 'chart-line',
+        'cabildante': 'users'
+    };
+    return iconos[categoria] || 'user';
 }
 
 // GESTIÓN DE FORMULARIOS
@@ -233,14 +281,17 @@ async function enviarFormCandidato(form, esEdicion = false) {
 
     try {
         const url = esEdicion ? `${API_URLS.editarCandidato}${id}` : API_URLS.crearCandidato;
+        
+        console.log(`🔄 Enviando formulario a: ${url}`);
         const response = await fetch(url, {
             method: 'POST',
             body: formData
         });
 
         const data = await response.json();
+        console.log('Respuesta del servidor:', data);
 
-        if (!response.ok || !data.ok) {
+        if (!data.ok) {
             throw new Error(data.error || 'Error al procesar la solicitud');
         }
 
@@ -249,49 +300,34 @@ async function enviarFormCandidato(form, esEdicion = false) {
             'success'
         );
 
+        // Recargar la lista de candidatos
         await cargarCandidatos();
         form.reset();
         
         if (esEdicion) {
             elementos.modalEditar.hide();
         } else {
-            elementos.fotoPreview.style.display = 'none';
+            if (elementos.fotoPreview) {
+                elementos.fotoPreview.style.display = 'none';
+            }
         }
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error en formulario:', error);
         mostrarNotificacion(error.message, 'error');
     }
 }
 
-// FUNCIONES PARA EDITAR CANDIDATOS
+// FUNCIONES PARA EDITAR Y ELIMINAR
 function editarCandidato(id) {
-    console.log('Editando candidato ID:', id, 'Tipo:', typeof id);
-    console.log('Candidatos disponibles:', estado.candidatos);
+    console.log('✏️ Editando candidato ID:', id);
     
-    if (!id || id === 'undefined') {
-        console.error('ID no válido recibido:', id);
-        mostrarNotificacion('Error: ID de candidato no válido', 'error');
-        return;
-    }
-    
-    // Buscar el candidato - convertir a número si es necesario
-    const candidato = estado.candidatos.find(c => {
-        const candidatoId = c.id;
-        const buscadoId = isNaN(id) ? id : Number(id);
-        
-        console.log(`Comparando: c.id=${candidatoId} (tipo: ${typeof candidatoId}) con id=${buscadoId} (tipo: ${typeof buscadoId})`);
-        return candidatoId == buscadoId; // Usar == para comparación flexible
-    });
+    const candidato = estado.candidatos.find(c => c.id == id);
     
     if (!candidato) {
-        console.error('Candidato no encontrado con ID:', id);
-        console.error('Candidatos disponibles:', estado.candidatos.map(c => c.id));
         mostrarNotificacion('Error: Candidato no encontrado', 'error');
         return;
     }
-
-    console.log('Datos del candidato encontrado:', candidato);
 
     // Llenar el formulario de edición
     document.getElementById('edit-id').value = candidato.id;
@@ -311,11 +347,8 @@ function editarCandidato(id) {
     }
 
     // Mostrar el modal
-    console.log('Mostrando modal de edición');
     if (elementos.modalEditar) {
         elementos.modalEditar.show();
-    } else {
-        console.error('Modal de edición no encontrado');
     }
 }
 
@@ -325,13 +358,14 @@ async function eliminarCandidato(id) {
     }
 
     try {
+        console.log(`🗑️ Eliminando candidato ID: ${id}`);
         const response = await fetch(`${API_URLS.eliminarCandidato}${id}`, {
             method: 'DELETE'
         });
 
         const data = await response.json();
 
-        if (response.ok && data.ok) {
+        if (data.ok) {
             mostrarNotificacion('Candidato eliminado correctamente', 'success');
             await cargarCandidatos();
         } else {
@@ -344,6 +378,8 @@ async function eliminarCandidato(id) {
 
 // EVENTOS Y CONFIGURACIÓN
 function configurarEventos() {
+    console.log('🔄 Configurando eventos...');
+    
     // Inicializar elementos DOM
     elementos = {
         formHorario: document.getElementById("form-horario"),
@@ -358,7 +394,7 @@ function configurarEventos() {
         modalEditar: new bootstrap.Modal(document.getElementById("modalEditar"))
     };
 
-    console.log('Elementos DOM inicializados:', elementos);
+    console.log('Elementos DOM encontrados:', elementos);
 
     // Formulario de horario
     if (elementos.formHorario) {
@@ -366,16 +402,14 @@ function configurarEventos() {
             e.preventDefault();
             
             try {
-                // USA FormData directamente para coincidir con tu ruta Flask
                 const formData = new FormData(elementos.formHorario);
                 
                 const response = await fetch(API_URLS.guardarHorario, {
                     method: 'POST',
-                    body: formData  // Envía FormData, no JSON
+                    body: formData
                 });
 
                 if (response.ok) {
-                    // Recarga la página para mostrar los mensajes flash
                     window.location.reload();
                 } else {
                     throw new Error('Error al guardar el horario');
@@ -404,51 +438,36 @@ function configurarEventos() {
 
     // Preview de imágenes
     const fotoInput = document.getElementById('foto');
-    if (fotoInput) {
+    if (fotoInput && elementos.fotoPreview) {
         fotoInput.addEventListener('change', function(e) {
             mostrarPreviewImagen(e.target, elementos.fotoPreview);
         });
     }
 
     const editFotoInput = document.getElementById('edit-foto');
-    if (editFotoInput) {
+    if (editFotoInput && elementos.fotoPreviewEditar) {
         editFotoInput.addEventListener('change', function(e) {
             mostrarPreviewImagen(e.target, elementos.fotoPreviewEditar);
         });
     }
 
-    // Eventos delegados para la lista de candidatos - MEJORADO
+    // Eventos delegados para la lista de candidatos
     if (elementos.listaCandidatos) {
         elementos.listaCandidatos.addEventListener('click', (e) => {
-            console.log('Click en lista de candidatos:', e.target);
-            console.log('Elemento clickeado:', e.target.tagName, e.target.className);
-            
-            // Buscar el botón más cercano
             const botonEditar = e.target.closest('.btn-editar');
             const botonEliminar = e.target.closest('.btn-eliminar');
 
             if (botonEditar) {
                 const id = botonEditar.getAttribute('data-id');
-                console.log('Botón editar clickeado, ID:', id, 'Tipo:', typeof id);
-                console.log('Atributos del botón:', botonEditar.attributes);
-                
-                if (id && id !== 'undefined') {
+                if (id) {
                     editarCandidato(id);
-                } else {
-                    console.error('ID no válido en botón editar');
-                    mostrarNotificacion('Error: ID de candidato no válido', 'error');
                 }
             }
 
             if (botonEliminar) {
                 const id = botonEliminar.getAttribute('data-id');
-                console.log('Botón eliminar clickeado, ID:', id);
-                
-                if (id && id !== 'undefined') {
+                if (id) {
                     eliminarCandidato(id);
-                } else {
-                    console.error('ID no válido en botón eliminar');
-                    mostrarNotificacion('Error: ID de candidato no válido', 'error');
                 }
             }
         });
@@ -465,7 +484,7 @@ function configurarEventos() {
     const btnVerResultados = document.getElementById('btn-ver-resultados');
     if (btnVerResultados) {
         btnVerResultados.addEventListener('click', () => {
-            actualizarResultados();
+            cargarCandidatos();
             mostrarNotificacion('Resultados actualizados', 'info');
         });
     }
@@ -481,7 +500,7 @@ function configurarEventos() {
 
                     const data = await response.json();
 
-                    if (response.ok && data.success) {
+                    if (data.success) {
                         mostrarNotificacion('Resultados publicados correctamente', 'success');
                     } else {
                         throw new Error(data.error || 'Error al publicar resultados');
@@ -510,20 +529,23 @@ function mostrarPreviewImagen(input, previewElement) {
 
 // INICIALIZACIÓN
 async function inicializar() {
-    console.log('Inicializando sistema de administración...');
+    console.log('🚀 Inicializando sistema de administración...');
     
     try {
         configurarEventos();
-        await Promise.all([
-            cargarHorarioActual(),
-            cargarCandidatos()
-        ]);
+        await cargarHorarioActual();
+        await cargarCandidatos();
         
-        console.log('Sistema inicializado correctamente');
-        console.log('Candidatos cargados:', estado.candidatos);
+        console.log('✅ Sistema inicializado correctamente');
+        
+        // Actualizar automáticamente cada 30 segundos
+        setInterval(() => {
+            cargarCandidatos();
+        }, 30000);
+        
     } catch (error) {
-        console.error('Error en inicialización:', error);
-        mostrarNotificacion('Error al inicializar el sistema', 'error');
+        console.error('❌ Error en inicialización:', error);
+        mostrarNotificacion('Error al inicializar el sistema: ' + error.message, 'error');
     }
 }
 
