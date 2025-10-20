@@ -951,7 +951,7 @@ def padres():
 @login_required
 @role_required(1)
 def api_padres():
-    """API para obtener la lista de padres"""
+    """API para obtener la lista de padres con sus hijos asociados"""
     try:
         filter_id = request.args.get('filter_id', '')
         rol_padre = Rol.query.filter_by(nombre='Padre').first()
@@ -960,17 +960,51 @@ def api_padres():
             padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol, no_identidad=filter_id).all() if rol_padre else []
         else:
             padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all() if rol_padre else []
+        
+        # Obtener IDs de padres para consulta de hijos
+        padre_ids = [padre.id_usuario for padre in padres]
+        
+        # Obtener hijos asociados usando SQL directo para mejor rendimiento
+        hijos_dict = {}
+        if padre_ids:
+            try:
+                from sqlalchemy import text
+                result = db.session.execute(text("""
+                    SELECT ep.padre_id, u.id_usuario, u.nombre, u.apellido, u.no_identidad
+                    FROM estudiante_padre ep 
+                    JOIN usuarios u ON ep.estudiante_id = u.id_usuario 
+                    WHERE ep.padre_id IN :padre_ids
+                    ORDER BY ep.padre_id, u.nombre
+                """), {'padre_ids': tuple(padre_ids)})
+                
+                for row in result:
+                    padre_id = row[0]
+                    if padre_id not in hijos_dict:
+                        hijos_dict[padre_id] = []
+                    hijos_dict[padre_id].append({
+                        'id': row[1],
+                        'nombre_completo': f"{row[2]} {row[3]}",
+                        'no_identidad': row[4]
+                    })
+            except Exception as e:
+                print(f"Error cargando hijos de padres: {e}")
+                hijos_dict = {}
             
         lista_padres = []
         for padre in padres:
+            # Obtener hijos asociados a este padre
+            hijos_asignados = hijos_dict.get(padre.id_usuario, [])
+            
             lista_padres.append({
                 'id_usuario': padre.id_usuario,
                 'no_identidad': padre.no_identidad,
                 'nombre_completo': f"{padre.nombre} {padre.apellido}",
                 'correo': padre.correo,
+                'telefono': getattr(padre, 'telefono', '') or 'N/A',
                 'rol': padre.rol.nombre if padre.rol else 'N/A',
                 'estado_cuenta': padre.estado_cuenta,
-                'hijos_asignados': []  # Placeholder
+                'hijos_asignados': hijos_asignados,
+                'total_hijos': len(hijos_asignados)
             })
         return jsonify({"data": lista_padres})
     except Exception as e:

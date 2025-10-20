@@ -210,6 +210,7 @@ class Asignatura(db.Model):
     horarios_compartidos = db.relationship('HorarioCompartido', back_populates='asignatura')
     calificaciones = db.relationship('Calificacion', back_populates='asignatura')
     clases = db.relationship('Clase', back_populates='asignatura')
+    solicitudes_consulta = db.relationship('SolicitudConsulta', back_populates='asignatura')
 
     def to_dict(self):
         return {
@@ -790,3 +791,49 @@ class ReporteCalificaciones(db.Model):
     
     def __repr__(self):
         return f"<ReporteCalificaciones {self.nombre_curso} - {self.nombre_asignatura}>"
+
+
+# ================================
+# Modelo de Solicitudes de Consulta
+# ================================
+
+class SolicitudConsulta(db.Model):
+    __tablename__ = "solicitudes_consulta"
+    
+    id_solicitud = db.Column(db.Integer, primary_key=True)
+    padre_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id_asignatura"), nullable=False)
+    profesor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    numero_documento_hijo = db.Column(db.String(20), nullable=False)
+    nombre_completo_hijo = db.Column(db.String(200), nullable=False)
+    justificacion = db.Column(db.Text, nullable=False)
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.now)
+    estado = db.Column(db.String(20), default='pendiente')  # pendiente, aceptada, denegada
+    respuesta_profesor = db.Column(db.Text, nullable=True)
+    fecha_respuesta = db.Column(db.DateTime, nullable=True)
+    
+    # Relaciones
+    padre = db.relationship("Usuario", foreign_keys=[padre_id], backref='solicitudes_enviadas')
+    estudiante = db.relationship("Usuario", foreign_keys=[estudiante_id], backref='solicitudes_recibidas')
+    asignatura = db.relationship("Asignatura", back_populates='solicitudes_consulta')
+    profesor = db.relationship("Usuario", foreign_keys=[profesor_id], backref='solicitudes_profesor')
+    
+    def to_dict(self):
+        return {
+            "id_solicitud": self.id_solicitud,
+            "padre_nombre": self.padre.nombre_completo if self.padre else "Desconocido",
+            "estudiante_nombre": self.estudiante.nombre_completo if self.estudiante else "Desconocido",
+            "asignatura_nombre": self.asignatura.nombre if self.asignatura else "Desconocida",
+            "profesor_nombre": self.profesor.nombre_completo if self.profesor else "Desconocido",
+            "numero_documento_hijo": self.numero_documento_hijo,
+            "nombre_completo_hijo": self.nombre_completo_hijo,
+            "justificacion": self.justificacion,
+            "fecha_solicitud": self.fecha_solicitud.strftime("%Y-%m-%d %H:%M") if self.fecha_solicitud else "",
+            "estado": self.estado,
+            "respuesta_profesor": self.respuesta_profesor,
+            "fecha_respuesta": self.fecha_respuesta.strftime("%Y-%m-%d %H:%M") if self.fecha_respuesta else None
+        }
+    
+    def __repr__(self):
+        return f"<SolicitudConsulta {self.id_solicitud} - {self.estado}>"

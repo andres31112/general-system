@@ -1,16 +1,124 @@
-from flask import Blueprint, render_template, redirect, url_for, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, request, jsonify, flash
 from flask_login import login_required, current_user
 from controllers.decorators import role_required, permission_required
-from controllers.models import db, Usuario, Rol, Comunicacion
+from controllers.models import db, Usuario, Rol, Comunicacion, SolicitudConsulta, Asignatura
 
 padre_bp = Blueprint('padre', __name__, url_prefix='/padre')
+
+def verificar_relacion_padre_hijo(padre_id, hijo_id):
+    """Verifica si existe una relación padre-hijo entre los usuarios dados usando SQL directo."""
+    try:
+        from sqlalchemy import text
+        
+        result = db.session.execute(text("""
+            SELECT 1 FROM estudiante_padre 
+            WHERE padre_id = :padre_id AND estudiante_id = :hijo_id
+        """), {'padre_id': padre_id, 'hijo_id': hijo_id}).first()
+        
+        return result is not None
+    except Exception as e:
+        print(f"Error verificando relación padre-hijo: {e}")
+        return False
 
 @padre_bp.route('/dashboard')
 @login_required
 @role_required('Padre')
 def dashboard():
     """Muestra el panel principal del padre con un resumen del progreso del hijo/a."""
-    return render_template('padres/dashboard.html')
+    from controllers.models import Calificacion, Matricula, Asistencia, Clase
+    from sqlalchemy import func, and_
+    from datetime import datetime, timedelta
+    
+    try:
+        # Obtener hijos del padre
+        hijos = current_user.hijos.all()
+        
+        # Inicializar variables para estadísticas
+        total_hijos = len(hijos)
+        promedio_general = 0
+        total_clases_inscritas = 0
+        mensajes_profesores = 0
+        calificaciones_recientes = []
+        anuncios_importantes = []
+        
+        if hijos:
+            # Calcular promedio general de todos los hijos
+            promedios_hijos = []
+            for hijo in hijos:
+                # Obtener calificaciones del hijo
+                calificaciones_hijo = Calificacion.query.filter_by(estudianteId=hijo.id_usuario).all()
+                if calificaciones_hijo:
+                    valores = [float(cal.valor) for cal in calificaciones_hijo if cal.valor is not None]
+                    if valores:
+                        promedio_hijo = sum(valores) / len(valores)
+                        promedios_hijos.append(promedio_hijo)
+            
+            if promedios_hijos:
+                promedio_general = sum(promedios_hijos) / len(promedios_hijos)
+            
+            # Contar clases inscritas (matrículas activas)
+            for hijo in hijos:
+                matriculas_activas = Matricula.query.filter_by(estudianteId=hijo.id_usuario).all()
+                total_clases_inscritas += len(matriculas_activas)
+            
+            # Contar mensajes de profesores (comunicaciones recibidas)
+            mensajes_profesores = Comunicacion.query.filter(
+                Comunicacion.destinatario_id == current_user.id_usuario,
+                Comunicacion.estado == 'inbox'
+            ).count()
+            
+            # Obtener calificaciones recientes de todos los hijos
+            calificaciones_recientes = []
+            for hijo in hijos:
+                calificaciones = Calificacion.query.filter_by(estudianteId=hijo.id_usuario)\
+                    .order_by(Calificacion.fecha_registro.desc()).limit(3).all()
+                for cal in calificaciones:
+                    if cal.asignatura and cal.valor:
+                        calificaciones_recientes.append({
+                            'asignatura': cal.asignatura.nombre,
+                            'valor': float(cal.valor),
+                            'hijo': hijo.nombre_completo,
+                            'fecha': cal.fecha_registro.strftime('%Y-%m-%d') if cal.fecha_registro else ''
+                        })
+            
+            # Ordenar por fecha y tomar las 3 más recientes
+            calificaciones_recientes = sorted(calificaciones_recientes, 
+                                            key=lambda x: x['fecha'], reverse=True)[:3]
+            
+            # Obtener anuncios importantes (comunicaciones recientes)
+            anuncios = Comunicacion.query.filter(
+                Comunicacion.destinatario_id == current_user.id_usuario
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(2).all()
+            
+            for anuncio in anuncios:
+                anuncios_importantes.append({
+                    'titulo': anuncio.asunto,
+                    'mensaje': anuncio.mensaje[:100] + '...' if len(anuncio.mensaje) > 100 else anuncio.mensaje,
+                    'fecha': anuncio.fecha_envio.strftime('%Y-%m-%d') if anuncio.fecha_envio else '',
+                    'remitente': anuncio.remitente.nombre_completo if anuncio.remitente else 'Sistema'
+                })
+        
+        # Pasar datos al template
+        return render_template('padres/dashboard.html',
+                             hijos=hijos,
+                             total_hijos=total_hijos,
+                             promedio_general=round(promedio_general, 1),
+                             total_clases_inscritas=total_clases_inscritas,
+                             mensajes_profesores=mensajes_profesores,
+                             calificaciones_recientes=calificaciones_recientes,
+                             anuncios_importantes=anuncios_importantes)
+                             
+    except Exception as e:
+        print(f"Error en dashboard del padre: {str(e)}")
+        # En caso de error, mostrar dashboard con datos por defecto
+        return render_template('padres/dashboard.html',
+                             hijos=[],
+                             total_hijos=0,
+                             promedio_general=0,
+                             total_clases_inscritas=0,
+                             mensajes_profesores=0,
+                             calificaciones_recientes=[],
+                             anuncios_importantes=[])
 
 @padre_bp.route('/ver_calificaciones_hijo')
 @login_required
@@ -559,3 +667,559 @@ def perfil():
 def soporte():
     """Página de soporte para el padre."""
     return render_template('padre/soporte.html')
+
+@padre_bp.route('/consultar_estudiante')
+@login_required
+@role_required('Padre')
+def consultar_estudiante():
+    """Página para que el padre envíe solicitudes de consulta de notas."""
+    # Obtener asignaturas disponibles
+    asignaturas = Asignatura.query.filter_by(estado='activa').all()
+    
+    # Obtener solicitudes previas del padre
+    solicitudes = SolicitudConsulta.query.filter_by(padre_id=current_user.id_usuario).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
+    
+    return render_template('padres/consultar_estudiante.html', 
+                         asignaturas=asignaturas, 
+                         solicitudes=solicitudes)
+
+@padre_bp.route('/api/obtener_hijos')
+@login_required
+@role_required('Padre')
+def api_obtener_hijos():
+    """API para obtener los hijos del padre usando la misma consulta que funciona en debug."""
+    try:
+        from sqlalchemy import text
+        
+        # Usar exactamente la misma consulta que funciona en debug
+        result = db.session.execute(text("""
+            SELECT ep.estudiante_id, u.nombre, u.apellido, u.no_identidad, u.correo, u.estado_cuenta
+            FROM estudiante_padre ep 
+            JOIN usuarios u ON ep.estudiante_id = u.id_usuario 
+            WHERE ep.padre_id = :padre_id
+            ORDER BY u.nombre
+        """), {'padre_id': current_user.id_usuario})
+        
+        hijos_data = []
+        for row in result:
+            hijos_data.append({
+                'id': row[0],
+                'nombre_completo': f"{row[1]} {row[2]}",
+                'numero_documento': row[3],
+                'correo': row[4],
+                'estado': row[5]
+            })
+        
+        # Debug info
+        debug_info = {
+            'padre_id': current_user.id_usuario,
+            'padre_nombre': current_user.nombre_completo,
+            'total_hijos': len(hijos_data),
+            'hijos': [{'id': h['id'], 'nombre': h['nombre_completo'], 'documento': h['numero_documento'], 'estado': h['estado']} for h in hijos_data]
+        }
+        
+        return jsonify({
+            'success': True,
+            'hijos': hijos_data,
+            'debug': debug_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo hijos: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/obtener_profesor_asignatura/<int:asignatura_id>')
+@login_required
+@role_required('Padre')
+def api_obtener_profesor_asignatura(asignatura_id):
+    """API para obtener el profesor de una asignatura específica."""
+    try:
+        asignatura = Asignatura.query.get(asignatura_id)
+        
+        if not asignatura:
+            return jsonify({
+                'success': False,
+                'message': 'Asignatura no encontrada'
+            }), 404
+        
+        # Obtener profesores de la asignatura
+        profesores = asignatura.profesores
+        
+        profesores_data = []
+        for profesor in profesores:
+            profesores_data.append({
+                'id': profesor.id_usuario,
+                'nombre_completo': profesor.nombre_completo,
+                'correo': profesor.correo
+            })
+        
+        return jsonify({
+            'success': True,
+            'profesores': profesores_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo profesor: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/enviar_solicitud', methods=['POST'])
+@login_required
+@role_required('Padre')
+def api_enviar_solicitud():
+    """API para enviar una solicitud de consulta."""
+    try:
+        data = request.get_json()
+        
+        # Validar datos requeridos
+        required_fields = ['estudiante_id', 'asignatura_id', 'profesor_id', 'numero_documento_hijo', 'nombre_completo_hijo', 'justificacion']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({
+                    'success': False,
+                    'message': f'El campo {field} es requerido'
+                }), 400
+        
+        # Verificar que el estudiante sea hijo del padre
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, data['estudiante_id']):
+            return jsonify({
+                'success': False,
+                'message': 'El estudiante seleccionado no es tu hijo'
+            }), 403
+        
+        # Crear solicitud
+        nueva_solicitud = SolicitudConsulta(
+            padre_id=current_user.id_usuario,
+            estudiante_id=data['estudiante_id'],
+            asignatura_id=data['asignatura_id'],
+            profesor_id=data['profesor_id'],
+            numero_documento_hijo=data['numero_documento_hijo'],
+            nombre_completo_hijo=data['nombre_completo_hijo'],
+            justificacion=data['justificacion'],
+            estado='pendiente'
+        )
+        
+        db.session.add(nueva_solicitud)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Solicitud enviada correctamente',
+            'solicitud_id': nueva_solicitud.id_solicitud
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error enviando solicitud: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/solicitudes')
+@login_required
+@role_required('Padre')
+def api_obtener_solicitudes():
+    """API para obtener las solicitudes del padre."""
+    try:
+        solicitudes = SolicitudConsulta.query.filter_by(padre_id=current_user.id_usuario).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
+        
+        solicitudes_data = []
+        for solicitud in solicitudes:
+            solicitudes_data.append(solicitud.to_dict())
+        
+        return jsonify({
+            'success': True,
+            'solicitudes': solicitudes_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo solicitudes: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/debug-base-datos')
+@login_required
+@role_required('Padre')
+def api_debug_base_datos():
+    """API de debug para verificar la base de datos directamente."""
+    try:
+        from sqlalchemy import text
+        
+        debug_info = {
+            'padre_actual': {
+                'id': current_user.id_usuario,
+                'nombre': current_user.nombre_completo,
+                'documento': current_user.no_identidad,
+                'rol': current_user.rol_nombre
+            }
+        }
+        
+        # 1. Verificar si existe la tabla estudiante_padre
+        try:
+            tabla_existe = db.session.execute(text("""
+                SELECT COUNT(*) FROM information_schema.tables 
+                WHERE table_name = 'estudiante_padre'
+            """)).scalar()
+            debug_info['tabla_estudiante_padre_existe'] = tabla_existe > 0
+        except Exception as e:
+            debug_info['tabla_estudiante_padre_existe'] = False
+            debug_info['error_tabla'] = str(e)
+        
+        # 2. Verificar todas las relaciones en la tabla estudiante_padre
+        try:
+            todas_relaciones = db.session.execute(text("""
+                SELECT ep.padre_id, ep.estudiante_id, ep.fecha_asignacion,
+                       up.nombre as padre_nombre, ue.nombre as estudiante_nombre,
+                       ue.no_identidad as estudiante_documento
+                FROM estudiante_padre ep 
+                LEFT JOIN usuarios up ON ep.padre_id = up.id_usuario
+                LEFT JOIN usuarios ue ON ep.estudiante_id = ue.id_usuario
+                ORDER BY ep.padre_id, ue.nombre
+            """)).fetchall()
+            
+            debug_info['todas_las_relaciones_en_bd'] = [
+                {
+                    'padre_id': row[0],
+                    'estudiante_id': row[1],
+                    'fecha_asignacion': row[2].isoformat() if row[2] else None,
+                    'padre_nombre': row[3],
+                    'estudiante_nombre': row[4],
+                    'estudiante_documento': row[5]
+                } for row in todas_relaciones
+            ]
+            debug_info['total_relaciones_en_bd'] = len(todas_relaciones)
+        except Exception as e:
+            debug_info['error_relaciones'] = str(e)
+        
+        # 3. Verificar relaciones específicas del padre actual
+        try:
+            relaciones_padre = db.session.execute(text("""
+                SELECT ep.estudiante_id, u.nombre, u.apellido, u.no_identidad, u.estado_cuenta
+                FROM estudiante_padre ep 
+                JOIN usuarios u ON ep.estudiante_id = u.id_usuario 
+                WHERE ep.padre_id = :padre_id
+                ORDER BY u.nombre
+            """), {'padre_id': current_user.id_usuario}).fetchall()
+            
+            debug_info['relaciones_del_padre_actual'] = [
+                {
+                    'estudiante_id': row[0],
+                    'nombre': f"{row[1]} {row[2]}",
+                    'documento': row[3],
+                    'estado': row[4]
+                } for row in relaciones_padre
+            ]
+            debug_info['total_relaciones_del_padre'] = len(relaciones_padre)
+        except Exception as e:
+            debug_info['error_relaciones_padre'] = str(e)
+        
+        # 4. Verificar si existe el estudiante 87654321
+        try:
+            estudiante_87654321 = db.session.execute(text("""
+                SELECT id_usuario, nombre, apellido, no_identidad, estado_cuenta, id_rol_fk
+                FROM usuarios 
+                WHERE no_identidad = '87654321'
+            """)).first()
+            
+            if estudiante_87654321:
+                debug_info['estudiante_87654321'] = {
+                    'id': estudiante_87654321[0],
+                    'nombre': f"{estudiante_87654321[1]} {estudiante_87654321[2]}",
+                    'documento': estudiante_87654321[3],
+                    'estado': estudiante_87654321[4],
+                    'rol_id': estudiante_87654321[5]
+                }
+            else:
+                debug_info['estudiante_87654321'] = None
+        except Exception as e:
+            debug_info['error_estudiante_87654321'] = str(e)
+        
+        return jsonify({
+            'success': True,
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error en debug: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/debug-estudiante-87654321')
+@login_required
+@role_required('Padre')
+def api_debug_estudiante_especifico():
+    """API de debug específica para el estudiante con documento 87654321 usando SQL directo como el admin."""
+    try:
+        from sqlalchemy import text
+        
+        # Buscar el estudiante específico
+        estudiante = Usuario.query.filter_by(no_identidad='87654321').first()
+        
+        if not estudiante:
+            return jsonify({
+                'success': False,
+                'message': 'Estudiante con documento 87654321 no encontrado'
+            }), 404
+        
+        # Verificar relación usando SQL directo como el admin
+        relacion_result = db.session.execute(text("""
+            SELECT ep.padre_id, ep.estudiante_id, ep.fecha_asignacion
+            FROM estudiante_padre ep 
+            WHERE ep.padre_id = :padre_id AND ep.estudiante_id = :estudiante_id
+        """), {
+            'padre_id': current_user.id_usuario, 
+            'estudiante_id': estudiante.id_usuario
+        }).first()
+        
+        # También verificar todas las relaciones del padre actual
+        todas_relaciones = db.session.execute(text("""
+            SELECT ep.estudiante_id, u.nombre, u.apellido, u.no_identidad, u.estado_cuenta
+            FROM estudiante_padre ep 
+            JOIN usuarios u ON ep.estudiante_id = u.id_usuario 
+            WHERE ep.padre_id = :padre_id
+            ORDER BY u.nombre
+        """), {'padre_id': current_user.id_usuario}).fetchall()
+        
+        debug_info = {
+            'estudiante_87654321': {
+                'id': estudiante.id_usuario,
+                'nombre': estudiante.nombre_completo,
+                'documento': estudiante.no_identidad,
+                'correo': estudiante.correo,
+                'estado_cuenta': estudiante.estado_cuenta,
+                'rol': estudiante.rol_nombre
+            },
+            'padre_actual': {
+                'id': current_user.id_usuario,
+                'nombre': current_user.nombre_completo,
+                'documento': current_user.no_identidad
+            },
+            'relacion_especifica': {
+                'existe': relacion_result is not None,
+                'fecha_asignacion': relacion_result[2].isoformat() if relacion_result and relacion_result[2] else None
+            },
+            'todas_las_relaciones_del_padre': [
+                {
+                    'estudiante_id': row[0],
+                    'nombre': f"{row[1]} {row[2]}",
+                    'documento': row[3],
+                    'estado': row[4]
+                } for row in todas_relaciones
+            ],
+            'total_relaciones': len(todas_relaciones)
+        }
+        
+        return jsonify({
+            'success': True,
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error en debug: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/debug-relaciones')
+@login_required
+@role_required('Padre')
+def api_debug_relaciones():
+    """API de debug para verificar las relaciones padre-hijo."""
+    try:
+        from controllers.models import estudiante_padre
+        
+        # Obtener todas las relaciones del padre actual
+        relaciones = db.session.query(estudiante_padre).filter(
+            estudiante_padre.c.padre_id == current_user.id_usuario
+        ).all()
+        
+        # Buscar específicamente el estudiante con documento 87654321
+        estudiante_especifico = Usuario.query.filter_by(no_identidad='87654321').first()
+        
+        debug_info = {
+            'padre_id': current_user.id_usuario,
+            'padre_nombre': current_user.nombre_completo,
+            'total_relaciones': len(relaciones),
+            'relaciones': [],
+            'estudiante_87654321': {
+                'existe': estudiante_especifico is not None,
+                'datos': None
+            }
+        }
+        
+        if estudiante_especifico:
+            debug_info['estudiante_87654321']['datos'] = {
+                'id': estudiante_especifico.id_usuario,
+                'nombre': estudiante_especifico.nombre_completo,
+                'documento': estudiante_especifico.no_identidad,
+                'estado': estudiante_especifico.estado_cuenta,
+                'rol': estudiante_especifico.rol_nombre
+            }
+            
+            # Verificar si este estudiante está vinculado al padre actual
+            relacion_especifica = db.session.query(estudiante_padre).filter(
+                estudiante_padre.c.padre_id == current_user.id_usuario,
+                estudiante_padre.c.estudiante_id == estudiante_especifico.id_usuario
+            ).first()
+            
+            debug_info['estudiante_87654321']['vinculado'] = relacion_especifica is not None
+            if relacion_especifica:
+                debug_info['estudiante_87654321']['fecha_vinculacion'] = relacion_especifica.fecha_asignacion.isoformat() if relacion_especifica.fecha_asignacion else None
+        
+        for relacion in relaciones:
+            estudiante = Usuario.query.get(relacion.estudiante_id)
+            if estudiante:
+                debug_info['relaciones'].append({
+                    'estudiante_id': estudiante.id_usuario,
+                    'estudiante_nombre': estudiante.nombre_completo,
+                    'estudiante_documento': estudiante.no_identidad,
+                    'estudiante_estado': estudiante.estado_cuenta,
+                    'fecha_asignacion': relacion.fecha_asignacion.isoformat() if relacion.fecha_asignacion else None
+                })
+        
+        return jsonify({
+            'success': True,
+            'debug_info': debug_info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error en debug: {str(e)}'
+        }), 500
+
+@padre_bp.route('/ver_calificaciones_estudiante/<int:estudiante_id>/<int:asignatura_id>')
+@login_required
+@role_required('Padre')
+def ver_calificaciones_estudiante(estudiante_id, asignatura_id):
+    """Página para mostrar las calificaciones de un estudiante específico cuando se acepta una solicitud."""
+    from controllers.models import Calificacion, CategoriaCalificacion
+    
+    # Verificar que el estudiante sea hijo del padre
+    if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+        flash('No tienes permisos para ver las calificaciones de este estudiante', 'error')
+        return redirect(url_for('padre.consultar_estudiante'))
+    
+    estudiante = Usuario.query.get(estudiante_id)
+    
+    # Obtener calificaciones del estudiante en la asignatura
+    calificaciones = Calificacion.query.filter_by(
+        estudianteId=estudiante_id,
+        asignaturaId=asignatura_id
+    ).all()
+    
+    # Obtener categorías de calificación
+    categorias = CategoriaCalificacion.query.all()
+    
+    # Organizar calificaciones por categoría
+    calificaciones_por_categoria = {}
+    for categoria in categorias:
+        calificaciones_por_categoria[categoria.id_categoria] = {
+            'categoria': categoria,
+            'calificaciones': []
+        }
+    
+    for calificacion in calificaciones:
+        if calificacion.categoriaId in calificaciones_por_categoria:
+            calificaciones_por_categoria[calificacion.categoriaId]['calificaciones'].append(calificacion)
+    
+    # Calcular promedios por categoría
+    promedios_por_categoria = {}
+    for categoria_id, data in calificaciones_por_categoria.items():
+        calificaciones_cat = data['calificaciones']
+        if calificaciones_cat:
+            valores = [float(cal.valor) for cal in calificaciones_cat if cal.valor is not None]
+            if valores:
+                promedios_por_categoria[categoria_id] = sum(valores) / len(valores)
+            else:
+                promedios_por_categoria[categoria_id] = 0
+        else:
+            promedios_por_categoria[categoria_id] = 0
+    
+    # Calcular promedio general
+    if promedios_por_categoria:
+        promedio_general = sum(promedios_por_categoria.values()) / len(promedios_por_categoria)
+    else:
+        promedio_general = 0
+    
+    return render_template('padres/calificaciones_estudiante.html',
+                         estudiante=estudiante,
+                         asignatura=Asignatura.query.get(asignatura_id),
+                         calificaciones_por_categoria=calificaciones_por_categoria,
+                         promedios_por_categoria=promedios_por_categoria,
+                         promedio_general=promedio_general)
+
+@padre_bp.route('/api/crear-relacion-manual', methods=['POST'])
+@login_required
+@role_required('Padre')
+def api_crear_relacion_manual():
+    """API para crear manualmente una relación padre-hijo si no existe."""
+    try:
+        from sqlalchemy import text
+        
+        data = request.get_json()
+        estudiante_documento = data.get('estudiante_documento', '87654321')
+        
+        # Buscar el estudiante por documento
+        estudiante = db.session.execute(text("""
+            SELECT id_usuario, nombre, apellido, no_identidad, estado_cuenta
+            FROM usuarios 
+            WHERE no_identidad = :documento
+        """), {'documento': estudiante_documento}).first()
+        
+        if not estudiante:
+            return jsonify({
+                'success': False,
+                'message': f'Estudiante con documento {estudiante_documento} no encontrado'
+            }), 404
+        
+        # Verificar si ya existe la relación
+        relacion_existente = db.session.execute(text("""
+            SELECT 1 FROM estudiante_padre 
+            WHERE padre_id = :padre_id AND estudiante_id = :estudiante_id
+        """), {
+            'padre_id': current_user.id_usuario,
+            'estudiante_id': estudiante[0]
+        }).first()
+        
+        if relacion_existente:
+            return jsonify({
+                'success': True,
+                'message': 'La relación ya existe',
+                'relacion_existente': True
+            })
+        
+        # Crear la relación
+        db.session.execute(text("""
+            INSERT INTO estudiante_padre (padre_id, estudiante_id, fecha_asignacion)
+            VALUES (:padre_id, :estudiante_id, NOW())
+        """), {
+            'padre_id': current_user.id_usuario,
+            'estudiante_id': estudiante[0]
+        })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Relación creada exitosamente entre {current_user.nombre_completo} y {estudiante[1]} {estudiante[2]}',
+            'relacion_creada': True,
+            'estudiante': {
+                'id': estudiante[0],
+                'nombre': f"{estudiante[1]} {estudiante[2]}",
+                'documento': estudiante[3],
+                'estado': estudiante[4]
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error creando relación: {str(e)}'
+        }), 500

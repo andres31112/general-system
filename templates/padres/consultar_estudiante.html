@@ -1,0 +1,464 @@
+{% extends "padres/base.html" %}
+
+{% block title %}Consultar Estudiante - Panel de Padre{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .solicitudes-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+    }
+    
+    .solicitud-item {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .solicitud-item:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+    }
+    
+    .estado-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .estado-pendiente {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .estado-aceptada {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .estado-denegada {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: var(--black);
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--accent4);
+        box-shadow: 0 0 0 0.2rem rgba(13, 59, 102, 0.25);
+    }
+    
+    .btn-primary {
+        background: var(--gradient-primary);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .loading-spinner {
+        display: none;
+    }
+    
+    .loading-spinner.show {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-search me-2 text-primary"></i>
+                        Consultar Estudiante
+                    </h2>
+                    <p class="text-muted mb-0">Envía solicitudes para revisar las notas y reportes académicos de tu hijo/a</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Formulario de Solicitud -->
+        <div class="col-lg-6">
+            <div class="form-container">
+                <h4 class="fw-bold text-dark mb-4">
+                    <i class="fas fa-plus-circle me-2 text-primary"></i>
+                    Nueva Solicitud
+                </h4>
+                
+                <form id="solicitudForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="estudiante" class="form-label">
+                                <i class="fas fa-user-graduate me-1"></i>
+                                Seleccionar Hijo/a
+                            </label>
+                            <select class="form-select" id="estudiante" name="estudiante" required>
+                                <option value="">Selecciona un hijo/a</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="asignatura" class="form-label">
+                                <i class="fas fa-book me-1"></i>
+                                Materia
+                            </label>
+                            <select class="form-select" id="asignatura" name="asignatura" required>
+                                <option value="">Selecciona una materia</option>
+                                {% for asignatura in asignaturas %}
+                                <option value="{{ asignatura.id_asignatura }}">{{ asignatura.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="numero_documento" class="form-label">
+                            <i class="fas fa-id-card me-1"></i>
+                            Número de Documento del Hijo/a
+                        </label>
+                        <input type="text" class="form-control" id="numero_documento" name="numero_documento" 
+                               placeholder="Ingresa el número de documento" required readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="nombre_completo" class="form-label">
+                            <i class="fas fa-signature me-1"></i>
+                            Nombre Completo del Hijo/a
+                        </label>
+                        <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" 
+                               placeholder="Nombre completo del estudiante" required readonly>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="justificacion" class="form-label">
+                            <i class="fas fa-comment-alt me-1"></i>
+                            Justificación
+                        </label>
+                        <textarea class="form-control" id="justificacion" name="justificacion" rows="4" 
+                                  placeholder="Explica por qué necesitas revisar las notas de esta materia..." required></textarea>
+                        <div class="form-text">Describe brevemente el motivo de tu solicitud de revisión.</div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Enviar Solicitud
+                            <div class="spinner-border spinner-border-sm ms-2 loading-spinner" role="status">
+                                <span class="visually-hidden">Enviando...</span>
+                            </div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Historial de Solicitudes -->
+        <div class="col-lg-6">
+            <div class="solicitudes-container">
+                <h4 class="fw-bold text-dark mb-4">
+                    <i class="fas fa-history me-2 text-primary"></i>
+                    Mis Solicitudes
+                </h4>
+                
+                <div id="solicitudesList">
+                    {% for solicitud in solicitudes %}
+                    <div class="solicitud-item">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1">{{ solicitud.asignatura.nombre }}</h6>
+                                <p class="text-muted mb-1 small">
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ solicitud.nombre_completo_hijo }}
+                                </p>
+                                <p class="text-muted mb-0 small">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ solicitud.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+                                </p>
+                            </div>
+                            <span class="estado-badge estado-{{ solicitud.estado }}">
+                                {% if solicitud.estado == 'pendiente' %}
+                                    <i class="fas fa-clock me-1"></i>Pendiente
+                                {% elif solicitud.estado == 'aceptada' %}
+                                    <i class="fas fa-check me-1"></i>Aceptada
+                                {% elif solicitud.estado == 'denegada' %}
+                                    <i class="fas fa-times me-1"></i>Denegada
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <strong>Justificación:</strong>
+                            <p class="text-muted mb-0">{{ solicitud.justificacion }}</p>
+                        </div>
+                        
+                        {% if solicitud.respuesta_profesor %}
+                        <div class="alert alert-info mb-0">
+                            <strong>Respuesta del Profesor:</strong>
+                            <p class="mb-0">{{ solicitud.respuesta_profesor }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    
+                    {% if not solicitudes %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No tienes solicitudes enviadas</h5>
+                        <p class="text-muted">Envía tu primera solicitud usando el formulario</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const estudianteSelect = document.getElementById('estudiante');
+    const asignaturaSelect = document.getElementById('asignatura');
+    const numeroDocumentoInput = document.getElementById('numero_documento');
+    const nombreCompletoInput = document.getElementById('nombre_completo');
+    const justificacionTextarea = document.getElementById('justificacion');
+    const solicitudForm = document.getElementById('solicitudForm');
+    const loadingSpinner = document.querySelector('.loading-spinner');
+
+    // Cargar hijos al cargar la página
+    cargarHijos();
+
+    // Event listener para cambio de estudiante
+    estudianteSelect.addEventListener('change', function() {
+        const estudianteId = this.value;
+        if (estudianteId) {
+            const estudiante = hijosData.find(h => h.id == estudianteId);
+            if (estudiante) {
+                numeroDocumentoInput.value = estudiante.numero_documento;
+                nombreCompletoInput.value = estudiante.nombre_completo;
+            }
+        } else {
+            numeroDocumentoInput.value = '';
+            nombreCompletoInput.value = '';
+        }
+    });
+
+    // Event listener para cambio de asignatura
+    asignaturaSelect.addEventListener('change', function() {
+        const asignaturaId = this.value;
+        if (asignaturaId) {
+            cargarProfesoresAsignatura(asignaturaId);
+        }
+    });
+
+    // Event listener para envío del formulario
+    solicitudForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        enviarSolicitud();
+    });
+
+    let hijosData = [];
+    let profesorSeleccionado = null;
+
+    function cargarHijos() {
+        console.log('Cargando hijos...');
+        fetch('/padre/api/obtener_hijos')
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos recibidos:', data);
+                if (data.success) {
+                    hijosData = data.hijos;
+                    console.log('Hijos encontrados:', data.hijos);
+                    llenarSelectHijos(data.hijos);
+                } else {
+                    console.error('Error en respuesta:', data.message);
+                    mostrarError('Error cargando hijos: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error de conexión');
+            });
+    }
+
+    function llenarSelectHijos(hijos) {
+        console.log('Llenando select con hijos:', hijos);
+        estudianteSelect.innerHTML = '<option value="">Selecciona un hijo/a</option>';
+        
+        if (hijos && hijos.length > 0) {
+            hijos.forEach(hijo => {
+                console.log('Agregando hijo:', hijo);
+                const option = document.createElement('option');
+                option.value = hijo.id;
+                option.textContent = hijo.nombre_completo;
+                estudianteSelect.appendChild(option);
+            });
+            console.log('Total opciones agregadas:', hijos.length);
+        } else {
+            console.log('No hay hijos para agregar');
+        }
+    }
+
+    function cargarProfesoresAsignatura(asignaturaId) {
+        console.log('Cargando profesores para asignatura:', asignaturaId);
+        fetch(`/padre/api/obtener_profesor_asignatura/${asignaturaId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Profesores recibidos:', data);
+                if (data.success && data.profesores && data.profesores.length > 0) {
+                    // Tomar el primer profesor (asumiendo que cada asignatura tiene un profesor principal)
+                    profesorSeleccionado = data.profesores[0];
+                    console.log('Profesor seleccionado:', profesorSeleccionado);
+                } else {
+                    console.error('No se encontraron profesores para esta asignatura');
+                    profesorSeleccionado = null;
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando profesores:', error);
+                profesorSeleccionado = null;
+            });
+    }
+
+    function enviarSolicitud() {
+        // Verificar que se haya seleccionado un profesor
+        if (!profesorSeleccionado) {
+            mostrarError('Por favor selecciona una materia primero para asignar el profesor');
+            return;
+        }
+
+        const formData = {
+            estudiante_id: estudianteSelect.value,
+            asignatura_id: asignaturaSelect.value,
+            profesor_id: profesorSeleccionado.id,
+            numero_documento_hijo: numeroDocumentoInput.value,
+            nombre_completo_hijo: nombreCompletoInput.value,
+            justificacion: justificacionTextarea.value
+        };
+
+        // Validar campos requeridos
+        if (!formData.estudiante_id || !formData.asignatura_id || !formData.justificacion) {
+            mostrarError('Por favor completa todos los campos requeridos');
+            return;
+        }
+
+        // Mostrar loading
+        loadingSpinner.classList.add('show');
+        solicitudForm.querySelector('button[type="submit"]').disabled = true;
+
+        fetch('/padre/api/enviar_solicitud', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarExito('Solicitud enviada correctamente');
+                solicitudForm.reset();
+                // Recargar la página para mostrar la nueva solicitud
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                mostrarError('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error de conexión');
+        })
+        .finally(() => {
+            loadingSpinner.classList.remove('show');
+            solicitudForm.querySelector('button[type="submit"]').disabled = false;
+        });
+    }
+
+    function mostrarExito(mensaje) {
+        // Crear alerta de éxito
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar al inicio del contenido
+        const content = document.querySelector('.content-wrapper');
+        content.insertBefore(alertDiv, content.firstChild);
+        
+        // Auto-remover después de 5 segundos
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    function mostrarError(mensaje) {
+        // Crear alerta de error
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i>
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar al inicio del contenido
+        const content = document.querySelector('.content-wrapper');
+        content.insertBefore(alertDiv, content.firstChild);
+        
+        // Auto-remover después de 5 segundos
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

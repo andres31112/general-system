@@ -606,6 +606,12 @@
                     <span class="badge-notification">{{ unread_messages|default(0) }}</span>
                     {% endif %}
                 </a>
+                <a href="{{ url_for('profesor.solicitudes') }}" class="nav-link rounded {% if request.endpoint == 'profesor.solicitudes' %}active{% endif %}">
+                    <i class="fas fa-clipboard-check"></i>Solicitudes
+                    {% if solicitudes_pendientes|default(0) > 0 %}
+                    <span class="badge-notification">{{ solicitudes_pendientes|default(0) }}</span>
+                    {% endif %}
+                </a>
                 <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded {% if request.endpoint == 'profesor.ver_eventos' %}active{% endif %}">
                     <i class="fas fa-calendar-day"></i>Eventos
                 </a>

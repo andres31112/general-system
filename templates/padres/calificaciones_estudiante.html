@@ -1,0 +1,327 @@
+{% extends "padres/base.html" %}
+
+{% block title %}Calificaciones de {{ estudiante.nombre_completo }} - Panel de Padre{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calificaciones-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .estudiante-header {
+        background: var(--gradient-primary);
+        color: var(--white);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .estudiante-header h2 {
+        margin: 0;
+        font-weight: 700;
+    }
+    
+    .estudiante-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    .categoria-section {
+        background: var(--light-gray);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid var(--accent4);
+    }
+    
+    .categoria-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .categoria-nombre {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--accent4);
+        margin: 0;
+    }
+    
+    .categoria-promedio {
+        background: var(--accent3);
+        color: var(--black);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .calificacion-item {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+    
+    .calificacion-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .calificacion-nombre {
+        font-weight: 600;
+        color: var(--black);
+        flex: 1;
+    }
+    
+    .calificacion-valor {
+        background: var(--accent4);
+        color: var(--white);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        min-width: 60px;
+        text-align: center;
+    }
+    
+    .promedio-general {
+        background: var(--gradient-secondary);
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        margin-top: 2rem;
+    }
+    
+    .promedio-numero {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--black);
+        margin-bottom: 0.5rem;
+    }
+    
+    .promedio-label {
+        font-size: 1.2rem;
+        color: var(--accent4);
+        font-weight: 600;
+    }
+    
+    .estado-aprobado {
+        color: #28a745;
+    }
+    
+    .estado-reprobado {
+        color: #dc3545;
+    }
+    
+    .btn-volver {
+        background: var(--gradient-primary);
+        border: none;
+        color: var(--white);
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .btn-volver:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        color: var(--white);
+    }
+    
+    .no-calificaciones {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--gray);
+    }
+    
+    .no-calificaciones i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: var(--accent2);
+    }
+    
+    .resumen-categorias {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .resumen-categoria {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .resumen-categoria-nombre {
+        font-weight: 600;
+        color: var(--accent4);
+        margin-bottom: 0.5rem;
+    }
+    
+    .resumen-categoria-promedio {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--black);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>
+                        Calificaciones del Estudiante
+                    </h2>
+                    <p class="text-muted mb-0">Información académica detallada</p>
+                </div>
+                <a href="{{ url_for('padre.consultar_estudiante') }}" class="btn-volver">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver a Solicitudes
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header del Estudiante -->
+    <div class="estudiante-header">
+        <h2>{{ estudiante.nombre_completo }}</h2>
+        <p>{{ asignatura.nombre }}</p>
+    </div>
+
+    {% if calificaciones_por_categoria %}
+        <!-- Resumen por Categorías -->
+        <div class="resumen-categorias">
+            {% for categoria_id, data in calificaciones_por_categoria.items() %}
+                {% if data.calificaciones %}
+                <div class="resumen-categoria">
+                    <div class="resumen-categoria-nombre">{{ data.categoria.nombre }}</div>
+                    <div class="resumen-categoria-promedio">
+                        {{ "%.2f"|format(promedios_por_categoria[categoria_id]) }}
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Calificaciones por Categoría -->
+        <div class="calificaciones-container">
+            <h4 class="fw-bold text-dark mb-4">
+                <i class="fas fa-list-alt me-2"></i>
+                Calificaciones Detalladas
+            </h4>
+            
+            {% for categoria_id, data in calificaciones_por_categoria.items() %}
+                {% if data.calificaciones %}
+                <div class="categoria-section">
+                    <div class="categoria-header">
+                        <h5 class="categoria-nombre">{{ data.categoria.nombre }}</h5>
+                        <div class="categoria-promedio">
+                            Promedio: {{ "%.2f"|format(promedios_por_categoria[categoria_id]) }}
+                        </div>
+                    </div>
+                    
+                    {% for calificacion in data.calificaciones %}
+                    <div class="calificacion-item">
+                        <div class="calificacion-nombre">
+                            {{ calificacion.nombre_calificacion or 'Sin nombre' }}
+                            {% if calificacion.observaciones %}
+                                <br><small class="text-muted">{{ calificacion.observaciones }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="calificacion-valor">
+                            {% if calificacion.valor %}
+                                {{ "%.2f"|format(calificacion.valor) }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Promedio General -->
+        <div class="promedio-general">
+            <div class="promedio-numero {{ 'estado-aprobado' if promedio_general >= 3.0 else 'estado-reprobado' }}">
+                {{ "%.2f"|format(promedio_general) }}
+            </div>
+            <div class="promedio-label">Promedio General</div>
+            <div class="mt-2">
+                {% if promedio_general >= 3.0 %}
+                    <span class="badge bg-success fs-6">
+                        <i class="fas fa-check me-1"></i>Aprobado
+                    </span>
+                {% else %}
+                    <span class="badge bg-danger fs-6">
+                        <i class="fas fa-times me-1"></i>Reprobado
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="no-calificaciones">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h4 class="text-muted">No hay calificaciones registradas</h4>
+            <p class="text-muted">El estudiante aún no tiene calificaciones en esta asignatura</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Agregar animaciones a las calificaciones
+    const calificacionItems = document.querySelectorAll('.calificacion-item');
+    calificacionItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            item.style.transition = 'all 0.5s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Agregar efecto hover a las categorías
+    const categoriaSections = document.querySelectorAll('.categoria-section');
+    categoriaSections.forEach(section => {
+        section.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = 'var(--shadow-hover)';
+        });
+        
+        section.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}
+

@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
-    HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones
+    HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta
 )
 from datetime import datetime, date
 import json
@@ -2789,3 +2789,159 @@ def api_eventos_profesor():
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================ #
+# SOLICITUDES DE CONSULTA
+# ============================================================================ #
+
+@profesor_bp.route('/solicitudes')
+@login_required
+def solicitudes():
+    """Página para que el profesor vea y gestione las solicitudes de consulta."""
+    # Obtener solicitudes pendientes del profesor
+    solicitudes_pendientes = SolicitudConsulta.query.filter_by(
+        profesor_id=current_user.id_usuario,
+        estado='pendiente'
+    ).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
+    
+    # Obtener todas las solicitudes del profesor
+    todas_solicitudes = SolicitudConsulta.query.filter_by(
+        profesor_id=current_user.id_usuario
+    ).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
+    
+    # Contar solicitudes pendientes para el badge
+    solicitudes_pendientes_count = len(solicitudes_pendientes)
+    
+    return render_template('profesores/solicitudes.html', 
+                         solicitudes_pendientes=solicitudes_pendientes_count,
+                         solicitudes_pendientes_lista=solicitudes_pendientes,
+                         todas_solicitudes=todas_solicitudes)
+
+@profesor_bp.route('/api/solicitudes')
+@login_required
+def api_obtener_solicitudes():
+    """API para obtener las solicitudes del profesor."""
+    try:
+        solicitudes = SolicitudConsulta.query.filter_by(
+            profesor_id=current_user.id_usuario
+        ).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
+        
+        solicitudes_data = []
+        for solicitud in solicitudes:
+            solicitudes_data.append(solicitud.to_dict())
+        
+        return jsonify({
+            'success': True,
+            'solicitudes': solicitudes_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo solicitudes: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/solicitudes/<int:solicitud_id>/responder', methods=['POST'])
+@login_required
+def api_responder_solicitud(solicitud_id):
+    """API para que el profesor responda a una solicitud."""
+    try:
+        data = request.get_json()
+        accion = data.get('accion')  # 'aceptar' o 'denegar'
+        respuesta = data.get('respuesta', '')
+        
+        if accion not in ['aceptar', 'denegar']:
+            return jsonify({
+                'success': False,
+                'message': 'Acción no válida'
+            }), 400
+        
+        # Obtener la solicitud
+        solicitud = SolicitudConsulta.query.get(solicitud_id)
+        
+        if not solicitud:
+            return jsonify({
+                'success': False,
+                'message': 'Solicitud no encontrada'
+            }), 404
+        
+        # Verificar que el profesor es el destinatario
+        if solicitud.profesor_id != current_user.id_usuario:
+            return jsonify({
+                'success': False,
+                'message': 'No tienes permisos para responder esta solicitud'
+            }), 403
+        
+        # Verificar que la solicitud esté pendiente
+        if solicitud.estado != 'pendiente':
+            return jsonify({
+                'success': False,
+                'message': 'Esta solicitud ya fue respondida'
+            }), 400
+        
+        # Actualizar la solicitud
+        solicitud.estado = 'aceptada' if accion == 'aceptar' else 'denegada'
+        solicitud.respuesta_profesor = respuesta
+        solicitud.fecha_respuesta = datetime.utcnow()
+        
+        db.session.commit()
+        
+        response_data = {
+            'success': True,
+            'message': f'Solicitud {accion}da correctamente',
+            'estado': solicitud.estado
+        }
+        
+        # Si se acepta la solicitud, incluir información para redirigir a calificaciones del padre
+        if accion == 'aceptar':
+            response_data['redirect_url'] = f'/padre/ver_calificaciones_estudiante/{solicitud.estudiante_id}/{solicitud.asignatura_id}'
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error respondiendo solicitud: {str(e)}'
+        }), 500
+
+@profesor_bp.route('/api/solicitudes/estadisticas')
+@login_required
+def api_estadisticas_solicitudes():
+    """API para obtener estadísticas de las solicitudes del profesor."""
+    try:
+        total_solicitudes = SolicitudConsulta.query.filter_by(
+            profesor_id=current_user.id_usuario
+        ).count()
+        
+        solicitudes_pendientes = SolicitudConsulta.query.filter_by(
+            profesor_id=current_user.id_usuario,
+            estado='pendiente'
+        ).count()
+        
+        solicitudes_aceptadas = SolicitudConsulta.query.filter_by(
+            profesor_id=current_user.id_usuario,
+            estado='aceptada'
+        ).count()
+        
+        solicitudes_denegadas = SolicitudConsulta.query.filter_by(
+            profesor_id=current_user.id_usuario,
+            estado='denegada'
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'estadisticas': {
+                'total': total_solicitudes,
+                'pendientes': solicitudes_pendientes,
+                'aceptadas': solicitudes_aceptadas,
+                'denegadas': solicitudes_denegadas
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo estadísticas: {str(e)}'
+        }), 500
