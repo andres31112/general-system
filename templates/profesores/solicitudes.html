@@ -302,8 +302,8 @@
         <div class="tab-content" id="solicitudesTabContent">
             <!-- Tab Pendientes -->
             <div class="tab-pane fade show active" id="pendientes" role="tabpanel">
-                {% if solicitudes_pendientes_lista %}
-                    {% for solicitud in solicitudes_pendientes_lista %}
+                {% if solicitudes_pendientes_list %}
+                    {% for solicitud in solicitudes_pendientes_list %}
                     <div class="solicitud-item solicitud-pendiente">
                         <div class="solicitud-header">
                             <div class="solicitud-info">
@@ -336,6 +336,16 @@
                             <div class="detail-row">
                                 <div class="detail-label">Asignatura:</div>
                                 <div class="detail-value">{{ solicitud.asignatura.nombre }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Curso:</div>
+                                <div class="detail-value">
+                                    {% if solicitud.curso_estudiante %}
+                                        {{ solicitud.curso_estudiante.nombre }}
+                                    {% else %}
+                                        <span class="text-muted">No disponible</span>
+                                    {% endif %}
+                                </div>
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Padre/Tutor:</div>
@@ -409,6 +419,16 @@
                             <div class="detail-row">
                                 <div class="detail-label">Asignatura:</div>
                                 <div class="detail-value">{{ solicitud.asignatura.nombre }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Curso:</div>
+                                <div class="detail-value">
+                                    {% if solicitud.curso_estudiante %}
+                                        {{ solicitud.curso_estudiante.nombre }}
+                                    {% else %}
+                                        <span class="text-muted">No disponible</span>
+                                    {% endif %}
+                                </div>
                             </div>
                             <div class="detail-row">
                                 <div class="detail-label">Padre/Tutor:</div>
@@ -563,17 +583,10 @@ function enviarRespuesta(solicitudId, accion, respuesta) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('responderModal'));
             modal.hide();
             
-            // Si se aceptó la solicitud y hay URL de redirección, ir a calificaciones
-            if (data.redirect_url) {
-                setTimeout(() => {
-                    window.location.href = data.redirect_url;
-                }, 1500);
-            } else {
-                // Recargar la página
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            }
+            // Recargar la página para mostrar el estado actualizado
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
         } else {
             mostrarError('Error: ' + data.message);
         }

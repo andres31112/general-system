@@ -92,6 +92,9 @@ class Usuario(db.Model, UserMixin):
     # Relación con comunicaciones
     mensajes_enviados = db.relationship('Comunicacion', foreign_keys='Comunicacion.remitente_id', back_populates='remitente', overlaps="comunicaciones_enviadas")
     mensajes_recibidos = db.relationship('Comunicacion', foreign_keys='Comunicacion.destinatario_id', back_populates='destinatario', overlaps="comunicaciones_recibidas")
+    
+    # Relación con notificaciones
+    notificaciones = db.relationship('Notificacion', back_populates='usuario', lazy='dynamic')
 
     @property
     def nombre_completo(self):
@@ -808,7 +811,7 @@ class SolicitudConsulta(db.Model):
     numero_documento_hijo = db.Column(db.String(20), nullable=False)
     nombre_completo_hijo = db.Column(db.String(200), nullable=False)
     justificacion = db.Column(db.Text, nullable=False)
-    fecha_solicitud = db.Column(db.DateTime, default=datetime.now)
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(db.String(20), default='pendiente')  # pendiente, aceptada, denegada
     respuesta_profesor = db.Column(db.Text, nullable=True)
     fecha_respuesta = db.Column(db.DateTime, nullable=True)
@@ -837,3 +840,37 @@ class SolicitudConsulta(db.Model):
     
     def __repr__(self):
         return f"<SolicitudConsulta {self.id_solicitud} - {self.estado}>"
+
+
+# ================================
+# Modelo de Notificaciones
+# ================================
+
+class Notificacion(db.Model):
+    __tablename__ = "notificaciones"
+    
+    id_notificacion = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    titulo = db.Column(db.String(200), nullable=False)
+    mensaje = db.Column(db.Text, nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # comunicacion, calificacion, asistencia, solicitud, etc.
+    link = db.Column(db.String(500), nullable=True)
+    leida = db.Column(db.Boolean, default=False)
+    creada_en = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    usuario = db.relationship("Usuario", back_populates="notificaciones")
+    
+    def to_dict(self):
+        return {
+            "id_notificacion": self.id_notificacion,
+            "titulo": self.titulo,
+            "mensaje": self.mensaje,
+            "tipo": self.tipo,
+            "link": self.link,
+            "leida": self.leida,
+            "creada_en": self.creada_en.isoformat() if self.creada_en else None
+        }
+    
+    def __repr__(self):
+        return f"<Notificacion {self.id_notificacion} - {self.titulo}>"

@@ -1,0 +1,454 @@
+{% extends "padres/base.html" %}
+
+{% block title %}Notificaciones - Panel de Padre{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notificaciones-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .notificacion-item {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all var(--transition-speed) ease;
+        border-left: 4px solid var(--border);
+        cursor: pointer;
+    }
+    
+    .notificacion-item:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .notificacion-item.no-leida {
+        border-left-color: var(--accent4);
+        background: var(--light);
+    }
+    
+    .notificacion-item.leida {
+        opacity: 0.7;
+    }
+    
+    .notificacion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .notificacion-titulo {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--accent4);
+        margin: 0;
+        flex: 1;
+    }
+    
+    .notificacion-fecha {
+        color: var(--gray);
+        font-size: 0.9rem;
+        margin-left: 1rem;
+    }
+    
+    .notificacion-mensaje {
+        color: var(--black);
+        line-height: 1.5;
+        margin-bottom: 0.75rem;
+    }
+    
+    .notificacion-tipo {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .tipo-solicitud {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .tipo-calificacion {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .tipo-general {
+        background: #e8f5e8;
+        color: #388e3c;
+    }
+    
+    .badge-no-leida {
+        background: var(--accent1);
+        color: var(--white);
+        border-radius: 50%;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        min-width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 0.5rem;
+    }
+    
+    .no-notificaciones {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--gray);
+    }
+    
+    .no-notificaciones i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: var(--accent2);
+    }
+    
+    .filtros-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .filtro-btn {
+        background: var(--white);
+        border: 2px solid var(--border);
+        color: var(--gray);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .filtro-btn:hover,
+    .filtro-btn.active {
+        background: var(--accent4);
+        border-color: var(--accent4);
+        color: var(--white);
+    }
+    
+    .btn-marcar-todas {
+        background: var(--gradient-secondary);
+        border: none;
+        color: var(--black);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .btn-marcar-todas:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-bell me-2 text-primary"></i>
+                        Notificaciones
+                    </h2>
+                    <p class="text-muted mb-0">Mantente informado sobre las respuestas a tus solicitudes</p>
+                </div>
+                <button class="btn-marcar-todas" onclick="marcarTodasComoLeidas()">
+                    <i class="fas fa-check-double me-2"></i>
+                    Marcar todas como leídas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros-container">
+        <div class="d-flex flex-wrap align-items-center">
+            <span class="me-3 fw-bold text-dark">Filtrar por:</span>
+            <button class="filtro-btn active" data-filtro="todas" onclick="filtrarNotificaciones('todas')">
+                <i class="fas fa-list me-1"></i>Todas
+            </button>
+            <button class="filtro-btn" data-filtro="no-leidas" onclick="filtrarNotificaciones('no-leidas')">
+                <i class="fas fa-envelope me-1"></i>No leídas
+            </button>
+            <button class="filtro-btn" data-filtro="solicitud" onclick="filtrarNotificaciones('solicitud')">
+                <i class="fas fa-clipboard-check me-1"></i>Solicitudes
+            </button>
+            <button class="filtro-btn" data-filtro="calificacion" onclick="filtrarNotificaciones('calificacion')">
+                <i class="fas fa-chart-line me-1"></i>Calificaciones
+            </button>
+        </div>
+    </div>
+
+    <!-- Lista de Notificaciones -->
+    <div class="notificaciones-container">
+        <div id="notificacionesList">
+            <!-- Las notificaciones se cargarán aquí dinámicamente -->
+            <div class="loading-state text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-3 text-muted">Cargando notificaciones...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let notificacionesData = [];
+let filtroActual = 'todas';
+
+document.addEventListener('DOMContentLoaded', function() {
+    cargarNotificaciones();
+    
+    // Actualizar notificaciones cada 30 segundos
+    setInterval(cargarNotificaciones, 30000);
+});
+
+function cargarNotificaciones() {
+    fetch('/padre/api/notificaciones')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                notificacionesData = data.notificaciones;
+                renderizarNotificaciones();
+            } else {
+                mostrarError('Error cargando notificaciones: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error de conexión');
+        });
+}
+
+function renderizarNotificaciones() {
+    const container = document.getElementById('notificacionesList');
+    
+    if (!notificacionesData || notificacionesData.length === 0) {
+        container.innerHTML = `
+            <div class="no-notificaciones">
+                <i class="fas fa-bell-slash"></i>
+                <h4 class="text-muted">No hay notificaciones</h4>
+                <p class="text-muted">No tienes notificaciones en este momento</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Filtrar notificaciones según el filtro actual
+    let notificacionesFiltradas = notificacionesData;
+    
+    if (filtroActual === 'no-leidas') {
+        notificacionesFiltradas = notificacionesData.filter(n => !n.leida);
+    } else if (filtroActual !== 'todas') {
+        notificacionesFiltradas = notificacionesData.filter(n => n.tipo === filtroActual);
+    }
+    
+    if (notificacionesFiltradas.length === 0) {
+        container.innerHTML = `
+            <div class="no-notificaciones">
+                <i class="fas fa-filter"></i>
+                <h4 class="text-muted">No hay notificaciones con este filtro</h4>
+                <p class="text-muted">Intenta cambiar el filtro para ver más notificaciones</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = notificacionesFiltradas.map(notif => `
+        <div class="notificacion-item ${notif.leida ? 'leida' : 'no-leida'}" 
+             onclick="abrirNotificacion(${notif.id})">
+            <div class="notificacion-header">
+                <h5 class="notificacion-titulo">
+                    ${notif.titulo}
+                    ${!notif.leida ? '<span class="badge-no-leida">!</span>' : ''}
+                </h5>
+                <span class="notificacion-fecha">${formatearFecha(notif.fecha)}</span>
+            </div>
+            <div class="notificacion-mensaje">${notif.mensaje}</div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="notificacion-tipo tipo-${notif.tipo}">${notif.tipo}</span>
+                ${!notif.leida ? '<button class="btn btn-sm btn-outline-primary" onclick="marcarComoLeida(event, ' + notif.id + ')">Marcar como leída</button>' : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function filtrarNotificaciones(filtro) {
+    filtroActual = filtro;
+    
+    // Actualizar botones de filtro
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-filtro="${filtro}"]`).classList.add('active');
+    
+    renderizarNotificaciones();
+}
+
+function abrirNotificacion(notificacionId) {
+    const notificacion = notificacionesData.find(n => n.id === notificacionId);
+    
+    if (notificacion && notificacion.link) {
+        // Marcar como leída si no lo está
+        if (!notificacion.leida) {
+            marcarComoLeida(null, notificacionId);
+        }
+        
+        // Redirigir al enlace
+        window.location.href = notificacion.link;
+    }
+}
+
+function marcarComoLeida(event, notificacionId) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    fetch(`/padre/api/notificaciones/${notificacionId}/marcar-leida`, {
+        method: 'PUT'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar el estado local
+            const notificacion = notificacionesData.find(n => n.id === notificacionId);
+            if (notificacion) {
+                notificacion.leida = true;
+            }
+            
+            // Re-renderizar
+            renderizarNotificaciones();
+        } else {
+            mostrarError('Error marcando notificación: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error de conexión');
+    });
+}
+
+function marcarTodasComoLeidas() {
+    const noLeidas = notificacionesData.filter(n => !n.leida);
+    
+    if (noLeidas.length === 0) {
+        mostrarInfo('No hay notificaciones sin leer');
+        return;
+    }
+    
+    if (confirm(`¿Marcar ${noLeidas.length} notificación(es) como leída(s)?`)) {
+        const promesas = noLeidas.map(notif => 
+            fetch(`/padre/api/notificaciones/${notif.id}/marcar-leida`, {
+                method: 'PUT'
+            })
+        );
+        
+        Promise.all(promesas)
+            .then(() => {
+                // Actualizar estado local
+                notificacionesData.forEach(n => n.leida = true);
+                renderizarNotificaciones();
+                mostrarExito('Todas las notificaciones han sido marcadas como leídas');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error marcando notificaciones');
+            });
+    }
+}
+
+function formatearFecha(fechaString) {
+    const fecha = new Date(fechaString);
+    const ahora = new Date();
+    const diffTime = Math.abs(ahora - fecha);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+        return 'Ayer';
+    } else if (diffDays > 1) {
+        return fecha.toLocaleDateString();
+    } else {
+        return fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
+function mostrarExito(mensaje) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const content = document.querySelector('.content-wrapper');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function mostrarError(mensaje) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-exclamation-circle me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const content = document.querySelector('.content-wrapper');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function mostrarInfo(mensaje) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-info alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-info-circle me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const content = document.querySelector('.content-wrapper');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

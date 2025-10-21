@@ -1,0 +1,337 @@
+{% extends "padres/base.html" %}
+
+{% block title %}Horario de Clases{% endblock %}
+
+{% block extra_css %}
+<style>
+    .estudiante-card {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        transition: all var(--transition-speed) ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    .estudiante-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+        border-color: var(--accent4);
+    }
+
+    .estudiante-card.selected {
+        border-color: var(--accent4);
+        background: linear-gradient(135deg, rgba(13, 59, 102, 0.05), rgba(13, 59, 102, 0.1));
+    }
+
+    .estudiante-info {
+        padding: 1.5rem;
+    }
+
+    .estudiante-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--white);
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    .estudiante-nombre {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--accent4);
+        margin-bottom: 0.5rem;
+    }
+
+    .estudiante-documento {
+        color: var(--gray);
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    .horario-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .horario-header {
+        background: var(--gradient-primary);
+        color: var(--white);
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .horario-content {
+        padding: 1.5rem;
+    }
+
+    .horario-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .horario-table th,
+    .horario-table td {
+        padding: 0.75rem;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+
+    .horario-table th {
+        background: var(--light-gray);
+        font-weight: 600;
+        color: var(--accent4);
+    }
+
+    .horario-table td {
+        vertical-align: middle;
+    }
+
+    .horario-table tr:hover {
+        background: var(--light-gray);
+    }
+
+    .asignatura-cell {
+        font-weight: 600;
+        color: var(--accent4);
+    }
+
+    .profesor-cell {
+        color: var(--gray);
+        font-size: 0.9rem;
+    }
+
+    .salon-cell {
+        color: var(--accent2);
+        font-weight: 500;
+    }
+
+    .hora-cell {
+        font-weight: 600;
+        color: var(--accent4);
+    }
+
+    .dia-header {
+        background: var(--accent4);
+        color: var(--white);
+        font-weight: 600;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--gray);
+    }
+
+    .no-data i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--accent2);
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .loading-spinner.show {
+        display: block;
+    }
+
+    .spinner-border {
+        color: var(--accent4);
+    }
+
+    .horario-info {
+        background: var(--light-gray);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .horario-info h6 {
+        color: var(--accent4);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .horario-info p {
+        margin-bottom: 0;
+        color: var(--gray);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                        Horario de Clases
+                    </h2>
+                    <p class="text-muted mb-0">Consulta el horario de clases de tus hijos</p>
+                </div>
+            </div>
+
+            <!-- Selección de Estudiante -->
+            {% if hijos %}
+            <div class="horario-container mb-4">
+                <div class="horario-header">
+                    <i class="fas fa-user-graduate me-2"></i>
+                    Seleccionar Estudiante
+                </div>
+                <div class="horario-content">
+                    <div class="row">
+                        {% for hijo in hijos %}
+                        <div class="col-md-4 mb-3">
+                            <div class="estudiante-card" onclick="seleccionarEstudiante({{ hijo.id_usuario }}, '{{ hijo.nombre_completo }}')">
+                                <div class="estudiante-info text-center">
+                                    <div class="estudiante-avatar mx-auto">
+                                        {{ hijo.nombre[0] }}{{ hijo.apellido[0] }}
+                                    </div>
+                                    <h5 class="estudiante-nombre">{{ hijo.nombre_completo }}</h5>
+                                    <p class="estudiante-documento">{{ hijo.no_identidad }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Horario del Estudiante Seleccionado -->
+            <div id="horarioEstudiante" style="display: none;">
+                <div class="horario-container">
+                    <div class="horario-header">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Horario de Clases
+                    </div>
+                    <div class="horario-content">
+                        <div class="loading-spinner" id="loadingHorario">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2">Cargando horario...</p>
+                        </div>
+                        <div id="horarioContent">
+                            <!-- El horario se cargará aquí -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="no-data">
+                <i class="fas fa-user-graduate"></i>
+                <h4>No tienes hijos registrados</h4>
+                <p>Contacta con la administración para registrar a tus hijos en el sistema.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let estudianteSeleccionado = null;
+
+function seleccionarEstudiante(estudianteId, nombreEstudiante) {
+    // Remover selección anterior
+    document.querySelectorAll('.estudiante-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Seleccionar nuevo estudiante
+    event.currentTarget.classList.add('selected');
+    estudianteSeleccionado = estudianteId;
+    
+    // Mostrar horario del estudiante
+    document.getElementById('horarioEstudiante').style.display = 'block';
+    
+    // Cargar horario del estudiante
+    cargarHorarioEstudiante(estudianteId);
+}
+
+async function cargarHorarioEstudiante(estudianteId) {
+    const loadingElement = document.getElementById('loadingHorario');
+    const contentElement = document.getElementById('horarioContent');
+    
+    loadingElement.classList.add('show');
+    contentElement.innerHTML = '';
+    
+    try {
+        const response = await fetch(`/padre/api/horario_estudiante/${estudianteId}`);
+        const data = await response.json();
+        
+        if (data.success && data.horario) {
+            mostrarHorario(data.horario);
+        } else {
+            contentElement.innerHTML = '<div class="no-data"><p>No hay horario disponible</p></div>';
+        }
+    } catch (error) {
+        console.error('Error cargando horario:', error);
+        contentElement.innerHTML = '<div class="alert alert-danger">Error al cargar el horario</div>';
+    } finally {
+        loadingElement.classList.remove('show');
+    }
+}
+
+function mostrarHorario(horario) {
+    const contentElement = document.getElementById('horarioContent');
+    
+    // Información del curso
+    let html = `<div class="horario-info">
+        <h6><i class="fas fa-info-circle me-2"></i>Información del Curso</h6>
+        <p><strong>Curso:</strong> ${horario.curso || 'No disponible'}</p>
+        <p><strong>Sede:</strong> ${horario.sede || 'No disponible'}</p>
+    </div>`;
+    
+    // Tabla de horario
+    html += '<div class="table-responsive"><table class="horario-table">';
+    html += '<thead><tr><th>Hora</th><th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th><th>Viernes</th><th>Sábado</th></tr></thead><tbody>';
+    
+    // Días de la semana
+    const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const horas = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
+    
+    horas.forEach(hora => {
+        html += `<tr><td class="hora-cell">${hora}</td>`;
+        
+        dias.forEach(dia => {
+            const clase = horario.clases && horario.clases[`${dia}_${hora}`];
+            if (clase) {
+                html += `<td>
+                    <div class="asignatura-cell">${clase.asignatura}</div>
+                    <div class="profesor-cell">${clase.profesor}</div>
+                    <div class="salon-cell">${clase.salon}</div>
+                </td>`;
+            } else {
+                html += '<td class="text-muted">-</td>';
+            }
+        });
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    contentElement.innerHTML = html;
+}
+</script>
+{% endblock %}

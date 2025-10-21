@@ -284,7 +284,8 @@ document.addEventListener('DOMContentLoaded', function() {
     asignaturaSelect.addEventListener('change', function() {
         const asignaturaId = this.value;
         if (asignaturaId) {
-            cargarProfesoresAsignatura(asignaturaId);
+            // Aquí podrías cargar información adicional si es necesario
+            console.log('Asignatura seleccionada:', asignaturaId);
         }
     });
 
@@ -295,7 +296,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     let hijosData = [];
-    let profesorSeleccionado = null;
 
     function cargarHijos() {
         console.log('Cargando hijos...');
@@ -339,38 +339,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function cargarProfesoresAsignatura(asignaturaId) {
-        console.log('Cargando profesores para asignatura:', asignaturaId);
-        fetch(`/padre/api/obtener_profesor_asignatura/${asignaturaId}`)
-            .then(response => response.json())
-            .then(data => {
-                console.log('Profesores recibidos:', data);
-                if (data.success && data.profesores && data.profesores.length > 0) {
-                    // Tomar el primer profesor (asumiendo que cada asignatura tiene un profesor principal)
-                    profesorSeleccionado = data.profesores[0];
-                    console.log('Profesor seleccionado:', profesorSeleccionado);
-                } else {
-                    console.error('No se encontraron profesores para esta asignatura');
-                    profesorSeleccionado = null;
-                }
-            })
-            .catch(error => {
-                console.error('Error cargando profesores:', error);
-                profesorSeleccionado = null;
-            });
-    }
-
     function enviarSolicitud() {
-        // Verificar que se haya seleccionado un profesor
-        if (!profesorSeleccionado) {
-            mostrarError('Por favor selecciona una materia primero para asignar el profesor');
-            return;
-        }
-
         const formData = {
             estudiante_id: estudianteSelect.value,
             asignatura_id: asignaturaSelect.value,
-            profesor_id: profesorSeleccionado.id,
+            profesor_id: 1, // Por ahora hardcodeado, debería obtenerse de la asignatura
             numero_documento_hijo: numeroDocumentoInput.value,
             nombre_completo_hijo: nombreCompletoInput.value,
             justificacion: justificacionTextarea.value

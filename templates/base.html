@@ -384,6 +384,12 @@
                     <span class="badge-notification">{{ unread_messages|default(0) }}</span>
                     {% endif %}
                 </a>
+                <a href="{{ url_for('admin.notificaciones') }}" class="nav-link rounded {% if request.endpoint == 'admin.notificaciones' %}active{% endif %}">
+                    <i class="fas fa-bell"></i>Notificaciones
+                    {% if unread_notifications|default(0) > 0 %}
+                    <span class="badge-notification">{{ unread_notifications|default(0) }}</span>
+                    {% endif %}
+                </a>
             </div>
 
             <div class="sidebar-group">

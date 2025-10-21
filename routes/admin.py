@@ -14,7 +14,7 @@ from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, 
-    Evento, Candidato, HorarioVotacion, ReporteCalificaciones
+    Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -1956,11 +1956,80 @@ def gestion_horarios_cursos():
     """Gestión de horarios por curso"""
     return render_template('superadmin/Horarios/gestion_horarios_cursos.html')
 
+def validar_conflicto_horario_profesor(profesor_id, dia_semana, hora_inicio, hora_fin, curso_id_excluir=None, asignatura_id_excluir=None):
+    """
+    Valida si un profesor tiene conflicto de horarios en el mismo día y hora.
+    
+    Args:
+        profesor_id: ID del profesor a validar
+        dia_semana: Día de la semana (ej: 'lunes', 'martes', etc.)
+        hora_inicio: Hora de inicio en formato 'HH:MM'
+        hora_fin: Hora de fin en formato 'HH:MM'
+        curso_id_excluir: ID del curso a excluir de la validación (para ediciones)
+        asignatura_id_excluir: ID de la asignatura a excluir de la validación (para ediciones)
+    
+    Returns:
+        dict: {'tiene_conflicto': bool, 'conflicto_info': str}
+    """
+    try:
+        from datetime import datetime, time, timedelta
+        
+        # Convertir horas a objetos time para comparación
+        hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
+        hora_fin_obj = datetime.strptime(hora_fin, '%H:%M').time()
+        
+        # Buscar todos los horarios compartidos del profesor
+        horarios_profesor = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
+        
+        for horario_comp in horarios_profesor:
+            # Excluir el curso/asignatura actual si se está editando
+            if (curso_id_excluir and horario_comp.curso_id == curso_id_excluir and 
+                asignatura_id_excluir and horario_comp.asignatura_id == asignatura_id_excluir):
+                continue
+                
+            # Buscar el HorarioCurso correspondiente
+            horario_curso = HorarioCurso.query.filter_by(
+                curso_id=horario_comp.curso_id,
+                asignatura_id=horario_comp.asignatura_id
+            ).first()
+            
+            if not horario_curso:
+                continue
+                
+            # Verificar si es el mismo día
+            if horario_curso.dia_semana.lower() != dia_semana.lower():
+                continue
+                
+            # Convertir horas del horario existente
+            try:
+                hora_inicio_existente = datetime.strptime(horario_curso.hora_inicio, '%H:%M').time()
+                hora_fin_existente = datetime.strptime(horario_curso.hora_fin, '%H:%M').time()
+            except:
+                continue
+                
+            # Verificar solapamiento de horarios
+            # Dos horarios se solapan si: inicio1 < fin2 Y fin1 > inicio2
+            if (hora_inicio_obj < hora_fin_existente and hora_fin_obj > hora_inicio_existente):
+                # Obtener información del conflicto
+                curso = Curso.query.get(horario_comp.curso_id)
+                asignatura = Asignatura.query.get(horario_comp.asignatura_id)
+                
+                return {
+                    'tiene_conflicto': True,
+                    'conflicto_info': f"Conflicto con {asignatura.nombre if asignatura else 'Asignatura'} en {curso.nombreCurso if curso else 'Curso'} ({horario_curso.hora_inicio}-{horario_curso.hora_fin})"
+                }
+        
+        return {'tiene_conflicto': False, 'conflicto_info': ''}
+        
+    except Exception as e:
+        print(f"Error en validación de conflicto: {str(e)}")
+        return {'tiene_conflicto': False, 'conflicto_info': ''}
+
 @admin_bp.route('/api/horario_curso/guardar', methods=['POST'])
 @login_required
 @role_required(1)
 def api_guardar_horario_curso():
-    """API para guardar horario de curso - VERSIÓN CORREGIDA"""
+    """API para guardar horario de curso - VERSIÓN CORREGIDA CON VALIDACIÓN DE CONFLICTOS"""
     try:
         data = request.get_json()
         
@@ -2040,14 +2109,6 @@ def api_guardar_horario_curso():
                     print(f"   Asignatura no encontrada: {asignatura_id}")
                     continue
 
-                # Obtener salon
-                salon_id = salones_asignaciones.get(clave)
-                if salon_id:
-                    salon = Salon.query.get(salon_id)
-                    if not salon:
-                        print(f"   Salón no encontrado: {salon_id}")
-                        salon_id = None
-
                 # Calcular hora_fin (versión simplificada)
                 hora_fin = "08:00"  # Valor por defecto
                 try:
@@ -2057,6 +2118,39 @@ def api_guardar_horario_curso():
                     hora_fin = hora_fin_dt.strftime('%H:%M')
                 except:
                     pass
+
+                # VALIDACIÓN DE CONFLICTOS DE HORARIOS
+                # Verificar conflictos para todos los profesores de esta asignatura
+                profesores_asignatura = asignatura.profesores
+                for profesor in profesores_asignatura:
+                    # Determinar si es una edición (existe la asignación)
+                    curso_id_excluir = curso_id if clave in asignaciones_existentes_dict else None
+                    asignatura_id_excluir = asignatura_id if clave in asignaciones_existentes_dict else None
+                    
+                    # Validar conflicto de horario
+                    validacion = validar_conflicto_horario_profesor(
+                        profesor_id=profesor.id_usuario,
+                        dia_semana=dia,
+                        hora_inicio=hora_inicio,
+                        hora_fin=hora_fin,
+                        curso_id_excluir=curso_id_excluir,
+                        asignatura_id_excluir=asignatura_id_excluir
+                    )
+                    
+                    if validacion['tiene_conflicto']:
+                        print(f"   CONFLICTO DETECTADO: {validacion['conflicto_info']}")
+                        return jsonify({
+                            'success': False, 
+                            'error': f"Conflicto de horario detectado para el profesor {profesor.nombre} {profesor.apellido}: {validacion['conflicto_info']}"
+                        }), 400
+
+                # Obtener salon
+                salon_id = salones_asignaciones.get(clave)
+                if salon_id:
+                    salon = Salon.query.get(salon_id)
+                    if not salon:
+                        print(f"   Salón no encontrado: {salon_id}")
+                        salon_id = None
 
                 # Crear o actualizar asignación
                 if clave in asignaciones_existentes_dict:
@@ -2216,7 +2310,42 @@ def api_compartir_horario():
                         for profesor in asignatura.profesores:
                             profesores_asignados.add(profesor)
             
-            # Guardar relaciones profesor-curso-horario
+            # VALIDACIÓN DE CONFLICTOS ANTES DE COMPARTIR
+            for profesor in profesores_asignados:
+                for clave, asignatura_id in asignaciones.items():
+                    if asignatura_id:
+                        asignatura = Asignatura.query.get(asignatura_id)
+                        if asignatura and profesor in asignatura.profesores:
+                            # Parsear la clave para obtener día y hora
+                            partes = clave.split('-')
+                            if len(partes) >= 2:
+                                dia = partes[0]
+                                hora_inicio = partes[1]
+                                
+                                # Calcular hora_fin
+                                try:
+                                    from datetime import datetime, timedelta
+                                    hora_inicio_dt = datetime.strptime(hora_inicio, '%H:%M')
+                                    hora_fin_dt = hora_inicio_dt + timedelta(minutes=45)
+                                    hora_fin = hora_fin_dt.strftime('%H:%M')
+                                except:
+                                    hora_fin = "08:00"
+                                
+                                # Validar conflicto de horario
+                                validacion = validar_conflicto_horario_profesor(
+                                    profesor_id=profesor.id_usuario,
+                                    dia_semana=dia,
+                                    hora_inicio=hora_inicio,
+                                    hora_fin=hora_fin
+                                )
+                                
+                                if validacion['tiene_conflicto']:
+                                    return jsonify({
+                                        'success': False, 
+                                        'error': f"No se puede compartir el horario. Conflicto detectado para el profesor {profesor.nombre} {profesor.apellido}: {validacion['conflicto_info']}"
+                                    }), 400
+
+            # Guardar relaciones profesor-curso-horario (solo si no hay conflictos)
             for profesor in profesores_asignados:
                 # Para cada asignatura que el profesor tiene en este horario
                 for clave, asignatura_id in asignaciones.items():
@@ -3476,7 +3605,7 @@ def api_enviar_comunicado_profesor():
 @role_required(1)
 def comunicaciones():
     """Página de comunicaciones para administradores."""
-    return render_template('admin/comunicaciones.html')
+    return render_template('superadmin/comunicaciones.html')
 
 @admin_bp.route('/api/comunicaciones', methods=['GET'])
 @login_required
@@ -4287,6 +4416,111 @@ def get_verification_info_route(user_id):
         return jsonify({
             'success': True,
             'data': info
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+# ==================== NOTIFICACIONES ====================
+
+@admin_bp.route('/notificaciones')
+@login_required
+@role_required(1)
+def notificaciones():
+    """Página principal de notificaciones para administradores"""
+    return render_template('superadmin/notificaciones/notificaciones.html')
+
+
+@admin_bp.route('/api/notificaciones')
+@login_required
+@role_required(1)
+def api_notificaciones():
+    """API para obtener notificaciones paginadas"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        filtro = request.args.get('filtro', 'todas', type=str)
+        
+        from services.notification_service import get_notifications_paginated
+        
+        pagination = get_notifications_paginated(
+            current_user.id_usuario, page, per_page, filtro
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'notificaciones': [notif.to_dict() for notif in pagination.items],
+                'total': pagination.total,
+                'pages': pagination.pages,
+                'current_page': pagination.page,
+                'has_next': pagination.has_next,
+                'has_prev': pagination.has_prev
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/notificaciones/marcar-leidas', methods=['POST'])
+@login_required
+@role_required(1)
+def api_marcar_leidas():
+    """API para marcar notificaciones como leídas"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        
+        from services.notification_service import mark_read
+        
+        if notificacion_ids:
+            updated = mark_read(current_user.id_usuario, notificacion_ids)
+        else:
+            from services.notification_service import mark_all_read
+            updated = mark_all_read(current_user.id_usuario)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Se marcaron {updated} notificaciones como leídas'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/notificaciones/eliminar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_eliminar_notificaciones():
+    """API para eliminar notificaciones"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        eliminar_todas = data.get('eliminar_todas', False)
+        
+        from services.notification_service import delete_notifications, delete_all_user_notifications
+        
+        if eliminar_todas:
+            deleted = delete_all_user_notifications(current_user.id_usuario)
+            message = f'Se eliminaron {deleted} notificaciones'
+        else:
+            deleted = delete_notifications(current_user.id_usuario, notificacion_ids)
+            message = f'Se eliminaron {deleted} notificaciones'
+        
+        return jsonify({
+            'success': True,
+            'message': message
         })
         
     except Exception as e:

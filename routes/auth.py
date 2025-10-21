@@ -225,7 +225,7 @@ def verify_email_with_token(token):
         
         if usuario.email_verified:
             flash('El correo ya ha sido verificado anteriormente', 'success')
-            return render_template('auth/verification_success.html', email=email, usuario=usuario)
+            return render_template('emails/verification_success.html', email=email, usuario=usuario)
         
         # Verificar que el código coincida y no haya expirado
         if (usuario.verification_code == code and 
@@ -247,7 +247,7 @@ def verify_email_with_token(token):
             send_verification_success_email(usuario, real_password)
             
             flash('¡Correo verificado exitosamente! Se ha enviado un correo con tus credenciales.', 'success')
-            return render_template('auth/verification_success.html', email=email, usuario=usuario)
+            return render_template('emails/verification_success.html', email=email, usuario=usuario)
         else:
             print(f"DEBUG: Código no coincide o expiró. Código en DB: {usuario.verification_code}, Código recibido: {code}")
             flash('El enlace de verificación ha expirado o es inválido', 'danger')
@@ -263,7 +263,7 @@ def verify_email_page():
     """Página para verificar el código de verificación con límite de intentos"""
     if request.method == 'GET':
         email = request.args.get('email', '')
-        return render_template('auth/verify_email.html', email=email, verified=False)
+        return render_template('emails/verify_email.html', email=email, verified=False)
     
     if request.method == 'POST':
         email = request.form.get('email')
@@ -271,17 +271,17 @@ def verify_email_page():
         
         if not email or not code:
             flash('Email y código son requeridos', 'danger')
-            return render_template('auth/verify_email.html', email=email, verified=False)
+            return render_template('emails/verify_email.html', email=email, verified=False)
         
         usuario = Usuario.query.filter_by(correo=email).first()
         
         if not usuario:
             flash('Usuario no encontrado', 'danger')
-            return render_template('auth/verify_email.html', email=email, verified=False)
+            return render_template('emails/verify_email.html', email=email, verified=False)
         
         if usuario.email_verified:
             flash('El correo ya ha sido verificado', 'success')
-            return render_template('auth/verify_email.html', email=email, verified=True)
+            return render_template('emails/verify_email.html', email=email, verified=True)
         
         # Verificar límite de intentos
         if usuario.verification_attempts >= 5:
@@ -309,7 +309,7 @@ def verify_email_page():
             send_verification_success_email(usuario, real_password)
             
             flash('¡Correo verificado exitosamente! Se ha enviado un correo con tus credenciales.', 'success')
-            return render_template('auth/verification_success.html', email=email, usuario=usuario)
+            return render_template('emails/verification_success.html', email=email, usuario=usuario)
         else:
             # Incrementar intentos fallidos
             usuario.verification_attempts += 1
@@ -318,21 +318,21 @@ def verify_email_page():
             
             intentos_restantes = 5 - usuario.verification_attempts
             flash(f'Código de verificación incorrecto. Te quedan {intentos_restantes} intentos.', 'danger')
-            return render_template('auth/verify_email.html', email=email, verified=False)
+            return render_template('emails/verify_email.html', email=email, verified=False)
 
 @auth_bp.route('/resend-verification', methods=['GET', 'POST'])
 def resend_verification():
     """Reenvía el código de verificación"""
     if request.method == 'GET':
         email = request.args.get('email', '')
-        return render_template('auth/resend_verification.html', email=email)
+        return render_template('emails/resend_verification.html', email=email)
     
     if request.method == 'POST':
         email = request.form.get('email')
         
         if not email:
             flash('El email es requerido', 'danger')
-            return render_template('auth/resend_verification.html', email=email)
+            return render_template('emails/resend_verification.html', email=email)
         
         usuario = Usuario.query.filter_by(correo=email).first()
         
@@ -363,12 +363,12 @@ def verification_success():
     """Página de confirmación de verificación exitosa"""
     email = request.args.get('email', '')
     usuario = Usuario.query.filter_by(correo=email).first()
-    return render_template('auth/verification_success.html', email=email, usuario=usuario)
+    return render_template('emails/verification_success.html', email=email, usuario=usuario)
 
 @auth_bp.route('/verification-required')
 def verification_required():
     """Página que informa al usuario que debe verificar su correo"""
-    return render_template('auth/verification_required.html')
+    return render_template('emails/verification_required.html')
 
 # --- Manejo de Errores ---
 

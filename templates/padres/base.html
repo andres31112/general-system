@@ -1,717 +1,516 @@
 <!DOCTYPE html>
-
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>{% block title %}Panel de Padre{% endblock %}</title>
 
-
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-
-
     <style>
-
         /* Variables CSS usando la paleta de colores del diseño */
-
         :root {
-
             --accent1: #F95738;
-
             --accent2: #EE964B;
-
             --accent3: #F4D35E;
-
             --accent4: #0D3B66;
-
             --light: #FAF0CA;
-
             --white: #FFFFFF;
-
             --black: #333333;
-
             --gray: #666666;
-
             --light-gray: #F8F9FA;
-
             --border: #E9ECEF;
-
             --card-bg: #FFFFFF;
-
             --header-bg: #FFFFFF;
-
             --main-bg: #F8F9FA;
-
             --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-
             --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
-
             --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
-
             --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
-
             --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
-
             --sidebar-width: 280px;
-
             --transition-speed: 0.3s;
-
         }
-
-
 
         /* Estilos del Sidebar */
-
         .sidebar {
-
             background: var(--gradient-primary);
-
             height: 100vh;
-
             position: fixed;
-
             top: 0;
-
             left: 0;
-
             width: var(--sidebar-width);
-
             z-index: 1000;
-
             transition: transform var(--transition-speed) ease;
-
             box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
-
             backdrop-filter: blur(10px);
-
             display: flex;
-
             flex-direction: column;
-
             overflow: hidden;
-
         }
-
-
 
         .sidebar-header {
-
             background: rgba(255, 255, 255, 0.1);
-
-            padding: 1.5rem;
-
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-            text-align: center;
-
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
         }
-
-
 
         .sidebar-header h1 {
-
-            color: var(--white);
-
             font-size: 1.1rem;
-
-            font-weight: 700;
-
+            text-align: center;
             margin: 0;
-
+            line-height: 1.3;
+            font-weight: 700;
+            color: var(--white);
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
         }
-
-
 
         .sidebar-nav {
-
             flex: 1;
-
-            padding: 1rem 0;
-
             overflow-y: auto;
-
+            padding: 0.5rem 0;
+            margin-bottom: 0.5rem;
         }
 
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
 
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
 
         .sidebar-group {
-
-            margin-bottom: 1.5rem;
-
             padding: 0 1rem;
-
+            margin-bottom: 0.5rem;
         }
-
-
-
-        .sidebar-group:last-child {
-
-            margin-bottom: 0;
-
-        }
-
-
 
         .nav-link {
-
-            display: flex;
-
-            align-items: center;
-
-            padding: 0.75rem 1rem;
-
-            color: rgba(255, 255, 255, 0.8);
-
-            text-decoration: none;
-
-            transition: all var(--transition-speed) ease;
-
+            color: rgba(255, 255, 255, 0.95) !important;
+            padding: 0.65rem 0.9rem;
+            margin: 6px 0;
+            border: none;
             border-radius: 10px;
-
-            margin-bottom: 0.25rem;
-
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
             position: relative;
-
             font-weight: 500;
-
+            text-decoration: none;
         }
 
-
-
-        .nav-link:hover {
-
-            background: rgba(255, 255, 255, 0.1);
-
-            color: var(--white);
-
-            transform: translateX(5px);
-
+        .nav-link:hover, 
+        .nav-link:focus {
+            color: var(--white) !important;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(8px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-
-
 
         .nav-link.active {
-
-            background: var(--accent3);
-
-            color: var(--black);
-
+            color: var(--white) !important;
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid var(--accent3);
+            font-weight: 600;
             box-shadow: 0 4px 15px rgba(244, 211, 94, 0.3);
-
         }
-
-
 
         .nav-link i {
-
-            width: 20px;
-
-            margin-right: 0.75rem;
-
+            width: 22px;
             text-align: center;
-
-            font-size: 1rem;
-
+            margin-right: 12px;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
         }
 
+        .nav-link:hover i {
+            transform: scale(1.1);
+        }
 
+        .nav-link.active i {
+            color: var(--accent3);
+        }
 
         .sidebar-footer {
-
-            background: rgba(255, 255, 255, 0.1);
-
-            padding: 1.5rem;
-
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-
+            background: rgba(0, 0, 0, 0.18);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 0.5rem 0.75rem;
+            backdrop-filter: blur(8px);
+            margin-top: auto;
+            flex-shrink: 0;
+            min-height: 100px;
         }
-
-
 
         .user-avatar {
-
-            background: var(--accent3);
-
-            color: var(--black);
-
-            font-weight: 600;
-
+            background: var(--gradient-secondary);
+            border: 2px solid rgba(255, 255, 255, 0.3);
         }
 
-
-
-        .user-info p {
-
+        .user-info .fw-semibold {
             color: var(--white);
-
+            font-size: 0.85rem;
         }
-
-
 
         .user-info .text-white-50 {
-
             color: rgba(255, 255, 255, 0.7) !important;
-
+            font-size: 0.75rem;
         }
 
-
-
-        .badge-notification {
-
-            background: var(--accent1);
-
-            color: var(--white);
-
-            border-radius: 50%;
-
-            padding: 2px 6px;
-
-            font-size: 0.7rem;
-
-            font-weight: 600;
-
-            margin-left: auto;
-
+        .logout-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            transition: color 0.3s ease;
+            font-size: 0.8rem;
         }
 
-
-
-        /* Main Content */
+        .logout-link:hover {
+            color: var(--accent3) !important;
+        }
 
         .main-content {
-
             margin-left: var(--sidebar-width);
-
             min-height: 100vh;
-
-            background: var(--main-bg);
-
+            transition: margin-left var(--transition-speed) ease;
+            background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
         }
 
-
-
-        .content-wrapper {
-
-            padding: 2rem;
-
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            backdrop-filter: blur(5px);
         }
 
+        .sidebar-overlay.show {
+            display: block;
+        }
 
+        /* Badge para notificaciones */
+        .badge-notification {
+            background: var(--gradient-accent);
+            font-size: 0.7em;
+            margin-left: auto;
+            border-radius: 10px;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(249, 87, 56, 0.3);
+        }
 
-        /* Mobile Responsive */
+        /* Separador visual en el sidebar */
+        .sidebar-separator {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+            margin: 0.6rem 0;
+        }
+
+        /* Efecto de partículas de fondo para el sidebar */
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
 
         @media (max-width: 991.98px) {
-
             .sidebar {
-
                 transform: translateX(-100%);
-
             }
-
-
-
+            
             .sidebar.show {
-
                 transform: translateX(0);
-
             }
-
-
-
+            
             .main-content {
-
                 margin-left: 0;
-
             }
-
-
-
-            .sidebar-overlay {
-
-                position: fixed;
-
-                top: 0;
-
-                left: 0;
-
-                width: 100%;
-
-                height: 100%;
-
-                background: rgba(0, 0, 0, 0.5);
-
-                z-index: 999;
-
-                display: none;
-
-            }
-
-
-
-            .sidebar-overlay.show {
-
-                display: block;
-
-            }
-
         }
 
+        /* Mejoras para el contenido principal */
+        .content-wrapper {
+            padding: 1.5rem;
+        }
 
+        /* Estilos para el botón de toggle en móvil */
+        #sidebarToggle {
+            border: none;
+            background: transparent;
+            font-size: 1.25rem;
+            color: var(--accent4);
+            transition: all 0.3s ease;
+        }
+
+        #sidebarToggle:hover {
+            color: var(--accent1);
+            transform: scale(1.1);
+        }
+
+        #sidebarToggle:focus {
+            box-shadow: none;
+        }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .nav-link {
+            animation: slideIn 0.4s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .nav-link:nth-child(1) { animation-delay: 0.1s; }
+        .nav-link:nth-child(2) { animation-delay: 0.15s; }
+        .nav-link:nth-child(3) { animation-delay: 0.2s; }
+        .nav-link:nth-child(4) { animation-delay: 0.25s; }
+        .nav-link:nth-child(5) { animation-delay: 0.3s; }
+        .nav-link:nth-child(6) { animation-delay: 0.35s; }
 
         /* Estilos adicionales para el contenido */
-
         .alert {
-
             border-radius: 10px;
-
             border: none;
-
             box-shadow: var(--shadow);
-
         }
-
-
 
         .btn {
-
             border-radius: 8px;
-
             font-weight: 500;
-
             transition: all var(--transition-speed) ease;
-
         }
-
-
 
         .btn:hover {
-
             transform: translateY(-2px);
-
             box-shadow: var(--shadow-hover);
-
         }
-
     </style>
 
-
-
     {% block extra_css %}{% endblock %}
-
 </head>
-
 <body class="bg-light">
 
-
-
     <!-- Sidebar -->
-
     <aside id="sidebar" class="sidebar text-white d-flex flex-column">
-
         <div class="sidebar-header">
-
             <h1 class="fw-bold text-uppercase">Panel de Padre</h1>
-
         </div>
-
-
 
         <nav class="sidebar-nav" aria-label="Navegación principal">
-
             <div class="sidebar-group">
-
                 <a href="{{ url_for('padre.dashboard') }}" class="nav-link rounded {% if request.endpoint == 'padre.dashboard' %}active{% endif %}">
-
                     <i class="fas fa-home"></i>Inicio
-
                 </a>
-
             </div>
 
-
-
             <div class="sidebar-group">
-
-                {% if current_user.has_permission('ver_calificaciones_hijo') %}
-
-                <a href="#" class="nav-link rounded {% if 'calificaciones' in request.endpoint %}active{% endif %}">
-
-                    <i class="fas fa-poll"></i>Calificaciones
-
+                <a href="{{ url_for('padre.informacion_academica') }}" class="nav-link rounded {% if request.endpoint == 'padre.informacion_academica' %}active{% endif %}">
+                    <i class="fas fa-graduation-cap"></i>Información Académica
                 </a>
-
-                {% endif %}
-
-                {% if current_user.has_permission('ver_horario_hijo') %}
-
-                <a href="#" class="nav-link rounded {% if 'horario' in request.endpoint %}active{% endif %}">
-
+                <a href="{{ url_for('padre.horario_clases') }}" class="nav-link rounded {% if request.endpoint == 'padre.horario_clases' %}active{% endif %}">
                     <i class="fas fa-calendar-alt"></i>Horario de Clases
-
                 </a>
-
-                {% endif %}
-
             </div>
 
-
-
             <div class="sidebar-group">
-
                 <a href="{{ url_for('padre.comunicaciones') }}" class="nav-link rounded {% if request.endpoint == 'padre.comunicaciones' %}active{% endif %}">
-
                     <i class="fas fa-envelope"></i>Comunicaciones
-
                     {% if unread_messages|default(0) > 0 %}
-
                     <span class="badge-notification">{{ unread_messages|default(0) }}</span>
-
                     {% endif %}
-
                 </a>
-
+                <a href="{{ url_for('padre.notificaciones') }}" class="nav-link rounded {% if request.endpoint == 'padre.notificaciones' %}active{% endif %}">
+                    <i class="fas fa-bell"></i>Notificaciones
+                    <span class="badge-notification" id="notificationBadge" style="display: none;">0</span>
+                </a>
             </div>
-
-
-
-            <div class="sidebar-group">
-
-                <a href="#" class="nav-link rounded {% if 'perfil' in request.endpoint %}active{% endif %}">
-
-                    <i class="fas fa-user-circle"></i>Mi Perfil
-
-                </a>
-
-                <a href="#" class="nav-link rounded {% if 'soporte' in request.endpoint %}active{% endif %}">
-
-                    <i class="fas fa-question-circle"></i>Soporte
-
-                </a>
-
-            </div>
-
         </nav>
 
-
-
         <div class="sidebar-footer d-flex flex-column align-items-stretch justify-content-center">
-
             <div class="d-flex align-items-center justify-content-between mb-3">
-
                 <div class="d-flex align-items-center">
-
                     <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
-
                          style="width: 38px; height: 38px;">
-
                         <i class="fas fa-user text-dark"></i>
-
                     </div>
-
                     <div class="user-info">
-
                         <p class="fw-semibold m-0 small">{{ current_user.nombre_completo }}</p>
-
                         <p class="small text-white-50 m-0">Padre</p>
-
                     </div>
-
                 </div>
-
-                <a href="#" class="btn btn-sm btn-light">Perfil</a>
-
             </div>
-
-
 
             <div class="d-flex">
-
                 <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light w-100">
-
                     <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
-
                 </a>
-
             </div>
-
         </div>
-
     </aside>
 
-
-
     <!-- Main Content -->
-
     <div class="main-content d-flex flex-column">
-
         <!-- Mobile Header -->
-
         <header class="d-lg-none p-3 sticky-top bg-white border-bottom shadow-sm">
-
             <div class="d-flex align-items-center justify-content-between">
-
                 <div class="d-flex align-items-center">
-
                     <button class="btn" type="button" id="sidebarToggle" aria-label="Alternar menú">
-
                         <i class="fas fa-bars"></i>
-
                     </button>
-
                     <h5 class="m-0 ms-3 text-dark fw-bold">Panel de Padre</h5>
-
                 </div>
-
             </div>
-
         </header>
-
         
-
         <!-- Content -->
-
         <main class="content-wrapper flex-grow-1">
 
-
-
             <!-- Mensajes flash -->
-
             {% with messages = get_flashed_messages(with_categories=true) %}
-
                 {% if messages %}
-
                     {% for category, message in messages %}
-
                         <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
-
                             <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-
                             {{ message }}
-
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-
                         </div>
-
                     {% endfor %}
-
                 {% endif %}
-
             {% endwith %}
-
             
-
             <!-- Contenido principal -->
-
             {% block content %}{% endblock %}
-
         </main>
-
     </div>
 
-
-
     <!-- Overlay para móvil -->
-
     <div class="sidebar-overlay d-lg-none"></div>
 
-
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+    
     <script>
-
         document.addEventListener('DOMContentLoaded', function() {
-
-            const sidebarToggle = document.getElementById('sidebarToggle');
-
             const sidebar = document.getElementById('sidebar');
-
+            const sidebarToggle = document.getElementById('sidebarToggle');
             const overlay = document.querySelector('.sidebar-overlay');
 
-
-
-            if (sidebarToggle && sidebar) {
-
+            // Toggle sidebar en móvil
+            if (sidebarToggle) {
                 sidebarToggle.addEventListener('click', function() {
-
                     sidebar.classList.toggle('show');
-
-                    if (overlay) {
-
-                        overlay.classList.toggle('show');
-
-                    }
-
+                    document.querySelector('.sidebar-overlay').classList.toggle('show');
+                    document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
                 });
-
             }
 
-
-
-            if (overlay) {
-
-                overlay.addEventListener('click', function() {
-
-                    sidebar.classList.remove('show');
-
-                    overlay.classList.remove('show');
-
-                });
-
-            }
-
-
-
+            // Cerrar sidebar al hacer clic en overlay
             document.addEventListener('click', function(event) {
-
-                if (window.innerWidth < 992 && sidebar.classList.contains('show') && !sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
-
+                const overlayEl = document.querySelector('.sidebar-overlay');
+                if (event.target === overlayEl) {
                     sidebar.classList.remove('show');
-
-                    if (overlay) {
-
-                        overlay.classList.remove('show');
-
-                    }
-
+                    overlayEl.classList.remove('show');
+                    document.body.style.overflow = '';
                 }
-
             });
 
+            // Cerrar sidebar en móvil al hacer clic en un enlace
+            const navLinks = document.querySelectorAll('#sidebar .nav-link:not(.dropdown-toggle)');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992) {
+                        sidebar.classList.remove('show');
+                        document.querySelector('.sidebar-overlay').classList.remove('show');
+                        document.body.style.overflow = '';
+                    }
+                });
+            });
 
+            // Resaltar enlace activo
+            function setActiveNavLink() {
+                const currentPath = window.location.pathname;
+                const navLinks = document.querySelectorAll('.nav-link');
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === currentPath) {
+                        link.classList.add('active');
+                    }
+                });
+            }
 
-            // Cerrar sidebar al redimensionar ventana
-
+            setActiveNavLink();
+            
+            // Manejar el redimensionamiento de la ventana
             window.addEventListener('resize', function() {
-
                 if (window.innerWidth >= 992) {
-
                     sidebar.classList.remove('show');
-
-                    if (overlay) {
-
-                        overlay.classList.remove('show');
-
-                    }
-
+                    document.querySelector('.sidebar-overlay').classList.remove('show');
+                    document.body.style.overflow = '';
                 }
-
             });
 
-        });
+            // Actualizar contador de notificaciones
+            async function actualizarContadorNotificaciones() {
+                try {
+                    const response = await fetch('/padre/api/notificaciones/contador');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const badge = document.getElementById('notificationBadge');
+                        if (badge) {
+                            if (data.count > 0) {
+                                badge.textContent = data.count;
+                                badge.style.display = 'flex';
+                            } else {
+                                badge.style.display = 'none';
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error actualizando contador de notificaciones:', error);
+                }
+            }
 
+            // Actualizar el contador al cargar la página
+            actualizarContadorNotificaciones();
+
+            // Actualizar el contador cada 30 segundos
+            setInterval(actualizarContadorNotificaciones, 30000);
+        });
     </script>
 
+    {% block extra_js %}{% endblock %}
 </body>
-
 </html>

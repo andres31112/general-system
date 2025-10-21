@@ -240,6 +240,20 @@ def validar_estudiante_en_curso(estudiante_id, curso_id):
         cursoId=curso_id
     ).first() is not None
 
+def obtener_curso_actual_estudiante(estudiante_id):
+    """Obtiene el curso actual de un estudiante basado en su matrícula más reciente."""
+    try:
+        matricula = db.session.query(Matricula).join(Curso).filter(
+            Matricula.estudianteId == estudiante_id
+        ).order_by(Matricula.fecha_matricula.desc()).first()
+        
+        if matricula:
+            return matricula.curso
+        return None
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo curso del estudiante {estudiante_id}: {e}")
+        return None
+
 def verificar_asignatura_profesor_en_curso(asignatura_id, profesor_id, curso_id):
     """Verifica si el profesor tiene una asignatura en un curso (por HorarioCompartido o Clase)."""
     acceso_horario = HorarioCompartido.query.filter_by(
@@ -2810,12 +2824,18 @@ def solicitudes():
         profesor_id=current_user.id_usuario
     ).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
     
-    # Contar solicitudes pendientes para el badge
-    solicitudes_pendientes_count = len(solicitudes_pendientes)
+    # Agregar información del curso a cada solicitud
+    for solicitud in solicitudes_pendientes:
+        curso_estudiante = obtener_curso_actual_estudiante(solicitud.estudiante_id)
+        solicitud.curso_estudiante = curso_estudiante
+    
+    for solicitud in todas_solicitudes:
+        curso_estudiante = obtener_curso_actual_estudiante(solicitud.estudiante_id)
+        solicitud.curso_estudiante = curso_estudiante
     
     return render_template('profesores/solicitudes.html', 
-                         solicitudes_pendientes=solicitudes_pendientes_count,
-                         solicitudes_pendientes_lista=solicitudes_pendientes,
+                         solicitudes_pendientes=len(solicitudes_pendientes),
+                         solicitudes_pendientes_list=solicitudes_pendientes,
                          todas_solicitudes=todas_solicitudes)
 
 @profesor_bp.route('/api/solicitudes')
@@ -2829,7 +2849,19 @@ def api_obtener_solicitudes():
         
         solicitudes_data = []
         for solicitud in solicitudes:
-            solicitudes_data.append(solicitud.to_dict())
+            solicitud_dict = solicitud.to_dict()
+            
+            # Obtener información del curso del estudiante
+            curso_estudiante = obtener_curso_actual_estudiante(solicitud.estudiante_id)
+            if curso_estudiante:
+                solicitud_dict['curso_estudiante'] = {
+                    'id': curso_estudiante.id_curso,
+                    'nombre': curso_estudiante.nombreCurso
+                }
+            else:
+                solicitud_dict['curso_estudiante'] = None
+                
+            solicitudes_data.append(solicitud_dict)
         
         return jsonify({
             'success': True,
@@ -2887,15 +2919,18 @@ def api_responder_solicitud(solicitud_id):
         
         db.session.commit()
         
+        # Enviar notificación al padre
+        from services.notification_service import notificar_respuesta_solicitud
+        notificar_respuesta_solicitud(solicitud)
+        
         response_data = {
             'success': True,
             'message': f'Solicitud {accion}da correctamente',
             'estado': solicitud.estado
         }
         
-        # Si se acepta la solicitud, incluir información para redirigir a calificaciones del padre
-        if accion == 'aceptar':
-            response_data['redirect_url'] = f'/padre/ver_calificaciones_estudiante/{solicitud.estudiante_id}/{solicitud.asignatura_id}'
+        # Si se acepta la solicitud, no redirigir (el profesor se queda en su panel)
+        # La notificación se enviará al padre para que vea las calificaciones
         
         return jsonify(response_data)
         

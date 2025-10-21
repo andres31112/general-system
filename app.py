@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_login import current_user
 from flask_login import LoginManager
 from controllers.models import db, Usuario, Rol
 from routes.auth import auth_bp
@@ -88,6 +89,23 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(estudiante_bp)
 app.register_blueprint(padre_bp)
 app.register_blueprint(profesor_bp)
+
+@app.context_processor
+def inject_unread_notifications():
+    try:
+        if current_user.is_authenticated:
+            # Lazy import to avoid circular imports
+            from services.notification_service import count_unread
+            unread = count_unread(current_user.id_usuario)
+        else:
+            unread = 0
+    except Exception:
+        unread = 0
+    # Mantener compatibilidad con plantillas existentes que usan unread_messages
+    return {
+        'unread_notifications': unread,
+        'unread_messages': unread,
+    }
 
 if __name__ == '__main__':
     with app.app_context():
