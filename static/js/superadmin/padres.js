@@ -4,6 +4,7 @@
         const prevPageBtn = document.getElementById('prevPage');
         const nextPageBtn = document.getElementById('nextPage');
         const pageInfo = document.getElementById('pageInfo');
+        const filterSelects = document.querySelectorAll('.filter-select');
 
         let currentPage = 1;
         const itemsPerPage = 10;
@@ -42,8 +43,15 @@
                 const userId = padre.id_usuario;
                 const estadoClase = padre.estado_cuenta === 'activa' ? 'badge-success' : 'badge-danger';
                 const estadoTexto = padre.estado_cuenta === 'activa' ? 'Activa' : 'Inactiva';
-                const hijosAsignados = padre.hijos_asignados && padre.hijos_asignados.length > 0 ? 
-                    padre.hijos_asignados.join(', ') : 'Sin hijos asignados';
+                // Mostrar hijos asignados de forma más clara
+                let hijosAsignados = 'Sin hijos asignados';
+                if (padre.hijos_asignados && padre.hijos_asignados.length > 0) {
+                    if (padre.hijos_asignados.length === 1) {
+                        hijosAsignados = `<span class="hijos-badge">1 hijo</span><br><small>${padre.hijos_asignados[0].nombre_completo}</small>`;
+                    } else {
+                        hijosAsignados = `<span class="hijos-badge">${padre.total_hijos} hijos</span><br><small>${padre.hijos_asignados.slice(0, 2).map(h => h.nombre_completo).join(', ')}${padre.hijos_asignados.length > 2 ? '...' : ''}</small>`;
+                    }
+                }
 
                 row.innerHTML = `
                     <td>${padre.no_identidad}</td>
@@ -115,21 +123,40 @@
 
         fetchData();
 
-        searchBar.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
+        function applyFilters() {
+            const searchQuery = searchBar.value.toLowerCase();
+            const estadoFilter = filterSelects[0].value;
+            const hijosFilter = filterSelects[1].value;
+            
+            filteredPadres = allPadres.filter(padre => {
+                // Filtro de búsqueda
+                const matchesSearch = searchQuery === '' || 
+                    padre.nombre_completo.toLowerCase().includes(searchQuery) ||
+                    padre.no_identidad.toLowerCase().includes(searchQuery) ||
+                    padre.correo.toLowerCase().includes(searchQuery);
+                
+                // Filtro de estado
+                const matchesEstado = estadoFilter === '' || padre.estado_cuenta === estadoFilter;
+                
+                // Filtro de hijos
+                let matchesHijos = true;
+                if (hijosFilter === 'con_hijos') {
+                    matchesHijos = padre.total_hijos > 0;
+                } else if (hijosFilter === 'sin_hijos') {
+                    matchesHijos = padre.total_hijos === 0;
+                }
+                
+                return matchesSearch && matchesEstado && matchesHijos;
+            });
+            
             currentPage = 1;
-            
-            if (query === '') {
-                filteredPadres = [...allPadres];
-            } else {
-                filteredPadres = allPadres.filter(padre => 
-                    padre.nombre_completo.toLowerCase().includes(query) ||
-                    padre.no_identidad.toLowerCase().includes(query) ||
-                    padre.correo.toLowerCase().includes(query)
-                );
-            }
-            
             renderTable(filteredPadres);
+        }
+
+        searchBar.addEventListener('input', applyFilters);
+        
+        filterSelects.forEach(select => {
+            select.addEventListener('change', applyFilters);
         });
 
         // Actualizar cada 30 segundos

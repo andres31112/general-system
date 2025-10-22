@@ -90,8 +90,11 @@ class Usuario(db.Model, UserMixin):
     votos_realizados = db.relationship('Voto', back_populates='estudiante')
     
     # Relación con comunicaciones
-    mensajes_enviados = db.relationship('Comunicacion', foreign_keys='Comunicacion.remitente_id', back_populates='remitente')
-    mensajes_recibidos = db.relationship('Comunicacion', foreign_keys='Comunicacion.destinatario_id', back_populates='destinatario')
+    mensajes_enviados = db.relationship('Comunicacion', foreign_keys='Comunicacion.remitente_id', back_populates='remitente', overlaps="comunicaciones_enviadas")
+    mensajes_recibidos = db.relationship('Comunicacion', foreign_keys='Comunicacion.destinatario_id', back_populates='destinatario', overlaps="comunicaciones_recibidas")
+    
+    # Relación con notificaciones
+    notificaciones = db.relationship('Notificacion', back_populates='usuario', lazy='dynamic')
 
     @property
     def nombre_completo(self):
@@ -218,6 +221,7 @@ class Asignatura(db.Model):
     horarios_compartidos = db.relationship('HorarioCompartido', back_populates='asignatura')
     calificaciones = db.relationship('Calificacion', back_populates='asignatura')
     clases = db.relationship('Clase', back_populates='asignatura')
+    solicitudes_consulta = db.relationship('SolicitudConsulta', back_populates='asignatura')
 
     def to_dict(self):
         return {
@@ -281,9 +285,14 @@ class Asistencia(db.Model):
 class ConfiguracionCalificacion(db.Model):
     __tablename__ = 'configuracion_calificacion'
     id_configuracion = db.Column(db.Integer, primary_key=True)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=True)  # NULL para configuración global
     notaMinima = db.Column(db.Numeric(5,2), nullable=False)
     notaMaxima = db.Column(db.Numeric(5,2), nullable=False)
     notaMinimaAprobacion = db.Column(db.Numeric(5,2), nullable=False)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    asignatura = db.relationship('Asignatura', foreign_keys=[asignatura_id])
 
     def __repr__(self):
         return f'<ConfiguracionCalificacion {self.notaMinimaAprobacion}>'
@@ -750,6 +759,7 @@ class Comunicacion(db.Model):
     mensaje = db.Column(db.Text)
     fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
     estado = db.Column(db.String(20), default='inbox')  # inbox, sent, draft, deleted
+    grupo_id = db.Column(db.String(100), nullable=True)  # Para agrupar comunicados como Gmail
     
     # Relaciones
     remitente = db.relationship('Usuario', foreign_keys=[remitente_id], backref='comunicaciones_enviadas')
@@ -881,3 +891,83 @@ class ReporteCalificaciones(db.Model):
     
     def __repr__(self):
         return f"<ReporteCalificaciones {self.nombre_curso} - {self.nombre_asignatura}>"
+
+
+# ================================
+# Modelo de Solicitudes de Consulta
+# ================================
+
+class SolicitudConsulta(db.Model):
+    __tablename__ = "solicitudes_consulta"
+    
+    id_solicitud = db.Column(db.Integer, primary_key=True)
+    padre_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id_asignatura"), nullable=False)
+    profesor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    numero_documento_hijo = db.Column(db.String(20), nullable=False)
+    nombre_completo_hijo = db.Column(db.String(200), nullable=False)
+    justificacion = db.Column(db.Text, nullable=False)
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow)
+    estado = db.Column(db.String(20), default='pendiente')  # pendiente, aceptada, denegada
+    respuesta_profesor = db.Column(db.Text, nullable=True)
+    fecha_respuesta = db.Column(db.DateTime, nullable=True)
+    
+    # Relaciones
+    padre = db.relationship("Usuario", foreign_keys=[padre_id], backref='solicitudes_enviadas')
+    estudiante = db.relationship("Usuario", foreign_keys=[estudiante_id], backref='solicitudes_recibidas')
+    asignatura = db.relationship("Asignatura", back_populates='solicitudes_consulta')
+    profesor = db.relationship("Usuario", foreign_keys=[profesor_id], backref='solicitudes_profesor')
+    
+    def to_dict(self):
+        return {
+            "id_solicitud": self.id_solicitud,
+            "padre_nombre": self.padre.nombre_completo if self.padre else "Desconocido",
+            "estudiante_nombre": self.estudiante.nombre_completo if self.estudiante else "Desconocido",
+            "asignatura_nombre": self.asignatura.nombre if self.asignatura else "Desconocida",
+            "profesor_nombre": self.profesor.nombre_completo if self.profesor else "Desconocido",
+            "numero_documento_hijo": self.numero_documento_hijo,
+            "nombre_completo_hijo": self.nombre_completo_hijo,
+            "justificacion": self.justificacion,
+            "fecha_solicitud": self.fecha_solicitud.strftime("%Y-%m-%d %H:%M") if self.fecha_solicitud else "",
+            "estado": self.estado,
+            "respuesta_profesor": self.respuesta_profesor,
+            "fecha_respuesta": self.fecha_respuesta.strftime("%Y-%m-%d %H:%M") if self.fecha_respuesta else None
+        }
+    
+    def __repr__(self):
+        return f"<SolicitudConsulta {self.id_solicitud} - {self.estado}>"
+
+
+# ================================
+# Modelo de Notificaciones
+# ================================
+
+class Notificacion(db.Model):
+    __tablename__ = "notificaciones"
+    
+    id_notificacion = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
+    titulo = db.Column(db.String(200), nullable=False)
+    mensaje = db.Column(db.Text, nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # comunicacion, calificacion, asistencia, solicitud, etc.
+    link = db.Column(db.String(500), nullable=True)
+    leida = db.Column(db.Boolean, default=False)
+    creada_en = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    usuario = db.relationship("Usuario", back_populates="notificaciones")
+    
+    def to_dict(self):
+        return {
+            "id_notificacion": self.id_notificacion,
+            "titulo": self.titulo,
+            "mensaje": self.mensaje,
+            "tipo": self.tipo,
+            "link": self.link,
+            "leida": self.leida,
+            "creada_en": self.creada_en.isoformat() if self.creada_en else None
+        }
+    
+    def __repr__(self):
+        return f"<Notificacion {self.id_notificacion} - {self.titulo}>"

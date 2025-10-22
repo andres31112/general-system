@@ -36,7 +36,7 @@
         /* Estilos del Sidebar */
         .sidebar {
             background: var(--gradient-primary);
-            min-height: 100vh;
+            height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
@@ -45,13 +45,17 @@
             transition: transform var(--transition-speed) ease;
             box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .sidebar-header {
             background: rgba(255, 255, 255, 0.1);
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1.5rem 1rem;
+            padding: 1rem;
             backdrop-filter: blur(10px);
+            flex-shrink: 0;
         }
 
         .sidebar-header h1 {
@@ -62,6 +66,36 @@
             font-weight: 700;
             color: var(--white);
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .sidebar-group {
+            padding: 0 1rem;
+            margin-bottom: 0.5rem;
         }
 
         .nav-link {
@@ -152,8 +186,11 @@
         .sidebar-footer {
             background: rgba(0, 0, 0, 0.18);
             border-top: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 0.75rem;
+            padding: 0.5rem 0.75rem;
             backdrop-filter: blur(8px);
+            margin-top: auto;
+            flex-shrink: 0;
+            min-height: 120px;
         }
 
         .user-avatar {
@@ -163,12 +200,12 @@
 
         .user-info .fw-semibold {
             color: var(--white);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
         .user-info .text-white-50 {
             color: rgba(255, 255, 255, 0.7) !important;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
 
         .logout-link {
@@ -537,7 +574,7 @@
             <h1 class="fw-bold text-uppercase">Panel de Profesor</h1>
         </div>
 
-        <nav class="nav flex-column flex-grow-1 p-3" aria-label="Navegación principal">
+        <nav class="sidebar-nav" aria-label="Navegación principal">
             <div class="sidebar-group">
                 <a href="{{ url_for('profesor.dashboard') }}" class="nav-link rounded {% if request.endpoint == 'profesor.dashboard' %}active{% endif %}">
                     <i class="fas fa-home"></i>Inicio
@@ -564,9 +601,15 @@
 
             <div class="sidebar-group">
                 <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
-                    <i class="fas fa-bullhorn"></i>Comunicaciones
+                    <i class="fas fa-envelope"></i>Comunicaciones
                     {% if unread_messages|default(0) > 0 %}
                     <span class="badge-notification">{{ unread_messages|default(0) }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('profesor.solicitudes') }}" class="nav-link rounded {% if request.endpoint == 'profesor.solicitudes' %}active{% endif %}">
+                    <i class="fas fa-clipboard-check"></i>Solicitudes
+                    {% if solicitudes_pendientes|default(0) > 0 %}
+                    <span class="badge-notification">{{ solicitudes_pendientes|default(0) }}</span>
                     {% endif %}
                 </a>
                 <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded {% if request.endpoint == 'profesor.ver_eventos' %}active{% endif %}">
@@ -574,17 +617,13 @@
                 </a>
             </div>
 
-            <!-- Separador antes de la sección de perfil -->
-            <div class="sidebar-separator mt-auto"></div>
-
-            <!-- Perfil y Soporte (moved to footer area) -->
         </nav>
 
-        <div class="sidebar-footer d-flex flex-column align-items-stretch">
-            <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="sidebar-footer d-flex flex-column align-items-stretch justify-content-center">
+            <div class="d-flex align-items-center justify-content-between mb-3">
                 <div class="d-flex align-items-center">
                     <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
-                         style="width: 48px; height: 48px;">
+                         style="width: 38px; height: 38px;">
                         <i class="fas fa-user text-dark"></i>
                     </div>
                     <div class="user-info">

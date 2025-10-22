@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}Notificaciones - Panel de Administrador{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-card {
+        border-left: 4px solid #F95738;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .notification-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .notification-card.unread {
+        background: linear-gradient(135deg, rgba(249, 87, 56, 0.05), rgba(249, 87, 56, 0.02));
+        border-left-color: #F95738;
+    }
+    
+    .notification-card.read {
+        background: #f8f9fa;
+        border-left-color: #6c757d;
+        opacity: 0.8;
+    }
+    
+    .notification-type-badge {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+    
+    .type-comunicacion { background: #e3f2fd; color: #1976d2; }
+    .type-calificacion { background: #f3e5f5; color: #7b1fa2; }
+    .type-asistencia { background: #e8f5e8; color: #388e3c; }
+    .type-solicitud { background: #fff3e0; color: #f57c00; }
+    .type-evento { background: #fce4ec; color: #c2185b; }
+    .type-votacion { background: #e1f5fe; color: #0277bd; }
+    .type-admin { background: #f1f8e9; color: #689f38; }
+    
+    .filters-container {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .btn-filter {
+        border-radius: 25px;
+        padding: 8px 20px;
+        margin: 0 5px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-filter.active {
+        background: var(--gradient-primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(13, 59, 102, 0.3);
+    }
+    
+    .notification-actions {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .notification-card:hover .notification-actions {
+        opacity: 1;
+    }
+    
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-bell text-primary me-2"></i>Notificaciones
+                    </h2>
+                    <p class="text-muted mb-0">Gestiona tus notificaciones del sistema</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="marcarTodasComoLeidas()">
+                        <i class="fas fa-check-double me-1"></i>Marcar todas como leídas
+                    </button>
+                    <button class="btn btn-danger" onclick="eliminarTodas()">
+                        <i class="fas fa-trash me-1"></i>Eliminar todas
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters-container">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h6 class="mb-2">Filtrar por estado:</h6>
+                        <div>
+                            <button class="btn btn-filter active" data-filtro="todas" onclick="cambiarFiltro('todas')">
+                                Todas
+                            </button>
+                            <button class="btn btn-filter" data-filtro="pendientes" onclick="cambiarFiltro('pendientes')">
+                                Pendientes
+                            </button>
+                            <button class="btn btn-filter" data-filtro="leidas" onclick="cambiarFiltro('leidas')">
+                                Leídas
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="d-flex align-items-center justify-content-end">
+                            <span class="me-2">Notificaciones por página:</span>
+                            <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarPerPage(this.value)">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de notificaciones -->
+            <div id="notifications-container">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando notificaciones...</p>
+                </div>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination-container" id="pagination-container" style="display: none;">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar acción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">¿Estás seguro de que quieres realizar esta acción?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmButton">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+let currentFilter = 'todas';
+let currentPerPage = 20;
+
+// Cargar notificaciones al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarNotificaciones();
+    
+    // Polling cada 30 segundos para actualizar el badge
+    setInterval(actualizarBadge, 30000);
+});
+
+function cargarNotificaciones(page = 1) {
+    currentPage = page;
+    
+    const url = `/admin/api/notificaciones?page=${page}&per_page=${currentPerPage}&filtro=${currentFilter}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarNotificaciones(data.data);
+            } else {
+                mostrarError('Error cargando notificaciones: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error de conexión');
+        });
+}
+
+function mostrarNotificaciones(data) {
+    const container = document.getElementById('notifications-container');
+    
+    if (data.notificaciones.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <h4>No hay notificaciones</h4>
+                <p>No se encontraron notificaciones con los filtros seleccionados.</p>
+            </div>
+        `;
+        document.getElementById('pagination-container').style.display = 'none';
+        return;
+    }
+    
+    let html = '';
+    data.notificaciones.forEach(notif => {
+        const fecha = new Date(notif.creada_en).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        html += `
+            <div class="card notification-card mb-3 ${notif.leida ? 'read' : 'unread'}" data-id="${notif.id_notificacion}">
+                <div class="card-body">
+                    <div class="row align-items-start">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 ${notif.leida ? '' : 'fw-bold'}">
+                                        ${notif.titulo}
+                                        <span class="notification-type-badge type-${notif.tipo} ms-2">
+                                            ${getTipoText(notif.tipo)}
+                                        </span>
+                                    </h6>
+                                    <p class="text-muted mb-2">${notif.mensaje}</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>${fecha}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="notification-actions">
+                                ${notif.leida ? '' : `
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="marcarComoLeida(${notif.id_notificacion})">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                `}
+                                <button class="btn btn-sm btn-outline-danger" onclick="eliminarNotificacion(${notif.id_notificacion})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    mostrarPaginacion(data);
+}
+
+function mostrarPaginacion(data) {
+    const container = document.getElementById('pagination-container');
+    
+    if (data.pages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    
+    let html = '<nav><ul class="pagination">';
+    
+    // Botón anterior
+    if (data.has_prev) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page - 1})">Anterior</a></li>`;
+    }
+    
+    // Páginas
+    for (let i = Math.max(1, data.current_page - 2); i <= Math.min(data.pages, data.current_page + 2); i++) {
+        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="cargarNotificaciones(${i})">${i}</a>
+                 </li>`;
+    }
+    
+    // Botón siguiente
+    if (data.has_next) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page + 1})">Siguiente</a></li>`;
+    }
+    
+    html += '</ul></nav>';
+    container.innerHTML = html;
+}
+
+function cambiarFiltro(filtro) {
+    currentFilter = filtro;
+    currentPage = 1;
+    
+    // Actualizar botones
+    document.querySelectorAll('.btn-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-filtro="${filtro}"]`).classList.add('active');
+    
+    cargarNotificaciones();
+}
+
+function cambiarPerPage(perPage) {
+    currentPerPage = parseInt(perPage);
+    currentPage = 1;
+    cargarNotificaciones();
+}
+
+function marcarComoLeida(notificacionId) {
+    fetch('/admin/api/notificaciones/marcar-leidas', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            notificacion_ids: [notificacionId]
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cargarNotificaciones(currentPage);
+            actualizarBadge();
+        } else {
+            mostrarError('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error de conexión');
+    });
+}
+
+function marcarTodasComoLeidas() {
+    mostrarConfirmacion(
+        '¿Estás seguro de que quieres marcar todas las notificaciones como leídas?',
+        () => {
+            fetch('/admin/api/notificaciones/marcar-leidas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    cargarNotificaciones(currentPage);
+                    actualizarBadge();
+                    mostrarMensaje('Todas las notificaciones fueron marcadas como leídas', 'success');
+                } else {
+                    mostrarError('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error de conexión');
+            });
+        }
+    );
+}
+
+function eliminarNotificacion(notificacionId) {
+    mostrarConfirmacion(
+        '¿Estás seguro de que quieres eliminar esta notificación?',
+        () => {
+            fetch('/admin/api/notificaciones/eliminar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notificacion_ids: [notificacionId]
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    cargarNotificaciones(currentPage);
+                    actualizarBadge();
+                    mostrarMensaje('Notificación eliminada', 'success');
+                } else {
+                    mostrarError('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error de conexión');
+            });
+        }
+    );
+}
+
+function eliminarTodas() {
+    mostrarConfirmacion(
+        '¿Estás seguro de que quieres eliminar TODAS las notificaciones? Esta acción no se puede deshacer.',
+        () => {
+            fetch('/admin/api/notificaciones/eliminar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    eliminar_todas: true
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    cargarNotificaciones(currentPage);
+                    actualizarBadge();
+                    mostrarMensaje('Todas las notificaciones fueron eliminadas', 'success');
+                } else {
+                    mostrarError('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarError('Error de conexión');
+            });
+        }
+    );
+}
+
+function actualizarBadge() {
+    // Actualizar el badge en el menú lateral
+    fetch('/admin/api/notificaciones?page=1&per_page=1&filtro=pendientes')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.querySelector('.badge-notification');
+                if (badge) {
+                    const count = data.data.total;
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        })
+        .catch(error => console.error('Error actualizando badge:', error));
+}
+
+function getTipoText(tipo) {
+    const tipos = {
+        'comunicacion': 'Comunicación',
+        'calificacion': 'Calificación',
+        'asistencia': 'Asistencia',
+        'solicitud': 'Solicitud',
+        'evento': 'Evento',
+        'votacion': 'Votación',
+        'admin': 'Administración'
+    };
+    return tipos[tipo] || tipo;
+}
+
+function mostrarConfirmacion(mensaje, callback) {
+    document.getElementById('confirmMessage').textContent = mensaje;
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+    
+    document.getElementById('confirmButton').onclick = () => {
+        modal.hide();
+        callback();
+    };
+}
+
+function mostrarMensaje(mensaje, tipo = 'info') {
+    const alertClass = tipo === 'success' ? 'alert-success' : 'alert-info';
+    const html = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Insertar al inicio del contenido
+    const container = document.querySelector('.container-fluid');
+    container.insertAdjacentHTML('afterbegin', html);
+    
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        const alert = container.querySelector('.alert');
+        if (alert) {
+            alert.remove();
+        }
+    }, 3000);
+}
+
+function mostrarError(mensaje) {
+    mostrarMensaje(mensaje, 'danger');
+}
+</script>
+{% endblock %}

@@ -3,136 +3,551 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Sistema General{% endblock %}</title>
+    <title>{% block title %}Panel de Administrador{% endblock %}</title>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/base.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 
     <style>
-        /* Estilos adicionales específicos si son necesarios */
+        /* VERSIÓN ACTUALIZADA - ADMINISTRADOR CON DISEÑO DEL PROFESOR */
+        /* Variables CSS usando la paleta de colores del diseño */
+        :root {
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --black: #333333;
+            --gray: #666666;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --card-bg: #FFFFFF;
+            --header-bg: #FFFFFF;
+            --main-bg: #F8F9FA;
+            --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+            --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+            --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+            --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+            --sidebar-width: 280px;
+            --transition-speed: 0.3s;
+        }
+
+        /* Estilos del Sidebar */
+        .sidebar {
+            background: var(--gradient-primary);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            z-index: 1000;
+            transition: transform var(--transition-speed) ease;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+            border-radius: 0 0 15px 15px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            text-align: center;
+            margin: 0;
+            line-height: 1.3;
+            font-weight: 700;
+            color: var(--white);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .sidebar-group {
+            padding: 0 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.95) !important;
+            padding: 0.65rem 0.9rem;
+            margin: 6px 0;
+            border: none;
+            border-radius: 10px;
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            position: relative;
+            font-weight: 500;
+            text-decoration: none;
+        }
+
+        .nav-link:hover, 
+        .nav-link:focus {
+            color: var(--white) !important;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(8px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-link.active {
+            color: var(--white) !important;
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid var(--accent3);
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(244, 211, 94, 0.3);
+        }
+
+        .nav-link i {
+            width: 22px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link:hover i {
+            transform: scale(1.1);
+        }
+
+        .nav-link.active i {
+            color: var(--accent3);
+        }
+
+        .sidebar-footer {
+            background: rgba(0, 0, 0, 0.18);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 0.5rem 0.75rem;
+            backdrop-filter: blur(8px);
+            margin-top: auto;
+            flex-shrink: 0;
+            min-height: 120px;
+        }
+
+        .user-avatar {
+            background: var(--gradient-secondary);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .user-info .fw-semibold {
+            color: var(--white);
+            font-size: 0.85rem;
+        }
+
+        .user-info .text-white-50 {
+            color: rgba(255, 255, 255, 0.7) !important;
+            font-size: 0.75rem;
+        }
+
+        .logout-link {
+            color: rgba(255, 255, 255, 0.7) !important;
+            transition: color 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        .logout-link:hover {
+            color: var(--accent3) !important;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: margin-left var(--transition-speed) ease;
+            background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            backdrop-filter: blur(5px);
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+        }
+
+        /* Badge para notificaciones */
+        .badge-notification {
+            background: var(--gradient-accent);
+            font-size: 0.7em;
+            margin-left: auto;
+            border-radius: 10px;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(249, 87, 56, 0.3);
+        }
+
+        /* Separador visual en el sidebar */
+        .sidebar-separator {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+            margin: 0.6rem 0;
+        }
+
+        /* Efecto de partículas de fondo para el sidebar */
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        /* Mejoras para el contenido principal */
+        .content-wrapper {
+            padding: 1.5rem;
+        }
+
+        /* Estilos para el botón de toggle en móvil */
+        #sidebarToggle {
+            border: none;
+            background: transparent;
+            font-size: 1.25rem;
+            color: var(--accent4);
+            transition: all 0.3s ease;
+        }
+
+        #sidebarToggle:hover {
+            color: var(--accent1);
+            transform: scale(1.1);
+        }
+
+        #sidebarToggle:focus {
+            box-shadow: none;
+        }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .nav-link {
+            animation: slideIn 0.4s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .nav-link:nth-child(1) { animation-delay: 0.1s; }
+        .nav-link:nth-child(2) { animation-delay: 0.15s; }
+        .nav-link:nth-child(3) { animation-delay: 0.2s; }
+        .nav-link:nth-child(4) { animation-delay: 0.25s; }
+        .nav-link:nth-child(5) { animation-delay: 0.3s; }
+        .nav-link:nth-child(6) { animation-delay: 0.35s; }
+        .nav-link:nth-child(7) { animation-delay: 0.4s; }
+        .nav-link:nth-child(8) { animation-delay: 0.45s; }
+
+        /* Estilos adicionales para el contenido */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            box-shadow: var(--shadow);
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Estilo específico para el administrador */
+        .sidebar.admin-sidebar {
+            background: var(--gradient-primary);
+            box-shadow: 2px 0 25px rgba(13, 59, 102, 0.3);
+        }
+
+        .sidebar.admin-sidebar .nav-link:hover {
+            background: rgba(244, 211, 94, 0.2);
+            transform: translateX(10px);
+        }
+
+        .sidebar.admin-sidebar .nav-link.active {
+            background: rgba(244, 211, 94, 0.3);
+            border-left: 4px solid var(--accent3);
+            box-shadow: 0 4px 20px rgba(244, 211, 94, 0.4);
+        }
     </style>
+
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-light">
 
-    <aside id="sidebar" class="sidebar bg-dark text-white d-flex flex-column">
-        <div class="sidebar-header p-4 d-flex align-items-center justify-content-center" style="background-color: #212529;">
-            <h1 class="fs-4 fw-bold text-uppercase m-0">ADMIN</h1>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar admin-sidebar text-white d-flex flex-column">
+        <div class="sidebar-header">
+            <h1 class="fw-bold text-uppercase">Panel de Administrador</h1>
         </div>
 
-        <nav class="nav flex-column flex-grow-1 p-3">
-            <a href="{{ url_for('admin.inicio') }}" class="nav-link rounded my-1 {% if request.endpoint == 'admin.inicio' %}active{% endif %}">
-                <i class="fas fa-home fa-fw me-2"></i>Inicio
-            </a>
-            {% if current_user.has_permission('gestion_usuarios') or current_user.has_permission('ver_roles') or current_user.has_permission('crear_roles') or current_user.has_permission('editar_roles') or current_user.has_permission('eliminar_roles') %}
-            <a href="{{ url_for('admin.admin_panel') }}" class="nav-link rounded my-1 {% if 'gestion_usuarios' in request.endpoint or 'rol' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-user-cog fa-fw me-2"></i>Gestión de Usuarios/Roles
-            </a>
-            {% endif %}
-            {% if current_user.has_permission('gestion_asignaturas') or current_user.has_permission('registro_calificaciones') or current_user.has_permission('registro_asistencia') or current_user.has_permission('gestion_horarios') %}
-            <a href="{{ url_for('admin.gestion_academica') }}" class="nav-link rounded my-1 {% if 'academica' in request.endpoint %}active{% endif %}">
-                    <i class="fas fa-book-open fa-fw me-2"></i>Gestión Académica
-            </a>
-            {% endif %}
-            {% if current_user.has_permission('gestion_inventario') %}
-            <a href="{{ url_for('admin.gestion_i') }}" class="nav-link rounded my-1 {% if 'inventario' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-boxes fa-fw me-2"></i>Gestión de Inventarios
-            </a>
-            {% endif %}
-            {% if current_user.has_permission('gestion_comunicaciones') %}
-            <a href="#" class="nav-link rounded my-1">
-                <i class="fas fa-bullhorn fa-fw me-2"></i>Gestión de Comunicaciones
-            </a>
+        <nav class="sidebar-nav" aria-label="Navegación principal">
+            <div class="sidebar-group">
+                <a href="{{ url_for('admin.inicio') }}" class="nav-link rounded {% if request.endpoint == 'admin.inicio' %}active{% endif %}">
+                    <i class="fas fa-home"></i>Inicio
+                </a>
+            </div>
 
+            <div class="sidebar-group">
+                {% if current_user.has_permission('gestion_usuarios') or current_user.has_permission('ver_roles') or current_user.has_permission('crear_roles') or current_user.has_permission('editar_roles') or current_user.has_permission('eliminar_roles') %}
+                <a href="{{ url_for('admin.admin_panel') }}" class="nav-link rounded {% if 'gestion_usuarios' in request.endpoint or 'rol' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-user-cog"></i>Gestión de Usuarios/Roles
+                </a>
+                {% endif %}
+                {% if current_user.has_permission('gestion_asignaturas') or current_user.has_permission('registro_calificaciones') or current_user.has_permission('registro_asistencia') or current_user.has_permission('gestion_horarios') %}
+                <a href="{{ url_for('admin.gestion_academica') }}" class="nav-link rounded {% if 'academica' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-book-open"></i>Gestión Académica
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="sidebar-group">
+                {% if current_user.has_permission('gestion_inventario') %}
+                <a href="{{ url_for('admin.gestion_i') }}" class="nav-link rounded {% if 'inventario' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-boxes"></i>Gestión de Inventarios
+                </a>
+                {% endif %}
+                <a href="{{ url_for('admin.comunicaciones') }}" class="nav-link rounded {% if request.endpoint == 'admin.comunicaciones' %}active{% endif %}">
+                    <i class="fas fa-envelope"></i>Comunicaciones
+                    {% if unread_messages|default(0) > 0 %}
+                    <span class="badge-notification">{{ unread_messages|default(0) }}</span>
                     {% endif %}
-            {% if current_user.has_permission('gestion_electoral') %}
-            <a href="{{ url_for('admin.sistema_votaciones') }}" class="nav-link rounded my-1 {% if 'gestion_electoral' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-vote-yea fa-fw me-2"></i>Sistema de Votación
-            </a>
-             </a>
+                </a>
+                <a href="{{ url_for('admin.notificaciones') }}" class="nav-link rounded {% if request.endpoint == 'admin.notificaciones' %}active{% endif %}">
+                    <i class="fas fa-bell"></i>Notificaciones
+                    {% if unread_notifications|default(0) > 0 %}
+                    <span class="badge-notification">{{ unread_notifications|default(0) }}</span>
+                    {% endif %}
+                </a>
+            </div>
 
-            {% if current_user.has_permission('gestion_eventos') %}
-            <a href="{{ url_for('admin.calendario_eventos') }}" class="nav-link rounded my-1 {% if 'calendario_eventos' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-calendar fa-fw me-2"></i>Calendario
-            </a>
-            {% endif %}
-    
-            {% endif %}
-            {% if current_user.has_permission('gestion_mantenimientos') %}
-            <a href="#" class="nav-link rounded my-1">
-                <i class="fas fa-tools fa-fw me-2"></i>Gestión de Mantenimientos
-            </a>
-            {% endif %}
-            {% if current_user.has_permission('acceso_configuracion_sistema') %}
-            <a href="#" class="nav-link rounded my-1">
-                <i class="fas fa-cogs fa-fw me-2"></i>Configuración del Sistema
-            </a>
-            {% endif %}
-            {% if current_user.has_permission('acceso_reportes') %}
-            <a href="{{ url_for('admin.reportes_calificaciones') }}" class="nav-link rounded my-1 {% if 'reportes_calificaciones' in request.endpoint %}active{% endif %}">
-                <i class="fas fa-chart-bar fa-fw me-2"></i>Reportes
-            </a>
-            {% endif %}
+            <div class="sidebar-group">
+                {% if current_user.has_permission('gestion_electoral') %}
+                <a href="{{ url_for('admin.sistema_votaciones') }}" class="nav-link rounded {% if 'gestion_electoral' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-vote-yea"></i>Sistema de Votación
+                </a>
+                {% endif %}
+                {% if current_user.has_permission('gestion_eventos') %}
+                <a href="{{ url_for('admin.calendario_eventos') }}" class="nav-link rounded {% if 'calendario_eventos' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-calendar"></i>Calendario
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="sidebar-group">
+                {% if current_user.has_permission('gestion_mantenimientos') %}
+                <a href="#" class="nav-link rounded">
+                    <i class="fas fa-tools"></i>Gestión de Mantenimientos
+                </a>
+                {% endif %}
+                {% if current_user.has_permission('acceso_configuracion_sistema') %}
+                <a href="#" class="nav-link rounded">
+                    <i class="fas fa-cogs"></i>Configuración del Sistema
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="sidebar-group">
+                {% if current_user.has_permission('acceso_reportes') %}
+                <a href="{{ url_for('admin.reportes_calificaciones') }}" class="nav-link rounded {% if 'reportes_calificaciones' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i>Reportes
+                </a>
+                {% endif %}
+            </div>
         </nav>
 
-        <div class="sidebar-footer p-3">
-            <div class="d-flex align-items-center">
-                <img class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;" src="https://placehold.co/100x100/7E8EFB/FFFFFF?text={{ current_user.nombre_completo[0]|upper }}" alt="Avatar de usuario">
-                <div>
-                    <p class="fw-semibold m-0">{{ current_user.nombre_completo }}</p>
-                    <p class="small text-white-50 m-0">{{ current_user.rol_obj.nombre_rol if current_user.is_authenticated and current_user.rol_obj else 'Invitado' }}</p>
-                    <a href="{{ url_for('auth.logout') }}" class="text-white-50 small mt-1 d-block"><i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión</a>
+        <div class="sidebar-footer d-flex flex-column align-items-stretch justify-content-center">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center">
+                    <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
+                         style="width: 38px; height: 38px;">
+                        <i class="fas fa-user text-dark"></i>
+                    </div>
+                    <div class="user-info">
+                        <p class="fw-semibold m-0 small">{{ current_user.nombre_completo }}</p>
+                        <p class="small text-white-50 m-0">Administrador</p>
+                    </div>
                 </div>
+                <a href="#" class="btn btn-sm btn-light">Perfil</a>
+            </div>
+
+            <div class="d-flex">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light w-100">
+                    <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                </a>
             </div>
         </div>
     </aside>
 
+    <!-- Main Content -->
     <div class="main-content d-flex flex-column">
-        <header class="d-lg-none bg-white shadow-sm p-3 sticky-top">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-outline-secondary me-3" type="button" id="sidebarToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h5 class="m-0">{{ self.title() | default('Panel de Control') }}</h5>
+        <!-- Mobile Header -->
+        <header class="d-lg-none p-3 sticky-top bg-white border-bottom shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <button class="btn" type="button" id="sidebarToggle" aria-label="Alternar menú">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h5 class="m-0 ms-3 text-dark fw-bold">Panel de Administrador</h5>
+                </div>
             </div>
         </header>
+        
+        <!-- Content -->
+        <main class="content-wrapper flex-grow-1">
 
-        <div class="content-wrapper">
+            <!-- Mensajes flash -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+                            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
                             {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                         </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
-
-            {% block content %}
-            {% endblock %}
-        </div>
+            
+            <!-- Contenido principal -->
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="{{ url_for('static', filename='js/superadmin/base.js') }}"></script>
+    <!-- Overlay para móvil -->
+    <div class="sidebar-overlay d-lg-none"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const overlay = document.querySelector('.sidebar-overlay');
 
-            if (sidebarToggle && sidebar) {
+            // Toggle sidebar en móvil
+            if (sidebarToggle) {
                 sidebarToggle.addEventListener('click', function() {
                     sidebar.classList.toggle('show');
+                    document.querySelector('.sidebar-overlay').classList.toggle('show');
+                    document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
                 });
             }
 
+            // Cerrar sidebar al hacer clic en overlay
             document.addEventListener('click', function(event) {
-                if (window.innerWidth < 992 && sidebar.classList.contains('show') && !sidebar.contains(event.target) && !sidebarToggle.contains(event.target)) {
+                const overlayEl = document.querySelector('.sidebar-overlay');
+                if (event.target === overlayEl) {
                     sidebar.classList.remove('show');
+                    overlayEl.classList.remove('show');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Cerrar sidebar en móvil al hacer clic en un enlace
+            const navLinks = document.querySelectorAll('#sidebar .nav-link:not(.dropdown-toggle)');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992) {
+                        sidebar.classList.remove('show');
+                        document.querySelector('.sidebar-overlay').classList.remove('show');
+                        document.body.style.overflow = '';
+                    }
+                });
+            });
+
+            // Resaltar enlace activo
+            function setActiveNavLink() {
+                const currentPath = window.location.pathname;
+                const navLinks = document.querySelectorAll('.nav-link');
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === currentPath) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            setActiveNavLink();
+            
+            // Manejar el redimensionamiento de la ventana
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 992) {
+                    sidebar.classList.remove('show');
+                    document.querySelector('.sidebar-overlay').classList.remove('show');
+                    document.body.style.overflow = '';
                 }
             });
         });

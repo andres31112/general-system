@@ -95,6 +95,7 @@ def estado(usuario_id):
 
 
 # 📌 Obtener candidatos por categoría
+# 📌 Obtener candidatos por categoría
 @estudiante_bp.route("/candidatos", methods=["GET"])
 @login_required
 def listar_candidatos():
@@ -107,7 +108,7 @@ def listar_candidatos():
 
         # Solo enviamos el nombre del archivo en "foto"
         data[c.categoria].append({
-            "id": c.id,
+            "id": c.id_candidato,  # ✅ Campo corregido
             "nombre": c.nombre,
             "tarjeton": c.tarjeton,
             "propuesta": c.propuesta,
@@ -118,6 +119,8 @@ def listar_candidatos():
     return jsonify(data), 200
 
 
+
+# 📌 Registrar voto
 # 📌 Registrar voto
 @estudiante_bp.route("/votar", methods=["POST"])
 @login_required
@@ -127,48 +130,54 @@ def votar():
     votos = data.get("votos")  # dict {categoria: candidato_id}
 
     # --- Validar horario ---
-    horario = HorarioVotacion.query.order_by(HorarioVotacion.id.desc()).first()
+    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
     if horario:
         ahora = datetime.now().time()
         if horario.inicio <= horario.fin:
             if not (horario.inicio <= ahora <= horario.fin):
-                return jsonify({"error": "La votación no está abierta"}), 403
+                return jsonify({"error": "⏰ La votación no está abierta"}), 403
         else:
             if not (ahora >= horario.inicio or ahora <= horario.fin):
-                return jsonify({"error": "La votación no está abierta"}), 403
+                return jsonify({"error": "⏰ La votación no está abierta"}), 403
 
     try:
         for categoria, candidato_id in votos.items():
             if candidato_id == "blanco":
                 continue  # No se guarda nada en la tabla
-               
-            # Revisar si ya votó en esta categoría
-            voto_existente = Voto.query.join(Candidato).filter(
-                Voto.estudiante_id == estudiante_id,
-                Candidato.categoria == categoria
-            ).first()
-            if voto_existente:
-                return jsonify({"error": f"Ya votaste en {categoria}"}), 400
 
-            # Registrar voto
+            # 🔍 Verificar si ya votó en esta categoría
+            voto_existente = (
+                Voto.query.join(Candidato, Voto.candidato_id == Candidato.id_candidato)
+                .filter(
+                    Voto.estudiante_id == estudiante_id,
+                    Candidato.categoria == categoria
+                )
+                .first()
+            )
+
+            if voto_existente:
+                return jsonify({"error": f"⚠️ Ya votaste en la categoría {categoria}"}), 400
+
+            # 🗳️ Registrar el nuevo voto
             nuevo_voto = Voto(
                 estudiante_id=estudiante_id,
                 candidato_id=int(candidato_id)
             )
             db.session.add(nuevo_voto)
 
-            # Sumar +1 al candidato
-            candidato = Candidato.query.get(int(candidato_id))
+            # 🧮 Sumar 1 voto al candidato
+            candidato = Candidato.query.filter_by(id_candidato=int(candidato_id)).first()
             if candidato:
                 if candidato.votos is None:
                     candidato.votos = 0
                 candidato.votos += 1
 
         db.session.commit()
-        return jsonify({"mensaje": "Voto registrado correctamente ✅"}), 201
+        return jsonify({"mensaje": "✅ Voto registrado correctamente"}), 201
 
     except Exception as e:
         db.session.rollback()
+        print("❌ Error al registrar voto:", e)
         return jsonify({"error": str(e)}), 400
 
 
@@ -188,107 +197,137 @@ def eleccion_electoral():
 @estudiante_bp.route('/comunicaciones')
 @login_required
 def comunicaciones():
-    return render_template('estudiantes/comunicaciones/index.html')
+    return render_template('estudiantes/comunicaciones.html')
 
 @estudiante_bp.route('/api/comunicaciones')
 @login_required
 def get_comunicaciones():
-    folder = request.args.get('folder', 'inbox')
-    user_id = current_user.id_usuario
-    
+    """API para obtener comunicaciones del estudiante."""
     try:
-        print(f"DEBUG: Obteniendo comunicaciones para usuario {user_id}, folder: {folder}")
+        folder = request.args.get('folder', 'inbox')
         
+        # Obtener comunicaciones según la carpeta
         if folder == 'inbox':
-            # Comunicaciones donde el usuario es el DESTINATARIO
-            comunicaciones = Comunicacion.query.filter_by(
-                destinatario_id=user_id, 
-                estado='inbox'
-            ).order_by(Comunicacion.fecha_envio.desc()).all()
-            print(f"DEBUG: Encontradas {len(comunicaciones)} comunicaciones en inbox")
+            # Comunicaciones recibidas (donde el estudiante es destinatario)
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.destinatario_id == current_user.id_usuario,
+                Comunicacion.estado == 'inbox'
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
             
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'recibida'
+                })
+                
         elif folder == 'sent':
-            # Comunicaciones donde el usuario es el REMITENTE
-            comunicaciones = Comunicacion.query.filter_by(
-                remitente_id=user_id, 
-                estado='sent'
-            ).order_by(Comunicacion.fecha_envio.desc()).all()
-            print(f"DEBUG: Encontradas {len(comunicaciones)} comunicaciones en sent")
+            # Comunicaciones enviadas (donde el estudiante es remitente)
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado.in_(['inbox', 'sent'])
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
             
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'enviada'
+                })
+                
         elif folder == 'draft':
-            # Borradores del usuario (como remitente)
-            comunicaciones = Comunicacion.query.filter_by(
-                remitente_id=user_id, 
-                estado='draft'
-            ).order_by(Comunicacion.fecha_envio.desc()).all()
-            print(f"DEBUG: Encontradas {len(comunicaciones)} comunicaciones en draft")
+            # Borradores
+            comunicaciones = db.session.query(Comunicacion).filter(
+                Comunicacion.remitente_id == current_user.id_usuario,
+                Comunicacion.estado == 'draft'
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
             
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'borrador'
+                })
+                
         elif folder == 'deleted':
-            # Comunicaciones eliminadas (solo las que el usuario envió)
-            comunicaciones = Comunicacion.query.filter_by(
-                remitente_id=user_id, 
-                estado='deleted'
-            ).order_by(Comunicacion.fecha_envio.desc()).all()
-            print(f"DEBUG: Encontradas {len(comunicaciones)} comunicaciones en deleted")
+            # Comunicaciones eliminadas
+            comunicaciones = db.session.query(Comunicacion).filter(
+                (Comunicacion.remitente_id == current_user.id_usuario) |
+                (Comunicacion.destinatario_id == current_user.id_usuario),
+                Comunicacion.estado == 'deleted'
+            ).order_by(Comunicacion.fecha_envio.desc()).limit(50).all()
             
+            # Convertir a diccionarios
+            comunicaciones_data = []
+            for com in comunicaciones:
+                comunicaciones_data.append({
+                    'id': com.id_comunicacion,
+                    'remitente': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_nombre': com.remitente.nombre_completo if com.remitente else 'Desconocido',
+                    'remitente_email': com.remitente.correo if com.remitente else '',
+                    'destinatario': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_nombre': com.destinatario.nombre_completo if com.destinatario else 'Desconocido',
+                    'destinatario_email': com.destinatario.correo if com.destinatario else '',
+                    'asunto': com.asunto,
+                    'mensaje': com.mensaje,
+                    'fecha': com.fecha_envio.strftime('%Y-%m-%d %H:%M') if com.fecha_envio else '',
+                    'fecha_envio': com.fecha_envio.isoformat() if com.fecha_envio else '',
+                    'estado': com.estado,
+                    'tipo': 'eliminada'
+                })
         else:
-            return jsonify([])
+            comunicaciones_data = []
         
-        # Debug: Mostrar detalles de cada comunicación
-        for com in comunicaciones:
-            print(f"DEBUG Comunicación: ID={com.id_comunicacion}, Remitente={com.remitente_id}, Destinatario={com.destinatario_id}, Estado={com.estado}")
-        
-        return jsonify([com.to_dict() for com in comunicaciones])
-        
-    except Exception as e:
-        print(f"DEBUG: Error al obtener comunicaciones: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@estudiante_bp.route('/api/comunicaciones', methods=['POST'])
-@login_required
-def send_comunicacion():
-    try:
-        data = request.json
-        user_id = current_user.id_usuario
-        
-        print(f"DEBUG: Enviando mensaje de {user_id} a {data.get('to')}")
-        
-        if not data.get('to') or not data.get('asunto') or not data.get('mensaje'):
-            return jsonify({'error': 'Faltan campos requeridos'}), 400
-        
-        # Buscar usuario destinatario por correo
-        destinatario = Usuario.query.filter_by(correo=data.get('to')).first()
-        
-        if not destinatario:
-            print(f"DEBUG: Destinatario no encontrado con correo: {data.get('to')}")
-            return jsonify({'error': 'Usuario destinatario no encontrado'}), 404
-        
-        print(f"DEBUG: Destinatario encontrado - ID: {destinatario.id_usuario}, Nombre: {destinatario.nombre_completo}")
-        
-        # Crear comunicación
-        nueva_comunicacion = Comunicacion(
-            remitente_id=user_id,
-            destinatario_id=destinatario.id_usuario,
-            asunto=data.get('asunto'),
-            mensaje=data.get('mensaje'),
-            estado='sent'
-        )
-        
-        db.session.add(nueva_comunicacion)
-        db.session.commit()
-        
-        print(f"DEBUG: Comunicación creada exitosamente - ID: {nueva_comunicacion.id_comunicacion}")
-        
+        # Estandarizar respuesta según la estructura del admin
         return jsonify({
-            'success': True, 
-            'message': 'Mensaje enviado correctamente',
-            'id': nueva_comunicacion.id_comunicacion
+            'success': True,
+            'recibidas': comunicaciones_data if folder == 'inbox' else [],
+            'enviadas': comunicaciones_data if folder == 'sent' else [],
+            'data': comunicaciones_data if folder in ['draft', 'deleted'] else []
         })
         
     except Exception as e:
-        db.session.rollback()
-        print(f"DEBUG: Error al enviar comunicación: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo comunicaciones: {str(e)}'
+        }), 500
+# Los estudiantes no pueden enviar comunicaciones, solo recibirlas
 
 @estudiante_bp.route('/api/comunicaciones/draft', methods=['POST'])
 @login_required
@@ -322,19 +361,36 @@ def save_draft():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@estudiante_bp.route('/api/comunicaciones/<int:comunicacion_id>')
+@estudiante_bp.route('/api/comunicaciones/<int:comunicacion_id>', methods=['GET'])
 @login_required
 def get_comunicacion(comunicacion_id):
+    """API para obtener una comunicación específica."""
     try:
         comunicacion = Comunicacion.query.get_or_404(comunicacion_id)
         
-        if comunicacion.remitente_id != current_user.id_usuario and comunicacion.destinatario_id != current_user.id_usuario:
+        # Verificar que el usuario sea remitente o destinatario
+        if (comunicacion.remitente_id != current_user.id_usuario and 
+            comunicacion.destinatario_id != current_user.id_usuario):
             return jsonify({'error': 'No autorizado'}), 403
-            
-        return jsonify(comunicacion.to_dict())
+        
+        # Marcar como leída si es el destinatario
+        if comunicacion.destinatario_id == current_user.id_usuario and comunicacion.estado == 'inbox':
+            comunicacion.estado = 'read'
+            db.session.commit()
+        
+        return jsonify({
+            'id_comunicacion': comunicacion.id_comunicacion,
+            'remitente_nombre': comunicacion.remitente.nombre_completo if comunicacion.remitente else 'Desconocido',
+            'destinatario_nombre': comunicacion.destinatario.nombre_completo if comunicacion.destinatario else 'Desconocido',
+            'asunto': comunicacion.asunto,
+            'mensaje': comunicacion.mensaje,
+            'fecha_envio': comunicacion.fecha_envio.isoformat() if comunicacion.fecha_envio else '',
+            'estado': comunicacion.estado
+        })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @estudiante_bp.route('/api/comunicaciones/<int:comunicacion_id>', methods=['PUT'])
 @login_required
@@ -363,13 +419,22 @@ def delete_comunicacion(comunicacion_id):
     try:
         comunicacion = Comunicacion.query.get_or_404(comunicacion_id)
         
-        if comunicacion.remitente_id != current_user.id_usuario:
+        # Verificar que el usuario sea remitente o destinatario
+        if comunicacion.remitente_id != current_user.id_usuario and comunicacion.destinatario_id != current_user.id_usuario:
             return jsonify({'error': 'No autorizado'}), 403
         
-        comunicacion.estado = 'deleted'
+        # Si ya está en papelera, eliminar permanentemente
+        if comunicacion.estado == 'deleted':
+            db.session.delete(comunicacion)
+            message = 'Comunicación eliminada permanentemente'
+        else:
+            # Marcar como eliminada en lugar de eliminar físicamente
+            comunicacion.estado = 'deleted'
+            message = 'Comunicación movida a papelera'
+        
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'Comunicación eliminada'})
+        return jsonify({'success': True, 'message': message})
         
     except Exception as e:
         db.session.rollback()
@@ -381,7 +446,8 @@ def restore_comunicacion(comunicacion_id):
     try:
         comunicacion = Comunicacion.query.get_or_404(comunicacion_id)
         
-        if comunicacion.remitente_id != current_user.id_usuario:
+        # Verificar que el usuario sea remitente o destinatario
+        if comunicacion.remitente_id != current_user.id_usuario and comunicacion.destinatario_id != current_user.id_usuario:
             return jsonify({'error': 'No autorizado'}), 403
         
         # Restaurar el email cambiando su estado a 'inbox'
@@ -430,40 +496,6 @@ def buscar_usuarios():
         print(f"ERROR en buscar_usuarios: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-# Ruta para crear automáticamente comunicaciones de prueba
-@estudiante_bp.route('/api/comunicaciones/crear-prueba')
-@login_required
-def crear_comunicacion_prueba():
-    try:
-        # Buscar otro usuario para enviarle un mensaje de prueba
-        otros_usuarios = Usuario.query.filter(Usuario.id_usuario != current_user.id_usuario).limit(2).all()
-        
-        if not otros_usuarios:
-            return jsonify({'error': 'No hay otros usuarios en el sistema'}), 400
-        
-        destinatario = otros_usuarios[0]
-        
-        # Crear comunicación de prueba
-        comunicacion_prueba = Comunicacion(
-            remitente_id=current_user.id_usuario,
-            destinatario_id=destinatario.id_usuario,
-            asunto='Mensaje de prueba',
-            mensaje='Este es un mensaje de prueba para verificar que el sistema de comunicaciones funciona correctamente.',
-            estado='sent'
-        )
-        
-        db.session.add(comunicacion_prueba)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'Mensaje de prueba enviado a {destinatario.nombre_completo}',
-            'comunicacion_id': comunicacion_prueba.id_comunicacion
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
 
     # 📌 Vista: calendario de eventos (solo ver)
 @estudiante_bp.route("/eventos", methods=["GET"])

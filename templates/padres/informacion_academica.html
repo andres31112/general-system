@@ -1,0 +1,481 @@
+{% extends "padres/base.html" %}
+
+{% block title %}Información Académica{% endblock %}
+
+{% block extra_css %}
+<style>
+    .estudiante-card {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        transition: all var(--transition-speed) ease;
+        cursor: pointer;
+        border: 2px solid transparent;
+    }
+
+    .estudiante-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+        border-color: var(--accent4);
+    }
+
+    .estudiante-card.selected {
+        border-color: var(--accent4);
+        background: linear-gradient(135deg, rgba(13, 59, 102, 0.05), rgba(13, 59, 102, 0.1));
+    }
+
+    .estudiante-info {
+        padding: 1.5rem;
+    }
+
+    .estudiante-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--white);
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    .estudiante-nombre {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--accent4);
+        margin-bottom: 0.5rem;
+    }
+
+    .estudiante-documento {
+        color: var(--gray);
+        font-size: 0.9rem;
+        margin-bottom: 0;
+    }
+
+    .info-section {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    .info-header {
+        background: var(--gradient-primary);
+        color: var(--white);
+        padding: 1rem 1.5rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .info-content {
+        padding: 1.5rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--light-gray);
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all var(--transition-speed) ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent4);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: var(--gray);
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .asistencia-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .asistencia-table th,
+    .asistencia-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .asistencia-table th {
+        background: var(--light-gray);
+        font-weight: 600;
+        color: var(--accent4);
+    }
+
+    .asistencia-table tr:hover {
+        background: var(--light-gray);
+    }
+
+    .badge-asistencia {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-presente {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-falta {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .badge-retardo {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .badge-excusa {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--gray);
+    }
+
+    .no-data i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: var(--accent2);
+    }
+
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .loading-spinner.show {
+        display: block;
+    }
+
+    .spinner-border {
+        color: var(--accent4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-graduation-cap me-2 text-primary"></i>
+                        Información Académica
+                    </h2>
+                    <p class="text-muted mb-0">Consulta el rendimiento académico de tus hijos</p>
+                </div>
+            </div>
+
+            <!-- Selección de Estudiante -->
+            {% if hijos %}
+            <div class="info-section mb-4">
+                <div class="info-header">
+                    <i class="fas fa-user-graduate me-2"></i>
+                    Seleccionar Estudiante
+                </div>
+                <div class="info-content">
+                    <div class="row">
+                        {% for hijo in hijos %}
+                        <div class="col-md-4 mb-3">
+                            <div class="estudiante-card" onclick="seleccionarEstudiante({{ hijo.id_usuario }}, '{{ hijo.nombre_completo }}')">
+                                <div class="estudiante-info text-center">
+                                    <div class="estudiante-avatar mx-auto">
+                                        {{ hijo.nombre[0] }}{{ hijo.apellido[0] }}
+                                    </div>
+                                    <h5 class="estudiante-nombre">{{ hijo.nombre_completo }}</h5>
+                                    <p class="estudiante-documento">{{ hijo.no_identidad }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información del Estudiante Seleccionado -->
+            <div id="infoEstudiante" style="display: none;">
+                <!-- Estadísticas Generales -->
+                <div class="info-section">
+                    <div class="info-header">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Estadísticas Generales
+                    </div>
+                    <div class="info-content">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="promedioGeneral">--</div>
+                                <div class="stat-label">Promedio General</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalAsistencias">--</div>
+                                <div class="stat-label">Total Asistencias</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalFallas">--</div>
+                                <div class="stat-label">Total Fallas</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalRetardos">--</div>
+                                <div class="stat-label">Total Retardos</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Promedios por Asignatura -->
+                <div class="info-section">
+                    <div class="info-header">
+                        <i class="fas fa-book me-2"></i>
+                        Promedios por Asignatura
+                    </div>
+                    <div class="info-content">
+                        <div class="loading-spinner" id="loadingPromedios">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2">Cargando promedios...</p>
+                        </div>
+                        <div id="promediosContent">
+                            <!-- Los promedios se cargarán aquí -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial de Asistencia -->
+                <div class="info-section">
+                    <div class="info-header">
+                        <i class="fas fa-calendar-check me-2"></i>
+                        Historial de Asistencia
+                    </div>
+                    <div class="info-content">
+                        <div class="loading-spinner" id="loadingAsistencia">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2">Cargando asistencia...</p>
+                        </div>
+                        <div id="asistenciaContent">
+                            <!-- El historial se cargará aquí -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consultar Estudiante -->
+                <div class="info-section">
+                    <div class="info-header">
+                        <i class="fas fa-search me-2"></i>
+                        Consultar con Profesores
+                    </div>
+                    <div class="info-content">
+                        <p class="text-muted mb-3">
+                            ¿Necesitas consultar algo específico sobre el rendimiento de tu hijo? 
+                            Puedes enviar una solicitud a los profesores.
+                        </p>
+                        <a href="{{ url_for('padre.consultar_estudiante') }}" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Enviar Consulta
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="no-data">
+                <i class="fas fa-user-graduate"></i>
+                <h4>No tienes hijos registrados</h4>
+                <p>Contacta con la administración para registrar a tus hijos en el sistema.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let estudianteSeleccionado = null;
+
+function seleccionarEstudiante(estudianteId, nombreEstudiante) {
+    // Remover selección anterior
+    document.querySelectorAll('.estudiante-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Seleccionar nuevo estudiante
+    event.currentTarget.classList.add('selected');
+    estudianteSeleccionado = estudianteId;
+    
+    // Mostrar información del estudiante
+    document.getElementById('infoEstudiante').style.display = 'block';
+    
+    // Actualizar título
+    document.querySelector('.info-header').innerHTML = 
+        `<i class="fas fa-user-graduate me-2"></i>Información de ${nombreEstudiante}`;
+    
+    // Cargar datos del estudiante
+    cargarDatosEstudiante(estudianteId);
+}
+
+async function cargarDatosEstudiante(estudianteId) {
+    try {
+        // Cargar estadísticas generales
+        await cargarEstadisticas(estudianteId);
+        
+        // Cargar promedios por asignatura
+        await cargarPromedios(estudianteId);
+        
+        // Cargar historial de asistencia
+        await cargarAsistencia(estudianteId);
+        
+    } catch (error) {
+        console.error('Error cargando datos del estudiante:', error);
+        mostrarError('Error al cargar la información del estudiante');
+    }
+}
+
+async function cargarEstadisticas(estudianteId) {
+    try {
+        const response = await fetch(`/padre/api/estadisticas_estudiante/${estudianteId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('promedioGeneral').textContent = data.promedio_general || '--';
+            document.getElementById('totalAsistencias').textContent = data.total_asistencias || '--';
+            document.getElementById('totalFallas').textContent = data.total_fallas || '--';
+            document.getElementById('totalRetardos').textContent = data.total_retardos || '--';
+        }
+    } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+    }
+}
+
+async function cargarPromedios(estudianteId) {
+    const loadingElement = document.getElementById('loadingPromedios');
+    const contentElement = document.getElementById('promediosContent');
+    
+    loadingElement.classList.add('show');
+    contentElement.innerHTML = '';
+    
+    try {
+        const response = await fetch(`/padre/api/promedios_estudiante/${estudianteId}`);
+        const data = await response.json();
+        
+        if (data.success && data.promedios.length > 0) {
+            let html = '<div class="table-responsive"><table class="table table-hover">';
+            html += '<thead><tr><th>Asignatura</th><th>Promedio</th><th>Estado</th></tr></thead><tbody>';
+            
+            data.promedios.forEach(promedio => {
+                const estado = promedio.promedio >= 3.0 ? 'Aprobado' : 'Reprobado';
+                const badgeClass = promedio.promedio >= 3.0 ? 'badge-presente' : 'badge-falta';
+                
+                html += `<tr>
+                    <td>${promedio.asignatura}</td>
+                    <td>${promedio.promedio.toFixed(2)}</td>
+                    <td><span class="badge-asistencia ${badgeClass}">${estado}</span></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            contentElement.innerHTML = html;
+        } else {
+            contentElement.innerHTML = '<div class="no-data"><p>No hay promedios disponibles</p></div>';
+        }
+    } catch (error) {
+        console.error('Error cargando promedios:', error);
+        contentElement.innerHTML = '<div class="alert alert-danger">Error al cargar los promedios</div>';
+    } finally {
+        loadingElement.classList.remove('show');
+    }
+}
+
+async function cargarAsistencia(estudianteId) {
+    const loadingElement = document.getElementById('loadingAsistencia');
+    const contentElement = document.getElementById('asistenciaContent');
+    
+    loadingElement.classList.add('show');
+    contentElement.innerHTML = '';
+    
+    try {
+        const response = await fetch(`/padre/api/asistencia_estudiante/${estudianteId}`);
+        const data = await response.json();
+        
+        if (data.success && data.asistencia.length > 0) {
+            let html = '<div class="table-responsive"><table class="asistencia-table">';
+            html += '<thead><tr><th>Fecha</th><th>Asignatura</th><th>Estado</th><th>Excusa</th></tr></thead><tbody>';
+            
+            data.asistencia.forEach(registro => {
+                let badgeClass = 'badge-presente';
+                let estado = 'Presente';
+                
+                if (registro.estado === 'falta') {
+                    badgeClass = 'badge-falta';
+                    estado = 'Falta';
+                } else if (registro.estado === 'retardo') {
+                    badgeClass = 'badge-retardo';
+                    estado = 'Retardo';
+                }
+                
+                const excusa = registro.excusa ? 'Sí' : 'No';
+                const excusaClass = registro.excusa ? 'badge-excusa' : '';
+                
+                html += `<tr>
+                    <td>${new Date(registro.fecha).toLocaleDateString()}</td>
+                    <td>${registro.asignatura}</td>
+                    <td><span class="badge-asistencia ${badgeClass}">${estado}</span></td>
+                    <td><span class="badge-asistencia ${excusaClass}">${excusa}</span></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            contentElement.innerHTML = html;
+        } else {
+            contentElement.innerHTML = '<div class="no-data"><p>No hay registros de asistencia</p></div>';
+        }
+    } catch (error) {
+        console.error('Error cargando asistencia:', error);
+        contentElement.innerHTML = '<div class="alert alert-danger">Error al cargar la asistencia</div>';
+    } finally {
+        loadingElement.classList.remove('show');
+    }
+}
+
+function mostrarError(mensaje) {
+    // Implementar notificación de error
+    console.error(mensaje);
+}
+</script>
+{% endblock %}

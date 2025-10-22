@@ -1,4 +1,4 @@
-{% extends "profesores/base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Comunicaciones{% endblock %}
 
@@ -10,7 +10,7 @@
             <i class="fas fa-envelope"></i> Comunicaciones
         </h1>
         <p class="lead text-muted" style="color: var(--gray) !important;">
-            Sistema de mensajería integrado para profesores
+            Sistema de mensajería para administradores
         </p>
     </header>
 
@@ -127,11 +127,11 @@
                                         <button class="btn btn-outline-primary btn-sm" id="refreshBtn" title="Actualizar">
                                             <i class="fas fa-sync-alt"></i>
                                         </button>
-                                        <button class="btn btn-outline-warning btn-sm" id="cleanupBtn" title="Limpiar mensajes antiguos">
-                                            <i class="fas fa-broom"></i>
-                                        </button>
                                         <button class="btn btn-outline-danger btn-sm" id="deleteBtn" title="Eliminar">
                                             <i class="fas fa-trash"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning btn-sm" id="emptyTrashBtn" title="Vaciar papelera" style="display: none;">
+                                            <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -199,19 +199,59 @@
         </div>
         
         <form class="compose-form" id="composeForm">
+            <!-- Selector de destinatarios para administradores -->
+            <div class="compose-field">
+                <label>Enviar a:</label>
+                <div class="recipient-options">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="recipientAll" name="recipientType" value="all">
+                        <label class="form-check-label" for="recipientAll">
+                            <i class="fas fa-users"></i> Todos los usuarios
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="recipientProfesores" name="recipientType" value="profesores">
+                        <label class="form-check-label" for="recipientProfesores">
+                            <i class="fas fa-chalkboard-teacher"></i> Profesores
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="recipientEstudiantes" name="recipientType" value="estudiantes">
+                        <label class="form-check-label" for="recipientEstudiantes">
+                            <i class="fas fa-user-graduate"></i> Estudiantes
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="recipientPadres" name="recipientType" value="padres">
+                        <label class="form-check-label" for="recipientPadres">
+                            <i class="fas fa-user-friends"></i> Padres
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="recipientSpecific" name="recipientType" value="specific">
+                        <label class="form-check-label" for="recipientSpecific">
+                            <i class="fas fa-user"></i> Usuarios específicos
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
             <div class="compose-field">
                 <label for="composeTo">Para:</label>
                 <input type="text" placeholder="Buscar usuario..." id="composeTo" required>
                 <div class="suggestions" id="userSuggestions"></div>
             </div>
+            
             <div class="compose-field">
                 <label for="composeSubject">Asunto:</label>
                 <input type="text" placeholder="Asunto del mensaje" id="composeSubject" required>
             </div>
+            
             <div class="compose-field compose-body">
                 <label for="composeBody">Mensaje:</label>
                 <textarea placeholder="Escribe tu mensaje aquí..." id="composeBody" required></textarea>
             </div>
+            
             <div class="compose-footer">
                 <button type="submit" class="send-btn">
                     <i class="fas fa-paper-plane"></i>
@@ -233,8 +273,8 @@
 <div class="notifications" id="notifications"></div>
 
 <script>
-// Estado de la aplicación
-class ProfesorEmailApp {
+// Estado de la aplicación para administradores
+class AdminEmailApp {
     constructor() {
         this.currentFolder = 'inbox';
         this.selectedEmails = new Set();
@@ -302,6 +342,8 @@ class ProfesorEmailApp {
             this.openComposeModal();
         });
 
+        // Botón crear prueba eliminado
+
         // Controles de lista
         document.getElementById('selectAll').addEventListener('change', (e) => {
             this.toggleSelectAll(e.target.checked);
@@ -315,8 +357,8 @@ class ProfesorEmailApp {
             this.deleteSelectedEmails();
         });
 
-        document.getElementById('cleanupBtn').addEventListener('click', () => {
-            this.cleanupOldMessages();
+        document.getElementById('emptyTrashBtn').addEventListener('click', () => {
+            this.emptyTrash();
         });
 
         // Búsqueda
@@ -348,34 +390,29 @@ class ProfesorEmailApp {
             this.searchUsers(e.target.value);
         });
 
-        // Vista de email - verificar que los elementos existan antes de enlazar eventos
-        const backToListBtn = document.getElementById('backToList');
-        if (backToListBtn) {
-            backToListBtn.addEventListener('click', () => {
-                this.showEmailList();
+        // Selector de tipo de destinatario para administradores (checkboxes)
+        document.querySelectorAll('input[name="recipientType"]').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.handleRecipientTypeChange();
             });
-        }
+        });
 
-        const replyEmailBtn = document.getElementById('replyEmail');
-        if (replyEmailBtn) {
-            replyEmailBtn.addEventListener('click', () => {
-                this.replyToEmail();
-            });
-        }
+        // Vista de email
+        document.getElementById('backToList').addEventListener('click', () => {
+            this.showEmailList();
+        });
 
-        const forwardEmailBtn = document.getElementById('forwardEmail');
-        if (forwardEmailBtn) {
-            forwardEmailBtn.addEventListener('click', () => {
-                this.forwardEmail();
-            });
-        }
+        document.getElementById('replyEmail').addEventListener('click', () => {
+            this.replyToEmail();
+        });
 
-        const deleteEmailBtn = document.getElementById('deleteEmail');
-        if (deleteEmailBtn) {
-            deleteEmailBtn.addEventListener('click', () => {
-                this.deleteCurrentEmail();
-            });
-        }
+        document.getElementById('forwardEmail').addEventListener('click', () => {
+            this.forwardEmail();
+        });
+
+        document.getElementById('deleteEmail').addEventListener('click', () => {
+            this.deleteCurrentEmail();
+        });
 
         // Cerrar sugerencias al hacer clic fuera
         document.addEventListener('click', (e) => {
@@ -395,7 +432,7 @@ class ProfesorEmailApp {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
             
-            const response = await fetch(`/profesor/api/comunicaciones?folder=${this.currentFolder}`, {
+            const response = await fetch(`/admin/api/comunicaciones?folder=${this.currentFolder}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -473,11 +510,12 @@ class ProfesorEmailApp {
         }
 
         emailList.innerHTML = emails.map(email => `
-            <div class="email-item" data-email-id="${email.id || email.id_comunicacion}">
+            <div class="email-item" data-email-id="${email.id || email.id_comunicacion}" onclick="adminEmailApp.viewEmail(${email.id || email.id_comunicacion})">
                 <div class="row align-items-center">
                     <div class="col-1">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="email-${email.id || email.id_comunicacion}">
+                            <input class="form-check-input" type="checkbox" id="email-${email.id || email.id_comunicacion}" 
+                                   onchange="adminEmailApp.toggleEmailSelection(${email.id || email.id_comunicacion}, event)">
                         </div>
                     </div>
                     <div class="col-3">
@@ -503,40 +541,14 @@ class ProfesorEmailApp {
             </div>
         `).join('');
 
-        // Enlazar eventos después de renderizar
-        this.bindEmailEvents();
-
         this.updateSelectionUI();
         this.updateEmailRange(emails.length);
-    }
-
-    bindEmailEvents() {
-        // Enlazar eventos de clic en emails
-        document.querySelectorAll('.email-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                // Evitar que se active el clic si se hace clic en el checkbox
-                if (e.target.type === 'checkbox' || e.target.closest('.form-check')) {
-                    return;
-                }
-                const emailId = parseInt(item.dataset.emailId);
-                this.viewEmail(emailId);
-            });
-        });
-
-        // Enlazar eventos de checkboxes
-        document.querySelectorAll('.email-item .form-check-input').forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                e.stopPropagation();
-                const emailId = parseInt(checkbox.id.replace('email-', ''));
-                this.toggleEmailSelection(emailId, e);
-            });
-        });
     }
 
     async viewEmail(emailId) {
         try {
             // Buscar el email en los datos actuales
-            const response = await fetch(`/profesor/api/comunicaciones?folder=${this.currentFolder}`, { cache: 'no-cache' });
+            const response = await fetch(`/admin/api/comunicaciones?folder=${this.currentFolder}`, { cache: 'no-cache' });
             const data = await response.json();
             
             if (!data.success) {
@@ -548,10 +560,6 @@ class ProfesorEmailApp {
                 email = (data.recibidas || []).find(e => Number(e.id || e.id_comunicacion) === Number(emailId));
             } else if (this.currentFolder === 'sent') {
                 email = (data.enviadas || []).find(e => Number(e.id || e.id_comunicacion) === Number(emailId));
-            } else if (this.currentFolder === 'draft') {
-                email = (data.data || []).find(e => Number(e.id || e.id_comunicacion) === Number(emailId));
-            } else if (this.currentFolder === 'deleted') {
-                email = (data.data || []).find(e => Number(e.id || e.id_comunicacion) === Number(emailId));
             }
             
             if (!email) {
@@ -565,7 +573,7 @@ class ProfesorEmailApp {
             // Si es un mensaje recibido no leído, marcarlo como leído
             if (this.currentFolder === 'inbox' && email.estado === 'inbox') {
                 try {
-                    await fetch(`/profesor/api/comunicaciones/${emailId}/marcar-leida`, {
+                    await fetch(`/admin/api/comunicaciones/${emailId}/marcar-leida`, {
                         method: 'PUT'
                     });
                     email.estado = 'sent';
@@ -592,7 +600,7 @@ class ProfesorEmailApp {
                             <strong>De:</strong> ${email.remitente || email.remitente_nombre}
                         </div>
                         <div class="participant">
-                            <strong>Para:</strong> ${this.formatRecipients(email)}
+                            <strong>Para:</strong> ${email.destinatario || email.destinatario_nombre}
                         </div>
                     </div>
                     <div class="email-date">${this.formatDetailedDate(email.fecha_envio || email.fecha)}</div>
@@ -605,55 +613,27 @@ class ProfesorEmailApp {
                 </div>
             </div>
             
-            <!-- Área de respuesta integrada (oculta por defecto) -->
-            <div class="reply-section" id="replySection" style="display: none;">
-                <div class="reply-header">
-                    <h4><i class="fas fa-reply"></i> Responder</h4>
-                </div>
-                <form class="reply-form" id="replyForm">
-                    <div class="reply-field">
-                        <label for="replySubject">Asunto:</label>
-                        <input type="text" id="replySubject" value="Re: ${email.asunto || '(Sin asunto)'}" readonly>
-                    </div>
-                    <div class="reply-field">
-                        <label for="replyMessage">Tu respuesta:</label>
-                        <textarea id="replyMessage" placeholder="Escribe tu respuesta aquí..." required></textarea>
-                    </div>
-                    <div class="reply-actions">
-                        <button type="submit" class="btn btn-primary reply-send-btn">
-                            <i class="fas fa-paper-plane"></i> Enviar respuesta
-                        </button>
-                        <button type="button" class="btn btn-secondary reply-cancel-btn" onclick="profesorEmailApp.cancelReply()">
-                            <i class="fas fa-times"></i> Cancelar
-                        </button>
-                    </div>
-                </form>
-            </div>
-            
             <div class="email-actions-footer">
-                <button class="action-btn" onclick="profesorEmailApp.toggleReplySection()">
+                <button class="action-btn" onclick="adminEmailApp.replyToEmail()">
                     <i class="fas fa-reply"></i> Responder
                 </button>
-                <button class="action-btn" onclick="profesorEmailApp.forwardEmail()">
+                <button class="action-btn" onclick="adminEmailApp.forwardEmail()">
                     <i class="fas fa-share"></i> Reenviar
                 </button>
-                <button class="action-btn delete" onclick="profesorEmailApp.deleteCurrentEmail()">
+                <button class="action-btn delete" onclick="adminEmailApp.deleteCurrentEmail()">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
             </div>
         `;
-        
-        // Agregar event listener para el formulario de respuesta
-        document.getElementById('replyForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.sendReply();
-        });
     }
 
     async sendEmail() {
         const toInput = document.getElementById('composeTo');
         const subjectInput = document.getElementById('composeSubject');
         const bodyInput = document.getElementById('composeBody');
+        
+        // Obtener tipos de destinatarios seleccionados
+        const selectedTypes = Array.from(document.querySelectorAll('input[name="recipientType"]:checked')).map(cb => cb.value);
         
         // Extraer el email del campo "Para"
         const toValue = toInput.value.trim();
@@ -668,7 +648,8 @@ class ProfesorEmailApp {
         console.log("DEBUG: Intentando enviar email a:", emailTo);
 
         // Validación básica de email
-        if (!this.isValidEmail(emailTo)) {
+        const isSpecificOnly = selectedTypes.length === 1 && selectedTypes[0] === 'specific';
+        if (!this.isValidEmail(emailTo) && (!selectedTypes.length || isSpecificOnly)) {
             this.showNotification('Por favor ingresa un email válido', 'error');
             return;
         }
@@ -679,10 +660,17 @@ class ProfesorEmailApp {
             mensaje: bodyInput.value.trim()
         };
 
+        // Agregar tipo de destinatario para administradores
+            if (selectedTypes.length > 1) {
+                emailData.recipient_types = selectedTypes;
+            } else if (selectedTypes.length === 1) {
+                emailData.recipient_type = selectedTypes[0];
+        }
+
         try {
             console.log("DEBUG: Enviando datos:", emailData);
             
-            const response = await fetch('/profesor/api/comunicaciones', {
+            const response = await fetch('/admin/api/comunicaciones', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -706,47 +694,38 @@ class ProfesorEmailApp {
         }
     }
 
-    async saveDraft() {
+    handleRecipientTypeChange() {
         const toInput = document.getElementById('composeTo');
-        const subjectInput = document.getElementById('composeSubject');
-        const bodyInput = document.getElementById('composeBody');
+        const selectedTypes = Array.from(document.querySelectorAll('input[name="recipientType"]:checked')).map(cb => cb.value);
         
-        const toValue = toInput.value.trim();
-        let emailTo = toValue;
-        
-        const emailMatch = toValue.match(/\(([^)]+)\)/);
-        if (emailMatch) {
-            emailTo = emailMatch[1].trim();
-        }
-
-        const emailData = {
-            to: emailTo || '',
-            asunto: subjectInput.value.trim() || '(Sin asunto)',
-            mensaje: bodyInput.value.trim()
+        const setLock = (text, lock) => {
+            toInput.value = text;
+            toInput.readOnly = lock;
+            if (!lock) toInput.placeholder = 'Buscar usuario específico...';
         };
-
-        try {
-            const response = await fetch('/profesor/api/comunicaciones/draft', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(emailData)
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                this.showNotification('Borrador guardado', 'success');
-                this.closeComposeModal();
-                this.loadEmails();
-            } else {
-                throw new Error(result.message || 'Error al guardar el borrador');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            this.showNotification('Error al guardar el borrador', 'error');
+        
+        if (!selectedTypes || selectedTypes.length === 0) {
+            setLock('', false);
+            return;
         }
+        
+        if (selectedTypes.includes('specific') && selectedTypes.length === 1) {
+            setLock('', false);
+            return;
+        }
+        
+        if (selectedTypes.includes('all')) {
+            setLock('Todos los usuarios', true);
+            return;
+        }
+        
+        const mapText = {
+            'profesores': 'Todos los profesores',
+            'estudiantes': 'Todos los estudiantes',
+            'padres': 'Todos los padres'
+        };
+        const labels = selectedTypes.filter(t => t !== 'specific').map(t => mapText[t] || t);
+        setLock(labels.join(' + '), true);
     }
 
     async searchUsers(query) {
@@ -758,7 +737,7 @@ class ProfesorEmailApp {
         try {
             console.log("DEBUG: Buscando usuarios con query:", query);
             
-            const response = await fetch(`/profesor/api/usuarios/buscar?q=${encodeURIComponent(query)}`);
+            const response = await fetch(`/admin/api/usuarios/buscar?q=${encodeURIComponent(query)}`);
             
             if (!response.ok) {
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -805,7 +784,7 @@ class ProfesorEmailApp {
             this.userCache.set(displayText, user);
             
             return `
-                <div class="suggestion-item" onclick="profesorEmailApp.selectUser('${displayText.replace(/'/g, "\\'")}')">
+                <div class="suggestion-item" onclick="adminEmailApp.selectUser('${displayText.replace(/'/g, "\\'")}')">
                     <div class="suggestion-name">${user.nombre}</div>
                     <div class="suggestion-email">${user.email}</div>
                 </div>
@@ -830,17 +809,21 @@ class ProfesorEmailApp {
             event.stopPropagation();
         }
         
-        console.log("DEBUG: Toggle selection for emailId:", emailId, "Current selection:", Array.from(this.selectedEmails));
+        // Convertir a número para asegurar consistencia
+        const id = parseInt(emailId);
         
-        if (this.selectedEmails.has(emailId)) {
-            this.selectedEmails.delete(emailId);
-            console.log("DEBUG: Removed from selection");
+        if (this.selectedEmails.has(id)) {
+            this.selectedEmails.delete(id);
         } else {
-            this.selectedEmails.add(emailId);
-            console.log("DEBUG: Added to selection");
+            this.selectedEmails.add(id);
         }
         
-        console.log("DEBUG: New selection:", Array.from(this.selectedEmails));
+        // Actualizar el checkbox visual
+        const checkbox = document.getElementById(`email-${id}`);
+        if (checkbox) {
+            checkbox.checked = this.selectedEmails.has(id);
+        }
+        
         this.updateSelectionUI();
     }
 
@@ -861,6 +844,9 @@ class ProfesorEmailApp {
         });
         
         this.updateSelectionUI();
+        
+        // Log para debugging
+        console.log('Emails seleccionados:', Array.from(this.selectedEmails));
     }
 
     async deleteSelectedEmails() {
@@ -869,95 +855,35 @@ class ProfesorEmailApp {
             return;
         }
 
-        const confirmMessage = this.currentFolder === 'deleted' 
-            ? `¿Eliminar permanentemente ${this.selectedEmails.size} email(s) de la papelera?`
-            : `¿Eliminar ${this.selectedEmails.size} email(s)?`;
-            
-        if (!confirm(confirmMessage)) {
+        if (!confirm(`¿Eliminar ${this.selectedEmails.size} email(s)?`)) {
             return;
         }
 
         try {
-            this.showLoading();
-            let successCount = 0;
-            let errorCount = 0;
-            
-            console.log("DEBUG: Eliminando emails:", Array.from(this.selectedEmails));
-            
-            for (const emailId of this.selectedEmails) {
-                try {
-                    console.log(`DEBUG: Eliminando email ID: ${emailId}`);
-                    const response = await fetch(`/profesor/api/comunicaciones/${emailId}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        console.log(`DEBUG: Respuesta para email ${emailId}:`, result);
-                        if (result.success) {
-                            successCount++;
-                        } else {
-                            console.error(`Error eliminando email ${emailId}:`, result.message);
-                            errorCount++;
-                        }
-                    } else {
-                        const errorText = await response.text();
-                        console.error(`Error HTTP eliminando email ${emailId}:`, response.status, errorText);
-                        errorCount++;
-                    }
-                } catch (error) {
-                    console.error(`Error eliminando email ${emailId}:`, error);
-                    errorCount++;
-                }
-            }
-
-            if (successCount > 0) {
-                this.showNotification(`${successCount} email(s) eliminados correctamente`, 'success');
-            }
-            if (errorCount > 0) {
-                this.showNotification(`${errorCount} email(s) no se pudieron eliminar`, 'error');
-            }
-            
-            this.selectedEmails.clear();
-            this.updateSelectionUI();
-            this.loadEmails();
-        } catch (error) {
-            console.error('Error general:', error);
-            this.showNotification('Error al eliminar los emails', 'error');
-        } finally {
-            this.hideLoading();
-        }
-    }
-
-    async cleanupOldMessages() {
-        if (!confirm('¿Ejecutar limpieza automática? Esto moverá mensajes antiguos a papelera y eliminará mensajes muy antiguos permanentemente.')) {
-            return;
-        }
-
-        try {
-            this.showLoading();
-            
-            const response = await fetch('/profesor/api/comunicaciones/cleanup', {
+            // Usar la nueva ruta de eliminación masiva
+            const response = await fetch('/admin/api/comunicaciones/bulk-delete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                }
+                },
+                body: JSON.stringify({
+                    ids: Array.from(this.selectedEmails)
+                })
             });
 
             const result = await response.json();
 
             if (response.ok && result.success) {
                 this.showNotification(result.message, 'success');
+                this.selectedEmails.clear();
                 this.loadEmails();
                 this.refreshAllCounts();
             } else {
-                throw new Error(result.message || 'Error en la limpieza automática');
+                throw new Error(result.message || 'Error al eliminar los emails');
             }
         } catch (error) {
             console.error('Error:', error);
-            this.showNotification('Error en la limpieza automática: ' + error.message, 'error');
-        } finally {
-            this.hideLoading();
+            this.showNotification('Error al eliminar los emails: ' + error.message, 'error');
         }
     }
 
@@ -965,7 +891,6 @@ class ProfesorEmailApp {
     switchFolder(folder) {
         this.currentFolder = folder;
         this.selectedEmails.clear();
-        this.hasLoaded = false; // Resetear el estado de carga
         
         // Actualizar UI
         document.querySelectorAll('.folder-item').forEach(item => {
@@ -973,7 +898,17 @@ class ProfesorEmailApp {
         });
         document.querySelector(`[data-folder="${folder}"]`).classList.add('active');
         
-        document.getElementById('selectAll').checked = false;
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+        
+        // Mostrar/ocultar botón de vaciar papelera
+        const emptyTrashBtn = document.getElementById('emptyTrashBtn');
+        if (emptyTrashBtn) {
+            emptyTrashBtn.style.display = folder === 'deleted' ? 'inline-block' : 'none';
+        }
         
         // Cargar emails y actualizar contadores
         this.loadEmails();
@@ -1008,28 +943,21 @@ class ProfesorEmailApp {
     updateSelectionUI() {
         const selectedCount = this.selectedEmails.size;
         const totalCount = document.querySelectorAll('.email-item').length;
-        
-        console.log("DEBUG: UpdateSelectionUI - Selected:", selectedCount, "Total:", totalCount);
-        
         const selectAllCheckbox = document.getElementById('selectAll');
+        
         if (selectAllCheckbox) {
             selectAllCheckbox.checked = selectedCount > 0 && selectedCount === totalCount;
             selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCount;
         }
         
-        // Habilitar/deshabilitar botón de eliminar según la selección
+        // Actualizar botones de acción
         const deleteBtn = document.getElementById('deleteBtn');
         if (deleteBtn) {
             deleteBtn.disabled = selectedCount === 0;
             deleteBtn.style.opacity = selectedCount === 0 ? '0.5' : '1';
-            console.log("DEBUG: Delete button disabled:", deleteBtn.disabled);
         }
         
-        // Actualizar checkboxes individuales
-        document.querySelectorAll('.email-item .form-check-input').forEach(checkbox => {
-            const emailId = parseInt(checkbox.id.replace('email-', ''));
-            checkbox.checked = this.selectedEmails.has(emailId);
-        });
+        console.log(`Seleccionados: ${selectedCount}/${totalCount}`);
     }
 
     updateEmailRange(total) {
@@ -1046,7 +974,7 @@ class ProfesorEmailApp {
         try {
             const folders = ['inbox', 'sent', 'draft', 'deleted'];
             const [inbox, sent, draft, deleted] = await Promise.all(
-                folders.map(f => fetch(`/profesor/api/comunicaciones?folder=${f}`, { cache: 'no-cache' })
+                folders.map(f => fetch(`/admin/api/comunicaciones?folder=${f}`, { cache: 'no-cache' })
                     .then(r => r.ok ? r.json() : { success: false }))
             );
             
@@ -1117,25 +1045,6 @@ class ProfesorEmailApp {
         return emailRegex.test(email);
     }
 
-    extractEmailFromString(text) {
-        if (!text) return null;
-        
-        // Primero intentar formato "Nombre (email@dominio.com)"
-        const parenMatch = text.match(/\(([^)]+@[^)]+)\)/);
-        if (parenMatch) {
-            return parenMatch[1].trim();
-        }
-        
-        // Luego intentar extraer cualquier email válido
-        const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
-        const match = text.match(emailRegex);
-        if (match) {
-            return match[1];
-        }
-        
-        return null;
-    }
-
     getFolderName(folder) {
         const names = {
             'inbox': 'Bandeja de entrada',
@@ -1144,19 +1053,6 @@ class ProfesorEmailApp {
             'deleted': 'Papelera'
         };
         return names[folder] || folder;
-    }
-
-    formatRecipients(email) {
-        if (email.destinatarios && email.destinatarios.length > 0) {
-            if (email.destinatarios.length === 1) {
-                return email.destinatarios[0].nombre;
-            } else {
-                const firstRecipient = email.destinatarios[0].nombre;
-                const remainingCount = email.destinatarios.length - 1;
-                return `${firstRecipient} y ${remainingCount} más`;
-            }
-        }
-        return email.destinatario || email.destinatario_nombre || 'Desconocido';
     }
 
     handleSearch(query) {
@@ -1210,174 +1106,13 @@ class ProfesorEmailApp {
     }
 
     // Métodos para replies y forwards
-    async sendReply() {
-        const subject = document.getElementById('replySubject').value;
-        const message = document.getElementById('replyMessage').value;
-        
-        if (!message.trim()) {
-            this.showNotification('Por favor escribe un mensaje', 'warning');
-            return;
+    replyToEmail() {
+        this.openComposeModal();
+        if (this.currentEmail) {
+            document.getElementById('composeTo').value = this.currentEmail.remitente || this.currentEmail.remitente_nombre;
+            document.getElementById('composeSubject').value = `Re: ${this.currentEmail.asunto}`;
+            document.getElementById('composeBody').value = `\n\n--- Mensaje original ---\n${this.currentEmail.mensaje}`;
         }
-        
-        if (!this.currentEmail) {
-            this.showNotification('No hay email seleccionado', 'error');
-            return;
-        }
-        
-        try {
-            console.log("DEBUG: Datos completos del email actual:", this.currentEmail);
-            console.log("DEBUG: Carpeta actual:", this.currentFolder);
-            console.log("DEBUG: Todos los campos disponibles:", Object.keys(this.currentEmail));
-            
-            // Determinar el destinatario de la respuesta
-            let destinatarioEmail = '';
-            let destinatarioNombre = '';
-            
-            if (this.currentFolder === 'inbox') {
-                // Si estamos viendo un email recibido, responder al remitente
-                // Intentar diferentes campos posibles para el email
-                destinatarioEmail = this.currentEmail.remitente_email || 
-                                  this.currentEmail.email_remitente || 
-                                  this.currentEmail.remitente;
-                destinatarioNombre = this.currentEmail.remitente_nombre || 
-                                   this.currentEmail.nombre_remitente || 
-                                   this.currentEmail.remitente;
-                console.log("DEBUG: Email recibido - Remitente original:", destinatarioEmail);
-                console.log("DEBUG: Email recibido - Nombre remitente:", destinatarioNombre);
-            } else if (this.currentFolder === 'sent') {
-                // Si estamos viendo un email enviado, responder al destinatario
-                destinatarioEmail = this.currentEmail.destinatario_email || 
-                                  this.currentEmail.email_destinatario || 
-                                  this.currentEmail.destinatario;
-                destinatarioNombre = this.currentEmail.destinatario_nombre || 
-                                   this.currentEmail.nombre_destinatario || 
-                                   this.currentEmail.destinatario;
-                console.log("DEBUG: Email enviado - Destinatario original:", destinatarioEmail);
-                console.log("DEBUG: Email enviado - Nombre destinatario:", destinatarioNombre);
-            } else {
-                // Para otros casos (draft, deleted), intentar determinar basándose en los datos disponibles
-                if (this.currentEmail.remitente) {
-                    destinatarioEmail = this.currentEmail.remitente_email || this.currentEmail.remitente;
-                    destinatarioNombre = this.currentEmail.remitente_nombre || this.currentEmail.remitente;
-                } else if (this.currentEmail.destinatario) {
-                    destinatarioEmail = this.currentEmail.destinatario_email || this.currentEmail.destinatario;
-                    destinatarioNombre = this.currentEmail.destinatario_nombre || this.currentEmail.destinatario;
-                }
-                console.log("DEBUG: Otro folder - Email:", destinatarioEmail);
-            }
-            
-            // Procesar el email para extraer la dirección válida
-            let emailFinal = '';
-            
-            // Intentar extraer email del campo de email
-            if (destinatarioEmail) {
-                emailFinal = this.extractEmailFromString(destinatarioEmail);
-                if (emailFinal) {
-                    console.log("DEBUG: Email extraído del campo email:", emailFinal);
-                }
-            }
-            
-            // Si no se encontró email, intentar con el campo nombre
-            if (!emailFinal && destinatarioNombre) {
-                emailFinal = this.extractEmailFromString(destinatarioNombre);
-                if (emailFinal) {
-                    console.log("DEBUG: Email extraído del campo nombre:", emailFinal);
-                }
-            }
-            
-            // Validar que tenemos un email válido
-            if (!emailFinal || !this.isValidEmail(emailFinal)) {
-                console.error("DEBUG: No se pudo extraer email válido");
-                console.error("DEBUG: Email crudo:", destinatarioEmail);
-                console.error("DEBUG: Nombre crudo:", destinatarioNombre);
-                
-                // Mostrar modal para que el usuario ingrese el email manualmente
-                const manualEmail = prompt(`No se pudo determinar automáticamente el destinatario de la respuesta.\n\nDatos disponibles:\n- Email: ${destinatarioEmail || 'No disponible'}\n- Nombre: ${destinatarioNombre || 'No disponible'}\n\nPor favor ingresa el email del destinatario manualmente:`);
-                
-                if (!manualEmail || !this.isValidEmail(manualEmail.trim())) {
-                    this.showNotification('Email no válido o cancelado. No se pudo enviar la respuesta.', 'error');
-                    return;
-                }
-                
-                emailFinal = manualEmail.trim();
-                console.log("DEBUG: Email ingresado manualmente:", emailFinal);
-            }
-            
-            console.log("DEBUG: Email final para respuesta:", emailFinal);
-            
-            const replyData = {
-                to: emailFinal,
-                asunto: subject,
-                mensaje: message
-            };
-            
-            console.log("DEBUG: Datos de respuesta a enviar:", replyData);
-            
-            const response = await fetch('/profesor/api/comunicaciones', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(replyData)
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                this.showNotification('Respuesta enviada correctamente', 'success');
-                // Limpiar el formulario de respuesta
-                document.getElementById('replyMessage').value = '';
-                // Ocultar el área de respuesta con animación
-                const replySection = document.getElementById('replySection');
-                replySection.classList.remove('show');
-                replySection.classList.add('hide');
-                setTimeout(() => {
-                    replySection.style.display = 'none';
-                    replySection.classList.remove('hide');
-                }, 300);
-                // Recargar emails
-                this.loadEmails();
-            } else {
-                throw new Error(result.message || 'Error al enviar la respuesta');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            this.showNotification('Error al enviar la respuesta: ' + error.message, 'error');
-        }
-    }
-    
-    toggleReplySection() {
-        const replySection = document.getElementById('replySection');
-        if (replySection.style.display === 'none' || replySection.style.display === '') {
-            replySection.style.display = 'block';
-            replySection.classList.remove('hide');
-            replySection.classList.add('show');
-            // Enfocar el área de texto
-            setTimeout(() => {
-                document.getElementById('replyMessage').focus();
-            }, 300);
-        } else {
-            replySection.classList.remove('show');
-            replySection.classList.add('hide');
-            // Ocultar después de la animación
-            setTimeout(() => {
-                replySection.style.display = 'none';
-                replySection.classList.remove('hide');
-            }, 300);
-        }
-    }
-    
-    cancelReply() {
-        const replySection = document.getElementById('replySection');
-        document.getElementById('replyMessage').value = '';
-        replySection.classList.remove('show');
-        replySection.classList.add('hide');
-        // Ocultar después de la animación
-        setTimeout(() => {
-            replySection.style.display = 'none';
-            replySection.classList.remove('hide');
-        }, 300);
-        this.showNotification('Respuesta cancelada', 'info');
     }
 
     forwardEmail() {
@@ -1393,54 +1128,128 @@ class ProfesorEmailApp {
         
         if (confirm('¿Eliminar este email?')) {
             try {
-                this.showLoading();
-                const emailId = this.currentEmail.id || this.currentEmail.id_comunicacion;
-                const response = await fetch(`/profesor/api/comunicaciones/${emailId}`, {
+                const response = await fetch(`/admin/api/comunicaciones/${this.currentEmail.id || this.currentEmail.id_comunicacion}`, {
                     method: 'DELETE'
                 });
 
                 if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        this.showNotification('Email eliminado correctamente', 'success');
-                        this.showEmailList();
-                        this.loadEmails();
-                    } else {
-                        throw new Error(result.message || 'Error al eliminar el email');
-                    }
+                    this.showNotification('Email eliminado', 'success');
+                    this.showEmailList();
+                    this.loadEmails();
                 } else {
-                    const errorText = await response.text();
-                    throw new Error(`Error ${response.status}: ${errorText}`);
+                    throw new Error('Error al eliminar el email');
                 }
             } catch (error) {
-                console.error('Error eliminando email:', error);
-                this.showNotification(`Error al eliminar el email: ${error.message}`, 'error');
-            } finally {
-                this.hideLoading();
+                console.error('Error:', error);
+                this.showNotification('Error al eliminar el email', 'error');
             }
         }
     }
 
+    async emptyTrash() {
+        if (!confirm('¿Estás seguro de que quieres vaciar la papelera? Esta acción no se puede deshacer.')) {
+            return;
+        }
+
+        try {
+            // Seleccionar todos los elementos en papelera
+            this.toggleSelectAll(true);
+            
+            if (this.selectedEmails.size === 0) {
+                this.showNotification('No hay elementos en la papelera', 'info');
+                return;
+            }
+
+            // Eliminar todos los elementos seleccionados
+            const response = await fetch('/admin/api/comunicaciones/bulk-delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ids: Array.from(this.selectedEmails)
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                this.showNotification('Papelera vaciada correctamente', 'success');
+                this.selectedEmails.clear();
+                this.loadEmails();
+            } else {
+                throw new Error(result.message || 'Error al vaciar la papelera');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showNotification('Error al vaciar la papelera: ' + error.message, 'error');
+        }
+    }
+
+    async saveDraft() {
+        const toInput = document.getElementById('composeTo');
+        const subjectInput = document.getElementById('composeSubject');
+        const bodyInput = document.getElementById('composeBody');
+        
+        const toValue = toInput.value.trim();
+        let emailTo = toValue;
+        
+        const emailMatch = toValue.match(/\(([^)]+)\)/);
+        if (emailMatch) {
+            emailTo = emailMatch[1].trim();
+        }
+
+        const emailData = {
+            to: emailTo || '',
+            asunto: subjectInput.value.trim() || '(Sin asunto)',
+            mensaje: bodyInput.value.trim()
+        };
+
+        try {
+            const response = await fetch('/admin/api/comunicaciones/draft', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(emailData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                this.showNotification('Borrador guardado', 'success');
+                this.closeComposeModal();
+                this.loadEmails();
+            } else {
+                throw new Error(result.message || 'Error al guardar el borrador');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showNotification('Error al guardar el borrador', 'error');
+        }
+    }
+
+    // Método crearComunicacionPrueba eliminado
 }
 
 // Inicializar la aplicación cuando el DOM esté listo
-let profesorEmailApp;
+let adminEmailApp;
 
 // Función para verificar que la aplicación esté lista
 function isAppReady() {
-    return profesorEmailApp && typeof profesorEmailApp.loadEmails === 'function';
+    return adminEmailApp && typeof adminEmailApp.loadEmails === 'function';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        profesorEmailApp = new ProfesorEmailApp();
-        console.log('Aplicación de comunicaciones inicializada correctamente');
+        adminEmailApp = new AdminEmailApp();
+        console.log('Aplicación de comunicaciones del administrador inicializada correctamente');
         
         // Carga adicional de seguridad después de que todo esté listo
         setTimeout(() => {
-            if (profesorEmailApp && !profesorEmailApp.hasLoaded) {
+            if (adminEmailApp && !adminEmailApp.hasLoaded) {
                 console.log('Ejecutando carga de seguridad adicional...');
-                profesorEmailApp.loadEmails();
+                adminEmailApp.loadEmails();
             }
         }, 3000);
         
@@ -1467,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Función global para recargar emails (útil para botones de error)
 window.reloadEmails = function() {
     if (isAppReady()) {
-        profesorEmailApp.loadEmails();
+        adminEmailApp.loadEmails();
     } else {
         console.error('La aplicación no está lista');
         location.reload();
@@ -1930,170 +1739,7 @@ body {
     border: 2px solid var(--border);
     border-radius: 20px;
     box-shadow: var(--shadow);
-    min-height: 600px;
-    width: 100%;
-}
-
-/* =======================================
-   ÁREA DE RESPUESTA INTEGRADA
-   ======================================= */
-.reply-section {
-    margin-top: 2rem;
-    padding: 2rem;
-    background: var(--light-gray);
-    border-radius: 15px;
-    border-left: 4px solid var(--accent3);
-    transition: all 0.3s ease-in-out;
-    overflow: hidden;
-}
-
-.reply-section.show {
-    animation: slideDown 0.3s ease-out;
-}
-
-.reply-section.hide {
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        max-height: 0;
-        padding-top: 0;
-        padding-bottom: 0;
-    }
-    to {
-        opacity: 1;
-        max-height: 500px;
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 1;
-        max-height: 500px;
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    to {
-        opacity: 0;
-        max-height: 0;
-        padding-top: 0;
-        padding-bottom: 0;
-    }
-}
-
-.reply-header {
-    margin-bottom: 1.5rem;
-}
-
-.reply-header h4 {
-    color: var(--accent4);
-    font-weight: 600;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.reply-header h4 i {
-    color: var(--accent1);
-}
-
-.reply-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.reply-field {
-    display: flex;
-    flex-direction: column;
-}
-
-.reply-field label {
-    color: var(--accent4);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.reply-field input,
-.reply-field textarea {
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 15px;
-    transition: all 0.3s ease;
-    font-size: 1rem;
-    background: var(--white);
-}
-
-.reply-field input:focus,
-.reply-field textarea:focus {
-    border-color: var(--accent4);
-    box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.1);
-    outline: none;
-}
-
-.reply-field input[readonly] {
-    background: var(--light);
-    color: var(--gray);
-    cursor: not-allowed;
-}
-
-.reply-field textarea {
-    min-height: 120px;
-    resize: vertical;
-    font-family: inherit;
-}
-
-.reply-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    margin-top: 1rem;
-}
-
-.reply-send-btn {
-    background: var(--gradient-accent);
-    color: var(--white);
-    border: none;
-    border-radius: 10px;
-    padding: 12px 24px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.reply-send-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-    background: var(--gradient-accent);
-    color: var(--white);
-}
-
-.reply-cancel-btn {
-    background: var(--light-gray);
-    color: var(--gray);
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 24px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.reply-cancel-btn:hover {
-    background: var(--border);
-    color: var(--black);
-    transform: translateY(-2px);
+    min-height: 500px;
 }
 
 .email-view-card .card-header {
@@ -2129,29 +1775,6 @@ body {
 .participant strong {
     color: var(--accent4);
     font-weight: 600;
-}
-
-.multiple-recipients {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.recipient-tag {
-    background: var(--accent3);
-    color: var(--black);
-    padding: 0.25rem 0.5rem;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.recipient-tag i {
-    font-size: 0.7rem;
 }
 
 .email-date {
@@ -2291,7 +1914,8 @@ body {
 }
 
 .compose-field input,
-.compose-field textarea {
+.compose-field textarea,
+.compose-field select {
     border: 2px solid var(--border);
     border-radius: 15px;
     padding: 12px 15px;
@@ -2301,7 +1925,8 @@ body {
 }
 
 .compose-field input:focus,
-.compose-field textarea:focus {
+.compose-field textarea:focus,
+.compose-field select:focus {
     border-color: var(--accent4);
     box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.1);
     outline: none;
@@ -2376,6 +2001,68 @@ body {
     background: var(--border);
     color: var(--black);
     transform: translateY(-2px);
+}
+
+/* =======================================
+   OPCIONES DE DESTINATARIOS
+   ======================================= */
+.recipient-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--light-gray);
+    border-radius: 15px;
+    border: 2px solid var(--border);
+}
+
+.recipient-options .form-check {
+    margin-bottom: 0;
+    padding: 0.5rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.recipient-options .form-check:hover {
+    background: var(--light);
+    transform: translateX(5px);
+}
+
+.recipient-options .form-check-input {
+    margin-right: 0.75rem;
+    transform: scale(1.2);
+}
+
+.recipient-options .form-check-input:checked {
+    background-color: var(--accent4);
+    border-color: var(--accent4);
+}
+
+.recipient-options .form-check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--accent4);
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
+.recipient-options .form-check-label i {
+    color: var(--accent1);
+    width: 20px;
+    text-align: center;
+}
+
+.recipient-options .form-check:has(.form-check-input:checked) .form-check-label {
+    color: var(--accent1);
+}
+
+.recipient-options .form-check:has(.form-check-input:checked) {
+    background: var(--accent3);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(244, 211, 94, 0.3);
 }
 
 /* =======================================
@@ -2601,22 +2288,6 @@ body {
         width: 100%;
         justify-content: center;
     }
-    
-    .reply-section {
-        padding: 1.5rem;
-        margin-top: 1.5rem;
-    }
-    
-    .reply-actions {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .reply-send-btn,
-    .reply-cancel-btn {
-        width: 100%;
-        justify-content: center;
-    }
 }
 
 @media (max-width: 576px) {
@@ -2732,27 +2403,6 @@ select {
     position: relative;
     z-index: 10;
     pointer-events: auto;
-}
-
-/* Asegurar que los elementos de email sean clickeables */
-.email-item {
-    position: relative;
-    z-index: 10;
-    pointer-events: auto;
-    cursor: pointer;
-}
-
-.email-item * {
-    pointer-events: auto;
-}
-
-/* Evitar que los pseudo-elementos interfieran con los clics */
-.email-item::before,
-.email-item::after,
-.card::before,
-.card::after {
-    pointer-events: none;
-    z-index: 1;
 }
 
 .form-check-input:checked {

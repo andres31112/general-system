@@ -2088,9 +2088,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             document.getElementById('generate-report-btn').addEventListener('click', async () => {
-                UI.showConfirm('¿Deseas generar y enviar un reporte de calificaciones al administrador?', async (confirmed) => {
+                UI.showConfirm('¿Deseas generar y enviar un reporte de calificaciones al administrador?\n\nEl reporte incluirá:\n• Todas las calificaciones detalladas por estudiante\n• Categorías y asignaciones específicas de esta asignatura\n• Configuración de notas (mín, máx, aprobación)\n• Estadísticas generales y por categoría\n• Metadatos del profesor, curso y asignatura', async (confirmed) => {
                     if (confirmed) {
                         try {
+                            // Mostrar indicador de carga
+                            const btn = document.getElementById('generate-report-btn');
+                            const originalText = btn.textContent;
+                            btn.textContent = 'Generando reporte...';
+                            btn.disabled = true;
+                            
                             const response = await fetch('/profesor/api/generar-reporte-calificaciones', {
                                 method: 'POST',
                                 headers: {
@@ -2101,13 +2107,28 @@ document.addEventListener('DOMContentLoaded', () => {
                             const data = await response.json();
                             
                             if (data.success) {
-                                UI.showAlert('Reporte generado y enviado al administrador correctamente');
+                                const resumen = data.resumen || {};
+                                const mensaje = `Reporte generado y enviado al administrador correctamente!\n\n` +
+                                    `Resumen del reporte:\n` +
+                                    `• Total de estudiantes: ${resumen.total_estudiantes || 0}\n` +
+                                    `• Estudiantes aprobados: ${resumen.estudiantes_aprobados || 0}\n` +
+                                    `• Promedio general: ${resumen.promedio_general || 0}\n` +
+                                    `• Total de asignaciones: ${resumen.total_asignaciones || 0}\n` +
+                                    `• Total de categorías: ${resumen.total_categorias || 0}\n\n` +
+                                    `ID del reporte: ${data.reporte_id}`;
+                                
+                                UI.showAlert(mensaje);
                             } else {
                                 UI.showAlert('Error al generar el reporte: ' + (data.message || 'Error desconocido'));
                             }
                         } catch (error) {
                             console.error('Error generando reporte:', error);
                             UI.showAlert('Error de red al generar el reporte');
+                        } finally {
+                            // Restaurar botón
+                            const btn = document.getElementById('generate-report-btn');
+                            btn.textContent = originalText;
+                            btn.disabled = false;
                         }
                     }
                 });

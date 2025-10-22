@@ -3,35 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Votación</title>
+    <title>Sistema de Votación</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/sistemav/votar.css') }}">
 </head>
 <body>
-    <div class="container my-4">
-        <div id="usuarioInfo" class="mb-4 text-center fw-bold"></div>
+    <!-- Header mejorado -->
+    <div class="votacion-header">
+        <div class="container">
+            <div class="row align-items-center py-3">
+                <div class="col-md-8">
+                    <h1 class="titulo-principal">
+                        <i class="icono-votacion"></i>
+                        Sistema de Votación Estudiantil
+                    </h1>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div id="usuarioInfo" class="info-usuario">
+                        <div class="badge-estado">
+                            <span class="nombre-usuario">Usuario: {{ current_user_id }}</span>
+                        </div>
+                        <div class="tiempo-restante">
+                            <span id="tiempoRestante">--:--:--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <!-- Formulario oculto por defecto -->
+    <div class="container my-4">
+        <!-- Alertas de estado -->
+        <div id="alertaEstado" class="alerta-estado" style="display: none;">
+            <div class="contenido-alerta">
+                <span id="mensajeEstado">Verificando estado de la votación...</span>
+            </div>
+        </div>
+
+        <!-- Formulario mejorado -->
         <form id="votacionForm" style="display:none;">
             <!-- Personero -->
-            <div class="mb-5">
-                <h4 class="categoria-titulo">Personero</h4>
+            <div class="categoria-votacion">
+                <div class="header-categoria">
+                    <h3 class="categoria-titulo">
+                        <span class="numero-categoria">1</span>
+                        Personero Estudiantil
+                    </h3>
+                    <span class="badge badge-obligatorio">Requerido</span>
+                </div>
                 <div class="row" id="opciones-personero"></div>
             </div>
+
             <!-- Contralor -->
-            <div class="mb-5">
-                <h4 class="categoria-titulo">Contralor</h4>
+            <div class="categoria-votacion">
+                <div class="header-categoria">
+                    <h3 class="categoria-titulo">
+                        <span class="numero-categoria">2</span>
+                        Contralor Estudiantil
+                    </h3>
+                    <span class="badge badge-obligatorio">Requerido</span>
+                </div>
                 <div class="row" id="opciones-contralor"></div>
             </div>
+
             <!-- Cabildante -->
-            <div class="mb-5">
-                <h4 class="categoria-titulo">Cabildante</h4>
+            <div class="categoria-votacion">
+                <div class="header-categoria">
+                    <h3 class="categoria-titulo">
+                        <span class="numero-categoria">3</span>
+                        Cabildante Estudiantil
+                    </h3>
+                    <span class="badge badge-obligatorio">Requerido</span>
+                </div>
                 <div class="row" id="opciones-cabildante"></div>
             </div>
-            <div class="text-center">
-                <button class="btn btn-primary px-4" type="submit">Votar</button>
+
+            <!-- Resumen de selección -->
+            <div id="resumenSeleccion" class="resumen-seleccion" style="display: none;">
+                <h4 class="titulo-resumen">Resumen de tu votación</h4>
+                <div class="contenido-resumen">
+                    <div class="item-resumen">
+                        <span class="categoria-resumen">Personero:</span>
+                        <span id="resumen-personero" class="valor-resumen">No seleccionado</span>
+                    </div>
+                    <div class="item-resumen">
+                        <span class="categoria-resumen">Contralor:</span>
+                        <span id="resumen-contralor" class="valor-resumen">No seleccionado</span>
+                    </div>
+                    <div class="item-resumen">
+                        <span class="categoria-resumen">Cabildante:</span>
+                        <span id="resumen-cabildante" class="valor-resumen">No seleccionado</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="acciones-votacion">
+                <button type="button" id="btnLimpiar" class="btn btn-secundario">
+                    Limpiar selección
+                </button>
+                <button type="submit" class="btn btn-principal">
+                    Confirmar Voto
+                </button>
             </div>
         </form>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div id="modalConfirmacion" class="modal-custom" style="display: none;">
+        <div class="modal-contenido">
+            <div class="modal-header">
+                <h3>Confirmar Voto</h3>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas confirmar tu voto? Esta acción no se puede deshacer.</p>
+                <div class="detalles-voto">
+                    <h4>Tu selección:</h4>
+                    <ul id="listaConfirmacion"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btnCancelar" class="btn btn-secundario">Cancelar</button>
+                <button type="button" id="btnConfirmar" class="btn btn-principal">Sí, confirmar</button>
+            </div>
+        </div>
     </div>
 
     <!-- Inyectamos el usuario actual -->

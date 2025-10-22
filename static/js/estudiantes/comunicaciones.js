@@ -172,6 +172,22 @@ class EmailApp {
 
         this.updateSelectionUI();
         this.updateEmailRange(emails.length);
+        
+        // Agregar event listeners para clic en emails
+        document.querySelectorAll('.email-item').forEach(item => {
+            // Remover listeners anteriores para evitar duplicados
+            item.removeEventListener('click', this.handleEmailClick);
+            // Agregar nuevo listener
+            item.addEventListener('click', this.handleEmailClick.bind(this));
+        });
+    }
+
+    handleEmailClick(e) {
+        // Solo activar si no se hizo clic en el checkbox
+        if (!e.target.closest('.form-check')) {
+            const emailId = parseInt(e.currentTarget.dataset.emailId);
+            this.viewEmail(emailId);
+        }
     }
 
     async viewEmail(emailId) {
@@ -418,17 +434,28 @@ class EmailApp {
     }
 
     // Métodos de selección
-    toggleEmailSelection(emailId) {
+    toggleEmailSelection(emailId, event) {
+        console.log('DEBUG: toggleEmailSelection called with emailId:', emailId);
+        
+        // Prevenir que el clic en el checkbox active el onclick del email-item
+        if (event) {
+            event.stopPropagation();
+        }
+        
         if (this.selectedEmails.has(emailId)) {
             this.selectedEmails.delete(emailId);
+            console.log('DEBUG: Removed emailId from selection');
         } else {
             this.selectedEmails.add(emailId);
+            console.log('DEBUG: Added emailId to selection');
         }
+        
+        console.log('DEBUG: Current selection:', Array.from(this.selectedEmails));
         this.updateSelectionUI();
     }
 
     toggleSelectAll(checked) {
-        const checkboxes = document.querySelectorAll('.email-checkbox input[type="checkbox"]');
+        const checkboxes = document.querySelectorAll('.form-check input[type="checkbox"]');
         
         this.selectedEmails.clear();
         
@@ -447,6 +474,9 @@ class EmailApp {
     }
 
     async deleteSelectedEmails() {
+        console.log('DEBUG: selectedEmails size:', this.selectedEmails.size);
+        console.log('DEBUG: selectedEmails:', Array.from(this.selectedEmails));
+        
         if (this.selectedEmails.size === 0) {
             this.showNotification('Selecciona al menos un email', 'warning');
             return;
@@ -519,13 +549,13 @@ class EmailApp {
     }
 
     showEmailView() {
-        document.getElementById('emailListContainer').style.display = 'none';
-        document.getElementById('emailView').style.display = 'block';
+        document.getElementById('emailListView').style.display = 'none';
+        document.getElementById('emailDetailView').style.display = 'block';
     }
 
     showEmailList() {
-        document.getElementById('emailListContainer').style.display = 'block';
-        document.getElementById('emailView').style.display = 'none';
+        document.getElementById('emailListView').style.display = 'block';
+        document.getElementById('emailDetailView').style.display = 'none';
         this.currentEmail = null;
     }
 
@@ -547,8 +577,17 @@ class EmailApp {
         const selectedCount = this.selectedEmails.size;
         const totalCount = document.querySelectorAll('.email-item').length;
         
-        document.getElementById('selectAll').checked = selectedCount > 0 && selectedCount === totalCount;
-        document.getElementById('selectAll').indeterminate = selectedCount > 0 && selectedCount < totalCount;
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = selectedCount > 0 && selectedCount === totalCount;
+            selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+        }
+        
+        // Actualizar el estado visual de los checkboxes individuales
+        document.querySelectorAll('.form-check input[type="checkbox"]').forEach(checkbox => {
+            const emailId = parseInt(checkbox.id.replace('email-', ''));
+            checkbox.checked = this.selectedEmails.has(emailId);
+        });
     }
 
     updateEmailRange(total) {

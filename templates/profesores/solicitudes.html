@@ -1,0 +1,642 @@
+{% extends "profesores/base.html" %}
+
+{% block title %}Solicitudes - Panel de Profesor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--accent4);
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: var(--gray);
+        font-weight: 500;
+        margin-bottom: 0;
+    }
+    
+    .solicitud-item {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        transition: all var(--transition-speed) ease;
+        border-left: 4px solid var(--border);
+    }
+    
+    .solicitud-item:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .solicitud-pendiente {
+        border-left-color: #ffc107;
+    }
+    
+    .solicitud-aceptada {
+        border-left-color: #28a745;
+    }
+    
+    .solicitud-denegada {
+        border-left-color: #dc3545;
+    }
+    
+    .estado-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .estado-pendiente {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+    }
+    
+    .estado-aceptada {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    
+    .estado-denegada {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    
+    .btn-responder {
+        background: var(--gradient-primary);
+        border: none;
+        color: var(--white);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .btn-responder:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+    }
+    
+    .btn-aceptar {
+        background: #28a745;
+        border: none;
+        color: var(--white);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+    
+    .btn-denegar {
+        background: #dc3545;
+        border: none;
+        color: var(--white);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    
+    .btn-aceptar:hover, .btn-denegar:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .solicitud-header {
+        display: flex;
+        justify-content: between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+    }
+    
+    .solicitud-info {
+        flex: 1;
+    }
+    
+    .solicitud-actions {
+        margin-left: 1rem;
+    }
+    
+    .solicitud-details {
+        background: var(--light-gray);
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .detail-row {
+        display: flex;
+        margin-bottom: 0.75rem;
+    }
+    
+    .detail-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .detail-label {
+        font-weight: 600;
+        color: var(--accent4);
+        width: 150px;
+        flex-shrink: 0;
+    }
+    
+    .detail-value {
+        color: var(--black);
+        flex: 1;
+    }
+    
+    .justificacion-box {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .respuesta-box {
+        background: #e8f5e8;
+        border: 1px solid #c3e6cb;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .no-solicitudes {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--gray);
+    }
+    
+    .no-solicitudes i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        color: var(--accent2);
+    }
+    
+    .tabs-container {
+        background: var(--card-bg);
+        border-radius: 15px;
+        box-shadow: var(--shadow);
+        margin-bottom: 2rem;
+    }
+    
+    .nav-tabs {
+        border-bottom: 1px solid var(--border);
+        padding: 0 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        border: none;
+        color: var(--gray);
+        font-weight: 600;
+        padding: 1rem 1.5rem;
+        border-radius: 0;
+        transition: all var(--transition-speed) ease;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: var(--accent4);
+        background: transparent;
+        border-bottom: 3px solid var(--accent4);
+    }
+    
+    .tab-content {
+        padding: 2rem;
+    }
+    
+    .loading-spinner {
+        display: none;
+    }
+    
+    .loading-spinner.show {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold text-dark mb-1">
+                        <i class="fas fa-clipboard-check me-2 text-primary"></i>
+                        Solicitudes de Consulta
+                    </h2>
+                    <p class="text-muted mb-0">Gestiona las solicitudes de revisión de notas de los padres</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stat-number" id="totalSolicitudes">{{ todas_solicitudes|length }}</div>
+                <div class="stat-label">Total Solicitudes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stat-number text-warning" id="pendientesSolicitudes">{{ solicitudes_pendientes }}</div>
+                <div class="stat-label">Pendientes</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stat-number text-success" id="aceptadasSolicitudes">0</div>
+                <div class="stat-label">Aceptadas</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card text-center">
+                <div class="stat-number text-danger" id="denegadasSolicitudes">0</div>
+                <div class="stat-label">Denegadas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs para organizar las solicitudes -->
+    <div class="tabs-container">
+        <ul class="nav nav-tabs" id="solicitudesTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button" role="tab">
+                    <i class="fas fa-clock me-2"></i>
+                    Pendientes ({{ solicitudes_pendientes }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="todas-tab" data-bs-toggle="tab" data-bs-target="#todas" type="button" role="tab">
+                    <i class="fas fa-list me-2"></i>
+                    Todas las Solicitudes
+                </button>
+            </li>
+        </ul>
+        
+        <div class="tab-content" id="solicitudesTabContent">
+            <!-- Tab Pendientes -->
+            <div class="tab-pane fade show active" id="pendientes" role="tabpanel">
+                {% if solicitudes_pendientes_list %}
+                    {% for solicitud in solicitudes_pendientes_list %}
+                    <div class="solicitud-item solicitud-pendiente">
+                        <div class="solicitud-header">
+                            <div class="solicitud-info">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="fw-bold text-dark mb-1">{{ solicitud.asignatura.nombre }}</h5>
+                                    <span class="estado-badge estado-pendiente">
+                                        <i class="fas fa-clock"></i>Pendiente
+                                    </span>
+                                </div>
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ solicitud.padre.nombre_completo }} - {{ solicitud.nombre_completo_hijo }}
+                                </p>
+                                <p class="text-muted mb-0 small">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ solicitud.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="solicitud-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Estudiante:</div>
+                                <div class="detail-value">{{ solicitud.nombre_completo_hijo }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Documento:</div>
+                                <div class="detail-value">{{ solicitud.numero_documento_hijo }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Asignatura:</div>
+                                <div class="detail-value">{{ solicitud.asignatura.nombre }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Curso:</div>
+                                <div class="detail-value">
+                                    {% if solicitud.curso_estudiante %}
+                                        {{ solicitud.curso_estudiante.nombre }}
+                                    {% else %}
+                                        <span class="text-muted">No disponible</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Padre/Tutor:</div>
+                                <div class="detail-value">{{ solicitud.padre.nombre_completo }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="justificacion-box">
+                            <strong>Justificación:</strong>
+                            <p class="mb-0 mt-2">{{ solicitud.justificacion }}</p>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-aceptar" onclick="responderSolicitud({{ solicitud.id_solicitud }}, 'aceptar')">
+                                <i class="fas fa-check me-1"></i>Aceptar
+                            </button>
+                            <button class="btn btn-denegar" onclick="responderSolicitud({{ solicitud.id_solicitud }}, 'denegar')">
+                                <i class="fas fa-times me-1"></i>Denegar
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-solicitudes">
+                        <i class="fas fa-inbox"></i>
+                        <h4 class="text-muted">No hay solicitudes pendientes</h4>
+                        <p class="text-muted">Todas las solicitudes han sido respondidas</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Tab Todas -->
+            <div class="tab-pane fade" id="todas" role="tabpanel">
+                {% if todas_solicitudes %}
+                    {% for solicitud in todas_solicitudes %}
+                    <div class="solicitud-item solicitud-{{ solicitud.estado }}">
+                        <div class="solicitud-header">
+                            <div class="solicitud-info">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="fw-bold text-dark mb-1">{{ solicitud.asignatura.nombre }}</h5>
+                                    <span class="estado-badge estado-{{ solicitud.estado }}">
+                                        {% if solicitud.estado == 'pendiente' %}
+                                            <i class="fas fa-clock"></i>Pendiente
+                                        {% elif solicitud.estado == 'aceptada' %}
+                                            <i class="fas fa-check"></i>Aceptada
+                                        {% elif solicitud.estado == 'denegada' %}
+                                            <i class="fas fa-times"></i>Denegada
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ solicitud.padre.nombre_completo }} - {{ solicitud.nombre_completo_hijo }}
+                                </p>
+                                <p class="text-muted mb-0 small">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    {{ solicitud.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="solicitud-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Estudiante:</div>
+                                <div class="detail-value">{{ solicitud.nombre_completo_hijo }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Documento:</div>
+                                <div class="detail-value">{{ solicitud.numero_documento_hijo }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Asignatura:</div>
+                                <div class="detail-value">{{ solicitud.asignatura.nombre }}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Curso:</div>
+                                <div class="detail-value">
+                                    {% if solicitud.curso_estudiante %}
+                                        {{ solicitud.curso_estudiante.nombre }}
+                                    {% else %}
+                                        <span class="text-muted">No disponible</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Padre/Tutor:</div>
+                                <div class="detail-value">{{ solicitud.padre.nombre_completo }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="justificacion-box">
+                            <strong>Justificación:</strong>
+                            <p class="mb-0 mt-2">{{ solicitud.justificacion }}</p>
+                        </div>
+                        
+                        {% if solicitud.respuesta_profesor %}
+                        <div class="respuesta-box">
+                            <strong>Tu Respuesta:</strong>
+                            <p class="mb-0 mt-2">{{ solicitud.respuesta_profesor }}</p>
+                            <small class="text-muted">
+                                Respondido el {{ solicitud.fecha_respuesta.strftime('%d/%m/%Y %H:%M') }}
+                            </small>
+                        </div>
+                        {% endif %}
+                        
+                        {% if solicitud.estado == 'pendiente' %}
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-aceptar" onclick="responderSolicitud({{ solicitud.id_solicitud }}, 'aceptar')">
+                                <i class="fas fa-check me-1"></i>Aceptar
+                            </button>
+                            <button class="btn btn-denegar" onclick="responderSolicitud({{ solicitud.id_solicitud }}, 'denegar')">
+                                <i class="fas fa-times me-1"></i>Denegar
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-solicitudes">
+                        <i class="fas fa-inbox"></i>
+                        <h4 class="text-muted">No hay solicitudes</h4>
+                        <p class="text-muted">No has recibido ninguna solicitud de consulta</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para responder solicitud -->
+<div class="modal fade" id="responderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="responderModalTitle">Responder Solicitud</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="responderForm">
+                    <div class="mb-3">
+                        <label for="respuesta" class="form-label">Respuesta (opcional)</label>
+                        <textarea class="form-control" id="respuesta" name="respuesta" rows="4" 
+                                  placeholder="Agrega un comentario sobre tu decisión..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmarRespuesta">
+                    <i class="fas fa-paper-plane me-1"></i>Enviar Respuesta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let solicitudActual = null;
+let accionActual = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    cargarEstadisticas();
+});
+
+function cargarEstadisticas() {
+    fetch('/profesor/api/solicitudes/estadisticas')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalSolicitudes').textContent = data.estadisticas.total;
+                document.getElementById('pendientesSolicitudes').textContent = data.estadisticas.pendientes;
+                document.getElementById('aceptadasSolicitudes').textContent = data.estadisticas.aceptadas;
+                document.getElementById('denegadasSolicitudes').textContent = data.estadisticas.denegadas;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando estadísticas:', error);
+        });
+}
+
+function responderSolicitud(solicitudId, accion) {
+    solicitudActual = solicitudId;
+    accionActual = accion;
+    
+    const modal = new bootstrap.Modal(document.getElementById('responderModal'));
+    const title = document.getElementById('responderModalTitle');
+    const confirmarBtn = document.getElementById('confirmarRespuesta');
+    
+    if (accion === 'aceptar') {
+        title.textContent = 'Aceptar Solicitud';
+        confirmarBtn.innerHTML = '<i class="fas fa-check me-1"></i>Aceptar Solicitud';
+        confirmarBtn.className = 'btn btn-success';
+    } else {
+        title.textContent = 'Denegar Solicitud';
+        confirmarBtn.innerHTML = '<i class="fas fa-times me-1"></i>Denegar Solicitud';
+        confirmarBtn.className = 'btn btn-danger';
+    }
+    
+    modal.show();
+}
+
+document.getElementById('confirmarRespuesta').addEventListener('click', function() {
+    const respuesta = document.getElementById('respuesta').value;
+    
+    if (solicitudActual && accionActual) {
+        enviarRespuesta(solicitudActual, accionActual, respuesta);
+    }
+});
+
+function enviarRespuesta(solicitudId, accion, respuesta) {
+    const confirmarBtn = document.getElementById('confirmarRespuesta');
+    const originalText = confirmarBtn.innerHTML;
+    
+    // Mostrar loading
+    confirmarBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enviando...';
+    confirmarBtn.disabled = true;
+    
+    fetch(`/profesor/api/solicitudes/${solicitudId}/responder`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            accion: accion,
+            respuesta: respuesta
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarExito(data.message);
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('responderModal'));
+            modal.hide();
+            
+            // Recargar la página para mostrar el estado actualizado
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            mostrarError('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error de conexión');
+    })
+    .finally(() => {
+        confirmarBtn.innerHTML = originalText;
+        confirmarBtn.disabled = false;
+    });
+}
+
+function mostrarExito(mensaje) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const content = document.querySelector('.content-wrapper');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function mostrarError(mensaje) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        <i class="fas fa-exclamation-circle me-2"></i>
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const content = document.querySelector('.content-wrapper');
+    content.insertBefore(alertDiv, content.firstChild);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

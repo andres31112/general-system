@@ -12,8 +12,8 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="mb-0 fw-semibold text-white-50">Promedio de Hijo/a</p>
-                            <h3 class="card-title fw-bold">4.5</h3>
+                            <p class="mb-0 fw-semibold text-white-50">Promedio General</p>
+                            <h3 class="card-title fw-bold">{{ promedio_general if promedio_general > 0 else 'N/A' }}</h3>
                         </div>
                         <i class="fas fa-chart-line fa-3x text-white-50"></i>
                     </div>
@@ -26,7 +26,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-white-50">Clases inscritas</p>
-                            <h3 class="card-title fw-bold">6</h3>
+                            <h3 class="card-title fw-bold">{{ total_clases_inscritas }}</h3>
                         </div>
                         <i class="fas fa-chalkboard fa-3x text-white-50"></i>
                     </div>
@@ -39,7 +39,7 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-black-50">Mensajes de Profesores</p>
-                            <h3 class="card-title fw-bold">2</h3>
+                            <h3 class="card-title fw-bold">{{ mensajes_profesores }}</h3>
                         </div>
                         <i class="fas fa-envelope fa-3x text-black-50"></i>
                     </div>
@@ -51,16 +51,55 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <p class="mb-0 fw-semibold text-white-50">Próximo Evento</p>
-                            <h5 class="card-title fw-bold m-0">Reunión de Padres</h5>
-                            <small>28 de Noviembre</small>
+                            <p class="mb-0 fw-semibold text-white-50">Hijos Registrados</p>
+                            <h3 class="card-title fw-bold">{{ total_hijos }}</h3>
+                            {% if total_hijos > 0 %}
+                            <small>{{ total_hijos }} hijo{{ 's' if total_hijos != 1 else '' }} vinculado{{ 's' if total_hijos != 1 else '' }}</small>
+                            {% else %}
+                            <small>Sin hijos vinculados</small>
+                            {% endif %}
                         </div>
-                        <i class="fas fa-calendar-check fa-3x text-white-50"></i>
+                        <i class="fas fa-users fa-3x text-white-50"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    {% if total_hijos > 0 %}
+    <div class="row g-4 mt-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Hijos Vinculados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for hijo in hijos %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        <i class="fas fa-user-graduate fa-3x text-primary"></i>
+                                    </div>
+                                    <h6 class="card-title">{{ hijo.nombre_completo }}</h6>
+                                    <p class="card-text text-muted small">
+                                        <i class="fas fa-id-card me-1"></i>{{ hijo.no_identidad }}<br>
+                                        <i class="fas fa-envelope me-1"></i>{{ hijo.correo }}
+                                    </p>
+                                    <a href="{{ url_for('padre.consultar_estudiante') }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-search me-1"></i>Consultar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="row g-4 mt-3">
         <div class="col-lg-6">
@@ -69,23 +108,30 @@
                     <h5 class="card-title mb-0">Últimas Calificaciones</h5>
                 </div>
                 <div class="card-body">
+                    {% if calificaciones_recientes %}
                     <ul class="list-group list-group-flush">
+                        {% for calificacion in calificaciones_recientes %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="fw-semibold">Matemáticas</div>
-                            <span class="badge bg-success">4.8</span>
+                            <div>
+                                <div class="fw-semibold">{{ calificacion.asignatura }}</div>
+                                <small class="text-muted">{{ calificacion.hijo }} - {{ calificacion.fecha }}</small>
+                            </div>
+                            <span class="badge {% if calificacion.valor >= 4.0 %}bg-success{% elif calificacion.valor >= 3.0 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ calificacion.valor }}
+                            </span>
                         </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="fw-semibold">Ciencias</div>
-                            <span class="badge bg-info">3.9</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div class="fw-semibold">Historia</div>
-                            <span class="badge bg-warning">3.2</span>
-                        </li>
+                        {% endfor %}
                     </ul>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay calificaciones recientes</p>
+                        <small class="text-muted">Las calificaciones aparecerán aquí cuando los profesores las registren</small>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="card-footer bg-white text-end">
-                    <a href="{{ url_for('padre.ver_calificaciones_hijo') }}" class="btn btn-sm btn-outline-secondary">Ver todas las calificaciones</a>
+                    <a href="{{ url_for('padre.consultar_estudiante') }}" class="btn btn-sm btn-outline-secondary">Consultar Estudiante</a>
                 </div>
             </div>
         </div>
@@ -95,18 +141,24 @@
                     <h5 class="card-title mb-0">Anuncios Importantes</h5>
                 </div>
                 <div class="card-body">
+                    {% if anuncios_importantes %}
                     <ul class="list-group list-group-flush">
+                        {% for anuncio in anuncios_importantes %}
                         <li class="list-group-item">
-                            <p class="fw-semibold mb-1">Reunión de padres</p>
-                            <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> Publicado hace 1 día</small>
-                            <small>Reunión el 28 de noviembre a las 6:00 PM.</small>
+                            <p class="fw-semibold mb-1">{{ anuncio.titulo }}</p>
+                            <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> {{ anuncio.fecha }}</small>
+                            <small>{{ anuncio.mensaje }}</small>
+                            <small class="text-muted d-block mt-1"><i class="fas fa-user me-1"></i> {{ anuncio.remitente }}</small>
                         </li>
-                        <li class="list-group-item">
-                            <p class="fw-semibold mb-1">Evento deportivo anual</p>
-                            <small class="text-muted d-block"><i class="fas fa-clock me-1"></i> Publicado la semana pasada</small>
-                            <small>Ven a apoyar a tu hijo en el torneo de fútbol del 20 de noviembre.</small>
-                        </li>
+                        {% endfor %}
                     </ul>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay anuncios recientes</p>
+                        <small class="text-muted">Los comunicados de la institución aparecerán aquí</small>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="card-footer bg-white text-end">
                     <a href="{{ url_for('padre.comunicaciones') }}" class="btn btn-sm btn-outline-secondary">Ver todos los anuncios</a>
