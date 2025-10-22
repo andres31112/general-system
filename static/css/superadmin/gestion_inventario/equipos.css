@@ -1,245 +1,339 @@
-/* --- ========================================== --- */
-/* ---        ESTILO PARA GESTIÓN INVENTARIO      --- */
-/* --- ========================================== --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Montserrat:wght@400;600;700&display=swap');
-
 :root {
-    /* Paleta de Colores */
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-texto-principal: #2c3e50;
-    --color-texto-secundario: #7f8c8d;
-    --color-blanco: #FFFFFF;
-    --color-fondo-seccion: #f8f9fa;
-    --color-borde-suave: #ecf0f1;
-
-    /* Fuentes */
-    --fuente-principal: 'Montserrat', sans-serif;
-    --fuente-secundaria: 'Inter', sans-serif;
-
-    /* Transiciones */
-    --transicion-rapida: 0.3s ease-in-out;
-    --transicion-lenta: 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --accent1: #F95738;
+    --accent2: #EE964B;
+    --accent3: #F4D35E;
+    --accent4: #0D3B66;
+    --light: #FAF0CA;
+    --main-bg: #F8F9FA;
 }
 
-/* --- GENERAL --- */
-body {
-    font-family: var(--fuente-secundaria);
-    background-color: var(--color-fondo-seccion);
-    color: var(--color-texto-principal);
-    margin: 0;
-    padding: 0;
+body{
+    background-color: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%) !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* --- HEADER --- */
-.main-header {
-    background-color: var(--color-blanco);
-    border-bottom: 1px solid var(--color-borde-suave);
+/* Header Styles */
+.custom-header {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: white;
+    padding: 18px 25px;
+    border-radius: 12px;
+    max-width: 90%;
+    margin: 0 auto 25px auto;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     display: flex;
+    justify-content: center;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px;
-    box-shadow: 0 2px 5px rgba(0,0,0,.05);
 }
 
-.main-header h1 {
-    font-family: var(--fuente-principal);
-    font-weight: 600;
-    color: var(--color-primario);
+.custom-header h1 {
     margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
 .header-icons i {
-    font-size: 1.2rem;
-    margin-left: 15px;
-    color: var(--color-texto-secundario);
+    font-size: 20px;
+    margin-left: 20px;
     cursor: pointer;
-    transition: color var(--transicion-rapida);
-}
-.header-icons i:hover {
-    color: var(--color-primario);
+    transition: color 0.3s;
 }
 
-/* --- TARJETAS DE RESUMEN --- */
+.header-icons i:hover {
+    color: var(--accent3);
+}
+
+.atras i:hover {
+    color: var(--accent4);
+    background: white;
+    padding: 5px 5px;
+    border-radius: 10px;
+}
+
+.logo {
+    font-size: 32px;
+}
+
+/* Summary Cards */
 .summary-card {
-    background: var(--color-blanco);
-    padding: 20px;
-    border-radius: 12px;
+    background: linear-gradient(135deg, white, #f8f9fa);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    border-top: 5px solid var(--accent2);
     text-align: center;
-    border: 1px solid var(--color-borde-suave);
-    transition: transform var(--transicion-rapida), box-shadow var(--transicion-rapida);
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .summary-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-.summary-card .icon {
-    font-size: 2rem;
-    color: var(--color-primario);
-    margin-bottom: 8px;
+.summary-card i {
+    font-size: 42px;
+    margin-bottom: 15px;
 }
 
+.summary-card .lista {
+    color: rgb(249, 87, 56);
+}
+
+.summary-card .disponible {
+    color: rgb(68, 180, 0);
+}
+
+.summary-card .incidente {
+    color: rgb(220, 53, 69);
+}
+
+.summary-card .mantenimiento {
+    color: rgb(255, 193, 7);
+}
 .summary-card h3 {
-    font-family: var(--fuente-principal);
+    color: #666;
+    font-size: 0.95rem;
     font-weight: 600;
-    color: var(--color-texto-principal);
+    margin-bottom: 10px;
 }
 
 .summary-card .number {
-    font-size: 1.3rem;
-    font-weight: bold;
-    color: var(--color-primario-oscuro);
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent4);
 }
 
-/* --- TABLAS --- */
-.table {
-    font-size: 0.9rem;
-}
-.table thead.table-dark {
-    background-color: var(--color-primario-oscuro) !important;
-}
-.table-hover tbody tr:hover {
-    background-color: #eaf6fb;
-}
-
-/* --- CARD GENERAL --- */
-.card {
-    border: 1px solid var(--color-borde-suave);
-    border-radius: 12px;
+/* Equipment Card */
+.equipment-main-card {
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     overflow: hidden;
+    border-top: 6px solid var(--accent4);
+    background: white;
 }
 
 .card-header {
-    font-family: var(--fuente-principal);
+    background: linear-gradient(135deg, var(--accent4), #1a5080) !important;
+    color: white !important;
+    padding: 20px 25px;
+}
+
+.card-header h5 {
+    margin: 0;
+    font-weight: 700;
+}
+
+/* Table Styles */
+.table-hover tbody tr:hover {
+    background-color: rgba(238, 150, 75, 0.1);
+    cursor: pointer;
+}
+
+.table thead {
+    background: var(--accent4);
+    color: white;
+}
+
+/* Badges */
+.badge {
+    padding: 8px 14px;
+    font-size: 0.85rem;
     font-weight: 600;
-}
-
-/* --- NAV TABS --- */
-.nav-tabs .nav-link {
-    color: var(--color-texto-principal);
-    font-weight: 500;
-    transition: var(--transicion-rapida);
-}
-.nav-tabs .nav-link.active {
-    background-color: var(--color-primario);
-    color: var(--color-blanco);
-    border-radius: 8px 8px 0 0;
-}
-.nav-tabs .nav-link:hover {
-    color: var(--color-primario);
-}
-
-/* --- BOTONES GENERALES --- */
-.btn {
     border-radius: 8px;
-    font-weight: 500;
-    font-family: var(--fuente-secundaria);
-    transition: background-color var(--transicion-rapida), transform var(--transicion-rapida);
 }
-.btn:hover {
-    transform: scale(1.02);
+
+.text-bg-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
 }
+
+.text-bg-secondary {
+    background: linear-gradient(135deg, #6c757d, #545b62) !important;
+}
+
+.text-bg-warning {
+    background: linear-gradient(135deg, var(--accent2), #d68437) !important;
+}
+
+.text-bg-danger {
+    background: linear-gradient(135deg, var(--accent1), #e04020) !important;
+}
+
+.text-bg-info {
+    background: linear-gradient(135deg, #17a2b8, #138496) !important;
+}
+
+/* Buttons */
 .btn-primary {
-    background-color: var(--color-primario);
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
     border: none;
+    transition: transform 0.2s;
 }
+
 .btn-primary:hover {
-    background-color: var(--color-primario-oscuro);
+    transform: scale(1.05);
+    background: linear-gradient(135deg, #1a5080, var(--accent4));
 }
+
+.btn-success-medium {
+    background: linear-gradient(135deg, #28a745, #218838);
+    border: none;
+    transition: transform 0.2s;
+}
+
+.btn-success-medium:hover {
+    transform: scale(1.1);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--accent2), #d68437);
+    border: none;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    border: none;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--accent1), #e04020);
+    border: none;
+}
+
 .btn-success {
-    background-color: #28a745;
+    background: linear-gradient(135deg, #28a745, #218838);
     border: none;
-}
-.btn-success:hover {
-    background-color: #218838;
 }
 
-/* --- BOTONES VER Y EDITAR PERSONALIZADOS --- */
-.btn-ver {
-    background-color: var(--color-primario);
-    border: none;
-    color: var(--color-blanco);
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: var(--transicion-rapida);
-}
-.btn-ver:hover {
-    background-color: var(--color-primario-oscuro);
-    transform: scale(1.05);
+/* Salas Card */
+.salas-card {
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    border-top: 6px solid var(--accent2);
 }
 
-.btn-editar {
-    background-color: #ff9800;   /* Naranja personalizado */
-    border: none;
-    color: var(--color-blanco);
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: var(--transicion-rapida);
-}
-.btn-editar:hover {
-    background-color: #e68900;
-    transform: scale(1.05);
+.salas-card .card-header {
+    display: flex;
+    flex-direction: row; /* Asegura que la dirección es horizontal */
+    gap: 10px; /* Opcional: añade espacio entre los botones */
 }
 
-/* --- MODAL --- */
-.modal-content {
-    border-radius: 12px;
-    border: none;
+.salas-card .nav-tabs {
+    border-bottom: 2px solid var(--light);
 }
-.modal-header {
-    border-bottom: none;
-}
-.modal-title {
-    font-family: var(--fuente-principal);
+
+.salas-card .nav-link {
+    color: white;
     font-weight: 600;
-}
-.form-label {
-    font-weight: 500;
-    color: var(--color-texto-principal);
-}
-.form-control, .form-select {
-    border-radius: 8px;
-    border: 1px solid var(--color-borde-suave);
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
 }
 
-/* Estilos para equipos con incidentes activos */
-tr.equipo-con-incidente {
-    background-color: #fff3cd !important;
-    border-left: 4px solid #ffc107 !important;
+.salas-card .nav-link:hover {
+    color: white;
+    /*background: rgb(26, 158, 208);*/
+    /*background: rgb(40, 100, 160);*/
+    /*background: rgb(255, 128, 0);*/
+    /*background: rgba(28, 59, 87, 0.9);*/
+    background: rgba(28, 59, 87, 0.9);
 }
 
-tr.equipo-con-incidente:hover {
-    background-color: #ffe69c !important;
+.salas-card .nav-link.active {
+    color: var(--accent4);
+    background: transparent;
+    border-bottom-color: var(--accent2);
 }
 
-/* Ícono de advertencia */
-tr.equipo-con-incidente .fa-exclamation-triangle {
-    animation: pulse 2s infinite;
-    color: #ffc107 !important;
+/* Equipment Row Highlights */
+.equipo-con-incidente {
+    background: linear-gradient(to right, rgba(249, 87, 56, 0.1), transparent) !important;
+    border-left: 4px solid var(--accent1);
 }
 
-tr.equipo-con-mantenimiento {
-    background-color: #cdefff !important;
-    border-left: 4px solid #108bff !important;
+.equipo-con-mantenimiento {
+    background: linear-gradient(to right, rgba(238, 150, 75, 0.1), transparent) !important;
+    border-left: 4px solid var(--accent2);
 }
 
-tr.equipo-con-mantenimiento:hover {
-    background-color: #cdefff !important;
+/* Modal Styles */
+.modal-header {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: white;
 }
 
-/* Ícono de advertencia */
-tr.equipo-con-mantenimiento .fa-wrench {
-    animation: pulse 2s infinite;
-    color: #108bff !important;
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
 }
 
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+.section-title {
+    color: var(--accent4);
+    font-size: 1.3rem;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--light);
+    margin-bottom: 20px;
+}
+
+.section-icon {
+    font-size: 24px;
+    color: var(--accent2);
+    background-color: rgba(238, 150, 75, 0.1);
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+}
+
+.form-control:focus {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 0.2rem rgba(238, 150, 75, 0.25);
+}
+
+.form-select:focus {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 0.2rem rgba(238, 150, 75, 0.25);
+}
+
+/* Alert Info */
+.alert-info {
+    background: linear-gradient(135deg, rgba(238, 150, 75, 0.1), rgba(244, 211, 94, 0.1));
+    border-left: 5px solid var(--accent2);
+    border-radius: 10px;
+}
+
+/* List Group Items */
+.list-group-item {
+    border-left: 4px solid transparent;
+    transition: all 0.3s;
+}
+
+.list-group-item:hover {
+    border-left-color: var(--accent2);
+    background-color: rgba(238, 150, 75, 0.05);
+}
+
+/* Pagination */
+.btn-outline-secondary {
+    border-color: var(--accent4);
+    color: var(--accent4);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--accent4);
+    color: white;
+}
+
+/* Back Button */
+.btn-outline-secondary.border-0:hover {
+    background-color: transparent;
+    color: var(--accent3);
+}
+
+.info-box {
+    background: linear-gradient(to right, var(--light), #f5e9b8);
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 4px solid var(--accent2);
 }

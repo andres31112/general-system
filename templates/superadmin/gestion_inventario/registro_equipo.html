@@ -6,8 +6,6 @@
     <title>Gestión de Inventario - Crear Equipo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/crear_equipo.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
 </head>
 <body>
 {% extends "base.html" %}
@@ -23,13 +21,15 @@
         <i class="fa-solid fa-user"></i>
     </div>
 </header>
+
 <div class="container-fluid px-4">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="flash-messages">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
                         {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
             </div>
@@ -38,27 +38,37 @@
 
     <div class="main-container mt-4">
         <div class="row">
-            <div class="col-lg-7">
-                <h2 class="h5 mb-4">Registrar Nuevo Equipo</h2>
-                <form method="POST" action="{{ url_for('admin.crear_equipo') }}">
+            <div class="col-lg-8">
+                <h2 class="h5 mb-4">
+                    <i class="fas fa-desktop me-2 text-primary"></i>
+                    Registrar Nuevo Equipo
+                </h2>
+                
+                <form method="POST" action="{{ url_for('admin.crear_equipo') }}" id="formEquipo">
                     {{ form.hidden_tag() }}
 
                     <!-- Información Básica -->
                     <div class="section-header">
-                        <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Información Básica</h6>
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-info-circle me-2"></i>Información Básica
+                        </h6>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="{{ form.id_referencia.id }}" class="form-label">ID/Referencia *</label>
-                            {{ form.id_referencia(class="form-control", placeholder="Ej: EQ-001, LAB-PC-01") }}
+                            <label for="{{ form.id_referencia.id }}" class="form-label">
+                                ID/Referencia *
+                            </label>
+                            {{ form.id_referencia(class="form-control", placeholder="Ej: EQ-001") }}
                             {% for error in form.id_referencia.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
                         <div class="col-md-6">
-                            <label for="{{ form.nombre.id }}" class="form-label">Nombre del Equipo *</label>
-                            {{ form.nombre(class="form-control", placeholder="Ej: Computadora Lab 1 - PC 01") }}
+                            <label for="{{ form.nombre.id }}" class="form-label">
+                                Nombre del Equipo *
+                            </label>
+                            {{ form.nombre(class="form-control", placeholder="Ej: Laptop Dell 15") }}
                             {% for error in form.nombre.errors %}
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
@@ -69,86 +79,113 @@
                         <div class="col-md-6">
                             <label for="{{ form.tipo.id }}" class="form-label">Tipo de Equipo *</label>
                             {{ form.tipo(class="form-select") }}
-                            {% for error in form.tipo.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
                         </div>
                         <div class="col-md-6">
                             <label for="{{ form.salon.id }}" class="form-label">Sala *</label>
                             {{ form.salon(class="form-select") }}
-                            {% for error in form.salon.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="{{ form.asignado_a.id }}" class="form-label">Asignado a</label>
-                            {{ form.asignado_a(class="form-control", placeholder="Nombre del usuario asignado") }}
-                            {% for error in form.asignado_a.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
                         </div>
                     </div>
 
                     <!-- Especificaciones Técnicas -->
                     <div class="section-header mt-4">
-                        <h6 class="text-primary mb-3"><i class="fas fa-microchip me-2"></i>Especificaciones Técnicas</h6>
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-microchip me-2"></i>Especificaciones Técnicas
+                        </h6>
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="{{ form.sistema_operativo.id }}" class="form-label">Sistema Operativo</label>
-                            {{ form.sistema_operativo(class="form-control", placeholder="Ej: Windows 11, Ubuntu 22.04") }}
-                            {% for error in form.sistema_operativo.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
+                        <div class="col-md-4">
+                            <label for="{{ form.sistema_operativo.id }}" class="form-label">
+                                Sistema Operativo
+                            </label>
+                            {{ form.sistema_operativo(class="form-control", placeholder="Ej: Windows 11") }}
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="{{ form.ram.id }}" class="form-label">Memoria RAM</label>
-                            {{ form.ram(class="form-control") }}
-                            {% for error in form.ram.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
+                            {{ form.ram(class="form-control", placeholder="Ej: 8GB DDR4") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.disco_duro.id }}" class="form-label">Disco Duro</label>
+                            {{ form.disco_duro(class="form-control", placeholder="Ej: 256GB SSD") }}
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="{{ form.disco_duro.id }}" class="form-label">Disco Duro</label>
-                            {{ form.disco_duro(class="form-control") }}
-                            {% for error in form.disco_duro.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="{{ form.fecha_adquisicion.id }}" class="form-label">Fecha de Adquisición</label>
+                            <label for="{{ form.fecha_adquisicion.id }}" class="form-label">
+                                Fecha de Adquisición
+                            </label>
                             {{ form.fecha_adquisicion(class="form-control") }}
-                            {% for error in form.fecha_adquisicion.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
                         </div>
                     </div>
+
+                    <!-- ✅ NUEVA SECCIÓN: Asignaciones Múltiples -->
+                    <div class="section-header mt-4">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-users me-2"></i>
+                            Asignaciones a Estudiantes (Opcional)
+                        </h6>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Importante:</strong> Solo puedes asignar un estudiante por curso. 
+                        Puedes asignar el mismo equipo a estudiantes de diferentes cursos.
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="curso_selector" class="form-label">
+                                        Seleccionar Curso
+                                    </label>
+                                    <select class="form-select" id="curso_selector">
+                                        <option value="">-- Selecciona un curso --</option>
+                                        {% for curso in cursos %}
+                                            <option value="{{ curso.id_curso }}">
+                                                {{ curso.nombreCurso }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="estudiante_selector" class="form-label">
+                                        Seleccionar Estudiante
+                                    </label>
+                                    <select class="form-select" id="estudiante_selector" disabled>
+                                        <option value="">Primero selecciona un curso</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-sm btn-primary" id="btnAgregarEstudiante">
+                                <i class="fas fa-plus me-2"></i>Agregar Estudiante
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de estudiantes asignados -->
+                    <div id="listaAsignaciones" class="mb-3"></div>
+                    
+                    <!-- Campos ocultos para enviar los IDs -->
+                    <div id="hiddenEstudiantes"></div>
 
                     <!-- Información Adicional -->
                     <div class="section-header mt-4">
-                        <h6 class="text-primary mb-3"><i class="fas fa-clipboard-list me-2"></i>Información Adicional</h6>
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-clipboard-list me-2"></i>Información Adicional
+                        </h6>
                     </div>
 
                     <div class="mb-3">
                         <label for="{{ form.descripcion.id }}" class="form-label">Descripción</label>
-                        {{ form.descripcion(class="form-control", rows="3", placeholder="Descripción detallada del equipo...") }}
-                        {% for error in form.descripcion.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
+                        {{ form.descripcion(class="form-control", rows="3") }}
                     </div>
 
                     <div class="mb-3">
                         <label for="{{ form.observaciones.id }}" class="form-label">Observaciones</label>
-                        {{ form.observaciones(class="form-control", rows="3", placeholder="Observaciones adicionales, estado físico, etc...") }}
-                        {% for error in form.observaciones.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
+                        {{ form.observaciones(class="form-control", rows="3") }}
                     </div>
 
                     <button type="submit" class="btn btn-dark w-100 py-2 mt-3">
@@ -157,29 +194,44 @@
                 </form>
             </div>
 
-            <div class="col-lg-5 d-none d-lg-flex align-items-center justify-content-center">
-                <div class="equipment-preview border rounded p-5 text-center">
+            <div class="col-lg-4">
+                <div class="equipment-preview border rounded p-4 text-center sticky-top">
                     <i class="fas fa-desktop fa-4x text-primary mb-3"></i>
                     <h5 class="text-primary">Registro de Equipos</h5>
-                    <p class="text-muted">Complete todos los campos para registrar correctamente el equipo en el inventario.</p>
+                    <p class="text-muted small">Complete los campos para registrar el equipo.</p>
                     
                     <div class="feature-list text-start mt-4">
+                        <div class="feature-item mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <small>Asignación múltiple a estudiantes</small>
+                        </div>
+                        <div class="feature-item mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <small>Un estudiante por curso</small>
+                        </div>
                         <div class="feature-item mb-2">
                             <i class="fas fa-check-circle text-success me-2"></i>
                             <small>Control de inventario completo</small>
                         </div>
                         <div class="feature-item mb-2">
                             <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Especificaciones técnicas detalladas</small>
+                            <small>Seguimiento en tiempo real</small>
                         </div>
-                        <div class="feature-item mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Asignación por salas y usuarios</small>
-                        </div>
-                        <div class="feature-item mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Seguimiento de estado en tiempo real</small>
-                        </div>
+                    </div>
+                    
+                    <!-- Resumen de asignaciones -->
+                    <div class="mt-4 p-3 bg-light rounded" id="resumenAsignaciones">
+                        <h6 class="text-secondary mb-2">
+                            <i class="fas fa-clipboard-list me-2"></i>Resumen
+                        </h6>
+                        <p class="mb-1 small">
+                            <strong>Estudiantes:</strong> 
+                            <span id="totalEstudiantes">0</span>
+                        </p>
+                        <p class="mb-0 small">
+                            <strong>Cursos:</strong> 
+                            <span id="totalCursos">0</span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -192,25 +244,257 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- ✅ SCRIPT MEJORADO: Validación de sala única por estudiante -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cursoSelector = document.getElementById('curso_selector');
+    const estudianteSelector = document.getElementById('estudiante_selector');
+    const btnAgregar = document.getElementById('btnAgregarEstudiante');
+    const listaAsignaciones = document.getElementById('listaAsignaciones');
+    const hiddenEstudiantes = document.getElementById('hiddenEstudiantes');
+    const salonSelector = document.querySelector('select[name="salon"]'); // Selector del salón
+    
+    // Array para almacenar las asignaciones
+    let asignaciones = [];
+    let cursosAsignados = new Set();
+    
+    // Cargar estudiantes cuando se selecciona un curso
+    cursoSelector.addEventListener('change', function() {
+        const cursoId = this.value;
+        
+        estudianteSelector.innerHTML = '<option value="">Cargando...</option>';
+        estudianteSelector.disabled = true;
+        
+        if (!cursoId) {
+            estudianteSelector.innerHTML = '<option value="">Primero selecciona un curso</option>';
+            return;
+        }
+        
+        // Verificar si ya hay un estudiante de este curso asignado
+        if (cursosAsignados.has(parseInt(cursoId))) {
+            estudianteSelector.innerHTML = '<option value="">Ya hay un estudiante de este curso asignado</option>';
+            return;
+        }
+        
+        // Cargar estudiantes del curso
+        fetch(`/admin/api/estudiantes-por-curso/${cursoId}`)
+            .then(response => response.json())
+            .then(estudiantes => {
+                estudianteSelector.innerHTML = '<option value="">-- Selecciona un estudiante --</option>';
+                
+                if (estudiantes.length === 0) {
+                    estudianteSelector.innerHTML = '<option value="">No hay estudiantes en este curso</option>';
+                } else {
+                    estudiantes.forEach(est => {
+                        // Solo agregar si no está ya asignado
+                        if (!asignaciones.find(a => a.estudiante_id === est.id_usuario)) {
+                            const option = document.createElement('option');
+                            option.value = est.id_usuario;
+                            option.textContent = `${est.nombre_completo} (${est.no_identidad})`;
+                            option.dataset.nombre = est.nombre_completo;
+                            option.dataset.cursoId = cursoId;
+                            option.dataset.cursoNombre = cursoSelector.options[cursoSelector.selectedIndex].text;
+                            estudianteSelector.appendChild(option);
+                        }
+                    });
+                }
+                
+                estudianteSelector.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                estudianteSelector.innerHTML = '<option value="">Error al cargar estudiantes</option>';
+            });
+    });
+    
+    // Agregar estudiante a la lista CON VALIDACIÓN
+    btnAgregar.addEventListener('click', async function() {
+        const estudianteId = estudianteSelector.value;
+        
+        if (!estudianteId) {
+            alert('Por favor selecciona un estudiante');
+            return;
+        }
+        
+        // ✅ VALIDACIÓN: Verificar que el salón esté seleccionado
+        const salonId = salonSelector.value;
+        if (!salonId) {
+            alert('⚠️ Por favor selecciona primero un salón para el equipo');
+            return;
+        }
+        
+        const selectedOption = estudianteSelector.options[estudianteSelector.selectedIndex];
+        const estudianteNombre = selectedOption.dataset.nombre;
+        const cursoId = parseInt(selectedOption.dataset.cursoId);
+        const cursoNombre = selectedOption.dataset.cursoNombre;
+        
+        // Verificar si el estudiante ya está asignado A ESTE EQUIPO
+        if (asignaciones.find(a => a.estudiante_id === parseInt(estudianteId))) {
+            alert('Este estudiante ya está asignado a este equipo');
+            return;
+        }
+        
+        // ✅ VALIDACIÓN: Verificar si el estudiante ya tiene UN equipo en ESTA sala
+        try {
+            const salonNombre = salonSelector.options[salonSelector.selectedIndex].text;
+            
+            const response = await fetch(`/admin/api/estudiante/${estudianteId}/equipos-en-sala/${salonId}`);
+            const data = await response.json();
+            
+            if (data.tiene_equipo_en_sala) {
+                alert(`⚠️ Este estudiante ya tiene el equipo "${data.equipo_nombre}" asignado en esta sala (${salonNombre}).\n\n❌ Solo puede tener UN equipo por sala.`);
+                return;
+            }
+        } catch (error) {
+            console.error('Error verificando equipos del estudiante:', error);
+            alert('Error al verificar las asignaciones del estudiante');
+            return;
+        }
+        
+        // Agregar a la lista
+        const asignacion = {
+            estudiante_id: parseInt(estudianteId),
+            estudiante_nombre: estudianteNombre,
+            curso_id: cursoId,
+            curso_nombre: cursoNombre
+        };
+        
+        asignaciones.push(asignacion);
+        cursosAsignados.add(cursoId);
+        
+        renderizarAsignaciones();
+        actualizarResumen();
+        
+        // Limpiar selectores
+        cursoSelector.value = '';
+        estudianteSelector.innerHTML = '<option value="">Primero selecciona un curso</option>';
+        estudianteSelector.disabled = true;
+    });
+    
+    // Renderizar lista de asignaciones
+    function renderizarAsignaciones() {
+        if (asignaciones.length === 0) {
+            listaAsignaciones.innerHTML = '';
+            hiddenEstudiantes.innerHTML = '';
+            return;
+        }
+        
+        let html = '<div class="card"><div class="card-body">';
+        html += '<h6 class="card-title mb-3"><i class="fas fa-users me-2"></i>Estudiantes Asignados</h6>';
+        html += '<div class="list-group">';
+        
+        asignaciones.forEach((asig, index) => {
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${asig.estudiante_nombre}</strong>
+                        <br>
+                        <small class="text-muted">
+                            <i class="fas fa-graduation-cap me-1"></i>${asig.curso_nombre}
+                        </small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar" 
+                            data-index="${index}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        });
+        
+        html += '</div></div></div>';
+        listaAsignaciones.innerHTML = html;
+        
+        // Agregar event listeners a botones de eliminar
+        document.querySelectorAll('.btn-eliminar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                eliminarAsignacion(index);
+            });
+        });
+        
+        // Actualizar campos ocultos
+        actualizarCamposOcultos();
+    }
+    
+    // Eliminar asignación
+    function eliminarAsignacion(index) {
+        const asignacion = asignaciones[index];
+        cursosAsignados.delete(asignacion.curso_id);
+        asignaciones.splice(index, 1);
+        renderizarAsignaciones();
+        actualizarResumen();
+    }
+    
+    // Actualizar campos ocultos para envío del formulario
+    function actualizarCamposOcultos() {
+        hiddenEstudiantes.innerHTML = '';
+        
+        asignaciones.forEach(asig => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'estudiantes_asignados[]';
+            input.value = asig.estudiante_id;
+            hiddenEstudiantes.appendChild(input);
+        });
+    }
+    
+    // Actualizar resumen
+    function actualizarResumen() {
+        document.getElementById('totalEstudiantes').textContent = asignaciones.length;
+        document.getElementById('totalCursos').textContent = cursosAsignados.size;
+    }
+    
+    // ✅ VALIDACIÓN ADICIONAL: Verificar si cambia el salón después de agregar estudiantes
+    if (salonSelector) {
+        salonSelector.addEventListener('change', function() {
+            if (asignaciones.length > 0) {
+                const confirmar = confirm(
+                    '⚠️ ADVERTENCIA:\n\n' +
+                    'Ya tienes estudiantes asignados a este equipo.\n\n' +
+                    'Si cambias de salón, se eliminarán todas las asignaciones actuales porque ' +
+                    'un estudiante solo puede tener UN equipo por sala.\n\n' +
+                    '¿Deseas continuar?'
+                );
+                
+                if (confirmar) {
+                    // Limpiar asignaciones
+                    asignaciones = [];
+                    cursosAsignados.clear();
+                    renderizarAsignaciones();
+                    actualizarResumen();
+                } else {
+                    // Revertir el cambio
+                    this.value = this.dataset.previousValue || '';
+                    return;
+                }
+            }
+            
+            // Guardar valor actual para poder revertir si es necesario
+            this.dataset.previousValue = this.value;
+        });
+        
+        // Guardar valor inicial
+        if (salonSelector.value) {
+            salonSelector.dataset.previousValue = salonSelector.value;
+        }
+    }
+});
+</script>
 
 <style>
 .section-header {
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 2px solid #e9ecef;
     padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .equipment-preview {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    min-height: 400px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    top: 20px;
 }
 
 .feature-list {
-    max-width: 250px;
-    margin: 0 auto;
+    text-align: left;
 }
 
 .feature-item {
@@ -222,13 +506,7 @@
     background: #fff;
     border-radius: 10px;
     padding: 2rem;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-.flash-messages .alert {
-    border-radius: 8px;
-    border: none;
-    margin-bottom: 1rem;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
 }
 
 .form-control, .form-select {
@@ -242,15 +520,40 @@
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
+.form-select:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
 .btn {
     border-radius: 8px;
     font-weight: 500;
+}
+
+.list-group-item {
+    border-radius: 8px !important;
+    margin-bottom: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+.card {
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
 }
 
 header {
     background: #fff;
     border-bottom: 1px solid #e9ecef;
     margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.alert {
+    border-radius: 8px;
+}
+
+#resumenAsignaciones {
+    border: 2px dashed #dee2e6;
 }
 </style>
 {% endblock %}
