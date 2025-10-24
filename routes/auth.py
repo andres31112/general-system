@@ -12,9 +12,7 @@ from datetime import datetime, timedelta
 from controllers.forms import LoginForm, ForgotPasswordForm, ResetPasswordForm
 from services.email_service import send_welcome_email, send_verification_success_email, generate_verification_code, generate_verification_token
 
-# --- Configuración del Serializador para tokens ---
 def get_serializer():
-    """✅ CORREGIDO: Serializador unificado que usa la configuración de Flask"""
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
 
 auth_bp = Blueprint('auth', __name__)
@@ -26,8 +24,6 @@ ROL_REDIRECTS = {
     4: 'padre.dashboard'
 }
 
-# --- Rutas de Autenticación Principal ---
-
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
@@ -37,7 +33,11 @@ def login():
         user = Usuario.query.filter_by(correo=correo).first()
         
         if user and user.check_password(password):
-            # Verificar si el usuario tiene el correo verificado
+            
+            if hasattr(user, 'activo') and user.activo is False:
+                flash('Tu cuenta se encuentra inactiva. Por favor, contacta al administrador del sistema.', 'danger')
+                return redirect(url_for('auth.login'))
+            
             if not user.email_verified:
                 flash('Por favor verifica tu correo electrónico antes de iniciar sesión.', 'warning')
                 return redirect(url_for('auth.verify_email_page', email=correo))
@@ -55,16 +55,12 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    """Cierra la sesión del usuario"""
     logout_user()
     flash('¡Has cerrado sesión!', 'info')
     return redirect(url_for('main.index'))
 
-# --- Rutas de Recuperación de Contraseña ---
-
 def enviar_correo_restablecimiento(usuario):
-    """Envía el correo de restablecimiento de contraseña"""
-    s = get_serializer()  # ✅ CORREGIDO: Usar serializador unificado
+    s = get_serializer()
     token = s.dumps(str(usuario.id_usuario), salt='recuperacion-password-salt')
     msg = Message(
         'Restablecimiento de Contraseña',
@@ -74,7 +70,6 @@ def enviar_correo_restablecimiento(usuario):
     
     link = url_for('auth.restablecer_password', token=token, _external=True)
     
-    # Template HTML mejorado para el correo
     msg.html = f'''
     <!DOCTYPE html>
     <html>
@@ -117,7 +112,6 @@ def enviar_correo_restablecimiento(usuario):
 
 @auth_bp.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
-    """Maneja la solicitud de recuperación de contraseña"""
     form = ForgotPasswordForm()
     if form.validate_on_submit():
         correo = form.correo.data
@@ -126,7 +120,6 @@ def forgot_password():
         if usuario:
             enviar_correo_restablecimiento(usuario)
         
-        # Mensaje genérico para evitar la enumeración de correos
         flash('Si la cuenta existe, se ha enviado un correo con las instrucciones para restablecer tu contraseña.', 'info')
         return redirect(url_for('auth.login'))
         
@@ -134,9 +127,8 @@ def forgot_password():
 
 @auth_bp.route('/restablecer_password/<token>', methods=['GET', 'POST'])
 def restablecer_password(token):
-    """Maneja el restablecimiento de contraseña con token"""
     try:
-        s = get_serializer()  # ✅ CORREGIDO: Usar serializador unificado
+        s = get_serializer()
         id_usuario = s.loads(token, salt='recuperacion-password-salt', max_age=3600)
     except Exception as e:
         print(f"Error cargando token de restablecimiento: {str(e)}")
@@ -154,7 +146,6 @@ def restablecer_password(token):
         usuario.set_password(nueva_password)
         db.session.commit()
         
-        # Enviar correo de confirmación
         try:
             msg = Message(
                 'Contraseña Actualizada Exitosamente',
@@ -200,16 +191,13 @@ def restablecer_password(token):
             
     return render_template('restablecer_password.html', form=form)
 
-# --- Rutas de Verificación de Email ---
-
 @auth_bp.route('/verify-email/<token>')
 def verify_email_with_token(token):
-    """✅ CORREGIDO: Solo una función con este nombre - Verificación automática con token desde el correo"""
     try:
         print(f"DEBUG: Token recibido: {token}")
         
         s = get_serializer()
-        data = s.loads(token, salt='email-verification', max_age=86400)  # 24 horas
+        data = s.loads(token, salt='email-verification', max_age=86400)
         
         print(f"DEBUG: Datos decodificados: {data}")
         
@@ -227,23 +215,19 @@ def verify_email_with_token(token):
             flash('El correo ya ha sido verificado anteriormente', 'success')
             return render_template('emails/verification_success.html', email=email, usuario=usuario)
         
-        # Verificar que el código coincida y no haya expirado
         if (usuario.verification_code == code and 
             usuario.verification_code_expires and 
             usuario.verification_code_expires > datetime.utcnow()):
             
-            # ✅ OBTENER LA CONTRASEÑA TEMPORAL REAL
             real_password = usuario.temp_password
             
-            # Verificación exitosa
             usuario.email_verified = True
             usuario.verification_code = None
             usuario.verification_code_expires = None
             usuario.verification_attempts = 0
-            usuario.temp_password = None  # ✅ LIMPIAR CONTRASEÑA TEMPORAL
+            usuario.temp_password = None
             db.session.commit()
             
-            # Enviar correo de éxito CON LA CONTRASEÑA REAL
             send_verification_success_email(usuario, real_password)
             
             flash('¡Correo verificado exitosamente! Se ha enviado un correo con tus credenciales.', 'success')
@@ -260,7 +244,6 @@ def verify_email_with_token(token):
 
 @auth_bp.route('/verify-email', methods=['GET', 'POST'])
 def verify_email_page():
-    """Página para verificar el código de verificación con límite de intentos"""
     if request.method == 'GET':
         email = request.args.get('email', '')
         return render_template('emails/verify_email.html', email=email, verified=False)
@@ -283,35 +266,29 @@ def verify_email_page():
             flash('El correo ya ha sido verificado', 'success')
             return render_template('emails/verify_email.html', email=email, verified=True)
         
-        # Verificar límite de intentos
         if usuario.verification_attempts >= 5:
             flash('Has excedido el número máximo de intentos. Por favor solicita un nuevo código.', 'danger')
             return redirect(url_for('auth.resend_verification', email=email))
         
-        # Verificar expiración
         if usuario.verification_code_expires and usuario.verification_code_expires < datetime.utcnow():
             flash('El código ha expirado. Por favor solicita uno nuevo.', 'danger')
             return redirect(url_for('auth.resend_verification', email=email))
         
         if usuario.verification_code == code:
-            # ✅ OBTENER LA CONTRASEÑA TEMPORAL REAL
             real_password = usuario.temp_password
             
-            # Verificación exitosa
             usuario.email_verified = True
             usuario.verification_code = None
             usuario.verification_code_expires = None
             usuario.verification_attempts = 0
-            usuario.temp_password = None  # ✅ LIMPIAR CONTRASEÑA TEMPORAL
+            usuario.temp_password = None
             db.session.commit()
             
-            # Enviar correo de éxito CON LA CONTRASEÑA REAL
             send_verification_success_email(usuario, real_password)
             
             flash('¡Correo verificado exitosamente! Se ha enviado un correo con tus credenciales.', 'success')
             return render_template('emails/verification_success.html', email=email, usuario=usuario)
         else:
-            # Incrementar intentos fallidos
             usuario.verification_attempts += 1
             usuario.last_verification_attempt = datetime.utcnow()
             db.session.commit()
@@ -322,7 +299,6 @@ def verify_email_page():
 
 @auth_bp.route('/resend-verification', methods=['GET', 'POST'])
 def resend_verification():
-    """Reenvía el código de verificación"""
     if request.method == 'GET':
         email = request.args.get('email', '')
         return render_template('emails/resend_verification.html', email=email)
@@ -337,7 +313,6 @@ def resend_verification():
         usuario = Usuario.query.filter_by(correo=email).first()
         
         if not usuario:
-            # Por seguridad, no revelar si el email existe
             flash('Si el email existe, se ha enviado un nuevo código de verificación.', 'info')
             return redirect(url_for('auth.verify_email_page', email=email))
         
@@ -345,14 +320,12 @@ def resend_verification():
             flash('Este correo ya ha sido verificado. Puedes iniciar sesión.', 'success')
             return redirect(url_for('auth.login'))
         
-        # Generar nuevo código
         new_code = generate_verification_code()
         usuario.verification_code = new_code
         usuario.verification_code_expires = datetime.utcnow() + timedelta(hours=24)
         usuario.verification_attempts = 0
         db.session.commit()
         
-        # Reenviar email
         send_welcome_email(usuario, new_code)
         
         flash('Se ha enviado un nuevo código de verificación a tu correo.', 'success')
@@ -360,17 +333,13 @@ def resend_verification():
 
 @auth_bp.route('/verification-success')
 def verification_success():
-    """Página de confirmación de verificación exitosa"""
     email = request.args.get('email', '')
     usuario = Usuario.query.filter_by(correo=email).first()
     return render_template('emails/verification_success.html', email=email, usuario=usuario)
 
 @auth_bp.route('/verification-required')
 def verification_required():
-    """Página que informa al usuario que debe verificar su correo"""
     return render_template('emails/verification_required.html')
-
-# --- Manejo de Errores ---
 
 @auth_bp.app_errorhandler(404)
 def not_found_error(error):

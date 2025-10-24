@@ -2,7 +2,7 @@ import os
 
 class Config:
     # Configuración de la base de datos
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:@127.0.0.1:3306/institucion_db'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:3112@127.0.0.1:3306/institucion_db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Clave secreta para la seguridad de la aplicación

@@ -95,6 +95,9 @@ class Usuario(db.Model, UserMixin):
     
     # Relación con notificaciones
     notificaciones = db.relationship('Notificacion', back_populates='usuario', lazy='dynamic')
+    @property
+    def is_active(self):
+        return self.estado_cuenta == 'activa'
 
     @property
     def nombre_completo(self):
