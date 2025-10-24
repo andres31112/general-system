@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from controllers.decorators import role_required, permission_required
 from datetime import datetime, timedelta, time, date
-from controllers.models import db, Usuario, Comunicacion,Evento ,Candidato, HorarioVotacion,Voto
+from controllers.models import db, Usuario, Comunicacion,Evento ,Candidato, HorarioVotacion,Voto, Equipo
 
 # Se asume que tienes un nuevo Blueprint para las rutas de estudiante.
 # Si no, puedes añadir esta ruta al Blueprint de 'admin' o crear uno nuevo llamado 'estudiante_bp'.
@@ -525,3 +525,68 @@ def api_eventos_estudiante():
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route('/mi-equipo')
+@login_required
+@permission_required('ver_equipos')
+def mi_equipo():
+    """
+    Vista HTML para que el estudiante vea su equipo asignado
+    """
+    return render_template('estudiantes/mi_equipo.html')
+
+
+@estudiante_bp.route('/api/mi-equipo', methods=['GET'])
+@login_required
+def api_mi_equipo():
+    """
+    API para obtener el equipo asignado al estudiante logueado
+    Busca en la tabla Equipo donde asignado_a coincida con el nombre del estudiante
+    """
+    try:
+        user_id = current_user.id_usuario
+        usuario = Usuario.query.get(user_id)
+        
+        if not usuario:
+            return jsonify({
+                'success': False,
+                'error': 'Usuario no encontrado'
+            }), 404
+        
+        # Buscar equipo asignado al estudiante por nombre completo
+        nombre_completo = usuario.nombre_completo
+        equipo = Equipo.query.filter_by(asignado_a=nombre_completo).first()
+        
+        if not equipo:
+            # También intentar buscar solo por nombre o apellido
+            equipo = Equipo.query.filter(
+                (Equipo.asignado_a.ilike(f'%{usuario.nombre}%')) |
+                (Equipo.asignado_a.ilike(f'%{usuario.apellido}%'))
+            ).first()
+        
+        if equipo:
+            # El estudiante tiene un equipo asignado
+            equipo_data = equipo.to_dict()
+            
+            # Agregar información adicional si está disponible
+            equipo_data['procesador'] = equipo_data.get('sistema_operativo', 'N/A')  # Puedes ajustar esto
+            equipo_data['ultima_revision'] = None  # Conectar con tabla de mantenimiento si existe
+            equipo_data['proximo_mantenimiento'] = None  # Conectar con tabla de mantenimiento si existe
+            
+            return jsonify({
+                'success': True,
+                'equipo': equipo_data
+            }), 200
+        else:
+            # El estudiante no tiene equipo asignado
+            return jsonify({
+                'success': False,
+                'message': 'No tienes equipo asignado actualmente'
+            }), 200
+            
+    except Exception as e:
+        print(f"ERROR en api_mi_equipo: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

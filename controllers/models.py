@@ -149,6 +149,14 @@ class Usuario(db.Model, UserMixin):
 
     def __repr__(self):
         return f'<Usuario {self.nombre_completo} - {self.rol_nombre}>'
+    
+    # Relación con equipos asignados
+    
+    equipos_asignados = db.relationship('AsignacionEquipo', back_populates='estudiante')
+    
+    def get_equipos_activos(self):
+        """Obtiene equipos actualmente asignados al estudiante"""
+        return [asig.equipo for asig in self.equipos_asignados if asig.estado_asignacion == 'activa']
 
 # ================================
 # Modelos Académicos
@@ -511,9 +519,9 @@ class Equipo(db.Model):
     id_referencia = db.Column(db.String(50), unique=True)
     nombre = db.Column(db.String(100), nullable=False)
     tipo = db.Column(db.String(100), nullable=False)
-    estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', name='estado_equipo_enum'), nullable=False, default='Disponible')
+    estado = db.Column(db.Enum('Disponible', 'Mantenimiento', 'Asignado', 'Incidente', name='estado_equipo_enum'), 
+                      nullable=False, default='Disponible')
     id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id_salon'), nullable=False)
-    asignado_a = db.Column(db.String(100))
     sistema_operativo = db.Column(db.String(100))
     ram = db.Column(db.String(50))
     disco_duro = db.Column(db.String(100))
@@ -524,16 +532,49 @@ class Equipo(db.Model):
     
     # Relaciones
     salon = db.relationship('Salon', back_populates='equipos')
+    asignaciones = db.relationship('AsignacionEquipo', back_populates='equipo', cascade='all, delete-orphan')
     incidentes = db.relationship('Incidente', back_populates='equipo')
     programaciones = db.relationship('Mantenimiento', back_populates='equipo')
     
+    def get_asignaciones_activas(self):
+        """Obtiene todas las asignaciones activas del equipo"""
+        return [asig for asig in self.asignaciones if asig.estado_asignacion == 'activa']
+    
+    def get_estudiantes_asignados(self):
+        """Obtiene lista de estudiantes con asignaciones activas"""
+        return [asig.estudiante for asig in self.get_asignaciones_activas()]
+    
+    def get_cursos_asignados(self):
+        """Obtiene lista de cursos de los estudiantes asignados"""
+        cursos = set()
+        for asignacion in self.get_asignaciones_activas():
+            curso = asignacion.get_curso_estudiante()
+            if curso:
+                cursos.add(curso)
+        return list(cursos)
+    
+    def puede_asignar_a_curso(self, curso_id):
+        """Verifica si se puede asignar a un estudiante de este curso"""
+        # Obtener cursos ya asignados
+        for asignacion in self.get_asignaciones_activas():
+            matricula = Matricula.query.filter_by(
+                estudianteId=asignacion.estudiante_id
+            ).order_by(Matricula.año.desc()).first()
+            
+            if matricula and matricula.cursoId == curso_id:
+                return False  # Ya hay un estudiante de este curso
+        
+        return True
+    
     def to_dict(self):
+        asignaciones_activas = self.get_asignaciones_activas()
+        estudiantes_nombres = [asig.estudiante.nombre_completo for asig in asignaciones_activas if asig.estudiante]
+        
         return {
             "id_equipo": self.id_equipo,
             "id_referencia": self.id_referencia,
             "nombre": self.nombre,
             "tipo": self.tipo,
-            "asignado_a": self.asignado_a,
             "estado": self.estado,
             "sistema_operativo": self.sistema_operativo,
             "ram": self.ram,
@@ -545,10 +586,66 @@ class Equipo(db.Model):
             "salon": self.salon.nombre if self.salon else "Sin Salón Asignado",
             "sede_nombre": self.salon.sede.nombre if self.salon and self.salon.sede else "Sin Sede",
             "sede_id": self.salon.id_sede_fk if self.salon else None,
+            "total_asignaciones": len(asignaciones_activas),
+            "estudiantes_asignados": estudiantes_nombres,
+            "asignado_a": ", ".join(estudiantes_nombres) if estudiantes_nombres else "N/A",
+            "cursos_asignados": self.get_cursos_asignados()
         }
 
     def __repr__(self):
         return f"<Equipo {self.nombre} - {self.estado}>"
+
+class AsignacionEquipo(db.Model):
+    """Tabla intermedia para asignar equipos a múltiples estudiantes"""
+    __tablename__ = 'asignaciones_equipos'
+    
+    id_asignacion = db.Column(db.Integer, primary_key=True)
+    equipo_id = db.Column(db.Integer, db.ForeignKey('equipos.id_equipo'), nullable=False)
+    estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
+    fecha_asignacion = db.Column(db.DateTime, default=datetime.utcnow)
+    fecha_devolucion = db.Column(db.DateTime, nullable=True)
+    estado_asignacion = db.Column(db.String(20), default='activa')  # activa, devuelto, perdido
+    observaciones = db.Column(db.Text, nullable=True)
+    
+    # Relaciones
+    equipo = db.relationship('Equipo', back_populates='asignaciones')
+    estudiante = db.relationship('Usuario', back_populates='equipos_asignados')
+    
+    # Constraint única: un estudiante no puede tener el mismo equipo asignado dos veces activamente
+    __table_args__ = (
+        db.UniqueConstraint('equipo_id', 'estudiante_id', 'estado_asignacion', 
+                          name='uq_equipo_estudiante_activo'),
+    )
+    
+    def to_dict(self):
+        return {
+            'id_asignacion': self.id_asignacion,
+            'equipo_id': self.equipo_id,
+            'equipo_nombre': self.equipo.nombre if self.equipo else None,
+            'estudiante_id': self.estudiante_id,
+            'estudiante_nombre': self.estudiante.nombre_completo if self.estudiante else None,
+            'estudiante_curso': self.get_curso_estudiante(),
+            'fecha_asignacion': self.fecha_asignacion.strftime('%Y-%m-%d %H:%M') if self.fecha_asignacion else None,
+            'fecha_devolucion': self.fecha_devolucion.strftime('%Y-%m-%d %H:%M') if self.fecha_devolucion else None,
+            'estado_asignacion': self.estado_asignacion,
+            'observaciones': self.observaciones
+        }
+    
+    def get_curso_estudiante(self):
+        """Obtiene el curso actual del estudiante"""
+        if not self.estudiante:
+            return None
+        
+        matricula = Matricula.query.filter_by(
+            estudianteId=self.estudiante_id
+        ).order_by(Matricula.año.desc()).first()
+        
+        if matricula and matricula.curso:
+            return matricula.curso.nombreCurso
+        return None
+    
+    def __repr__(self):
+        return f'<AsignacionEquipo {self.equipo_id} -> {self.estudiante_id}>'
 
 
 class Incidente(db.Model):

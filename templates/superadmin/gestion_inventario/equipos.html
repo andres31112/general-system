@@ -5,18 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Gestión de Equipos</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/equipos.css') }}">
+
 </head>
 <body>
 {% extends "base.html" %}
 {% block content %}
 
-<header class="main-header">
-    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
-        <i class="fa-solid fa-arrow-left"></i>
-    </a>
-    <h1>Gestión Inventario</h1>
+<header class="custom-header">
+    <div class="d-flex align-items-center">
+        <a href="{{ url_for('admin.gestion_i') }}" class="btn-outline-secondary border-0 me-3 text-white atras">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <i class="fa-solid fa-desktop logo me-3"></i>
+        <h1>Gestión de Inventario - Equipos</h1>
+    </div>
     <div class="header-icons">
         <i class="fa-solid fa-bell"></i>
         <i class="fa-solid fa-user"></i>
@@ -24,33 +28,33 @@
 </header>
 
 <!-- TARJETAS RESUMEN -->
-<main class="container-fluid p-4 py-3 m-3">
-    <section class="row mb-3">
+<main class="container-fluid p-4 py-3">
+    <section class="row mb-4">
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="summary-card">
+            <div class="summary-card lista">
                 <i class="fa-solid fa-list"></i>
-                <h3 class="h6 mb-0">Total equipos</h3>
+                <h3 class="h6 mb-0">Total Equipos</h3>
                 <p class="number mb-0" id="total-equipos">0</p>
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="summary-card">
+            <div class="summary-card disponible">
                 <i class="fa-solid fa-thumbs-up"></i>
                 <h3 class="h6 mb-0">Disponibles</h3>
                 <p class="number mb-0" id="equipos-disponibles">0</p>
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="summary-card">
+            <div class="summary-card mantenimiento">
                 <i class="fa-solid fa-screwdriver-wrench"></i>
-                <h3 class="h6 mb-0">Mantenimiento</h3>
+                <h3 class="h6 mb-0">En Mantenimiento</h3>
                 <p class="number mb-0" id="equipos-mantenimiento">0</p>
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
-            <div class="summary-card">
+            <div class="summary-card incidente">
                 <i class="fa-solid fa-triangle-exclamation"></i>
-                <h3 class="h6 mb-0">Incidentes</h3>
+                <h3 class="h6 mb-0">Con Incidentes</h3>
                 <p class="number mb-0" id="equipos-incidentes">0</p>
             </div>
         </div>
@@ -61,19 +65,21 @@
 <main class="row m-3">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-9 col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Equipos Registrados</h5>
+            <div class="col-md-8 col-12 mb-4">
+                <div class="card equipment-main-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fa-solid fa-desktop me-2"></i>Equipos Registrados</h5>
                         <div class="d-flex align-items-center">
-                            <button class="btn btn-light btn-sm me-3" onclick="mostrarTodosLosEquipos()">Ver Todos</button>
-                            <select id="registrosPorPagina" class="form-select form-select-sm w-auto">
+                            <button class="btn btn-light btn-sm me-3" onclick="mostrarTodosLosEquipos()">
+                                <i class="fa-solid fa-globe me-1"></i>Ver Todos
+                            </button>
+                            <select id="registrosPorPagina" class="form-select form-select-sm w-auto me-2">
                                 <option value="5" selected>5</option>
                                 <option value="10">10</option>
                                 <option value="20">20</option>
                             </select>
                             <a href="{{ url_for('admin.crear_equipo') }}">
-                                <button type="button" class="btn btn-success-medium btn-sm me-3 ms-2" style="border-color: #28a745; background-color: #28a745;">
+                                <button type="button" class="btn btn-success-medium btn-sm">
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
                             </a>
@@ -82,42 +88,44 @@
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-striped table-hover align-middle text-center">
-                                <thead class="table-dark">
+                                <thead>
                                     <tr>
-                                        <th>Equipo</th>
-                                        <th>Estado</th>
-                                        <th>Sede</th>
-                                        <th>Sala</th>
-                                        <th>Asignado a</th>
-                                        <th>Acciones</th>
+                                        <th><i class="fa-solid fa-laptop me-2"></i>Equipo</th>
+                                        <th><i class="fa-solid fa-signal me-2"></i>Estado</th>
+                                        <th><i class="fa-solid fa-door-open me-2"></i>Sala</th>
+                                        <th><i class="fa-solid fa-user me-2"></i>Asignado a</th>
+                                        <th><i class="fa-solid fa-cog me-2"></i>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaEquiposGlobal"></tbody>
                             </table>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <button id="btnAnterior" class="btn btn-outline-secondary btn-sm">‹ Anterior</button>
-                            <span id="paginaActual">Página 1</span>
-                            <button id="btnSiguiente" class="btn btn-outline-secondary btn-sm">Siguiente ›</button>
+                            <button id="btnAnterior" class="btn btn-outline-secondary btn-sm">
+                                <i class="fa-solid fa-chevron-left me-1"></i>Anterior
+                            </button>
+                            <span id="paginaActual" class="fw-bold">Página 1</span>
+                            <button id="btnSiguiente" class="btn btn-outline-secondary btn-sm">
+                                Siguiente<i class="fa-solid fa-chevron-right ms-1"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- SECCIÓN SALAS - ACTUALIZADA PARA PESTAÑAS DINÁMICAS -->
-            <div class="col-md-3 col-12">
-                <div class="card shadow-sm salas-card">
-                    <div class="card-header">
-                        <!-- Pestañas dinámicas - se crean automáticamente -->
-                        <ul class="nav nav-tabs card-header-tabs">
-                            <!-- Las pestañas se llenarán dinámicamente con JavaScript -->
+            <!-- SECCIÓN SALAS -->
+            <div class="col-md-4 col-12">
+                <div class="card salas-card">
+                    <div class="card-header bg-white border-0">
+                        <ul class="nav nav-tabs card-header-tabs position-relative g-2">
+                            <!-- Las pestañas se llenarán dinámicamente -->
                         </ul>
                     </div>
                     <div class="card-body p-2">
                         <div id="contenedorSede">
                             <div class="table-responsive">
                                 <table class="table table-sm table-hover align-middle text-center">
-                                    <thead class="table-dark">
+                                    <thead>
                                         <tr>
                                             <th>ID</th>
                                             <th>Sala</th>
@@ -136,90 +144,158 @@
 
 <!-- Modal Editar Equipo -->
 <div class="modal fade" id="editarEquipoModal" tabindex="-1" aria-labelledby="editarEquipoModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <form id="editarEquipoForm">
         <div class="modal-header">
-          <h5 class="modal-title" id="editarEquipoModalLabel">Editar Equipo</h5>
+          <h5 class="modal-title" id="editarEquipoModalLabel">
+            <i class="fas fa-edit me-2"></i>Editar Equipo
+          </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body">
           <!-- ID oculto -->
           <input type="hidden" id="equipoId" name="id">
-          <!-- Campos ocultos para valores no editables -->
           <input type="hidden" id="nombreEquipoHidden" name="nombre">
           <input type="hidden" id="idReferenciaHidden" name="id_referencia">
           <input type="hidden" id="tipoEquipoHidden" name="tipo">
-          <input type="hidden" id="salaEquipo" name="id_salon_fk"> <!-- Campo oculto para el ID del salón -->
+          <input type="hidden" id="salaEquipo" name="id_salon_fk">
 
-
-          <div class="row g-3">
-            <!-- Primera fila -->
-            <div class="col-md-6">
-              <label for="idReferencia" class="form-label">ID/Referencia</label>
-              <input type="text" class="form-control" id="idReferencia" readonly style="background-color: #f8f9fa;">
-            </div>
-            <div class="col-md-6">
-              <label for="usuarioAsignado" class="form-label">Usuario asignado</label>
-              <input type="text" class="form-control" id="usuarioAsignado" name="asignado_a">
-            </div>
-            
-            <!-- Segunda fila -->
-            <div class="col-md-6">
-              <label for="nombreEquipo" class="form-label">Nombre del equipo</label>
-              <input type="text" class="form-control" id="nombreEquipo" readonly style="background-color: #f8f9fa;">
-            </div>
-            <div class="col-md-6">
-                <label for="estadoEquipoTexto" class="form-label">Estado del equipo</label>
-                <input type="text" class="form-control" id="estadoEquipoTexto" readonly style="background-color: #f8f9fa;">
+          <div class="row">
+            <!-- Columna Izquierda: Información del Equipo -->
+            <div class="col-lg-6">
+              <h6 class="section-title">
+                <i class="fas fa-info-circle me-2"></i>Información del Equipo
+              </h6>
+              
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="idReferencia" class="form-label"><i class="fa-solid fa-hashtag me-1"></i>ID/Referencia</label>
+                  <input type="text" class="form-control" id="idReferencia" readonly style="background-color: #f8f9fa;">
+                </div>
+                <div class="col-md-6">
+                  <label for="nombreEquipo" class="form-label"><i class="fa-solid fa-laptop me-1"></i>Nombre del equipo</label>
+                  <input type="text" class="form-control" id="nombreEquipo" readonly style="background-color: #f8f9fa;">
+                </div>
                 
-                <input type="hidden" id="estadoEquipo" name="estado">
-            </div>
-            
-            <!-- Tercera fila -->
-            <div class="col-md-6">
-              <label for="tipoEquipo" class="form-label">Tipo de equipo</label>
-              <input type="text" class="form-control" id="tipoEquipo" readonly style="background-color: #f8f9fa;">
-            </div>
-            <div class="col-md-6">
-              <label for="salaEquipoTexto" class="form-label">Sala</label>
-              <input type="text" class="form-control" id="salaEquipoTexto" readonly style="background-color: #f8f9fa;">
-              <!-- El campo oculto salaEquipo ya está arriba -->
-            </div>
-          </div>
+                <div class="col-md-6">
+                  <label for="tipoEquipo" class="form-label"><i class="fa-solid fa-tag me-1"></i>Tipo de equipo</label>
+                  <input type="text" class="form-control" id="tipoEquipo" readonly style="background-color: #f8f9fa;">
+                </div>
+                <div class="col-md-6">
+                  <label for="estadoEquipoTexto" class="form-label"><i class="fa-solid fa-signal me-1"></i>Estado del equipo</label>
+                  <input type="text" class="form-control" id="estadoEquipoTexto" readonly style="background-color: #f8f9fa;">
+                  <input type="hidden" id="estadoEquipo" name="estado">
+                </div>
+                
+                <div class="col-12">
+                  <label for="salaEquipoTexto" class="form-label"><i class="fa-solid fa-door-open me-1"></i>Sala</label>
+                  <input type="text" class="form-control" id="salaEquipoTexto" readonly style="background-color: #f8f9fa;">
+                </div>
+              </div>
 
-          <!-- Especificaciones Técnicas -->
-          <h6 class="mt-4 mb-3">Especificaciones Técnicas</h6>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="sistemaOperativo" class="form-label">Sistema operativo</label>
-              <input type="text" class="form-control" id="sistemaOperativo" name="sistema_operativo">
+              <!-- Especificaciones Técnicas -->
+              <h6 class="section-title mt-4">
+                <i class="fas fa-microchip me-2"></i>Especificaciones Técnicas
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="sistemaOperativo" class="form-label"><i class="fa-brands fa-windows me-1"></i>Sistema operativo</label>
+                  <input type="text" class="form-control" id="sistemaOperativo" name="sistema_operativo">
+                </div>
+                <div class="col-md-6">
+                  <label for="ramEquipo" class="form-label"><i class="fa-solid fa-memory me-1"></i>RAM</label>
+                  <input type="text" class="form-control" id="ramEquipo" name="ram">
+                </div>
+                <div class="col-md-6">
+                  <label for="discoDuro" class="form-label"><i class="fa-solid fa-hard-drive me-1"></i>Disco duro</label>
+                  <input type="text" class="form-control" id="discoDuro" name="disco_duro">
+                </div>
+                <div class="col-md-6">
+                  <label for="fechaAdquisicion" class="form-label"><i class="fa-solid fa-calendar me-1"></i>Fecha de adquisición</label>
+                  <input type="date" class="form-control" id="fechaAdquisicion" name="fecha_adquisicion">
+                </div>
+                <div class="col-12">
+                  <label for="descripcionEquipo" class="form-label"><i class="fa-solid fa-align-left me-1"></i>Descripción</label>
+                  <textarea class="form-control" id="descripcionEquipo" name="descripcion" rows="2"></textarea>
+                </div>
+                <div class="col-12">
+                  <label for="observacionesEquipo" class="form-label"><i class="fa-solid fa-comment me-1"></i>Observaciones</label>
+                  <textarea class="form-control" id="observacionesEquipo" name="observaciones" rows="2"></textarea>
+                </div>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label for="ramEquipo" class="form-label">RAM</label>
-              <input type="text" class="form-control" id="ramEquipo" name="ram">
-            </div>
-            <div class="col-md-6">
-              <label for="discoDuro" class="form-label">Disco duro</label>
-              <input type="text" class="form-control" id="discoDuro" name="disco_duro">
-            </div>
-            <div class="col-md-6">
-              <label for="fechaAdquisicion" class="form-label">Fecha de adquisición</label>
-              <input type="date" class="form-control" id="fechaAdquisicion" name="fecha_adquisicion">
-            </div>
-            <div class="col-12">
-              <label for="descripcionEquipo" class="form-label">Descripción</label>
-              <textarea class="form-control" id="descripcionEquipo" name="descripcion" rows="2"></textarea>
-            </div>
-            <div class="col-12">
-              <label for="observacionesEquipo" class="form-label">Observaciones</label>
-              <textarea class="form-control" id="observacionesEquipo" name="observaciones" rows="2"></textarea>
+
+            <!-- Columna Derecha: Gestión de Asignaciones -->
+            <div class="col-lg-6">
+              <h6 class="section-title">
+                <i class="fas fa-users me-2"></i>Asignaciones de Estudiantes
+              </h6>
+              
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Importante:</strong> Solo puedes asignar un estudiante por curso.
+              </div>
+
+              <!-- Formulario para agregar asignación -->
+              <div class="card mb-3" style="border-left: 4px solid var(--accent2);">
+                <div class="card-body">
+                  <div class="row g-2">
+                    <div class="col-md-6">
+                      <label for="cursoSelectorEditar" class="form-label"><i class="fa-solid fa-graduation-cap me-1"></i>Curso</label>
+                      <select class="form-select form-select-sm" id="cursoSelectorEditar">
+                        <option value="">-- Selecciona un curso --</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="estudianteSelectorEditar" class="form-label"><i class="fa-solid fa-user-graduate me-1"></i>Estudiante</label>
+                      <select class="form-select form-select-sm" id="estudianteSelectorEditar" disabled>
+                        <option value="">Primero selecciona un curso</option>
+                      </select>
+                    </div>
+                    <div class="col-12 text-end">
+                      <button type="button" class="btn btn-sm btn-success" id="btnAgregarAsignacionEditar">
+                        <i class="fas fa-plus me-1"></i>Agregar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lista de asignaciones actuales -->
+              <div id="listaAsignacionesEditar">
+                <div class="text-muted text-center py-3">
+                  <i class="fas fa-user-slash fa-2x mb-2"></i>
+                  <p class="mb-0">No hay asignaciones</p>
+                </div>
+              </div>
+
+              <!-- Resumen -->
+              <div class="card mt-3" style="background: linear-gradient(135deg, rgba(238, 150, 75, 0.1), rgba(244, 211, 94, 0.1)); border-left: 5px solid var(--accent2);">
+                <div class="card-body p-3">
+                  <h6 class="card-title mb-2">
+                    <i class="fas fa-chart-bar me-2"></i>Resumen
+                  </h6>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span><strong>Estudiantes asignados:</strong></span>
+                    <span class="badge bg-primary" id="totalEstudiantesEditar">0</span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span><strong>Cursos cubiertos:</strong></span>
+                    <span class="badge bg-secondary" id="totalCursosEditar">0</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-1"></i>Cerrar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Guardar Cambios
+          </button>
         </div>
       </form>
     </div>
@@ -231,61 +307,65 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Detalles del Equipo</h5>
+                <h5 class="modal-title"><i class="fa-solid fa-eye me-2"></i>Detalles del Equipo</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <!-- Columna izquierda -->
                     <div class="col-md-6">
-                        <div class="mb-3">
-                            <strong>ID/Referencia:</strong> <span id="detalle-id-referencia">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-hashtag me-1"></i>ID/Referencia:</strong> <span id="detalle-id-referencia">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Nombre del equipo:</strong> <span id="detalle-nombre">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-laptop me-1"></i>Nombre del equipo:</strong> <span id="detalle-nombre">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Tipo de equipo:</strong> <span id="detalle-tipo">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-tag me-1"></i>Tipo de equipo:</strong> <span id="detalle-tipo">-</span>
                         </div>
                         
-                        <h6 class="mt-4 mb-3">Especificaciones Técnicas</h6>
-                        <div class="mb-3">
-                            <strong>Sistema Operativo:</strong> <span id="detalle-so">-</span>
+                        <h6 class="section-title mt-4">
+                            <i class="fas fa-microchip me-2"></i>Especificaciones Técnicas
+                        </h6>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-brands fa-windows me-1"></i>Sistema Operativo:</strong> <span id="detalle-so">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>RAM:</strong> <span id="detalle-ram">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-memory me-1"></i>RAM:</strong> <span id="detalle-ram">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Disco Duro:</strong> <span id="detalle-disco">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-hard-drive me-1"></i>Disco Duro:</strong> <span id="detalle-disco">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Fecha de adquisición:</strong> <span id="detalle-fecha">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-calendar me-1"></i>Fecha de adquisición:</strong> <span id="detalle-fecha">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Descripción:</strong> <span id="detalle-descripcion">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-align-left me-1"></i>Descripción:</strong> <span id="detalle-descripcion">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Observaciones:</strong> <span id="detalle-observaciones">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-comment me-1"></i>Observaciones:</strong> <span id="detalle-observaciones">-</span>
                         </div>
                     </div>
                     
                     <!-- Columna derecha -->
                     <div class="col-md-6">
-                        <div class="mb-3">
-                            <strong>Usuario asignado:</strong> <span id="detalle-usuario">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-user me-1"></i>Usuario asignado:</strong> <span id="detalle-usuario">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Estado del equipo:</strong> 
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-signal me-1"></i>Estado del equipo:</strong> 
                             <span id="detalle-estado-badge" class="badge">-</span>
                         </div>
-                        <div class="mb-3">
-                            <strong>Sala:</strong> <span id="detalle-sala">-</span>
+                        <div class="mb-3 info-box">
+                            <strong><i class="fa-solid fa-door-open me-1"></i>Sala:</strong> <span id="detalle-sala">-</span>
                         </div>
                         
-                        <h6 class="mt-4 mb-3">Historial de incidentes</h6>
+                        <h6 class="section-title mt-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Historial de Incidentes
+                        </h6>
                         <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-sm table-hover">
+                                <thead style="background: var(--accent4); color: white;">
                                     <tr>
                                         <th>Fecha</th>
                                         <th>Descripción</th>
@@ -297,10 +377,12 @@
                             </table>
                         </div>
                         
-                        <h6 class="mt-4 mb-3">Historial de mantenimientos</h6>
+                        <h6 class="section-title mt-4">
+                            <i class="fas fa-tools me-2"></i>Historial de Mantenimientos
+                        </h6>
                         <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-sm table-hover">
+                                <thead style="background: var(--accent4); color: white;">
                                     <tr>
                                         <th>Fecha</th>
                                         <th>Tipo</th>
@@ -314,6 +396,11 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cerrar
+                </button>
             </div>
         </div>
     </div>
@@ -359,9 +446,9 @@ async function cargarEquiposConIncidentes() {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         equiposConIncidentes = data.equipos_con_incidentes || [];
-        console.log('Equipos con incidentes:', equiposConIncidentes);
+        console.log('✅ Equipos con incidentes:', equiposConIncidentes);
     } catch (error) {
-        console.error('Error cargando equipos con incidentes:', error);
+        console.error('❌ Error cargando equipos con incidentes:', error);
         equiposConIncidentes = [];
     }
 }
@@ -369,16 +456,15 @@ async function cargarEquiposConIncidentes() {
 // ========================================
 // CARGAR EQUIPOS CON MANTENIMIENTOS
 // ========================================
-
 async function cargarEquiposConMantenimientos() {
     try {
         const res = await fetch('/admin/api/equipos/con-mantenimientos');
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         equiposConMantenimientos = data.equipos_con_mantenimientos || [];
-        console.log('Equipos con mantenimientos:', equiposConMantenimientos);
+        console.log('✅ Equipos con mantenimientos:', equiposConMantenimientos);
     } catch (error) {
-        console.error('Error cargando equipos con mantenimientos:', error);
+        console.error('❌ Error cargando equipos con mantenimientos:', error);
         equiposConMantenimientos = [];
     }
 }
@@ -388,16 +474,17 @@ async function cargarEquiposConMantenimientos() {
 // ========================================
 async function cargarSalas() {
     try {
-        const res = await fetch('/api/salas_todas');
+        const res = await fetch('/admin/api/salas_todas');
         const salas = await res.json();
         salasDisponibles = salas.map(sala => ({
             id: sala.id_salon,
             nombre: sala.nombre,
-            sede_id: sala.sede_id,
+            sede_id: sala.id_sede,
             sede_nombre: sala.sede_nombre || 'Desconocida'
         }));
+        console.log('✅ Salas cargadas:', salasDisponibles.length);
     } catch (error) {
-        console.error('Error cargando salas:', error);
+        console.error('❌ Error cargando salas:', error);
     }
 }
 
@@ -408,22 +495,29 @@ function crearTabsSedes(sedes) {
     const tabsContainer = document.querySelector('.nav.nav-tabs.card-header-tabs');
     tabsContainer.innerHTML = '';
     
+    console.log('📌 Creando tabs para', sedes.length, 'sedes');
+    
     sedes.forEach((sede, index) => {
         const tabItem = document.createElement('li');
         tabItem.className = 'nav-item';
         
         const tabLink = document.createElement('a');
         tabLink.className = `nav-link ${index === 0 ? 'active' : ''}`;
-        tabLink.id = `tab-sede${sede.id}`;
+        tabLink.id = `tab-sede-${sede.id_sede}`;
         tabLink.href = '#';
-        tabLink.textContent = sede.nombre;
-        tabLink.onclick = async (event) => {
+        tabLink.innerHTML = `<i class="fa-solid fa-building me-1"></i>${sede.nombre}`;
+        
+        tabLink.addEventListener('click', async (event) => {
             event.preventDefault();
-            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            console.log('🔄 Click en sede:', sede.nombre, 'ID:', sede.id_sede);
+            
+            document.querySelectorAll('.salas-card .nav-link').forEach(el => {
+                el.classList.remove('active');
+            });
+            
             tabLink.classList.add('active');
-            await mostrarSede(sede.id_sede || sede.id);
-        };
-
+            await mostrarSede(sede.id_sede);
+        });
         
         tabItem.appendChild(tabLink);
         tabsContainer.appendChild(tabItem);
@@ -437,56 +531,99 @@ async function cargarSedes() {
         const sedes = await res.json();
         sedesGlobal = sedes;
         
+        console.log('✅ Sedes cargadas:', sedes);
+        
         crearTabsSedes(sedes);
         await cargarSalas();
+        
+        // ✅ CAMBIO: Cargar TODOS los equipos al inicio
         await mostrarTodosLosEquipos();
         
+        // Mostrar las salas de la primera sede
+        if (sedes.length > 0) {
+            await mostrarSalasDeSede(sedes[0].id_sede);
+        }
+        
     } catch (error) {
-        console.error('Error cargando sedes:', error);
+        console.error('❌ Error cargando sedes:', error);
         await mostrarTodosLosEquipos();
     }
 }
 
-async function mostrarSede(sedeId) {
-    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-    const tab = document.getElementById(`tab-sede${sedeId}`);
-    if (tab) tab.classList.add('active');
+// ✅ NUEVA FUNCIÓN: Solo muestra las salas de una sede, SIN cambiar los equipos
+async function mostrarSalasDeSede(sedeId) {
+    console.log('🏢 Mostrando salas de sede ID:', sedeId);
+    
+    // Actualizar tab activo
+    document.querySelectorAll('.salas-card .nav-link').forEach(el => el.classList.remove('active'));
+    const tab = document.getElementById(`tab-sede-${sedeId}`);
+    if (tab) {
+        tab.classList.add('active');
+        console.log('✅ Tab activado para sede', sedeId);
+    }
 
     const tbodySalas = document.getElementById('tablaSalas');
-    tbodySalas.innerHTML = '';
+    tbodySalas.innerHTML = '<tr><td colspan="2" class="text-muted">Cargando salas...</td></tr>';
 
     try {
-        const res = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+        const url = `/admin/api/sedes/${sedeId}/salas`;
+        console.log('📡 Fetch a:', url);
+        
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const salones = await res.json();
         
+        console.log('✅ Salones recibidos:', salones);
+        
+        tbodySalas.innerHTML = '';
+        
         if (salones.length === 0) {
             tbodySalas.innerHTML = '<tr><td colspan="2" class="text-muted">No hay salas en esta sede.</td></tr>';
-            mostrarEquiposDeSede(sedeId);
             return;
         }
 
         salones.forEach((salon, index) => {
             const row = document.createElement('tr');
             row.style.cursor = 'pointer';
-            row.onclick = () => mostrarEquiposDeSala(sedeId, salon.id);
-            row.innerHTML = `<td>${index + 1}</td><td>${salon.nombre}</td>`;
+            row.className = 'sala-row';
+            row.onclick = () => {
+                console.log('🚪 Click en sala:', salon.nombre, 'ID:', salon.id_salon);
+                
+                // Resaltar la sala seleccionada
+                document.querySelectorAll('.sala-row').forEach(r => r.classList.remove('table-active'));
+                row.classList.add('table-active');
+                
+                // ✅ AQUÍ ES DONDE SE FILTRAN LOS EQUIPOS POR SALA
+                mostrarEquiposDeSala(sedeId, salon.id_salon);
+            };
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><i class="fa-solid fa-door-open me-1"></i>${salon.nombre}</td>
+            `;
             tbodySalas.appendChild(row);
         });
 
     } catch (error) {
-        console.error('Error cargando salones:', error);
+        console.error('❌ Error cargando salones:', error);
         tbodySalas.innerHTML = '<tr><td colspan="2" class="text-danger">Error al cargar salas.</td></tr>';
-        mostrarEquiposDeSede(sedeId);
     }
+}
+
+// ✅ MODIFICADO: mostrarSede ahora solo cambia las salas, NO los equipos
+async function mostrarSede(sedeId) {
+    await mostrarSalasDeSede(sedeId);
 }
 
 // ========================================
 // MOSTRAR EQUIPOS
 // ========================================
 async function mostrarTodosLosEquipos() {
+    console.log('🌐 Mostrando todos los equipos...');
     equiposGlobal = [];
     paginaActual = 1;
+    
+    // Limpiar resaltado de salas
+    document.querySelectorAll('.sala-row').forEach(r => r.classList.remove('table-active'));
     
     try {
         await cargarEquiposConIncidentes();
@@ -498,48 +635,15 @@ async function mostrarTodosLosEquipos() {
         equiposGlobal = equipos.map(eq => ({
             ...eq,
             sede: eq.sede_nombre || 'Desconocida',
-            sala: eq.salon_nombre || 'Desconocida'
+            sala: eq.salon || 'Desconocida'
         }));
         
-        console.log('📊 Total equipos:', equiposGlobal.length);
+        console.log('✅ Total equipos cargados:', equiposGlobal.length);
         
         actualizarResumen(equiposGlobal);
         renderizarTabla();
     } catch (error) {
-        console.error('Error cargando todos los equipos:', error);
-        equiposGlobal = [];
-        actualizarResumen(equiposGlobal);
-        renderizarTabla();
-    }
-}
-
-async function mostrarEquiposDeSede(id_sede) {
-    equiposGlobal = [];
-    paginaActual = 1;
-    
-    try {
-        await cargarEquiposConIncidentes();
-        
-        const resSalas = await fetch(`/admin/api/sedes/${id_sede}/salas`);
-        if (!resSalas.ok) throw new Error(`HTTP error! status: ${resSalas.status}`);
-        const salas = await resSalas.json();
-
-        for (const sala of salas) {
-            const resEquipos = await fetch(`/admin/api/sedes/${id_sede}/salas/${sala.id_salon}/equipos`);
-            if (!resEquipos.ok) throw new Error(`HTTP error! status: ${resEquipos.status}`);
-            const equipos = await resEquipos.json();
-            equipos.forEach(eq => {
-                equiposGlobal.push({
-                    ...eq,
-                    sede: sedesGlobal.find(s => s.id === id_sede)?.nombre || 'Desconocida',
-                    sala: sala.nombre || 'Desconocida'
-                });
-            });
-        }
-        actualizarResumen(equiposGlobal);
-        renderizarTabla();
-    } catch (error) {
-        console.error('Error cargando equipos de la sede:', error);
+        console.error('❌ Error cargando todos los equipos:', error);
         equiposGlobal = [];
         actualizarResumen(equiposGlobal);
         renderizarTabla();
@@ -547,17 +651,23 @@ async function mostrarEquiposDeSede(id_sede) {
 }
 
 async function mostrarEquiposDeSala(id_sede, id_salon) {
+    console.log('🚪 Cargando equipos de sala ID:', id_salon, 'en sede:', id_sede);
     equiposGlobal = [];
     paginaActual = 1;
     
     try {
         await cargarEquiposConIncidentes();
         
-        const res = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
+        const url = `/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`;
+        console.log('📡 Fetch a:', url);
+        
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const equipos = await res.json();
 
-        const sede = sedesGlobal.find(s => s.id === id_sede);
+        console.log('✅ Equipos recibidos:', equipos);
+
+        const sede = sedesGlobal.find(s => s.id_sede === id_sede);
         const sala = salasDisponibles.find(s => s.id === id_salon);
 
         equipos.forEach(eq => {
@@ -568,10 +678,11 @@ async function mostrarEquiposDeSala(id_sede, id_salon) {
             });
         });
 
+        console.log('✅ Equipos procesados:', equiposGlobal.length);
         actualizarResumen(equiposGlobal);
         renderizarTabla();
     } catch (error) {
-        console.error('Error cargando equipos:', error);
+        console.error('❌ Error cargando equipos:', error);
         equiposGlobal = [];
         actualizarResumen(equiposGlobal);
         renderizarTabla();
@@ -590,7 +701,7 @@ function renderizarTabla() {
     const equiposPagina = equiposGlobal.slice(inicio, fin);
 
     if (equiposPagina.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-muted py-3">No se encontraron equipos.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-muted py-3">No se encontraron equipos.</td></tr>`;
         document.getElementById('paginaActual').textContent = `Página 0 de 0`;
         document.getElementById('btnAnterior').disabled = true;
         document.getElementById('btnSiguiente').disabled = true;
@@ -598,11 +709,9 @@ function renderizarTabla() {
     }
 
     equiposPagina.forEach(eq => {
-        const equipoId = parseInt(eq.id_equipo);
+        const equipoId = parseInt(eq.equipoId || eq.id_equipo || eq.id);
         const tieneIncidente = equiposConIncidentes.includes(eq.id_equipo);
         const tieneMantenimiento = equiposConMantenimientos.includes(eq.id_equipo);
-        
-        console.log(`Equipo: ${eq.nombre}, ID: ${equipoId}, Incidente: ${tieneIncidente}`);
 
         let estadoBadge = '';
         if (eq.estado === 'Disponible') estadoBadge = `<span class="badge text-bg-primary">Disponible</span>`;
@@ -627,17 +736,16 @@ function renderizarTabla() {
                 ${eq.nombre || '-'}
             </td>
             <td>${estadoBadge}</td>
-            <td>${eq.sede || '-'}</td>
             <td>${eq.sala || '-'}</td>
             <td>${eq.asignado_a || '-'}</td>
             <td>
-                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id_equipo})">
+                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id})" title="Ver detalles">
                     <i class="fa-solid fa-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id_equipo})">
+                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id})" title="Editar equipo">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id_equipo})">
+                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id})" title="Eliminar equipo">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </td> 
@@ -682,12 +790,10 @@ function actualizarResumen(equipos) {
     const total = equipos.length;
     const disponibles = equipos.filter(e => e.estado === 'Disponible').length;
     
-    // ✅ Contar equipos con mantenimientos activos (basado en el array)
     const conMantenimiento = equipos.filter(e => 
         equiposConMantenimientos.includes(parseInt(e.id_equipo))
     ).length;
     
-    // ✅ Contar equipos con incidentes activos (basado en el array)
     const conIncidentes = equipos.filter(e => 
         equiposConIncidentes.includes(parseInt(e.id_equipo))
     ).length;
@@ -699,22 +805,217 @@ function actualizarResumen(equipos) {
 }
 
 // ========================================
+// GESTIÓN DE ASIGNACIONES EN EDICIÓN
+// ========================================
+let asignacionesEditar = [];
+let cursosAsignadosEditar = new Set();
+let cursosDisponibles = [];
+
+async function cargarCursosEditar() {
+    try {
+        const res = await fetch('/admin/api/cursos');
+        if (!res.ok) throw new Error('Error cargando cursos');
+        const data = await res.json();
+        cursosDisponibles = data.data || data;
+        
+        const selector = document.getElementById('cursoSelectorEditar');
+        selector.innerHTML = '<option value="">-- Selecciona un curso --</option>';
+        
+        cursosDisponibles.forEach(curso => {
+            const option = document.createElement('option');
+            option.value = curso.id_curso;
+            option.textContent = curso.nombreCurso;
+            selector.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error cargando cursos:', error);
+    }
+}
+
+document.getElementById('cursoSelectorEditar').addEventListener('change', async function() {
+    const cursoId = this.value;
+    const estudianteSelector = document.getElementById('estudianteSelectorEditar');
+    
+    estudianteSelector.innerHTML = '<option value="">Cargando...</option>';
+    estudianteSelector.disabled = true;
+    
+    if (!cursoId) {
+        estudianteSelector.innerHTML = '<option value="">Primero selecciona un curso</option>';
+        return;
+    }
+    
+    if (cursosAsignadosEditar.has(parseInt(cursoId))) {
+        estudianteSelector.innerHTML = '<option value="">Ya hay un estudiante de este curso asignado</option>';
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/admin/api/estudiantes-por-curso/${cursoId}`);
+        if (!res.ok) throw new Error('Error cargando estudiantes');
+        const estudiantes = await res.json();
+        
+        estudianteSelector.innerHTML = '<option value="">-- Selecciona un estudiante --</option>';
+        
+        if (estudiantes.length === 0) {
+            estudianteSelector.innerHTML = '<option value="">No hay estudiantes en este curso</option>';
+        } else {
+            estudiantes.forEach(est => {
+                if (!asignacionesEditar.find(a => a.estudiante_id === est.id_usuario)) {
+                    const option = document.createElement('option');
+                    option.value = est.id_usuario;
+                    option.textContent = `${est.nombre_completo} (${est.no_identidad})`;
+                    option.dataset.nombre = est.nombre_completo;
+                    option.dataset.cursoId = cursoId;
+                    option.dataset.cursoNombre = this.options[this.selectedIndex].text;
+                    estudianteSelector.appendChild(option);
+                }
+            });
+        }
+        
+        estudianteSelector.disabled = false;
+    } catch (error) {
+        console.error('Error:', error);
+        estudianteSelector.innerHTML = '<option value="">Error al cargar estudiantes</option>';
+    }
+});
+
+document.getElementById('btnAgregarAsignacionEditar').addEventListener('click', async function() {
+    const estudianteSelector = document.getElementById('estudianteSelectorEditar');
+    const estudianteId = estudianteSelector.value;
+    
+    if (!estudianteId) {
+        alert('Por favor selecciona un estudiante');
+        return;
+    }
+    
+    const selectedOption = estudianteSelector.options[estudianteSelector.selectedIndex];
+    const estudianteNombre = selectedOption.dataset.nombre;
+    const cursoId = parseInt(selectedOption.dataset.cursoId);
+    const cursoNombre = selectedOption.dataset.cursoNombre;
+    
+    if (asignacionesEditar.find(a => a.estudiante_id === parseInt(estudianteId))) {
+        alert('Este estudiante ya está asignado a este equipo');
+        return;
+    }
+    
+    try {
+        const salonActualId = parseInt(document.getElementById('salaEquipo').value);
+        const salonActualNombre = document.getElementById('salaEquipoTexto').value;
+        
+        const response = await fetch(`/admin/api/estudiante/${estudianteId}/equipos-en-sala/${salonActualId}`);
+        const data = await response.json();
+        
+        if (data.tiene_equipo_en_sala) {
+            alert(`⚠️ Este estudiante ya tiene el equipo "${data.equipo_nombre}" asignado en esta sala (${salonActualNombre}).\n\n❌ Solo puede tener UN equipo por sala.`);
+            return;
+        }
+    } catch (error) {
+        console.error('Error verificando equipos del estudiante:', error);
+        alert('Error al verificar las asignaciones del estudiante');
+        return;
+    }
+    
+    const asignacion = {
+        estudiante_id: parseInt(estudianteId),
+        estudiante_nombre: estudianteNombre,
+        curso_id: cursoId,
+        curso_nombre: cursoNombre,
+        es_nueva: true
+    };
+    
+    asignacionesEditar.push(asignacion);
+    cursosAsignadosEditar.add(cursoId);
+    
+    renderizarAsignacionesEditar();
+    actualizarResumenEditar();
+    
+    document.getElementById('cursoSelectorEditar').value = '';
+    estudianteSelector.innerHTML = '<option value="">Primero selecciona un curso</option>';
+    estudianteSelector.disabled = true;
+});
+
+function renderizarAsignacionesEditar() {
+    const container = document.getElementById('listaAsignacionesEditar');
+    
+    if (asignacionesEditar.length === 0) {
+        container.innerHTML = `
+            <div class="text-muted text-center py-3">
+                <i class="fas fa-user-slash fa-2x mb-2"></i>
+                <p class="mb-0">No hay asignaciones</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    
+    asignacionesEditar.forEach((asig, index) => {
+        const badgeClass = asig.es_nueva ? 'bg-success' : 'bg-info';
+        const badgeText = asig.es_nueva ? 'NUEVA' : 'EXISTENTE';
+        
+        html += `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-circle fa-lg text-primary me-2"></i>
+                        <div>
+                            <strong>${asig.estudiante_nombre}</strong>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-graduation-cap me-1"></i>${asig.curso_nombre}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge ${badgeClass} me-2">${badgeText}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarAsignacionEditar(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function eliminarAsignacionEditar(index) {
+    const asignacion = asignacionesEditar[index];
+    cursosAsignadosEditar.delete(asignacion.curso_id);
+    asignacionesEditar.splice(index, 1);
+    renderizarAsignacionesEditar();
+    actualizarResumenEditar();
+}
+
+function actualizarResumenEditar() {
+    document.getElementById('totalEstudiantesEditar').textContent = asignacionesEditar.length;
+    document.getElementById('totalCursosEditar').textContent = cursosAsignadosEditar.size;
+}
+
+// ========================================
 // EDITAR EQUIPO
 // ========================================
 async function editarEquipo(id) {
     try {
+        asignacionesEditar = [];
+        cursosAsignadosEditar = new Set();
+        
+        await cargarCursosEditar();
+        
         const res = await fetch(`/admin/api/equipos/${id}`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const equipo = await res.json();
 
-        document.getElementById('equipoId').value = equipo.id || '';
+        document.getElementById('equipoId').value = equipo.id_equipo || '';
         document.getElementById('idReferencia').value = equipo.id_referencia || '';
         document.getElementById('nombreEquipo').value = equipo.nombre || '';
         document.getElementById('tipoEquipo').value = equipo.tipo || '';
-        document.getElementById('usuarioAsignado').value = equipo.asignado_a || '';
         document.getElementById('estadoEquipoTexto').value = equipo.estado || '';
-        document.getElementById('estadoEquipo').value = equipo.estado || ''; 
-        document.getElementById('salaEquipoTexto').value = equipo.salon_nombre || '';
+        document.getElementById('estadoEquipo').value = equipo.estado || '';
+        document.getElementById('salaEquipoTexto').value = equipo.salon || 'Sin Salón';
+        document.getElementById('salaEquipo').value = equipo.id_salon_fk || '';
         document.getElementById('nombreEquipoHidden').value = equipo.nombre || '';
         document.getElementById('idReferenciaHidden').value = equipo.id_referencia || '';
         document.getElementById('tipoEquipoHidden').value = equipo.tipo || '';
@@ -725,6 +1026,23 @@ async function editarEquipo(id) {
         document.getElementById('descripcionEquipo').value = equipo.descripcion || '';
         document.getElementById('observacionesEquipo').value = equipo.observaciones || '';
 
+        if (equipo.asignaciones && equipo.asignaciones.length > 0) {
+            for (const asig of equipo.asignaciones) {
+                asignacionesEditar.push({
+                    id_asignacion: asig.id_asignacion,
+                    estudiante_id: asig.estudiante_id,
+                    estudiante_nombre: asig.estudiante_nombre,
+                    curso_id: asig.curso_id,
+                    curso_nombre: asig.estudiante_curso,
+                    es_nueva: false
+                });
+                cursosAsignadosEditar.add(asig.curso_id);
+            }
+        }
+        
+        renderizarAsignacionesEditar();
+        actualizarResumenEditar();
+
         new bootstrap.Modal(document.getElementById('editarEquipoModal')).show();
     } catch (err) {
         console.error('Error al editar equipo', err);
@@ -732,44 +1050,49 @@ async function editarEquipo(id) {
     }
 }
 
+// ========================================
+// GUARDAR EDICIÓN
+// ========================================
 async function guardarEdicionEquipo(e) {
     e.preventDefault();
-    const id = document.getElementById('equipoId').value;
     
-    const data = {
-        asignado_a: document.getElementById('usuarioAsignado').value,
-        estado: document.getElementById('estadoEquipo').value,
+    const equipoId = document.getElementById('equipoId').value;
+    
+    const datosEquipo = {
         sistema_operativo: document.getElementById('sistemaOperativo').value,
         ram: document.getElementById('ramEquipo').value,
         disco_duro: document.getElementById('discoDuro').value,
         fecha_adquisicion: document.getElementById('fechaAdquisicion').value,
         descripcion: document.getElementById('descripcionEquipo').value,
         observaciones: document.getElementById('observacionesEquipo').value,
-        id_salon_fk: document.getElementById('salaEquipo').value
+        asignaciones: asignacionesEditar.map(asig => ({
+            estudiante_id: asig.estudiante_id,
+            curso_id: asig.curso_id,
+            es_nueva: asig.es_nueva
+        }))
     };
-
+    
     try {
-        const res = await fetch(`/admin/api/equipos/${id}`, {
+        const res = await fetch(`/admin/api/equipos/${equipoId}/actualizar`, {
             method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+            headers: {
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(datosEquipo)
         });
-
-        const responseData = await res.json();
-
+        
+        const data = await res.json();
+        
         if (res.ok) {
-            alert(responseData.message || 'Equipo actualizado con éxito.');
+            alert('✅ Equipo actualizado correctamente');
             bootstrap.Modal.getInstance(document.getElementById('editarEquipoModal')).hide();
             await mostrarTodosLosEquipos();
         } else {
-            alert(`Error al actualizar el equipo: ${responseData.error || 'Error desconocido'}`);
+            alert(`❌ Error: ${data.error || 'No se pudo actualizar el equipo'}`);
         }
-    } catch (err) {
-        console.error('Error al actualizar equipo', err);
-        alert('Error de conexión al actualizar el equipo.');
+    } catch (error) {
+        console.error('Error guardando edición:', error);
+        alert('❌ Error al guardar los cambios');
     }
 }
 
@@ -777,7 +1100,7 @@ async function guardarEdicionEquipo(e) {
 // ELIMINAR EQUIPO
 // ========================================
 async function eliminarEquipo(id) {
-    const equipo = equiposGlobal.find(e => e.id === id);
+    const equipo = equiposGlobal.find(e => e.id_equipo === id);
     const nombreEquipo = equipo ? equipo.nombre : 'este equipo';
     
     if (!confirm(`¿Estás seguro de que deseas eliminar "${nombreEquipo}"? Esta acción no se puede deshacer.`)) {
@@ -796,14 +1119,14 @@ async function eliminarEquipo(id) {
         const responseData = await res.json();
         
         if (res.ok) {
-            alert(responseData.message || 'Equipo eliminado con éxito.');
+            alert(responseData.message || '✅ Equipo eliminado con éxito.');
             await mostrarTodosLosEquipos();
         } else {
-            alert(`Error al eliminar el equipo: ${responseData.error || 'Error desconocido'}`);
+            alert(`❌ Error al eliminar el equipo: ${responseData.error || 'Error desconocido'}`);
         }
     } catch (err) {
         console.error('Error al eliminar equipo', err);
-        alert('Error de conexión al eliminar el equipo.');
+        alert('❌ Error de conexión al eliminar el equipo.');
     }
 }
 
@@ -812,9 +1135,21 @@ async function eliminarEquipo(id) {
 // ========================================
 async function verEquipo(id) {
     try {
-        const res = await fetch(`/admin/api/equipos/${id}`);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        console.log('🔍 Intentando ver equipo ID:', id);
+        const url = `/admin/api/equipos/${id}`;
+        console.log('📡 URL completa:', url);
+        
+        const res = await fetch(url);
+        console.log('📥 Respuesta recibida:', res.status);
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('❌ Error del servidor:', errorText);
+            throw new Error(`HTTP error! status: ${res.status} - ${errorText}`);
+        }
+        
         const equipo = await res.json();
+        console.log('✅ Equipo recibido:', equipo);
 
         document.getElementById('detalle-id-referencia').textContent = equipo.id_referencia || '-';
         document.getElementById('detalle-nombre').textContent = equipo.nombre || '-';
@@ -867,7 +1202,7 @@ async function verEquipo(id) {
         new bootstrap.Modal(document.getElementById('verEquipoModal')).show();
     } catch (err) {
         console.error('Error al ver equipo', err);
-        alert('Error al cargar los detalles del equipo.');
+        alert('❌ Error al cargar los detalles del equipo.');
     }
 }
 </script>

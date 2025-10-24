@@ -16,7 +16,7 @@ ROLE_PERMISSIONS = {
     'Estudiante': [
         'ver_calificaciones', 'ver_horario', 'ver_historial_academico',
         'inscripcion_materias', 'ver_comunicaciones_estudiante', 'ver_estado_cuenta',
-        'editar_perfil', 'acceso_soporte', 'eleccion_electoral','ver.eventos'
+        'editar_perfil', 'acceso_soporte', 'eleccion_electoral','ver.eventos', 'ver_equipos'
     ],
     # permisos para el rol padre
     'Padre': [

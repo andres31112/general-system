@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Equipo Asignado - Vista Estudiante</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --accent1: #F95738;
+            --accent2: #EE964B;
+            --accent3: #F4D35E;
+            --accent4: #0D3B66;
+            --light: #FAF0CA;
+        }
+
+        body {
+            background-color: #F8F9FA;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .custom-header {
+            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            color: white;
+            padding: 18px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .logo-icon {
+            font-size: 32px;
+            color: var(--accent3);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, rgba(238, 150, 75, 0.1), rgba(244, 211, 94, 0.1));
+            border-left: 5px solid var(--accent2);
+        }
+
+        .equipment-main-card {
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border-top: 6px solid var(--accent4);
+        }
+
+        .equipment-hero {
+            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            padding: 30px;
+            color: white;
+        }
+
+        .equipment-hero-icon {
+            font-size: 80px;
+            color: var(--accent3);
+        }
+
+        .assignment-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: inline-block;
+        }
+
+        .section-title {
+            color: var(--accent4);
+            font-size: 1.3rem;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .section-icon {
+            font-size: 24px;
+            color: var(--accent2);
+            background-color: rgba(238, 150, 75, 0.1);
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            background: linear-gradient(to right, var(--light), #f5e9b8);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid var(--accent2);
+        }
+
+        .info-item-label {
+            font-size: 0.85rem;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .info-item-label i {
+            color: var(--accent2);
+        }
+
+        .info-item-value {
+            font-size: 1.1rem;
+            color: var(--accent4);
+            font-weight: 700;
+        }
+
+        .specs-section {
+            background: linear-gradient(135deg, rgba(13, 59, 102, 0.05), rgba(26, 80, 128, 0.05));
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(13, 59, 102, 0.1);
+        }
+
+        .spec-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .spec-card i {
+            font-size: 28px;
+            color: var(--accent2);
+            margin-bottom: 10px;
+        }
+
+        .spec-label {
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .spec-value {
+            font-size: 1rem;
+            color: var(--accent4);
+            font-weight: 700;
+        }
+
+        .status-indicator {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .status-indicator i {
+            font-size: 24px;
+            color: #155724;
+        }
+
+        .no-equipment {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            padding: 60px 30px;
+            text-align: center;
+            border-top: 6px solid var(--accent1);
+        }
+
+        .no-equipment i {
+            font-size: 100px;
+            color: #E9ECEF;
+            margin-bottom: 20px;
+        }
+
+        .help-card {
+            background: linear-gradient(135deg, rgba(249, 87, 56, 0.1), rgba(238, 150, 75, 0.1));
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid var(--accent1);
+        }
+
+        .help-card h3 i {
+            color: var(--accent1);
+        }
+
+        .contact-item i {
+            color: var(--accent2);
+            width: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Header -->
+        <header class="custom-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="fas fa-laptop logo-icon"></i>
+                    <h1 class="h3 mb-0">Mi Equipo Asignado</h1>
+                </div>
+                <div class="d-flex align-items-center gap-2 bg-white bg-opacity-10 rounded px-3 py-2">
+                    <div class="user-avatar"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Info Banner -->
+        <div class="alert info-banner d-flex align-items-center gap-3 mb-4">
+            <i class="fas fa-info-circle fs-4"></i>
+            <div>
+                <h5 class="mb-1">Información del Equipo</h5>
+                <p class="mb-0 text-muted">Aquí puedes ver los detalles del equipo tecnológico que te ha sido asignado para tu uso académico.</p>
+            </div>
+        </div>
+
+        <!-- Con equipo asignado -->
+        <div id="withEquipment">
+            <div class="card equipment-main-card mb-4">
+                <div class="equipment-hero">
+                    <div class="row align-items-center g-3 mb-3">
+                        <div class="col-auto">
+                            <i class="fas fa-desktop equipment-hero-icon"></i>
+                        </div>
+                        <div class="col">
+                            <h2 class="h4 mb-2" id="equipmentName">Computadora Dell OptiPlex 7090</h2>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-barcode"></i>
+                                    <span id="equipmentId">PC-001-2024</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="assignment-badge">
+                                <i class="fas fa-user-check me-2"></i>
+                                <span>Asignado a ti</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Información General -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-3 section-title mb-4">
+                            <div class="section-icon">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <h3 class="h5 mb-0">Información General</h3>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-item-label">
+                                        <i class="fas fa-tag me-2"></i>
+                                        Tipo de Equipo
+                                    </div>
+                                    <div class="info-item-value">Computadora</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-item-label">
+                                        <i class="fas fa-door-open me-2"></i>
+                                        Salón Asignado
+                                    </div>
+                                    <div class="info-item-value">Laboratorio 1</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-item-label">
+                                        <i class="fas fa-building me-2"></i>
+                                        Sede
+                                    </div>
+                                    <div class="info-item-value">Principal</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-item-label">
+                                        <i class="fas fa-calendar-alt me-2"></i>
+                                        Fecha de Asignación
+                                    </div>
+                                    <div class="info-item-value">15 Oct 2024</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Especificaciones Técnicas -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-3 section-title mb-4">
+                            <div class="section-icon">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <h3 class="h5 mb-0">Especificaciones Técnicas</h3>
+                        </div>
+                        <div class="specs-section">
+                            <div class="row g-3">
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="spec-card">
+                                        <i class="fas fa-desktop d-block"></i>
+                                        <div class="spec-label">Sistema Operativo</div>
+                                        <div class="spec-value">Windows 11 Pro</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="spec-card">
+                                        <i class="fas fa-memory d-block"></i>
+                                        <div class="spec-label">Memoria RAM</div>
+                                        <div class="spec-value">16GB DDR4</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="spec-card">
+                                        <i class="fas fa-hdd d-block"></i>
+                                        <div class="spec-label">Almacenamiento</div>
+                                        <div class="spec-value">512GB SSD</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="spec-card">
+                                        <i class="fas fa-microchip d-block"></i>
+                                        <div class="spec-label">Procesador</div>
+                                        <div class="spec-value">Intel Core i7</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estado del Equipo -->
+                    <div>
+                        <div class="d-flex align-items-center gap-3 section-title mb-4">
+                            <div class="section-icon">
+                                <i class="fas fa-heartbeat"></i>
+                            </div>
+                            <h3 class="h5 mb-0">Estado del Equipo</h3>
+                        </div>
+                        <div class="status-indicator d-flex align-items-center justify-content-center gap-2 mb-3">
+                            <i class="fas fa-check-circle"></i>
+                            <span class="fw-bold">En Buen Estado - Operativo</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-item-label">
+                                        <i class="fas fa-calendar-check me-2"></i>
+                                        Última Revisión
+                                    </div>
+                                    <div class="info-item-value">10 Oct 2024</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-item-label">
+                                        <i class="fas fa-tools me-2"></i>
+                                        Próximo Mantenimiento
+                                    </div>
+                                    <div class="info-item-value">10 Ene 2025</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarjeta de Ayuda -->
+            <div class="help-card">
+                <h3 class="h5 mb-3">
+                    <i class="fas fa-question-circle me-2"></i>
+                    ¿Necesitas ayuda con tu equipo?
+                </h3>
+                <p class="text-muted">Si encuentras algún problema con tu equipo asignado, tienes alguna duda sobre su uso, o necesitas reportar un incidente, no dudes en contactar al departamento de tecnología.</p>
+                <hr>
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
+                        <i class="fas fa-envelope"></i>
+                        <span>soporte.tecnico@colegio.edu.co</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
+                        <i class="fas fa-phone"></i>
+                        <span>Ext. 234 - Soporte Técnico</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
+                        <i class="fas fa-clock"></i>
+                        <span>Horario: Lunes a Viernes, 7:00 AM - 4:00 PM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sin equipo asignado -->
+        <div id="noEquipment" style="display: none;">
+            <div class="no-equipment">
+                <i class="fas fa-laptop-slash"></i>
+                <h2 class="h4 text-primary mb-3">No tienes equipo asignado</h2>
+                <p class="text-muted">Actualmente no tienes ningún equipo tecnológico asignado. Si crees que esto es un error, contacta con el departamento administrativo.</p>
+            </div>
+
+            <div class="help-card mt-4">
+                <h3 class="h5 mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    ¿Necesitas un equipo?
+                </h3>
+                <p class="text-muted">Si requieres que te asignen un equipo para tu uso académico, por favor comunícate con el departamento de tecnología o con tu coordinador académico.</p>
+                <hr>
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
+                        <i class="fas fa-envelope"></i>
+                        <span>coordinacion@colegio.edu.co</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
+                        <i class="fas fa-phone"></i>
+                        <span>Ext. 100 - Coordinación</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Función para formatear fechas
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('es-ES', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        // Función para renderizar la información del equipo
+        function renderEquipment(equipo) {
+            if (!equipo) {
+                document.getElementById('withEquipment').style.display = 'none';
+                document.getElementById('noEquipment').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('withEquipment').style.display = 'block';
+            document.getElementById('noEquipment').style.display = 'none';
+
+            // Actualizar información del equipo
+            document.getElementById('equipmentName').textContent = equipo.nombre || 'Sin nombre';
+            document.getElementById('equipmentId').textContent = equipo.id_referencia || 'N/A';
+
+            // Actualizar icono según tipo
+            const iconElement = document.querySelector('.equipment-hero-icon');
+            const iconMap = {
+                'Computadora': 'fa-desktop',
+                'Tablet': 'fa-tablet-alt',
+                'Proyector': 'fa-video',
+                'Servidor': 'fa-server'
+            };
+            iconElement.className = `fas ${iconMap[equipo.tipo] || 'fa-laptop'} equipment-hero-icon`;
+
+            // Actualizar información general
+            const infoItems = document.querySelectorAll('.info-item-value');
+            if (infoItems.length >= 4) {
+                infoItems[0].textContent = equipo.tipo || 'N/A';
+                infoItems[1].textContent = equipo.salon || 'N/A';
+                infoItems[2].textContent = equipo.sede_nombre || 'N/A';
+                infoItems[3].textContent = formatDate(equipo.fecha_adquisicion);
+            }
+
+            // Actualizar especificaciones técnicas
+            const specValues = document.querySelectorAll('.spec-value');
+            if (specValues.length >= 4) {
+                specValues[0].textContent = equipo.sistema_operativo || 'N/A';
+                specValues[1].textContent = equipo.ram || 'N/A';
+                specValues[2].textContent = equipo.disco_duro || 'N/A';
+                specValues[3].textContent = equipo.procesador || 'N/A';
+            }
+
+            // Actualizar estado del equipo
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusText = statusIndicator.querySelector('span');
+            const estadoMap = {
+                'Disponible': { text: 'Disponible - Operativo', color: '#d4edda', textColor: '#155724' },
+                'Asignado': { text: 'Asignado - En Uso', color: '#d1ecf1', textColor: '#0c5460' },
+                'Mantenimiento': { text: 'En Mantenimiento', color: '#fff3cd', textColor: '#856404' },
+                'Incidente': { text: 'Reportado con Incidente', color: '#f8d7da', textColor: '#721c24' }
+            };
+
+            const estadoInfo = estadoMap[equipo.estado] || estadoMap['Disponible'];
+            statusIndicator.style.background = `linear-gradient(135deg, ${estadoInfo.color}, ${estadoInfo.color})`;
+            statusText.style.color = estadoInfo.textColor;
+            statusText.textContent = estadoInfo.text;
+            statusIndicator.querySelector('i').style.color = estadoInfo.textColor;
+
+            // Actualizar fechas de mantenimiento (si existen en los datos)
+            const estadoInfoItems = document.querySelectorAll('.info-item-value');
+            if (estadoInfoItems.length >= 6) {
+                estadoInfoItems[4].textContent = formatDate(equipo.ultima_revision || new Date());
+                estadoInfoItems[5].textContent = formatDate(equipo.proximo_mantenimiento || new Date());
+            }
+        }
+
+        // Cargar equipo asignado del backend
+        async function loadStudentEquipment() {
+            try {
+                const response = await fetch('/estudiante/api/mi-equipo');
+                
+                if (!response.ok) {
+                    throw new Error('Error al cargar el equipo');
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderEquipment(data.equipo);
+                } else {
+                    // No tiene equipo asignado
+                    renderEquipment(null);
+                }
+            } catch (error) {
+                console.error('Error al cargar el equipo:', error);
+                // Mostrar mensaje de error al usuario
+                document.getElementById('withEquipment').style.display = 'none';
+                document.getElementById('noEquipment').style.display = 'block';
+            }
+        }
+
+        // Inicializar la vista al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStudentEquipment();
+        });
+    </script>
+</body>
+</html>
+        

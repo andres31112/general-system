@@ -6,7 +6,7 @@ from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationE
 from wtforms_sqlalchemy.fields import QuerySelectField
 import re
 from extensions import db
-from controllers.models import Usuario, Rol, Sede, Curso, Asignatura
+from controllers.models import Usuario, Rol, Sede, Curso, Asignatura, Equipo, Salon
 
 # ================================
 # Funciones de Consulta para QuerySelectField
@@ -30,7 +30,6 @@ def get_all_subjects():
 
 def get_all_salones():
     """Retorna todos los salones ordenados por nombre con información de sede"""
-    from controllers.models import Salon
     return Salon.query.join(Sede).order_by(Salon.nombre).all()
 
 # ================================
@@ -463,6 +462,5 @@ class EquipoForm(FlaskForm):
     def validate_id_referencia(self, id_referencia):
         """Valida que la referencia del equipo no esté duplicada"""
         if id_referencia.data:
-            from controllers.models import Equipo
             if Equipo.query.filter_by(id_referencia=id_referencia.data).first():
                 raise ValidationError('Esta referencia ya está registrada. Por favor, elige una diferente.')

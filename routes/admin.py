@@ -13,7 +13,7 @@ from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoFo
 from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
-    HorarioCurso, Equipo, Incidente, Mantenimiento, Comunicacion, 
+    HorarioCurso, AsignacionEquipo, Equipo, Incidente, Mantenimiento, Comunicacion, 
     Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion
 )
 
@@ -2427,95 +2427,113 @@ def equipos():
     """Muestra la lista de equipos (página de equipos)."""
     return render_template('superadmin/gestion_inventario/equipos.html')
 
+@admin_bp.route('/api/equipos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipos_todos():
+    equipos = Equipo.query.all()
+    return jsonify([e.to_dict() for e in equipos])
+
+@admin_bp.route('/api/estudiantes-por-curso/<int:curso_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_estudiantes_por_curso(curso_id):
+    """API para obtener estudiantes de un curso específico"""
+    try:
+        # Obtener el rol de estudiante
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+        if not rol_estudiante:
+            return jsonify([]), 200
+        
+        # Obtener estudiantes matriculados en el curso
+        estudiantes = db.session.query(Usuario).join(
+            Matricula, Usuario.id_usuario == Matricula.estudianteId
+        ).filter(
+            Usuario.id_rol_fk == rol_estudiante.id_rol,
+            Matricula.cursoId == curso_id,
+            Usuario.estado_cuenta == 'activa'
+        ).order_by(Usuario.nombre, Usuario.apellido).all()
+        
+        # Formatear respuesta
+        estudiantes_data = []
+        for est in estudiantes:
+            estudiantes_data.append({
+                'id_usuario': est.id_usuario,
+                'nombre_completo': est.nombre_completo,
+                'no_identidad': est.no_identidad,
+                'correo': est.correo
+            })
+        
+        return jsonify(estudiantes_data), 200
+        
+    except Exception as e:
+        print(f"Error obteniendo estudiantes por curso: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @admin_bp.route('/registro_equipos', methods=['GET', 'POST'])
 @login_required
 @role_required(1)
 def crear_equipo():
     """Registro de nuevo equipo"""
     form = EquipoForm()
+    cursos = Curso.query.all()
     if form.validate_on_submit():
-        
-        if form.asignado_a.data:
-            estado_inicial = 'Asignado'
-        else:
-            estado_inicial = 'Disponible'
-        
-        nuevo_equipo = Equipo(
-            id_referencia=form.id_referencia.data,
-            nombre=form.nombre.data,
-            tipo=form.tipo.data,
-            estado=estado_inicial, 
-            id_salon_fk=form.salon.data.id_salon if form.salon.data else None,
-            asignado_a=form.asignado_a.data,
-            sistema_operativo=form.sistema_operativo.data,
-            ram=form.ram.data,
-            disco_duro=form.disco_duro.data,
-            fecha_adquisicion=datetime.strptime(form.fecha_adquisicion.data, '%Y-%m-%d').date() if form.fecha_adquisicion.data else None,
-            descripcion=form.descripcion.data,
-            observaciones=form.observaciones.data
-        )
-        db.session.add(nuevo_equipo)
-        db.session.commit()
+        try:
+            if form.asignado_a.data:
+                estado_inicial = 'Asignado'
+            else:
+                estado_inicial = 'Disponible'
+            
+            nuevo_equipo = Equipo(
+                id_referencia=form.id_referencia.data,
+                nombre=form.nombre.data,
+                tipo=form.tipo.data,
+                estado=estado_inicial,
+                id_salon_fk=form.salon.data.id_salon if form.salon.data else None,
+                sistema_operativo=form.sistema_operativo.data,
+                ram=form.ram.data,
+                disco_duro=form.disco_duro.data,
+                fecha_adquisicion=datetime.strptime(form.fecha_adquisicion.data, '%Y-%m-%d').date() if form.fecha_adquisicion.data else None,
+                descripcion=form.descripcion.data,
+                observaciones=form.observaciones.data
+            )
+            db.session.add(nuevo_equipo)
+            db.session.flush()  # Para obtener el ID del equipo
 
-        flash(f'Equipo "{nuevo_equipo.nombre}" creado exitosamente!', 'success')
-        return redirect(url_for('admin.equipos'))
+            # ✅ Procesar asignaciones de estudiantes
+            estudiantes_ids = request.form.getlist('estudiantes_asignados[]')
+
+            if estudiantes_ids:
+                for estudiante_id in estudiantes_ids:
+                    nueva_asignacion = AsignacionEquipo(
+                        equipo_id=nuevo_equipo.id_equipo,
+                        estudiante_id=int(estudiante_id),
+                        fecha_asignacion=datetime.now(),
+                        estado_asignacion='activa'
+                    )
+                    db.session.add(nueva_asignacion)
+
+                # Si hay asignaciones, cambiar estado del equipo
+                nuevo_equipo.estado = 'Asignado'
+
+            # Commit una vez aplicadas las operaciones
+            db.session.commit()
+
+            flash(f'Equipo "{nuevo_equipo.nombre}" creado exitosamente{f" con {len(estudiantes_ids)} asignaciones" if estudiantes_ids else ""}!', 'success')
+            return redirect(url_for('admin.equipos'))
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creando equipo: {e}")
+            flash(f'Error al crear equipo: {str(e)}', 'error')
+            return redirect(url_for('admin.crear_equipo'))
 
     return render_template(
         'superadmin/gestion_inventario/registro_equipo.html',
         title='Crear Nuevo Equipo',
-        form=form
+        form=form,
+        cursos=cursos
     )
-    
-@admin_bp.route('/api/equipos', methods=['GET'])
-@login_required
-@role_required(1)
-def api_equipos_todos():
-    """API para listar todos los equipos con información de salón y sede."""
-    try:
-        equipos_db = db.session.query(
-            Equipo.id_equipo,
-            Equipo.id_referencia,
-            Equipo.nombre,
-            Equipo.tipo,
-            Equipo.estado,
-            Equipo.asignado_a,
-            Equipo.sistema_operativo,
-            Equipo.ram,
-            Equipo.disco_duro,
-            Equipo.fecha_adquisicion,
-            Equipo.descripcion,
-            Equipo.observaciones,
-            Equipo.id_salon_fk,
-            Salon.nombre.label('salon_nombre'),
-            Sede.nombre.label('sede_nombre')
-        ).outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
-         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
-         .all()
-        
-        equipos = []
-        for eq in equipos_db:
-            equipos.append({
-                'id_equipo': eq.id_equipo,
-                'id_referencia': eq.id_referencia,
-                'nombre': eq.nombre,
-                'tipo': eq.tipo,
-                'estado': eq.estado,
-                'asignado_a': eq.asignado_a or "N/A",
-                'sistema_operativo': eq.sistema_operativo or "N/A",
-                'ram': eq.ram or "N/A",
-                'disco_duro': eq.disco_duro or "N/A",
-                'fecha_adquisicion': eq.fecha_adquisicion.strftime('%Y-%m-%d') if eq.fecha_adquisicion else "N/A",
-                'descripcion': eq.descripcion or "N/A",
-                'observaciones': eq.observaciones or "N/A",
-                'id_salon_fk': eq.id_salon_fk,
-                'salon_nombre': eq.salon_nombre or "Sin Salón",
-                'sede_nombre': eq.sede_nombre or "Sin Sede"
-            })
-
-        return jsonify(equipos), 200
-    except Exception as e:
-        print(f"Error al listar equipos: {e}")
-        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
 @admin_bp.route('/api/equipos/con-incidentes', methods=['GET'])
 @login_required
@@ -2548,11 +2566,11 @@ def api_equipos_con_incidentes():
         print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
 
-@admin_bp.route('/api/equipos/<int:id_equipo>', methods=['GET', 'PUT', 'DELETE'])
+@admin_bp.route('/api/equipos/<int:id_equipo>', methods=['GET', 'DELETE'])
 @login_required
 @role_required(1)
 def api_equipo_detalle(id_equipo):
-    """API para gestión detallada de equipos"""
+    """API para gestión detallada de equipos (Ver y Eliminar)"""
     equipo = Equipo.query.get_or_404(id_equipo)
     
     # Lógica de ELIMINACIÓN (DELETE)
@@ -2565,45 +2583,31 @@ def api_equipo_detalle(id_equipo):
             db.session.rollback()
             return jsonify({'success': False, 'error': f'Error al eliminar el equipo: {str(e)}'}), 500
 
-    # Lógica de EDICIÓN (PUT)
-    if request.method == 'PUT':
-        data = request.get_json()
-        
-        try:
-            equipo.asignado_a = data.get('asignado_a', equipo.asignado_a)
-            equipo.estado = data.get('estado', equipo.estado)
-            equipo.sistema_operativo = data.get('sistema_operativo', equipo.sistema_operativo)
-            equipo.ram = data.get('ram', equipo.ram)
-            equipo.disco_duro = data.get('disco_duro', equipo.disco_duro)
-            equipo.descripcion = data.get('descripcion', equipo.descripcion)
-            equipo.observaciones = data.get('observaciones', equipo.observaciones)
-            
-            fecha_adquisicion_str = data.get('fecha_adquisicion')
-            if fecha_adquisicion_str:
-                equipo.fecha_adquisicion = datetime.strptime(fecha_adquisicion_str, '%Y-%m-%d').date()
-            else:
-                equipo.fecha_adquisicion = None
-
-            # Actualizar id_salon_fk si se proporciona
-            id_salon_fk = data.get('id_salon_fk')
-            if id_salon_fk is not None:
-                salon = Salon.query.get(id_salon_fk)
-                if salon:
-                    equipo.id_salon_fk = id_salon_fk
-                else:
-                    return jsonify({'success': False, 'error': 'Salón no encontrado para la actualización.'}), 400
-
-            db.session.commit()
-            return jsonify({'success': True, 'message': 'Equipo actualizado exitosamente'}), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'error': f'Error al actualizar el equipo: {str(e)}'}), 500
-            
     # Lógica de VISTA (GET)
     if request.method == 'GET':
         data = equipo.to_dict()
         data['salon_nombre'] = equipo.salon.nombre if equipo.salon else "Sin Salón"
         data['sede_nombre'] = equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else "Sin Sede"
+
+        # ✅ Información detallada de asignaciones
+        asignaciones_activas = equipo.get_asignaciones_activas()
+        data['asignaciones'] = []
+        
+        for asig in asignaciones_activas:
+            # Obtener curso del estudiante
+            matricula = Matricula.query.filter_by(
+                estudianteId=asig.estudiante_id
+            ).order_by(Matricula.año.desc()).first()
+            
+            data['asignaciones'].append({
+                'id_asignacion': asig.id_asignacion,
+                'estudiante_id': asig.estudiante_id,
+                'estudiante_nombre': asig.estudiante.nombre_completo if asig.estudiante else 'Desconocido',
+                'estudiante_curso': matricula.curso.nombreCurso if matricula and matricula.curso else 'Sin curso',
+                'curso_id': matricula.cursoId if matricula else None,
+                'fecha_asignacion': asig.fecha_asignacion.strftime('%Y-%m-%d') if asig.fecha_asignacion else None,
+                'observaciones': asig.observaciones
+            })
 
         data['incidentes'] = [
             {'fecha': i.fecha.strftime("%Y-%m-%d"), 'descripcion': i.descripcion} 
@@ -2627,6 +2631,140 @@ def salones():
 # ===============================
 # API Sedes, Salas y Equipos
 # ===============================
+
+@admin_bp.route('/api/estudiante/<int:estudiante_id>/equipos-en-sala/<int:salon_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_verificar_equipo_estudiante_en_sala(estudiante_id, salon_id):
+    """API para verificar si un estudiante ya tiene un equipo asignado en una sala específica"""
+    try:
+        # Buscar asignaciones activas del estudiante en esta sala específica
+        asignacion_en_sala = db.session.query(AsignacionEquipo)\
+            .join(Equipo, AsignacionEquipo.equipo_id == Equipo.id_equipo)\
+            .filter(
+                AsignacionEquipo.estudiante_id == estudiante_id,
+                AsignacionEquipo.estado_asignacion == 'activa',
+                Equipo.id_salon_fk == salon_id
+            ).first()
+        
+        if asignacion_en_sala:
+            return jsonify({
+                'tiene_equipo_en_sala': True,
+                'equipo_id': asignacion_en_sala.equipo_id,
+                'equipo_nombre': asignacion_en_sala.equipo.nombre,
+                'salon_id': salon_id,
+                'salon_nombre': asignacion_en_sala.equipo.salon.nombre if asignacion_en_sala.equipo.salon else 'Sin nombre'
+            }), 200
+        
+        return jsonify({
+            'tiene_equipo_en_sala': False,
+            'equipo_id': None,
+            'equipo_nombre': None
+        }), 200
+        
+    except Exception as e:
+        print(f"Error verificando equipo del estudiante en sala: {e}")
+        return jsonify({'error': str(e)}), 500
+    
+@admin_bp.route('/api/equipos/<int:equipo_id>/actualizar', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_equipo(equipo_id):
+    """API para actualizar equipo con validación: solo UN equipo por estudiante por sala"""
+    try:
+        data = request.get_json()
+        equipo = Equipo.query.get_or_404(equipo_id)
+        
+        # Actualizar campos básicos
+        equipo.sistema_operativo = data.get('sistema_operativo', equipo.sistema_operativo)
+        equipo.ram = data.get('ram', equipo.ram)
+        equipo.disco_duro = data.get('disco_duro', equipo.disco_duro)
+        equipo.descripcion = data.get('descripcion', equipo.descripcion)
+        equipo.observaciones = data.get('observaciones', equipo.observaciones)
+        
+        if data.get('fecha_adquisicion'):
+            equipo.fecha_adquisicion = datetime.strptime(data['fecha_adquisicion'], '%Y-%m-%d').date()
+        
+        # Procesar asignaciones
+        asignaciones_nuevas = data.get('asignaciones', [])
+        salon_id = equipo.id_salon_fk
+        
+        # ✅ VALIDACIÓN: Verificar que ningún estudiante tenga YA otro equipo en ESTA sala
+        for asig_data in asignaciones_nuevas:
+            estudiante_id = asig_data['estudiante_id']
+            
+            # Buscar si el estudiante tiene OTRO equipo activo en ESTA MISMA sala
+            otra_asignacion_misma_sala = db.session.query(AsignacionEquipo)\
+                .join(Equipo, AsignacionEquipo.equipo_id == Equipo.id_equipo)\
+                .filter(
+                    AsignacionEquipo.estudiante_id == estudiante_id,
+                    AsignacionEquipo.estado_asignacion == 'activa',
+                    Equipo.id_salon_fk == salon_id,
+                    Equipo.id_equipo != equipo_id  # Excluir el equipo actual
+                ).first()
+            
+            if otra_asignacion_misma_sala:
+                estudiante = Usuario.query.get(estudiante_id)
+                equipo_existente = otra_asignacion_misma_sala.equipo
+                salon_nombre = equipo_existente.salon.nombre if equipo_existente.salon else 'Sin nombre'
+                return jsonify({
+                    'success': False,
+                    'error': f'❌ El estudiante "{estudiante.nombre_completo}" ya tiene el equipo "{equipo_existente.nombre}" asignado en esta sala ({salon_nombre}).\n\nSolo puede tener UN equipo por sala.'
+                }), 400
+        
+        # Eliminar asignaciones que ya no están en la lista
+        asignaciones_actuales = AsignacionEquipo.query.filter_by(
+            equipo_id=equipo_id,
+            estado_asignacion='activa'
+        ).all()
+        
+        estudiantes_nuevos_ids = [asig['estudiante_id'] for asig in asignaciones_nuevas]
+        
+        for asig_actual in asignaciones_actuales:
+            if asig_actual.estudiante_id not in estudiantes_nuevos_ids:
+                asig_actual.estado_asignacion = 'devuelto'
+                asig_actual.fecha_devolucion = datetime.now()
+        
+        # Agregar nuevas asignaciones
+        for asig_data in asignaciones_nuevas:
+            estudiante_id = asig_data['estudiante_id']
+            
+            # Verificar si ya existe esta asignación específica
+            existe = AsignacionEquipo.query.filter_by(
+                equipo_id=equipo_id,
+                estudiante_id=estudiante_id,
+                estado_asignacion='activa'
+            ).first()
+            
+            if not existe:
+                nueva_asignacion = AsignacionEquipo(
+                    equipo_id=equipo_id,
+                    estudiante_id=estudiante_id,
+                    fecha_asignacion=datetime.now(),
+                    estado_asignacion='activa'
+                )
+                db.session.add(nueva_asignacion)
+        
+        # Actualizar estado del equipo
+        if len(estudiantes_nuevos_ids) > 0:
+            equipo.estado = 'Asignado'
+        else:
+            equipo.estado = 'Disponible'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'✅ Equipo actualizado exitosamente con {len(estudiantes_nuevos_ids)} asignaciones'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error actualizando equipo: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Error del servidor: {str(e)}'
+        }), 500
 
 @admin_bp.route('/api/sedes/<int:id_sede>/salas')
 @login_required
@@ -2660,15 +2798,15 @@ def api_salas_todas():
 @admin_bp.route('/api/salones/<int:id_salon>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 @role_required(1)
-def api_salon_detalle(salon_id):
+def api_salon_detalle(id_salon):
     """
     Endpoint para gestionar un salón específico (Ver, Editar, Eliminar).
     """
-    salon = Salon.query.get_or_404(salon_id)
+    salon = Salon.query.get_or_404(id_salon)
 
     if request.method == 'GET':
         sede_nombre = salon.sede.nombre if salon.sede else 'N/A'
-        total_equipos = Equipo.query.filter_by(id_salon_fk=salon_id).count()
+        total_equipos = Equipo.query.filter_by(id_salon_fk=id_salon).count()
         return jsonify({
             'id_salon': salon.id_salon,
             'nombre': salon.nombre,
@@ -2696,7 +2834,7 @@ def api_salon_detalle(salon_id):
 
     if request.method == 'DELETE':
         # Verificar si hay equipos asociados antes de eliminar
-        equipos_asociados = Equipo.query.filter_by(id_salon_fk=salon_id).first()
+        equipos_asociados = Equipo.query.filter_by(id_salon_fk=id_salon).first()
         if equipos_asociados:
             return jsonify({'success': False, 'error': 'No se puede eliminar el salón porque tiene equipos asociados.'}), 400
         try:
@@ -2718,9 +2856,9 @@ def api_equipos_por_sala(id_sede, id_salon):
         data.append({
             "id": eq.id_equipo,
             "nombre": eq.nombre,
-            "estado": eq.estado,
-            "asignado_a": eq.asignado_a or ""
+            "estado": eq.estado
         })
+        
     return jsonify(data)
 
 @admin_bp.route('/reportes')
@@ -2954,17 +3092,24 @@ def api_listar_incidentes():
 @role_required(1)
 def api_crear_incidente():
     """
-    Crea un nuevo incidente SIN cambiar el estado del equipo.
+    Crea un nuevo incidente.
     """
     try:
         data = request.get_json()
         
-        # Validación de datos obligatorios
+        # ✅ Validación de datos obligatorios
         equipo_id = data.get('equipo_id')
         descripcion = data.get('descripcion', '').strip()
         prioridad = data.get('prioridad', 'media')
         usuario_reporte = data.get('usuario_reporte', '').strip()
         
+        print(f"DEBUG - Datos recibidos:")
+        print(f"  equipo_id: {equipo_id}")
+        print(f"  descripcion: {descripcion}")
+        print(f"  prioridad: {prioridad}")
+        print(f"  usuario_reporte: {usuario_reporte}")
+        
+        # Validaciones
         if not equipo_id:
             return jsonify({
                 'success': False, 
@@ -2983,7 +3128,7 @@ def api_crear_incidente():
                 'error': 'El usuario que reporta es obligatorio.'
             }), 400
 
-        # Verificar que el equipo exista
+        # Verificar que el equipo existe
         equipo = Equipo.query.get(equipo_id)
         if not equipo:
             return jsonify({
@@ -2996,9 +3141,10 @@ def api_crear_incidente():
         if equipo.salon and equipo.salon.sede:
             sede_nombre = equipo.salon.sede.nombre
 
-        # Crear el incidente
+        # ✅ Crear el incidente con el nombre de campo correcto
+        # Verifica en tu models.py si el campo se llama 'equipo_id' o 'id_equipo'
         nuevo_incidente = Incidente(
-            id_equipo=equipo_id,
+            equipo_id=equipo_id,  # Cambia a id_equipo si es necesario
             usuario_asignado=usuario_reporte,
             sede=sede_nombre,
             fecha=datetime.now(),
@@ -3009,13 +3155,17 @@ def api_crear_incidente():
         )
         
         db.session.add(nuevo_incidente)
+        db.session.flush()  # Para obtener el ID antes del commit
+        
+        print(f"DEBUG - Incidente creado con ID: {nuevo_incidente.id_incidente}")
+        
         db.session.commit()
         
         return jsonify({
             'success': True, 
             'message': 'Incidente creado exitosamente',
             'incidente': {
-                'id_incidente': nuevo_incidente.id_incidente,
+                'id': nuevo_incidente.id_incidente,
                 'equipo_nombre': equipo.nombre,
                 'usuario_reporte': usuario_reporte,
                 'fecha': nuevo_incidente.fecha.strftime('%Y-%m-%d %H:%M:%S'),
@@ -3024,17 +3174,16 @@ def api_crear_incidente():
             }
         }), 201
 
-    except IntegrityError as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False, 
-            'error': 'Error de integridad de datos. Verifique la información.'
-        }), 400
     except Exception as e:
         db.session.rollback()
-        print(f"Error al crear incidente: {e}")
-        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
-
+        print(f"❌ ERROR al crear incidente: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'error': f'Error interno del servidor: {str(e)}'
+        }), 500
+ 
 @admin_bp.route('/api/incidentes/<int:id_incidente>/estado', methods=['PUT'])
 @login_required
 @role_required(1)
