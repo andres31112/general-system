@@ -1,0 +1,160 @@
+:root {
+    --accent1: #F95738;
+    --accent2: #EE964B;
+    --accent3: #F4D35E;
+    --accent4: #0D3B66;
+    --light: #FAF0CA;
+    --main-bg: #F8F9FA;
+}
+
+body{
+    background-color: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%) !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header Styles */
+.custom-header {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: white;
+    padding: 18px 25px;
+    border-radius: 12px;
+    max-width: 90%;
+    margin: 0 auto 25px auto;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.custom-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.header-icons i {
+    font-size: 20px;
+    margin-left: 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.header-icons i:hover {
+    color: var(--accent3);
+}
+
+.atras i:hover {
+    color: var(--accent4);
+    background: white;
+    padding: 5px 5px;
+    border-radius: 10px;
+}
+
+.logo {
+    font-size: 32px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, white, #f8f9fa);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.summary-card i {
+    font-size: 42px;
+    margin-bottom: 15px;
+}
+
+.summary-card h3 {
+    color: #666;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.summary-card .number {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent4);
+}
+
+.total{
+    border-top: 5px solid #007bff;
+    color: #007bff
+}
+
+.sala-computo{
+    border-top: 5px solid #28a745;
+    color: #28a745;
+}
+
+.sala-general{
+    border-top: 5px solid #17a2b8;
+    color: #17a2b8;
+}
+
+.main-panel {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.panel-content {
+    padding: 0 !important;
+}
+
+.tabla-head{
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: white;
+    padding: 15px 20px;
+    width: 100%;
+    border-radius: 15px 15px 0 0;
+    margin: 0;
+}
+
+#pestanas-sedes .nav-link.active {
+    background-color: var(--accent3);
+    color: black !important;
+    font-weight: 600;
+}
+
+.tab-content {
+    background-color: white;
+    border-radius: 0 0 15px 15px;
+    margin: 0;
+}
+
+.tab-pane {
+    padding: 0;
+    margin: 0;
+}
+
+.tabla-body {
+    background-color: white;
+    border-radius: 0 0 15px 15px;
+}
+
+.tabla-inventario {
+    margin: 0;
+    border-radius: 0 0 15px 15px;
+}
+
+.tabla-inventario thead {
+    background-color: #f8f9fa;
+}
+
+.tabla-inventario tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 15px;
+}
+
+.tabla-inventario tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 15px;
+}

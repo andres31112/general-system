@@ -76,19 +76,23 @@ body{
     margin-bottom: 15px;
 }
 
-.summary-card .lista {
+.lista {
+    border-top: 5px solid rgb(249, 87, 56);
     color: rgb(249, 87, 56);
 }
 
-.summary-card .disponible {
+.disponible {
+    border-top: 5px solid rgb(68, 180, 0);
     color: rgb(68, 180, 0);
 }
 
-.summary-card .incidente {
+.incidente {
+    border-top: 5px solid rgb(220, 53, 69);
     color: rgb(220, 53, 69);
 }
 
-.summary-card .mantenimiento {
+.mantenimiento {
+    border-top: 5px solid rgb(255, 193, 7);
     color: rgb(255, 193, 7);
 }
 .summary-card h3 {
