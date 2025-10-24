@@ -2798,15 +2798,15 @@ def api_salas_todas():
 @admin_bp.route('/api/salones/<int:id_salon>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 @role_required(1)
-def api_salon_detalle(salon_id):
+def api_salon_detalle(id_salon):
     """
     Endpoint para gestionar un salón específico (Ver, Editar, Eliminar).
     """
-    salon = Salon.query.get_or_404(salon_id)
+    salon = Salon.query.get_or_404(id_salon)
 
     if request.method == 'GET':
         sede_nombre = salon.sede.nombre if salon.sede else 'N/A'
-        total_equipos = Equipo.query.filter_by(id_salon_fk=salon_id).count()
+        total_equipos = Equipo.query.filter_by(id_salon_fk=id_salon).count()
         return jsonify({
             'id_salon': salon.id_salon,
             'nombre': salon.nombre,
@@ -2834,7 +2834,7 @@ def api_salon_detalle(salon_id):
 
     if request.method == 'DELETE':
         # Verificar si hay equipos asociados antes de eliminar
-        equipos_asociados = Equipo.query.filter_by(id_salon_fk=salon_id).first()
+        equipos_asociados = Equipo.query.filter_by(id_salon_fk=id_salon).first()
         if equipos_asociados:
             return jsonify({'success': False, 'error': 'No se puede eliminar el salón porque tiene equipos asociados.'}), 400
         try:
@@ -3092,17 +3092,24 @@ def api_listar_incidentes():
 @role_required(1)
 def api_crear_incidente():
     """
-    Crea un nuevo incidente SIN cambiar el estado del equipo.
+    Crea un nuevo incidente.
     """
     try:
         data = request.get_json()
         
-        # Validación de datos obligatorios
+        # ✅ Validación de datos obligatorios
         equipo_id = data.get('equipo_id')
         descripcion = data.get('descripcion', '').strip()
         prioridad = data.get('prioridad', 'media')
         usuario_reporte = data.get('usuario_reporte', '').strip()
         
+        print(f"DEBUG - Datos recibidos:")
+        print(f"  equipo_id: {equipo_id}")
+        print(f"  descripcion: {descripcion}")
+        print(f"  prioridad: {prioridad}")
+        print(f"  usuario_reporte: {usuario_reporte}")
+        
+        # Validaciones
         if not equipo_id:
             return jsonify({
                 'success': False, 
@@ -3121,7 +3128,7 @@ def api_crear_incidente():
                 'error': 'El usuario que reporta es obligatorio.'
             }), 400
 
-        # Verificar que el equipo exista
+        # Verificar que el equipo existe
         equipo = Equipo.query.get(equipo_id)
         if not equipo:
             return jsonify({
@@ -3134,9 +3141,10 @@ def api_crear_incidente():
         if equipo.salon and equipo.salon.sede:
             sede_nombre = equipo.salon.sede.nombre
 
-        # Crear el incidente
+        # ✅ Crear el incidente con el nombre de campo correcto
+        # Verifica en tu models.py si el campo se llama 'equipo_id' o 'id_equipo'
         nuevo_incidente = Incidente(
-            id_equipo=equipo_id,
+            equipo_id=equipo_id,  # Cambia a id_equipo si es necesario
             usuario_asignado=usuario_reporte,
             sede=sede_nombre,
             fecha=datetime.now(),
@@ -3147,13 +3155,17 @@ def api_crear_incidente():
         )
         
         db.session.add(nuevo_incidente)
+        db.session.flush()  # Para obtener el ID antes del commit
+        
+        print(f"DEBUG - Incidente creado con ID: {nuevo_incidente.id_incidente}")
+        
         db.session.commit()
         
         return jsonify({
             'success': True, 
             'message': 'Incidente creado exitosamente',
             'incidente': {
-                'id_incidente': nuevo_incidente.id_incidente,
+                'id': nuevo_incidente.id_incidente,
                 'equipo_nombre': equipo.nombre,
                 'usuario_reporte': usuario_reporte,
                 'fecha': nuevo_incidente.fecha.strftime('%Y-%m-%d %H:%M:%S'),
@@ -3162,17 +3174,16 @@ def api_crear_incidente():
             }
         }), 201
 
-    except IntegrityError as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False, 
-            'error': 'Error de integridad de datos. Verifique la información.'
-        }), 400
     except Exception as e:
         db.session.rollback()
-        print(f"Error al crear incidente: {e}")
-        return jsonify({'success': False, 'error': f'Error interno del servidor: {str(e)}'}), 500
-
+        print(f"❌ ERROR al crear incidente: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'error': f'Error interno del servidor: {str(e)}'
+        }), 500
+ 
 @admin_bp.route('/api/incidentes/<int:id_incidente>/estado', methods=['PUT'])
 @login_required
 @role_required(1)

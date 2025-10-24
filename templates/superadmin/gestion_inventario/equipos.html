@@ -117,7 +117,7 @@
             <div class="col-md-4 col-12">
                 <div class="card salas-card">
                     <div class="card-header bg-white border-0">
-                        <ul class="nav nav-tabs card-header-tabs position-relative">
+                        <ul class="nav nav-tabs card-header-tabs position-relative g-2">
                             <!-- Las pestañas se llenarán dinámicamente -->
                         </ul>
                     </div>
@@ -446,9 +446,9 @@ async function cargarEquiposConIncidentes() {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         equiposConIncidentes = data.equipos_con_incidentes || [];
-        console.log('Equipos con incidentes:', equiposConIncidentes);
+        console.log('✅ Equipos con incidentes:', equiposConIncidentes);
     } catch (error) {
-        console.error('Error cargando equipos con incidentes:', error);
+        console.error('❌ Error cargando equipos con incidentes:', error);
         equiposConIncidentes = [];
     }
 }
@@ -462,9 +462,9 @@ async function cargarEquiposConMantenimientos() {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         equiposConMantenimientos = data.equipos_con_mantenimientos || [];
-        console.log('Equipos con mantenimientos:', equiposConMantenimientos);
+        console.log('✅ Equipos con mantenimientos:', equiposConMantenimientos);
     } catch (error) {
-        console.error('Error cargando equipos con mantenimientos:', error);
+        console.error('❌ Error cargando equipos con mantenimientos:', error);
         equiposConMantenimientos = [];
     }
 }
@@ -474,16 +474,17 @@ async function cargarEquiposConMantenimientos() {
 // ========================================
 async function cargarSalas() {
     try {
-        const res = await fetch('/api/salas_todas');
+        const res = await fetch('/admin/api/salas_todas');
         const salas = await res.json();
         salasDisponibles = salas.map(sala => ({
             id: sala.id_salon,
             nombre: sala.nombre,
-            sede_id: sala.sede_id,
+            sede_id: sala.id_sede,
             sede_nombre: sala.sede_nombre || 'Desconocida'
         }));
+        console.log('✅ Salas cargadas:', salasDisponibles.length);
     } catch (error) {
-        console.error('Error cargando salas:', error);
+        console.error('❌ Error cargando salas:', error);
     }
 }
 
@@ -494,30 +495,28 @@ function crearTabsSedes(sedes) {
     const tabsContainer = document.querySelector('.nav.nav-tabs.card-header-tabs');
     tabsContainer.innerHTML = '';
     
+    console.log('📌 Creando tabs para', sedes.length, 'sedes');
+    
     sedes.forEach((sede, index) => {
         const tabItem = document.createElement('li');
         tabItem.className = 'nav-item';
         
         const tabLink = document.createElement('a');
         tabLink.className = `nav-link ${index === 0 ? 'active' : ''}`;
-        tabLink.id = `tab-sede-${sede.id_sede || sede.id}`;
+        tabLink.id = `tab-sede-${sede.id_sede}`;
         tabLink.href = '#';
         tabLink.innerHTML = `<i class="fa-solid fa-building me-1"></i>${sede.nombre}`;
         
-        // Agregar evento de clic
         tabLink.addEventListener('click', async (event) => {
             event.preventDefault();
+            console.log('🔄 Click en sede:', sede.nombre, 'ID:', sede.id_sede);
             
-            // Remover clase active de todos los tabs
             document.querySelectorAll('.salas-card .nav-link').forEach(el => {
                 el.classList.remove('active');
             });
             
-            // Agregar clase active al tab seleccionado
             tabLink.classList.add('active');
-            
-            // Mostrar los datos de la sede
-            await mostrarSede(sede.id_sede || sede.id);
+            await mostrarSede(sede.id_sede);
         });
         
         tabItem.appendChild(tabLink);
@@ -532,42 +531,71 @@ async function cargarSedes() {
         const sedes = await res.json();
         sedesGlobal = sedes;
         
+        console.log('✅ Sedes cargadas:', sedes);
+        
         crearTabsSedes(sedes);
         await cargarSalas();
+        
+        // ✅ CAMBIO: Cargar TODOS los equipos al inicio
         await mostrarTodosLosEquipos();
         
+        // Mostrar las salas de la primera sede
+        if (sedes.length > 0) {
+            await mostrarSalasDeSede(sedes[0].id_sede);
+        }
+        
     } catch (error) {
-        console.error('Error cargando sedes:', error);
+        console.error('❌ Error cargando sedes:', error);
         await mostrarTodosLosEquipos();
     }
 }
 
-async function mostrarSede(sedeId) {
+// ✅ NUEVA FUNCIÓN: Solo muestra las salas de una sede, SIN cambiar los equipos
+async function mostrarSalasDeSede(sedeId) {
+    console.log('🏢 Mostrando salas de sede ID:', sedeId);
+    
     // Actualizar tab activo
     document.querySelectorAll('.salas-card .nav-link').forEach(el => el.classList.remove('active'));
     const tab = document.getElementById(`tab-sede-${sedeId}`);
-    if (tab) tab.classList.add('active');
+    if (tab) {
+        tab.classList.add('active');
+        console.log('✅ Tab activado para sede', sedeId);
+    }
 
     const tbodySalas = document.getElementById('tablaSalas');
     tbodySalas.innerHTML = '<tr><td colspan="2" class="text-muted">Cargando salas...</td></tr>';
 
     try {
-        const res = await fetch(`/admin/api/sedes/${sedeId}/salas`);
+        const url = `/admin/api/sedes/${sedeId}/salas`;
+        console.log('📡 Fetch a:', url);
+        
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const salones = await res.json();
+        
+        console.log('✅ Salones recibidos:', salones);
         
         tbodySalas.innerHTML = '';
         
         if (salones.length === 0) {
             tbodySalas.innerHTML = '<tr><td colspan="2" class="text-muted">No hay salas en esta sede.</td></tr>';
-            mostrarEquiposDeSede(sedeId);
             return;
         }
 
         salones.forEach((salon, index) => {
             const row = document.createElement('tr');
             row.style.cursor = 'pointer';
-            row.onclick = () => mostrarEquiposDeSala(sedeId, salon.id);
+            row.className = 'sala-row';
+            row.onclick = () => {
+                console.log('🚪 Click en sala:', salon.nombre, 'ID:', salon.id_salon);
+                
+                // Resaltar la sala seleccionada
+                document.querySelectorAll('.sala-row').forEach(r => r.classList.remove('table-active'));
+                row.classList.add('table-active');
+                
+                // ✅ AQUÍ ES DONDE SE FILTRAN LOS EQUIPOS POR SALA
+                mostrarEquiposDeSala(sedeId, salon.id_salon);
+            };
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td><i class="fa-solid fa-door-open me-1"></i>${salon.nombre}</td>
@@ -575,21 +603,27 @@ async function mostrarSede(sedeId) {
             tbodySalas.appendChild(row);
         });
 
-        // Mostrar equipos de la sede seleccionada
-        await mostrarEquiposDeSede(sedeId);
-
     } catch (error) {
-        console.error('Error cargando salones:', error);
+        console.error('❌ Error cargando salones:', error);
         tbodySalas.innerHTML = '<tr><td colspan="2" class="text-danger">Error al cargar salas.</td></tr>';
-        await mostrarEquiposDeSede(sedeId);
     }
 }
+
+// ✅ MODIFICADO: mostrarSede ahora solo cambia las salas, NO los equipos
+async function mostrarSede(sedeId) {
+    await mostrarSalasDeSede(sedeId);
+}
+
 // ========================================
 // MOSTRAR EQUIPOS
 // ========================================
 async function mostrarTodosLosEquipos() {
+    console.log('🌐 Mostrando todos los equipos...');
     equiposGlobal = [];
     paginaActual = 1;
+    
+    // Limpiar resaltado de salas
+    document.querySelectorAll('.sala-row').forEach(r => r.classList.remove('table-active'));
     
     try {
         await cargarEquiposConIncidentes();
@@ -604,45 +638,12 @@ async function mostrarTodosLosEquipos() {
             sala: eq.salon || 'Desconocida'
         }));
         
-        console.log('📊 Total equipos:', equiposGlobal.length);
+        console.log('✅ Total equipos cargados:', equiposGlobal.length);
         
         actualizarResumen(equiposGlobal);
         renderizarTabla();
     } catch (error) {
-        console.error('Error cargando todos los equipos:', error);
-        equiposGlobal = [];
-        actualizarResumen(equiposGlobal);
-        renderizarTabla();
-    }
-}
-
-async function mostrarEquiposDeSede(id_sede) {
-    equiposGlobal = [];
-    paginaActual = 1;
-    
-    try {
-        await cargarEquiposConIncidentes();
-        
-        const resSalas = await fetch(`/admin/api/sedes/${id_sede}/salas`);
-        if (!resSalas.ok) throw new Error(`HTTP error! status: ${resSalas.status}`);
-        const salas = await resSalas.json();
-
-        for (const sala of salas) {
-            const resEquipos = await fetch(`/admin/api/sedes/${id_sede}/salas/${sala.id_salon}/equipos`);
-            if (!resEquipos.ok) throw new Error(`HTTP error! status: ${resEquipos.status}`);
-            const equipos = await resEquipos.json();
-            equipos.forEach(eq => {
-                equiposGlobal.push({
-                    ...eq,
-                    sede: sedesGlobal.find(s => s.id === id_sede)?.nombre || 'Desconocida',
-                    sala: sala.nombre || 'Desconocida'
-                });
-            });
-        }
-        actualizarResumen(equiposGlobal);
-        renderizarTabla();
-    } catch (error) {
-        console.error('Error cargando equipos de la sede:', error);
+        console.error('❌ Error cargando todos los equipos:', error);
         equiposGlobal = [];
         actualizarResumen(equiposGlobal);
         renderizarTabla();
@@ -650,17 +651,23 @@ async function mostrarEquiposDeSede(id_sede) {
 }
 
 async function mostrarEquiposDeSala(id_sede, id_salon) {
+    console.log('🚪 Cargando equipos de sala ID:', id_salon, 'en sede:', id_sede);
     equiposGlobal = [];
     paginaActual = 1;
     
     try {
         await cargarEquiposConIncidentes();
         
-        const res = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
+        const url = `/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`;
+        console.log('📡 Fetch a:', url);
+        
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const equipos = await res.json();
 
-        const sede = sedesGlobal.find(s => s.id === id_sede);
+        console.log('✅ Equipos recibidos:', equipos);
+
+        const sede = sedesGlobal.find(s => s.id_sede === id_sede);
         const sala = salasDisponibles.find(s => s.id === id_salon);
 
         equipos.forEach(eq => {
@@ -671,10 +678,11 @@ async function mostrarEquiposDeSala(id_sede, id_salon) {
             });
         });
 
+        console.log('✅ Equipos procesados:', equiposGlobal.length);
         actualizarResumen(equiposGlobal);
         renderizarTabla();
     } catch (error) {
-        console.error('Error cargando equipos:', error);
+        console.error('❌ Error cargando equipos:', error);
         equiposGlobal = [];
         actualizarResumen(equiposGlobal);
         renderizarTabla();
@@ -693,7 +701,7 @@ function renderizarTabla() {
     const equiposPagina = equiposGlobal.slice(inicio, fin);
 
     if (equiposPagina.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-muted py-3">No se encontraron equipos.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-muted py-3">No se encontraron equipos.</td></tr>`;
         document.getElementById('paginaActual').textContent = `Página 0 de 0`;
         document.getElementById('btnAnterior').disabled = true;
         document.getElementById('btnSiguiente').disabled = true;
@@ -701,11 +709,9 @@ function renderizarTabla() {
     }
 
     equiposPagina.forEach(eq => {
-        const equipoId = parseInt(eq.id_equipo);
+        const equipoId = parseInt(eq.equipoId || eq.id_equipo || eq.id);
         const tieneIncidente = equiposConIncidentes.includes(eq.id_equipo);
         const tieneMantenimiento = equiposConMantenimientos.includes(eq.id_equipo);
-        
-        console.log(`Equipo: ${eq.nombre}, ID: ${equipoId}, Incidente: ${tieneIncidente}`);
 
         let estadoBadge = '';
         if (eq.estado === 'Disponible') estadoBadge = `<span class="badge text-bg-primary">Disponible</span>`;
@@ -733,13 +739,13 @@ function renderizarTabla() {
             <td>${eq.sala || '-'}</td>
             <td>${eq.asignado_a || '-'}</td>
             <td>
-                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id_equipo})" title="Ver detalles">
+                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id})" title="Ver detalles">
                     <i class="fa-solid fa-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id_equipo})" title="Editar equipo">
+                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id})" title="Editar equipo">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id_equipo})" title="Eliminar equipo">
+                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id})" title="Eliminar equipo">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </td> 
@@ -1078,15 +1084,15 @@ async function guardarEdicionEquipo(e) {
         const data = await res.json();
         
         if (res.ok) {
-            alert('Equipo actualizado correctamente');
+            alert('✅ Equipo actualizado correctamente');
             bootstrap.Modal.getInstance(document.getElementById('editarEquipoModal')).hide();
             await mostrarTodosLosEquipos();
         } else {
-            alert(`Error: ${data.error || 'No se pudo actualizar el equipo'}`);
+            alert(`❌ Error: ${data.error || 'No se pudo actualizar el equipo'}`);
         }
     } catch (error) {
         console.error('Error guardando edición:', error);
-        alert('Error al guardar los cambios');
+        alert('❌ Error al guardar los cambios');
     }
 }
 
@@ -1113,14 +1119,14 @@ async function eliminarEquipo(id) {
         const responseData = await res.json();
         
         if (res.ok) {
-            alert(responseData.message || 'Equipo eliminado con éxito.');
+            alert(responseData.message || '✅ Equipo eliminado con éxito.');
             await mostrarTodosLosEquipos();
         } else {
-            alert(`Error al eliminar el equipo: ${responseData.error || 'Error desconocido'}`);
+            alert(`❌ Error al eliminar el equipo: ${responseData.error || 'Error desconocido'}`);
         }
     } catch (err) {
         console.error('Error al eliminar equipo', err);
-        alert('Error de conexión al eliminar el equipo.');
+        alert('❌ Error de conexión al eliminar el equipo.');
     }
 }
 
@@ -1129,9 +1135,21 @@ async function eliminarEquipo(id) {
 // ========================================
 async function verEquipo(id) {
     try {
-        const res = await fetch(`/admin/api/equipos/${id}`);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        console.log('🔍 Intentando ver equipo ID:', id);
+        const url = `/admin/api/equipos/${id}`;
+        console.log('📡 URL completa:', url);
+        
+        const res = await fetch(url);
+        console.log('📥 Respuesta recibida:', res.status);
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('❌ Error del servidor:', errorText);
+            throw new Error(`HTTP error! status: ${res.status} - ${errorText}`);
+        }
+        
         const equipo = await res.json();
+        console.log('✅ Equipo recibido:', equipo);
 
         document.getElementById('detalle-id-referencia').textContent = equipo.id_referencia || '-';
         document.getElementById('detalle-nombre').textContent = equipo.nombre || '-';
@@ -1184,7 +1202,7 @@ async function verEquipo(id) {
         new bootstrap.Modal(document.getElementById('verEquipoModal')).show();
     } catch (err) {
         console.error('Error al ver equipo', err);
-        alert('Error al cargar los detalles del equipo.');
+        alert('❌ Error al cargar los detalles del equipo.');
     }
 }
 </script>

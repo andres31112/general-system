@@ -578,12 +578,12 @@
                     <td>
                         <div class="btn-group" role="group">
                             <button class="btn btn-sm btn-outline-info"
-                                    onclick="verDetalleMantenimiento(${mantenimiento.id_mantenimiento})"
+                                    onclick="verDetalleMantenimiento(${mantenimiento.id_mantenimiento || mantenimiento.id})"
                                     title="Ver Detalle">
                                 <i class="fa-solid fa-eye"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger"
-                                    onclick="eliminarMantenimiento(${mantenimiento.id_mantenimiento})"
+                                    onclick="eliminarMantenimiento(${mantenimiento.id_mantenimiento || mantenimiento.id})"
                                     title="Eliminar">
                                 <i class="fa-solid fa-trash"></i>
                             </button>

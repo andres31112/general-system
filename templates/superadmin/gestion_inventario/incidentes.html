@@ -291,30 +291,26 @@ let incidenteSeleccionado = null;
 // INICIALIZACIÓN
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("✅ Inicializando sistema de incidentes...");
     configurarEventListeners();
-    cargarEquipos();
+    cargarSedes();
     cargarIncidentes();
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+// ========================================
+// CONFIGURACIÓN DE SELECTS EN CASCADA
+// ========================================
+function cargarSedes() {
     const selectSede = document.getElementById('sede_id');
     const selectSalon = document.getElementById('salon_id');
     const selectEquipo = document.getElementById('equipo_id');
 
-    // Inicializar la carga de Sedes
-    cargarSedes();
-
-    // ------------------------------------------
-    // 1. Cargar SEDES
-    // ------------------------------------------
-    async function cargarSedes() {
-        try {
-            const response = await fetch('/admin/api/sedes');
-            const result = await response.json();
-
-            // Resetear y añadir la opción por defecto
+    // Cargar SEDES
+    fetch('/admin/api/sedes')
+        .then(response => response.json())
+        .then(result => {
             selectSede.innerHTML = '<option value="" selected disabled>Seleccione una Sede...</option>';
-
+            
             if (result && result.length > 0) {
                 result.forEach(sede => {
                     const option = document.createElement('option');
@@ -326,14 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.warn('No se encontraron sedes.');
             }
-        } catch (error) {
+        })
+        .catch(error => {
             console.error('Error cargando sedes:', error);
-        }
-    }
+        });
 
-    // ------------------------------------------
-    // 2. Evento al cambiar SEDE -> Cargar SALONES
-    // ------------------------------------------
+    // Evento al cambiar SEDE -> Cargar SALONES
     selectSede.addEventListener('change', (event) => {
         const sedeId = event.target.value;
         selectSalon.disabled = true;
@@ -346,36 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ------------------------------------------
-    // 3. Cargar SALONES (filtrados por Sede)
-    // ------------------------------------------
-    async function cargarSalones(id_sede) {
-        try {
-            const response = await fetch(`/admin/api/sedes/${id_sede}/salas`);
-            const result = await response.json();
-
-            selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
-
-            if (result && result.length > 0) {
-                result.forEach(salon => {
-                    const option = document.createElement('option');
-                    option.value = salon.id_salon;
-                    option.textContent = salon.nombre;
-                    selectSalon.appendChild(option);
-                });
-                selectSalon.disabled = false;
-            } else {
-                selectSalon.innerHTML = '<option value="" selected disabled>No hay Salones disponibles.</option>';
-            }
-        } catch (error) {
-            console.error('Error cargando salones:', error);
-            selectSalon.innerHTML = '<option value="" selected disabled>Error al cargar Salones.</option>';
-        }
-    }
-
-    // ------------------------------------------
-    // 4. Evento al cambiar SALÓN -> Cargar EQUIPOS
-    // ------------------------------------------
+    // Evento al cambiar SALÓN -> Cargar EQUIPOS
     selectSalon.addEventListener('change', (event) => {
         const salonId = event.target.value;
         const sedeId = selectSede.value;
@@ -387,48 +352,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ------------------------------------------
-    // 5. Cargar EQUIPOS (filtrados por Salón)
-    // ------------------------------------------
-    async function cargarEquipos(id_sede, id_salon) {
-        try {
-            const response = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
-            const result = await response.json();
-
-            selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
-
-            if (result && result.length > 0) {
-                result.forEach(equipo => {
-                    const option = document.createElement('option');
-                    option.value = equipo.id_equipo;
-                    option.textContent = `${equipo.nombre} - ${equipo.estado}`;
-                    selectEquipo.appendChild(option);
-                });
-                selectEquipo.disabled = false;
-            } else {
-                selectEquipo.innerHTML = '<option value="" selected disabled>No hay Equipos en este Salón.</option>';
-            }
-        } catch (error) {
-            console.error('Error cargando equipos:', error);
-            selectEquipo.innerHTML = '<option value="" selected disabled>Error al cargar Equipos.</option>';
-        }
-    }
-
-    // ------------------------------------------
-    // 6. Resetear selects al cerrar modal
-    // ------------------------------------------
-    const modalCrearIncidente = document.getElementById('crearIncidenteModal');
-    if (modalCrearIncidente) {
-        modalCrearIncidente.addEventListener('hidden.bs.modal', function () {
+    // Resetear selects al cerrar modal
+    const modalNuevoIncidente = document.getElementById('nuevoIncidenteModal');
+    if (modalNuevoIncidente) {
+        modalNuevoIncidente.addEventListener('hidden.bs.modal', function () {
             selectSede.value = '';
             selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
             selectSalon.disabled = true;
             selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
             selectEquipo.disabled = true;
-            document.getElementById('formCrearIncidente').reset();
+            document.getElementById('formNuevoIncidente').reset();
         });
     }
-});
+}
+
+async function cargarSalones(id_sede) {
+    const selectSalon = document.getElementById('salon_id');
+    
+    try {
+        const response = await fetch(`/admin/api/sedes/${id_sede}/salas`);
+        const result = await response.json();
+
+        selectSalon.innerHTML = '<option value="" selected disabled>Seleccione un Salón...</option>';
+
+        if (result && result.length > 0) {
+            result.forEach(salon => {
+                const option = document.createElement('option');
+                option.value = salon.id_salon;
+                option.textContent = salon.nombre;
+                selectSalon.appendChild(option);
+            });
+            selectSalon.disabled = false;
+        } else {
+            selectSalon.innerHTML = '<option value="" selected disabled>No hay Salones disponibles.</option>';
+        }
+    } catch (error) {
+        console.error('Error cargando salones:', error);
+        selectSalon.innerHTML = '<option value="" selected disabled>Error al cargar Salones.</option>';
+    }
+}
+
+async function cargarEquipos(id_sede, id_salon) {
+    const selectEquipo = document.getElementById('equipo_id');
+    
+    try {
+        const response = await fetch(`/admin/api/sedes/${id_sede}/salas/${id_salon}/equipos`);
+        const result = await response.json();
+
+        selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
+
+        if (result && result.length > 0) {
+            result.forEach(equipo => {
+                const option = document.createElement('option');
+                option.value = equipo.id;
+                option.textContent = `${equipo.nombre} - ${equipo.estado}`;
+                selectEquipo.appendChild(option);
+            });
+            selectEquipo.disabled = false;
+        } else {
+            selectEquipo.innerHTML = '<option value="" selected disabled>No hay Equipos en este Salón.</option>';
+        }
+    } catch (error) {
+        console.error('Error cargando equipos:', error);
+        selectEquipo.innerHTML = '<option value="" selected disabled>Error al cargar Equipos.</option>';
+    }
+}
 
 // ========================================
 // CONFIGURACIÓN DE EVENT LISTENERS
@@ -440,61 +428,36 @@ function configurarEventListeners() {
     document.getElementById('prevPage').addEventListener('click', paginaAnterior);
     document.getElementById('nextPage').addEventListener('click', paginaSiguiente);
     document.getElementById('itemsPorPagina').addEventListener('change', cambiarItemsPorPagina);
-    document.getElementById('formNuevoIncidente').addEventListener('submit', guardarIncidente);
+    
+    // Configurar formulario de nuevo incidente
+    const formNuevoIncidente = document.getElementById('formNuevoIncidente');
+    if (formNuevoIncidente) {
+        formNuevoIncidente.addEventListener('submit', guardarIncidente);
+    }
 }
 
 // ========================================
 // FUNCIONES DE CARGA DE DATOS
 // ========================================
-async function cargarEquipos() {
-    try {
-        const response = await fetch('/admin/api/equipos_para_incidente');
-        
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-
-        const equipos = await response.json();
-        const selectEquipos = document.getElementById('equipoSelect');
-        
-        if (equipos.length === 0) {
-            selectEquipos.innerHTML = '<option value="">No hay equipos con estado "Incidente"</option>';
-            return;
-        }
-        
-        selectEquipos.innerHTML = '<option value="">Seleccione un equipo...</option>';
-        
-        equipos.forEach(equipo => {
-            const option = document.createElement('option');
-            option.value = equipo.id_equipo;
-            option.textContent = `${equipo.nombre} - ${equipo.salon_nombre} (${equipo.sede_nombre})`;
-            selectEquipos.appendChild(option);
-        });
-        
-    } catch (error) {
-        console.error('Error al cargar equipos:', error);
-        const selectEquipos = document.getElementById('equipoSelect');
-        selectEquipos.innerHTML = '<option value="">Error al cargar equipos</option>';
-    }
-}
-
 async function cargarIncidentes() {
     mostrarSpinner(true);
     try {
         const response = await fetch('/admin/api/incidentes');
+        
+        console.log("DEBUG - Cargando incidentes, status:", response.status);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         incidentesData = await response.json();
-        console.log('Incidentes cargados:', incidentesData);
+        console.log('✅ Incidentes cargados:', incidentesData.length, 'registros');
         
         actualizarEstadisticas();
         filtrarIncidentes();
         
     } catch (error) {
-        console.error('Error cargando incidentes:', error);
+        console.error('❌ Error cargando incidentes:', error);
         mostrarAlerta('Error al cargar los incidentes: ' + error.message, 'danger');
         incidentesData = [];
     } finally {
@@ -508,7 +471,6 @@ async function cargarIncidentes() {
 function actualizarEstadisticas() {
     const total = incidentesData.length;
     const reportados = incidentesData.filter(i => i.estado === 'reportado').length;
-    const resueltos = incidentesData.filter(i => i.estado === 'resuelto').length;
     const criticos = incidentesData.filter(i => i.prioridad === 'critica').length;
     
     document.getElementById('totalIncidentes').textContent = total;
@@ -526,8 +488,8 @@ function filtrarIncidentes() {
     
     incidentesFiltrados = incidentesData.filter(incidente => {
         const coincideBusqueda = !busqueda || 
-            incidente.equipo_nombre.toLowerCase().includes(busqueda) ||
-            incidente.descripcion.toLowerCase().includes(busqueda) ||
+            (incidente.equipo_nombre && incidente.equipo_nombre.toLowerCase().includes(busqueda)) ||
+            (incidente.descripcion && incidente.descripcion.toLowerCase().includes(busqueda)) ||
             (incidente.usuario_reporte && incidente.usuario_reporte.toLowerCase().includes(busqueda));
         
         const coincideEstado = !filtroEstado || incidente.estado === filtroEstado;
@@ -540,55 +502,6 @@ function filtrarIncidentes() {
     renderizarTabla();
 }
 
-// En incidentes.html (o archivo JS asociado)
-
-async function cambiarEstadoIncidente(incidenteId, nuevoEstado) {
-    try {
-        const response = await fetch(`/api/incidentes/${incidenteId}/estado`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ estado: nuevoEstado })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            mostrarAlerta('Estado actualizado exitosamente', 'success');
-            
-            // 💡 PASO CLAVE: ACTUALIZAR LA FILA ESPECÍFICA
-            const incidenteActualizado = result.incidente_actualizado;
-            
-            // 1. En la tabla principal (incidentes.html)
-            actualizarFilaIncidente(incidenteActualizado); 
-            
-        } else {
-            mostrarAlerta('Error al cambiar el estado: ' + result.error, 'danger');
-        }
-        
-    } catch (error) {
-        console.error('Error cambiando estado del incidente:', error);
-        mostrarAlerta('Error al cambiar el estado del incidente: ' + error.message, 'danger');
-    }
-}
-
-// 💡 Nueva función para actualizar solo la fila afectada
-function actualizarFilaIncidente(incidente) {
-    const fila = document.getElementById(`incidente-fila-${incidente.id}`);
-    if (fila) {
-        // Asumiendo que tienes una función para generar la celda de estado con estilo
-        const nuevaCeldaEstado = generarCeldaEstado(incidente.estado); 
-        
-        // Asume que la columna de estado es la quinta columna (index 4)
-        // Deberás adaptar los índices a la estructura real de tu tabla.
-        fila.cells[4].innerHTML = nuevaCeldaEstado; 
-        
-        // Actualiza el objeto incidenteSeleccionado si está siendo usado
-        if (typeof incidenteSeleccionado !== 'undefined' && incidenteSeleccionado.id === incidente.id) {
-             incidenteSeleccionado = incidente;
-        }
-    }
-}
-
 // ========================================
 // RENDERIZADO DE TABLA
 // ========================================
@@ -599,7 +512,7 @@ function renderizarTabla() {
     if (incidentesFiltrados.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-5">
+                <td colspan="7" class="text-center py-5">
                     <i class="fa-solid fa-search fa-3x text-muted mb-3"></i>
                     <p class="text-muted">No se encontraron incidentes con los criterios de búsqueda</p>
                 </td>
@@ -613,16 +526,18 @@ function renderizarTabla() {
     const fin = Math.min(inicio + itemsPorPagina, incidentesFiltrados.length);
     const incidentesPagina = incidentesFiltrados.slice(inicio, fin);
     
+    console.log(`DEBUG - Renderizando ${incidentesPagina.length} incidentes`);
+    
     incidentesPagina.forEach(incidente => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>
-                <div><strong>${incidente.equipo_nombre}</strong></div>
-                <small class="text-muted">${incidente.sede_nombre}</small>
+                <div><strong>${incidente.equipo_nombre || 'N/A'}</strong></div>
+                <small class="text-muted">${incidente.sede_nombre || 'N/A'}</small>
             </td>
             <td>
-                <div class="text-truncate" style="max-width: 200px;" title="${incidente.descripcion}">
-                    ${incidente.descripcion}
+                <div class="text-truncate" style="max-width: 200px;" title="${incidente.descripcion || ''}">
+                    ${incidente.descripcion || 'Sin descripción'}
                 </div>
             </td>
             <td>${incidente.usuario_reporte || 'N/A'}</td>
@@ -640,12 +555,12 @@ function renderizarTabla() {
             <td>
                 <div class="btn-group" role="group">
                     <button class="btn btn-sm btn-outline-info" 
-                            onclick="verDetalleIncidente(${incidente.id})" 
+                            onclick="verDetalleIncidente(${incidente.id_incidente})" 
                             title="Ver Detalle">
                         <i class="fa-solid fa-eye"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-danger" 
-                            onclick="eliminarIncidente(${incidente.id})" 
+                            onclick="eliminarIncidente(${incidente.id_incidente})" 
                             title="Eliminar">
                         <i class="fa-solid fa-trash"></i>
                     </button>
@@ -659,26 +574,53 @@ function renderizarTabla() {
 }
 
 function obtenerColorPrioridad(prioridad) {
-    const colores = { 'baja': 'success', 'media': 'primary', 'alta': 'warning', 'critica': 'danger' };
+    const colores = { 
+        'baja': 'success', 
+        'media': 'primary', 
+        'alta': 'warning', 
+        'critica': 'danger' 
+    };
     return colores[prioridad] || 'secondary';
 }
 
 function obtenerColorEstado(estado) {
-    const colores = { 'reportado': 'warning', 'en_proceso': 'info', 'resuelto': 'success', 'cerrado': 'secondary' };
+    const colores = { 
+        'reportado': 'warning', 
+        'en_proceso': 'info', 
+        'resuelto': 'success', 
+        'cerrado': 'secondary' 
+    };
     return colores[estado] || 'dark';
 }
 
 function formatearEstado(estado) {
-    const estados = { 'reportado': 'Reportado', 'en_proceso': 'En Proceso', 'resuelto': 'Resuelto', 'cerrado': 'Cerrado' };
+    const estados = { 
+        'reportado': 'Reportado', 
+        'en_proceso': 'En Proceso', 
+        'resuelto': 'Resuelto', 
+        'cerrado': 'Cerrado' 
+    };
     return estados[estado] || estado;
 }
 
 function formatearFecha(fechaStr) {
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (!fechaStr) return 'N/A';
+    try {
+        const fecha = new Date(fechaStr);
+        return fecha.toLocaleString('es-ES', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    } catch (e) {
+        return 'Fecha inválida';
+    }
 }
 
 function capitalizar(texto) {
+    if (!texto) return '';
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
@@ -718,28 +660,31 @@ function recargarIncidentes() {
 }
 
 function mostrarSpinner(mostrar) {
-    document.getElementById('loadingSpinner').style.display = mostrar ? 'flex' : 'none';
-}
-
-function mostrarAlerta(mensaje, tipo='info') {
-    const alerta = document.getElementById('alertaIncidente');
-    alerta.textContent = mensaje;
-    alerta.className = `alert alert-${tipo}`;
-    alerta.classList.remove('d-none');
-    setTimeout(() => alerta.classList.add('d-none'), 5000);
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.style.display = mostrar ? 'flex' : 'none';
+    }
 }
 
 // ========================================
-// GESTIÓN DE INCIDENTES
+// GESTIÓN DE INCIDENTES - CRUD
 // ========================================
+
+// ✅ CREAR INCIDENTE
 async function guardarIncidente(event) {
     event.preventDefault();
     
-    const equipoId = document.getElementById('equipo_id').value; // ojo: en tu HTML es equipo_id, no equipoSelect
+    const equipoId = document.getElementById('equipo_id').value;
     const prioridad = document.getElementById('prioridadSelect').value;
     const usuarioReporte = document.getElementById('usuarioReporte').value.trim();
     const descripcion = document.getElementById('descripcionIncidente').value.trim();
     const solucionPropuesta = document.getElementById('solucionPropuesta').value.trim();
+    
+    console.log("DEBUG - Datos del formulario:");
+    console.log("  Equipo ID:", equipoId);
+    console.log("  Prioridad:", prioridad);
+    console.log("  Usuario:", usuarioReporte);
+    console.log("  Descripción:", descripcion);
     
     if (!equipoId || !prioridad || !usuarioReporte || !descripcion) {
         mostrarAlerta('Por favor, complete todos los campos obligatorios (*)', 'warning');
@@ -747,12 +692,14 @@ async function guardarIncidente(event) {
     }
     
     const nuevoIncidente = {
-        equipo_id: equipoId,
+        equipo_id: parseInt(equipoId),
         prioridad: prioridad,
         usuario_reporte: usuarioReporte,
         descripcion: descripcion,
         solucion_propuesta: solucionPropuesta
     };
+    
+    console.log("DEBUG - Datos a enviar:", JSON.stringify(nuevoIncidente, null, 2));
     
     try {
         const response = await fetch('/admin/api/incidentes', { 
@@ -761,7 +708,10 @@ async function guardarIncidente(event) {
             body: JSON.stringify(nuevoIncidente)
         });
         
+        console.log("DEBUG - Status de respuesta:", response.status);
+        
         const result = await response.json();
+        console.log("DEBUG - Respuesta del servidor:", result);
         
         if (result.success) {
             mostrarAlerta(result.message || 'Incidente registrado exitosamente', 'success');
@@ -769,7 +719,9 @@ async function guardarIncidente(event) {
             // Cerrar el modal
             const modalEl = document.getElementById('nuevoIncidenteModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
+            if (modal) {
+                modal.hide();
+            }
 
             // Limpieza forzada del backdrop
             document.body.classList.remove('modal-open');
@@ -789,43 +741,49 @@ async function guardarIncidente(event) {
             selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
             selectEquipo.disabled = true;
             
-            // ✅ ACTUALIZAR LA TABLA AUTOMÁTICAMENTE
+            // Actualizar la tabla
             await cargarIncidentes();
+        } else {
+            mostrarAlerta(result.error || 'Error al registrar el incidente', 'danger');
         }
     } catch (error) {
-        console.error('Error al guardar incidente:', error);
+        console.error('❌ ERROR al guardar incidente:', error);
         mostrarAlerta('Error al registrar el incidente: ' + error.message, 'danger');
     }
 }
 
-// ✅ conectar al formulario
-document.getElementById('formNuevoIncidente')
-        .addEventListener('submit', guardarIncidente);
-
+// ✅ VER DETALLE
 function verDetalleIncidente(incidenteId) {
-    const incidente = incidentesData.find(i => i.id === incidenteId);
+    console.log("DEBUG - Ver detalle del incidente:", incidenteId);
+    
+    const incidente = incidentesData.find(i => i.id_incidente === incidenteId);
+    
     if (!incidente) {
+        console.error("❌ Incidente no encontrado:", incidenteId);
         mostrarAlerta('Incidente no encontrado', 'warning');
         return;
     }
     
+    console.log("✅ Incidente encontrado:", incidente);
+    
     incidenteSeleccionado = incidente;
     
-    document.getElementById('detalleIncidenteId').textContent = incidente.id;
-    document.getElementById('detalleEquipo').textContent = incidente.equipo_nombre;
-    document.getElementById('detalleSede').textContent = incidente.sede_nombre;
-    document.getElementById('detalleSalon').textContent = incidente.salon_nombre;
+    document.getElementById('detalleIncidenteId').textContent = incidente.id_incidente;
+    document.getElementById('detalleEquipo').textContent = incidente.equipo_nombre || 'N/A';
+    document.getElementById('detalleSede').textContent = incidente.sede_nombre || 'N/A';
+    document.getElementById('detalleSalon').textContent = incidente.salon_nombre || 'N/A';
     document.getElementById('detalleUsuario').textContent = incidente.usuario_reporte || 'N/A';
     document.getElementById('detalleFecha').textContent = formatearFecha(incidente.fecha);
     document.getElementById('detallePrioridad').innerHTML = `<span class="badge bg-${obtenerColorPrioridad(incidente.prioridad)}">${capitalizar(incidente.prioridad)}</span>`;
     document.getElementById('detalleEstado').innerHTML = `<span class="badge bg-${obtenerColorEstado(incidente.estado)}">${formatearEstado(incidente.estado)}</span>`;
-    document.getElementById('detalleDescripcion').textContent = incidente.descripcion;
+    document.getElementById('detalleDescripcion').textContent = incidente.descripcion || 'Sin descripción';
     document.getElementById('detalleSolucion').textContent = incidente.solucion_propuesta || 'No se ha propuesto solución';
     
     const modal = new bootstrap.Modal(document.getElementById('detalleIncidenteModal'));
     modal.show();
 }
 
+// ✅ CAMBIAR ESTADO
 async function cambiarEstado(nuevoEstado) {
     if (!incidenteSeleccionado) {
         mostrarAlerta('No hay un incidente seleccionado', 'warning');
@@ -837,31 +795,41 @@ async function cambiarEstado(nuevoEstado) {
         return;
     }
     
+    console.log("DEBUG - Cambiar estado del incidente:", incidenteSeleccionado.id_incidente, "a", nuevoEstado);
+    
     try {
-        const response = await fetch(`/admin/api/incidentes/${incidenteSeleccionado.id}/estado`, {
+        const response = await fetch(`/admin/api/incidentes/${incidenteSeleccionado.id_incidente}/estado`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ estado: nuevoEstado })
         });
         
         const result = await response.json();
+        console.log("DEBUG - Respuesta cambio de estado:", result);
         
         if (result.success) {
             mostrarAlerta(`Estado cambiado a "${formatearEstado(nuevoEstado)}"`, 'success');
+            
             const modal = bootstrap.Modal.getInstance(document.getElementById('detalleIncidenteModal'));
-            modal.hide();
-            cargarIncidentes();
+            if (modal) {
+                modal.hide();
+            }
+            
+            await cargarIncidentes();
         } else {
             mostrarAlerta('Error al cambiar el estado: ' + result.error, 'danger');
         }
         
     } catch (error) {
-        console.error('Error al cambiar estado:', error);
+        console.error('❌ Error al cambiar estado:', error);
         mostrarAlerta('Error al cambiar el estado: ' + error.message, 'danger');
     }
 }
 
+// ✅ ELIMINAR INCIDENTE
 async function eliminarIncidente(incidenteId) {
+    console.log("DEBUG - Eliminar incidente:", incidenteId);
+    
     if (!confirm('¿Está seguro de que desea eliminar este incidente? Esta acción no se puede deshacer.')) {
         return;
     }
@@ -872,54 +840,62 @@ async function eliminarIncidente(incidenteId) {
         });
         
         const result = await response.json();
+        console.log("DEBUG - Respuesta eliminación:", result);
         
         if (result.success) {
             mostrarAlerta('Incidente eliminado exitosamente', 'success');
-            cargarIncidentes();
+            await cargarIncidentes();
         } else {
             mostrarAlerta('Error al eliminar: ' + result.error, 'danger');
         }
         
     } catch (error) {
-        console.error('Error al eliminar incidente:', error);
+        console.error('❌ Error al eliminar incidente:', error);
         mostrarAlerta('Error al eliminar el incidente: ' + error.message, 'danger');
     }
 }
 
+function eliminarIncidenteActual() {
+    if (incidenteSeleccionado) {
+        eliminarIncidente(incidenteSeleccionado.id_incidente);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('detalleIncidenteModal'));
+        if (modal) {
+            modal.hide();
+        }
+    } else {
+        mostrarAlerta('No hay un incidente seleccionado', 'warning');
+    }
+}
+
+// ========================================
+// FUNCIÓN DE ALERTAS
+// ========================================
 function mostrarAlerta(mensaje, tipo='success') {
     const alertaGlobal = document.getElementById('alertaGlobal');
+    if (!alertaGlobal) {
+        console.warn('Elemento alertaGlobal no encontrado');
+        return;
+    }
 
     alertaGlobal.innerHTML = `
         <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
             ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
 
     alertaGlobal.classList.remove('d-none');
 
-    const alertElement = alertaGlobal.querySelector('.alert');
-
-    alertElement.addEventListener('closed.bs.alert', () => {
-        alertaGlobal.classList.add('d-none');
-    });
-
     setTimeout(() => {
+        const alertElement = alertaGlobal.querySelector('.alert');
         if (alertElement) {
             const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
             bsAlert.close();
         }
-    }, 5000); // ⏳ 5 segundos en lugar de 500ms
+    }, 5000);
 }
 
-function eliminarIncidenteActual() {
-    if (incidenteSeleccionado) {
-        eliminarIncidente(incidenteSeleccionado.id);
-        const modal = bootstrap.Modal.getInstance(document.getElementById('detalleIncidenteModal'));
-        modal.hide();
-    } else {
-        mostrarAlerta('No hay un incidente seleccionado', 'warning');
-    }
-}
+console.log("✅ Script de gestión de incidentes cargado correctamente");
 </script>
 {% endblock %}
 </body>

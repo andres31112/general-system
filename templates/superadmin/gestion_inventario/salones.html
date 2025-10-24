@@ -15,11 +15,14 @@
 {% extends "base.html" %}
 {% block content %}
 
-<header class="main-header">
-    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
-        <i class="fa-solid fa-arrow-left"></i>
-    </a>
-    <h1>Gestión de Salones</h1>
+<header class="custom-header">
+    <div class="d-flex align-items-center">
+        <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary border-0 me-3 text-white atras">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <i class="fa-solid fa-desktop logo me-3"></i>
+        <h1>Gestión de SAlones</h1>
+    </div>
     <div class="header-icons">
         <i class="fa-solid fa-bell"></i>
         <i class="fa-solid fa-user"></i>
@@ -293,13 +296,13 @@
                 <td>${salon.nombre}</td>
                 <td>${obtenerBadgeTipo(salon.tipo || 'Sin tipo')}</td>
                 <td>
-                    <button class="btn btn-primary btn-sm me-2" onclick="editarSalon(${salon.id_salon || salon.id})">
+                    <button class="btn btn-primary btn-sm me-2" onclick="editarSalon(${salon.id_salon || salon.id || salo.salon_id})">
                         <i class="fa-solid fa-pen"></i>
                     </button>
-                    <button class="btn btn-secondary btn-sm me-2" onclick="verSalon(${salon.id_salon || salon.id})">
+                    <button class="btn btn-secondary btn-sm me-2" onclick="verSalon(${salon.id_salon || salon.id || salo.salon_id})">
                         <i class="fa-solid fa-eye"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="eliminarSalon(${salon.id_salon || salon.id})">
+                    <button class="btn btn-danger btn-sm" onclick="eliminarSalon(${salon.id_salon || salon.id || salo.salon_id})">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
