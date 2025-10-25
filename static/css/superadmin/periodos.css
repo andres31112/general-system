@@ -1,0 +1,379 @@
+/* ============================================================================
+   GESTIÓN DE CICLOS Y PERIODOS ACADÉMICOS - Estilos del Sistema
+   ============================================================================ */
+
+   :root {
+    --accent1: #F95738;
+    --accent2: #EE964B;
+    --accent3: #F4D35E;
+    --accent4: #0D3B66;
+    --light: #FAF0CA;
+    --white: #FFFFFF;
+    --black: #333333;
+    --gray: #666666;
+    --light-gray: #F8F9FA;
+    --border: #E9ECEF;
+    --card-bg: #FFFFFF;
+    --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+    --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+    --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+    --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+}
+
+/* Contenedor Principal */
+body {
+    background: linear-gradient(135deg, var(--light) 0%, var(--light-gray) 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--black);
+}
+
+/* Título Principal */
+.page-title {
+    color: var(--accent4);
+    font-weight: 800;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    display: inline-block;
+}
+
+.page-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: var(--gradient-accent);
+    border-radius: 2px;
+}
+
+/* Tarjetas */
+.card {
+    border-radius: 20px !important;
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.6s;
+    z-index: 0;
+}
+
+.card:hover::before {
+    left: 100%;
+}
+
+.card-header {
+    background: var(--gradient-primary) !important;
+    color: var(--white) !important;
+    border-radius: 20px 20px 0 0 !important;
+    border: none !important;
+    font-weight: 700;
+    padding: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.card-body {
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* Tarjetas de Ciclo */
+.ciclo-card {
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 2px solid var(--border);
+    transition: all 0.4s ease;
+    background: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.ciclo-card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.ciclo-activo {
+    border: 3px solid var(--accent4);
+    background: linear-gradient(135deg, rgba(13, 59, 102, 0.05) 0%, rgba(13, 59, 102, 0.02) 100%);
+    box-shadow: 0 8px 25px rgba(13, 59, 102, 0.2);
+}
+
+/* Periodos */
+.periodo-card {
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    background: var(--white);
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+    border-left: 5px solid var(--gray);
+}
+
+.periodo-card:hover {
+    box-shadow: var(--shadow);
+}
+
+.periodo-activo {
+    border-left-color: var(--accent4);
+    background: linear-gradient(135deg, rgba(13, 59, 102, 0.05) 0%, var(--white) 100%);
+}
+
+.periodo-planificado {
+    border-left-color: var(--accent3);
+    background: linear-gradient(135deg, rgba(244, 211, 94, 0.05) 0%, var(--white) 100%);
+}
+
+.periodo-en_cierre {
+    border-left-color: var(--accent2);
+    background: linear-gradient(135deg, rgba(238, 150, 75, 0.05) 0%, var(--white) 100%);
+}
+
+.periodo-cerrado {
+    border-left-color: var(--gray);
+    background: linear-gradient(135deg, rgba(102, 102, 102, 0.05) 0%, var(--white) 100%);
+    opacity: 0.7;
+}
+
+/* Botones */
+.btn {
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1a5080, var(--accent4));
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: var(--white);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    color: var(--white);
+}
+
+.btn-warning {
+    background: var(--gradient-secondary);
+    color: var(--black);
+}
+
+.btn-danger {
+    background: var(--gradient-accent);
+    color: var(--white);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--gray), #888);
+    color: var(--white);
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+/* Badges */
+.badge {
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.badge-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+}
+
+.badge-warning {
+    background: var(--gradient-secondary);
+    color: var(--black);
+}
+
+.badge-secondary {
+    background: linear-gradient(135deg, var(--gray), #888);
+}
+
+.badge-primary {
+    background: var(--gradient-primary);
+}
+
+/* Modales */
+.modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: var(--gradient-primary);
+    color: var(--white);
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+.modal-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.modal-body {
+    padding: 2rem;
+    background: var(--white);
+}
+
+.modal-footer {
+    background: var(--light-gray);
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+/* Form Controls */
+.form-control {
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--accent4);
+    box-shadow: 0 0 0 0.2rem rgba(13, 59, 102, 0.15);
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--accent4);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+/* Alertas */
+.alert {
+    border-radius: 15px;
+    border: none;
+    padding: 1.5rem 2rem;
+    box-shadow: var(--shadow);
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #e9f7ef 100%);
+    color: #155724;
+    border-left: 5px solid #28a745;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #e3f2fd 100%);
+    color: #0c5460;
+    border-left: 5px solid #17a2b8;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%);
+    color: #856404;
+    border-left: 5px solid var(--accent3);
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #ffe6e9 100%);
+    color: #721c24;
+    border-left: 5px solid var(--accent1);
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Iconos */
+.fa, .fas, .far {
+    margin-right: 0.5rem;
+}
+
+/* Spinner de carga */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+    color: var(--accent4);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 1.8rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+}

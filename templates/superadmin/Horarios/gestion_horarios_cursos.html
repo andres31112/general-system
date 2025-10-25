@@ -617,6 +617,9 @@
         <span id="notification-text">Operación realizada con éxito</span>
     </div>
 
+    <!-- Script para funcionalidad de profesores -->
+    <script src="{{ url_for('static', filename='js/superadmin/profesores_horarios.js') }}"></script>
+    
     <script>
         // =============================================
 // CONFIGURACIÓN Y VARIABLES GLOBALES
@@ -891,6 +894,15 @@ async function cargarHorarioCurso(cursoId) {
             });
             console.log('🏫 Salones cargados:', Object.keys(estado.salonesAsignaciones).length);
         }
+
+        // ✅ NUEVO: Procesar profesores si existen
+        if (horarioData && horarioData.profesores_asignaciones) {
+            // Cargar profesores existentes usando la función del script de profesores
+            if (typeof cargarProfesoresExistentes === 'function') {
+                await cargarProfesoresExistentes(horarioData.profesores_asignaciones);
+            }
+            console.log('👨‍🏫 Profesores cargados:', Object.keys(horarioData.profesores_asignaciones).length);
+        }
         
         // Cargar bloques del horario
         if (horarioData && horarioData.bloques_horario) {
@@ -977,11 +989,15 @@ async function guardarHorarioCurso() {
     try {
         const horarioGeneralId = estado.horarioSeleccionado?.id || estado.cursoSeleccionado.horario_general_id;
 
+        // ✅ NUEVO: Obtener datos de profesores
+        const profesoresData = obtenerDatosProfesores ? obtenerDatosProfesores() : {};
+
         const datos = {
             curso_id: cursoId,
             horario_general_id: horarioGeneralId,
             asignaciones: estado.asignaciones,
-            salones_asignaciones: estado.salonesAsignaciones
+            salones_asignaciones: estado.salonesAsignaciones,
+            profesores_asignaciones: profesoresData  // ✅ NUEVO: Incluir profesores
         };
 
         console.log('📤 Enviando datos al servidor:', datos);
@@ -1330,21 +1346,16 @@ function generarTablaHorario() {
                                 : '';
                             
                             return `
-                                <td class="empty-block">
-                                    <select class="subject-select" data-day="${dia}" data-time="${horaInicio}" onchange="guardarAsignacion(this)">
+                                <td class="empty-block" data-dia="${dia}" data-hora="${horaInicio}">
+                                    <select class="subject-select asignatura-selector" data-day="${dia}" data-time="${horaInicio}" onchange="guardarAsignacion(this)">
                                         <option value="">Seleccionar materia</option>
                                         ${estado.asignaturas.map(asignatura => {
                                             const asignaturaIdOption = asignatura.id_asignatura || asignatura.id;
-                                            const profesoresAsignatura = asignatura.profesores || [];
-                                            const textoProfesores = profesoresAsignatura.length > 0 
-                                                ? ` (${profesoresAsignatura.map(p => p.nombre_completo || p.nombre).join(', ')})`
-                                                : '';
-                                            
                                             const estaSeleccionada = estado.asignaciones[asignacionKey] == asignaturaIdOption;
                                             
                                             return `
                                                 <option value="${asignaturaIdOption}" ${estaSeleccionada ? 'selected' : ''}>
-                                                    ${asignatura.nombre}${textoProfesores}
+                                                    ${asignatura.nombre}
                                                 </option>
                                             `;
                                         }).join('')}
@@ -1362,6 +1373,12 @@ function generarTablaHorario() {
                                             `;
                                         }).join('')}
                                     </select>
+                                    <!-- ✅ NUEVO: Selector de profesores -->
+                                    <div class="profesor-selector-container" style="display: ${asignatura ? 'block' : 'none'};">
+                                        <select class="profesor-selector" data-day="${dia}" data-time="${horaInicio}" style="margin-top: 5px; font-size: 12px;">
+                                            <option value="">Seleccionar profesor...</option>
+                                        </select>
+                                    </div>
                                     ${asignatura && profesores.length > 0 ? 
                                         `<div style="margin-top: 5px; font-size: 0.8rem; color: #666;">
                                             <strong>Profesor:</strong> ${profesoresTexto}

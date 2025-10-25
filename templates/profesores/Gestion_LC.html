@@ -729,6 +729,22 @@
                     </div>
                 </section>
 
+                <!-- Banner de Periodo Académico -->
+                <div id="periodo-banner-gestion" style="margin: 20px 0; padding: 15px 25px; background: linear-gradient(135deg, #0078ad, #00628e); color: white; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div>
+                        <strong style="font-size: 1.1rem;"><i class="fas fa-calendar-alt"></i> <span id="periodo-nombre-gestion">Cargando...</span></strong>
+                        <span style="margin-left: 20px; font-size: 0.9rem; opacity: 0.95;" id="periodo-fechas-gestion"></span>
+                    </div>
+                    <div id="periodo-estado-badge-gestion" style="padding: 6px 16px; background: rgba(255,255,255,0.25); border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                        <i class="fas fa-info-circle"></i> <span id="periodo-estado-text-gestion">...</span>
+                    </div>
+                </div>
+
+                <!-- Alerta de periodo cerrado -->
+                <div id="periodo-cerrado-alerta-gestion" style="display: none; margin: 15px 0; padding: 15px 25px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 10px; font-size: 0.95rem;">
+                    <i class="fas fa-lock"></i> <strong>Periodo cerrado:</strong> No se pueden registrar o modificar asistencias ni calificaciones en este periodo.
+                </div>
+
                 <!-- Pestañas de navegación -->
                 <nav class="content-tabs">
                     <a id="attendance-tab" class="tab-link active">Asistencia</a>
@@ -908,12 +924,49 @@
 
     <!-- Modal para crear asignación -->
     <div id="assignmentModal" class="modal-overlay">
-        <div class="modal-content">
-            <h5 class="modal-title">Nueva Asignación</h5>
-            <p id="assignmentModalBody">Introduce el nombre y selecciona la categoría</p>
-            <input type="text" id="assignmentNameInput" class="modal-input" placeholder="Nombre de la asignación">
-            <select id="assignmentCategorySelect" class="modal-input" style="height:40px;padding:6px;"></select>
-            <div class="modal-footer">
+        <div class="modal-content" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">
+            <h5 class="modal-title">Nueva Asignación / Tarea</h5>
+            
+            <!-- Contenedor con scroll -->
+            <div style="overflow-y: auto; max-height: calc(90vh - 150px); padding-right: 10px;">
+                <p id="assignmentModalBody">Introduce el nombre y selecciona la categoría</p>
+                <input type="text" id="assignmentNameInput" class="modal-input" placeholder="Nombre de la asignación">
+                <select id="assignmentCategorySelect" class="modal-input" style="height:40px;padding:6px;margin-bottom:15px;"></select>
+                
+                <!-- Opción para publicar como tarea -->
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="publicarComoTarea" style="width: auto; height: auto;">
+                        <span style="font-weight: 600;">Publicar como tarea (visible para estudiantes y padres)</span>
+                    </label>
+                </div>
+                
+                <!-- Campos adicionales para tareas (ocultos inicialmente) -->
+                <div id="camposTarea" style="display: none; border-top: 2px solid #eee; padding-top: 15px; margin-top: 10px;">
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Descripción de la tarea:</label>
+                        <textarea id="descripcionTarea" class="modal-input" rows="3" placeholder="Descripción detallada de la tarea..."></textarea>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Fecha de vencimiento (opcional):</label>
+                        <input type="datetime-local" id="fechaVencimiento" class="modal-input">
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Archivo adjunto (opcional):</label>
+                        <input type="file" id="archivoTarea" class="modal-input" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.zip,.rar,.ppt,.pptx,.xls,.xlsx">
+                        <small style="color: #666; font-size: 11px;">Formatos: PDF, Word, Excel, PowerPoint, imágenes, ZIP, RAR (Máx. 16MB)</small>
+                    </div>
+                    
+                    <div class="alert" style="background: #e3f2fd; border-left: 4px solid #2196f3; padding: 10px; margin-bottom: 10px;">
+                        <i class="fas fa-info-circle" style="color: #2196f3;"></i>
+                        <small style="color: #1976d2;">Al publicar como tarea, se enviará una notificación a todos los estudiantes y sus padres.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer" style="margin-top: auto;">
                 <button id="assignmentModalCancelBtn" class="back-button">Cancelar</button>
                 <button id="assignmentModalConfirmBtn" class="save-button">Crear</button>
             </div>
@@ -923,6 +976,61 @@
 <script>
 // Inicialización cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', () => {
+    // --- PERIODO ACADEMICO ---
+    let periodoActivo = null;
+    let periodoCerrado = false;
+
+    // Cargar periodo activo
+    function cargarPeriodoActivo() {
+        return fetch('/profesor/api/periodo-activo')
+            .then(response => response.json())
+            .then(payload => {
+                if (payload && payload.success && payload.periodo) {
+                    periodoActivo = payload.periodo;
+                    periodoCerrado = !payload.periodo.puede_modificar_notas;
+                    
+                    // Actualizar UI
+                    document.getElementById('periodo-nombre-gestion').textContent = periodoActivo.nombre;
+                    document.getElementById('periodo-fechas-gestion').textContent = 
+                        `${periodoActivo.fecha_inicio} - ${periodoActivo.fecha_fin}`;
+                    
+                    const estadoBadge = document.getElementById('periodo-estado-text-gestion');
+                    if (periodoActivo.estado === 'activo') {
+                        if (periodoCerrado) {
+                            estadoBadge.innerHTML = '<i class="fas fa-lock"></i> Cerrado';
+                            document.getElementById('periodo-cerrado-alerta-gestion').style.display = 'block';
+                        } else {
+                            estadoBadge.innerHTML = '<i class="fas fa-check-circle"></i> Activo';
+                        }
+                    } else if (periodoActivo.estado === 'cerrado') {
+                        estadoBadge.innerHTML = '<i class="fas fa-ban"></i> Cerrado';
+                        document.getElementById('periodo-cerrado-alerta-gestion').style.display = 'block';
+                        periodoCerrado = true;
+                    }
+                    
+                    return periodoActivo;
+                } else {
+                    UI.showAlert('No hay un periodo académico activo. Contacte al administrador.');
+                    periodoCerrado = true;
+                    return null;
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar periodo:', error);
+                periodoCerrado = true;
+                return null;
+            });
+    }
+
+    // Validar si se puede modificar
+    function validarPeriodoAbierto(accion = 'modificar') {
+        if (periodoCerrado || !periodoActivo) {
+            UI.showAlert(`No se puede ${accion}. El periodo académico está cerrado.`);
+            return false;
+        }
+        return true;
+    }
+
     // --- MÓDULO DE UTILIDADES (MODALES Y VISTAS) ---
     const UI = (() => {
         // Referencias a elementos del DOM
@@ -1629,6 +1737,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Guardar asistencia diaria
         const saveDailyAttendance = async () => {
+            // Validar periodo antes de guardar
+            if (!validarPeriodoAbierto('guardar asistencia')) {
+                return;
+            }
+            
             const date = selectedDateForDailyView;
             const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             attendanceData[dateKey] = {};
@@ -2035,6 +2148,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             gradesTableBody.addEventListener('change', debounce((e) => {
                 if (e.target.classList.contains('grade-input')) {
+                    // Validar periodo antes de modificar
+                    if (!validarPeriodoAbierto('modificar calificaciones')) {
+                        e.target.value = e.target.defaultValue || '';
+                        return;
+                    }
+                    
                     const value = parseFloat(e.target.value);
                     const min = parseFloat(minGradeInput.value);
                     const max = parseFloat(maxGradeInput.value);
@@ -2307,32 +2426,148 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('assignmentModal').classList.add('show');
                 });
 
-                document.getElementById('assignmentModalCancelBtn').addEventListener('click', () => document.getElementById('assignmentModal').classList.remove('show'));
+                // Manejar checkbox de publicar como tarea
+                document.getElementById('publicarComoTarea').addEventListener('change', (e) => {
+                    const camposTarea = document.getElementById('camposTarea');
+                    camposTarea.style.display = e.target.checked ? 'block' : 'none';
+                });
+
+                document.getElementById('assignmentModalCancelBtn').addEventListener('click', () => {
+                    document.getElementById('assignmentModal').classList.remove('show');
+                    // Limpiar campos
+                    document.getElementById('publicarComoTarea').checked = false;
+                    document.getElementById('camposTarea').style.display = 'none';
+                    document.getElementById('descripcionTarea').value = '';
+                    document.getElementById('fechaVencimiento').value = '';
+                    document.getElementById('archivoTarea').value = '';
+                });
 
                 document.getElementById('assignmentModalConfirmBtn').addEventListener('click', async () => {
                     const name = document.getElementById('assignmentNameInput').value.trim();
                     const catId = document.getElementById('assignmentCategorySelect').value || null;
+                    const esTarea = document.getElementById('publicarComoTarea').checked;
+                    const confirmBtn = document.getElementById('assignmentModalConfirmBtn');
+                    
                     if (!name) { UI.showAlert('El nombre es requerido'); return; }
+                    
+                    // Validar campos de tarea si es publicada como tarea
+                    if (esTarea) {
+                        const descripcion = document.getElementById('descripcionTarea').value.trim();
+                        if (!descripcion) {
+                            UI.showAlert('La descripción de la tarea es requerida');
+                            return;
+                        }
+                    }
+                    
                     // Asignatura por defecto
                     let asignatura_id = null;
-                    if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) asignatura_id = window.SERVER_DATA.asignaturas[0].id;
+                    if (window.SERVER_DATA && Array.isArray(window.SERVER_DATA.asignaturas) && window.SERVER_DATA.asignaturas.length > 0) {
+                        asignatura_id = window.SERVER_DATA.asignaturas[0].id;
+                    }
+                    
+                    // Mostrar indicador de carga
+                    const textoOriginal = confirmBtn.textContent;
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = esTarea ? 'Publicando tarea...' : 'Creando...';
+                    confirmBtn.style.opacity = '0.7';
+                    confirmBtn.style.cursor = 'wait';
+                    
                     try {
-                        const resp = await fetch('/profesor/api/crear-asignacion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ asignatura_id: asignatura_id, nombre_calificacion: name, categoria_id: catId }) });
-                        const data = await resp.json();
-                        if (data && data.success) {
-                            // Agregar meta local
-                            const cat = categoriesMap[catId] || null;
-                            assignmentMeta.push({ name: name, categoria_id: catId, color: cat ? cat.color : '#cccccc', porcentaje: cat ? cat.porcentaje : 0 });
-                            estudiantes.forEach(s => s.calificaciones.push(''));
-                            renderGradesTable();
-                            document.getElementById('assignmentModal').classList.remove('show');
-                            UI.showAlert('Asignación creada');
+                        let resp, data;
+                        
+                        if (esTarea) {
+                            // Publicar como tarea usando FormData
+                            const formData = new FormData();
+                            formData.append('titulo', name);
+                            formData.append('asignatura_id', asignatura_id);
+                            formData.append('categoria_id', catId || '');
+                            formData.append('descripcion', document.getElementById('descripcionTarea').value.trim());
+                            
+                            const fechaVenc = document.getElementById('fechaVencimiento').value;
+                            if (fechaVenc) formData.append('fecha_vencimiento', fechaVenc);
+                            
+                            const archivo = document.getElementById('archivoTarea').files[0];
+                            if (archivo) formData.append('archivo', archivo);
+                            
+                            resp = await fetch('/profesor/api/crear-tarea', { 
+                                method: 'POST', 
+                                body: formData,
+                                credentials: 'include'
+                            });
+                            
+                            if (!resp.ok) {
+                                const errorText = await resp.text();
+                                console.error('Error al crear tarea:', errorText);
+                                throw new Error(`HTTP error! status: ${resp.status}`);
+                            }
+                            
+                            data = await resp.json();
+                            
+                            if (data && data.success) {
+                                // Cerrar modal y limpiar campos
+                                document.getElementById('assignmentModal').classList.remove('show');
+                                document.getElementById('publicarComoTarea').checked = false;
+                                document.getElementById('camposTarea').style.display = 'none';
+                                document.getElementById('descripcionTarea').value = '';
+                                document.getElementById('fechaVencimiento').value = '';
+                                document.getElementById('archivoTarea').value = '';
+                                
+                                // Mostrar mensaje de éxito
+                                UI.showAlert('✅ ¡Tarea publicada exitosamente!\n\nLa tarea "' + name + '" ha sido enviada a ' + (data.total_estudiantes || '0') + ' estudiantes.\n\nLos estudiantes y sus padres han sido notificados.');
+                                
+                                // Intentar recargar las calificaciones (si falla, no es crítico)
+                                try {
+                                    await loadGradesData();
+                                } catch (e) {
+                                    console.log('Nota: No se pudo recargar la vista automáticamente. Recarga la página para ver la tarea.');
+                                }
+                            } else {
+                                UI.showAlert('❌ Error al publicar tarea: ' + (data.message || 'Error desconocido'));
+                            }
                         } else {
-                            UI.showAlert('Error creando asignación: ' + (data.message || 'Error desconocido'));
+                            // Crear asignación normal
+                            resp = await fetch('/profesor/api/crear-asignacion', { 
+                                method: 'POST', 
+                                headers: { 'Content-Type': 'application/json' }, 
+                                body: JSON.stringify({ 
+                                    asignatura_id: asignatura_id, 
+                                    nombre_calificacion: name, 
+                                    categoria_id: catId 
+                                }),
+                                credentials: 'include'
+                            });
+                            
+                            if (!resp.ok) {
+                                throw new Error(`HTTP error! status: ${resp.status}`);
+                            }
+                            
+                            data = await resp.json();
+                            
+                            if (data && data.success) {
+                                // Agregar meta local
+                                const cat = categoriesMap[catId] || null;
+                                assignmentMeta.push({ name: name, categoria_id: catId, color: cat ? cat.color : '#cccccc', porcentaje: cat ? cat.porcentaje : 0 });
+                                estudiantes.forEach(s => s.calificaciones.push(''));
+                                renderGradesTable();
+                                document.getElementById('assignmentModal').classList.remove('show');
+                                UI.showAlert('✅ Asignación creada correctamente');
+                            } else {
+                                UI.showAlert('❌ Error creando asignación: ' + (data.message || 'Error desconocido'));
+                            }
                         }
                     } catch (err) {
-                        console.error('Error creando asignación:', err);
-                        UI.showAlert('Error de red al crear asignación');
+                        console.error('Error creando asignación/tarea:', err);
+                        if (esTarea) {
+                            UI.showAlert('❌ Error al publicar la tarea\n\n' + err.message + '\n\nPor favor, verifica que todos los campos estén completos e intenta nuevamente.');
+                        } else {
+                            UI.showAlert('❌ Error al crear la asignación\n\n' + err.message + '\n\nPor favor, verifica tu conexión e intenta nuevamente.');
+                        }
+                    } finally {
+                        // Restaurar botón
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = textoOriginal;
+                        confirmBtn.style.opacity = '1';
+                        confirmBtn.style.cursor = 'pointer';
                     }
                 });
             }
@@ -2474,8 +2709,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hacer la función globalmente accesible
     window.cambiarSeleccion = cambiarSeleccion;
 
-    // Iniciar carga de datos
-    DataLoader.initializeAllData();
+    // Iniciar carga del periodo y luego datos
+    cargarPeriodoActivo().then(() => {
+        DataLoader.initializeAllData();
+    });
 });
 </script>
 </body>

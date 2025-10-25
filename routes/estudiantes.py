@@ -3,8 +3,10 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from controllers.decorators import role_required, permission_required
 from datetime import datetime, timedelta, time, date
-from controllers.models import db, Usuario, Comunicacion,Evento ,Candidato, HorarioVotacion,Voto, Equipo
-
+from controllers.models import (
+    db, Usuario, Comunicacion, Evento, Candidato, HorarioVotacion, Voto,
+    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso
+)
 # Se asume que tienes un nuevo Blueprint para las rutas de estudiante.
 # Si no, puedes añadir esta ruta al Blueprint de 'admin' o crear uno nuevo llamado 'estudiante_bp'.
 estudiante_bp = Blueprint('estudiante', __name__, url_prefix='/estudiante')
@@ -525,6 +527,308 @@ def api_eventos_estudiante():
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# RUTAS API - PERIODOS ACADÉMICOS
+# ============================================================================
+
+@estudiante_bp.route('/api/periodo-activo', methods=['GET'])
+@login_required
+def api_periodo_activo():
+    """API para obtener el periodo académico activo."""
+    try:
+        from services.periodo_service import obtener_periodo_activo
+        
+        periodo = obtener_periodo_activo()
+        if periodo:
+            return jsonify({
+                'success': True,
+                'periodo': periodo.to_dict()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No hay periodo activo'
+            })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo periodo activo: {str(e)}'
+        }), 500
+
+@estudiante_bp.route('/api/periodos', methods=['GET'])
+@login_required
+def api_periodos():
+    """API para obtener todos los periodos del ciclo activo."""
+    try:
+        from services.periodo_service import obtener_ciclo_activo, obtener_periodos_ciclo
+        
+        ciclo = obtener_ciclo_activo()
+        if not ciclo:
+            return jsonify({
+                'success': False,
+                'message': 'No hay ciclo activo'
+            })
+        
+        periodos = obtener_periodos_ciclo(ciclo.id_ciclo)
+        return jsonify({
+            'success': True,
+            'periodos': [p.to_dict() for p in periodos]
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo periodos: {str(e)}'
+        }), 500
+
+@estudiante_bp.route('/api/mis-calificaciones', methods=['GET'])
+@login_required
+def api_mis_calificaciones():
+    """API para obtener las calificaciones del estudiante, opcionalmente filtradas por periodo."""
+    try:
+        periodo_id = request.args.get('periodo_id', type=int)
+        
+        # Construir query base
+        query = Calificacion.query.filter_by(estudianteId=current_user.id_usuario)
+        
+        # Filtrar por periodo si se especifica
+        if periodo_id:
+            query = query.filter_by(periodo_academico_id=periodo_id)
+        
+        calificaciones = query.order_by(Calificacion.fecha_registro.desc()).all()
+        
+        calificaciones_data = []
+        for cal in calificaciones:
+            cal_dict = {
+                'id': cal.id_calificacion,
+                'asignatura': cal.asignatura.nombre_asignatura if cal.asignatura else 'N/A',
+                'valor': float(cal.valor) if cal.valor else None,
+                'fecha': cal.fecha_registro.strftime('%Y-%m-%d') if cal.fecha_registro else None,
+                'observaciones': cal.observaciones,
+                'periodo_id': cal.periodo_academico_id
+            }
+            calificaciones_data.append(cal_dict)
+        
+        return jsonify({
+            'success': True,
+            'calificaciones': calificaciones_data
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo calificaciones: {str(e)}'
+        }), 500
+
+@estudiante_bp.route('/api/mis-asistencias', methods=['GET'])
+@login_required
+def api_mis_asistencias():
+    """API para obtener las asistencias del estudiante, opcionalmente filtradas por periodo."""
+    try:
+        periodo_id = request.args.get('periodo_id', type=int)
+        
+        # Construir query base
+        query = Asistencia.query.filter_by(estudianteId=current_user.id_usuario)
+        
+        # Filtrar por periodo si se especifica
+        if periodo_id:
+            query = query.filter_by(periodo_academico_id=periodo_id)
+        
+        asistencias = query.order_by(Asistencia.fecha.desc()).all()
+        
+        # Calcular estadísticas
+        total = len(asistencias)
+        presentes = sum(1 for a in asistencias if a.estado == 'Presente')
+        ausentes = sum(1 for a in asistencias if a.estado == 'Ausente')
+        tardes = sum(1 for a in asistencias if a.estado == 'Tarde')
+        porcentaje = round((presentes / total * 100) if total > 0 else 0, 2)
+        
+        asistencias_data = []
+        for asist in asistencias:
+            asist_dict = {
+                'id': asist.id_asistencia,
+                'fecha': asist.fecha.strftime('%Y-%m-%d') if asist.fecha else None,
+                'estado': asist.estado,
+                'clase_id': asist.claseId,
+                'periodo_id': asist.periodo_academico_id
+            }
+            asistencias_data.append(asist_dict)
+        
+        return jsonify({
+            'success': True,
+            'asistencias': asistencias_data,
+            'estadisticas': {
+                'total': total,
+                'presentes': presentes,
+                'ausentes': ausentes,
+                'tardes': tardes,
+                'porcentaje_asistencia': porcentaje
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo asistencias: {str(e)}'
+        }), 500
+
+# ============================================================================
+# RUTAS - TAREAS ACADÉMICAS
+# ============================================================================
+
+@estudiante_bp.route('/tareas')
+@login_required
+def ver_tareas():
+    """Vista para que el estudiante vea las tareas publicadas."""
+    try:
+        # Obtener el curso del estudiante
+        matricula = Matricula.query.filter_by(estudianteId=current_user.id_usuario).first()
+        
+        if not matricula:
+            flash('No estás matriculado en ningún curso', 'warning')
+            return redirect(url_for('estudiante.estudiante_panel'))
+        
+        curso = Curso.query.get(matricula.cursoId)
+        
+        return render_template('estudiantes/tareas.html', curso=curso)
+    
+    except Exception as e:
+        flash(f'Error al cargar tareas: {str(e)}', 'error')
+        return redirect(url_for('estudiante.estudiante_panel'))
+
+
+@estudiante_bp.route('/tareas/<int:tarea_id>')
+@login_required
+def ver_detalle_tarea(tarea_id):
+    """Vista para ver el detalle de una tarea específica."""
+    try:
+        tarea = TareaAcademica.query.get_or_404(tarea_id)
+        
+        # Verificar que el estudiante esté en el curso de la tarea
+        matricula = Matricula.query.filter_by(
+            estudianteId=current_user.id_usuario,
+            cursoId=tarea.curso_id
+        ).first()
+        
+        if not matricula:
+            flash('No tienes acceso a esta tarea', 'error')
+            return redirect(url_for('estudiante.ver_tareas'))
+        
+        return render_template('estudiantes/detalle_tarea.html', tarea=tarea)
+    
+    except Exception as e:
+        flash(f'Error al cargar tarea: {str(e)}', 'error')
+        return redirect(url_for('estudiante.ver_tareas'))
+
+
+@estudiante_bp.route('/api/mis-tareas', methods=['GET'])
+@login_required
+def api_mis_tareas():
+    """
+    Obtiene todas las tareas publicadas asignadas al estudiante actual.
+    """
+    try:
+        # Consultar tareas del estudiante
+        tareas = Calificacion.query.filter_by(
+            estudianteId=current_user.id_usuario,
+            es_tarea_publicada=True
+        ).order_by(Calificacion.fecha_registro.desc()).all()
+        
+        # Formatear respuesta
+        tareas_data = []
+        for tarea in tareas:
+            tareas_data.append({
+                'id_tarea': tarea.id_calificacion,
+                'titulo': tarea.nombre_calificacion,
+                'descripcion': tarea.descripcion_tarea or '',
+                'archivo_url': tarea.archivo_url,
+                'archivo_nombre': tarea.archivo_nombre,
+                'asignatura_id': tarea.asignaturaId,
+                'asignatura_nombre': tarea.asignatura.nombre if tarea.asignatura else 'N/A',
+                'profesor_id': tarea.profesor_id,
+                'profesor_nombre': tarea.profesor.nombre_completo if tarea.profesor else 'N/A',
+                'categoria_id': tarea.categoriaId,
+                'categoria_nombre': tarea.categoria.nombre if tarea.categoria else 'N/A',
+                'fecha_publicacion': tarea.fecha_registro.strftime('%Y-%m-%d %H:%M') if tarea.fecha_registro else None,
+                'fecha_vencimiento': tarea.fecha_vencimiento.strftime('%Y-%m-%d %H:%M') if tarea.fecha_vencimiento else None,
+                'valor': float(tarea.valor) if tarea.valor else None,
+                'calificada': tarea.valor is not None
+            })
+        
+        return jsonify({
+            'success': True,
+            'tareas': tareas_data
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener tareas: {str(e)}'
+        }), 500
+
+
+@estudiante_bp.route('/api/tareas/<int:tarea_id>', methods=['GET'])
+@login_required
+def api_obtener_tarea(tarea_id):
+    """
+    Obtiene el detalle completo de una tarea específica.
+    """
+    try:
+        tarea = Calificacion.query.get(tarea_id)
+        
+        if not tarea:
+            return jsonify({
+                'success': False,
+                'message': 'Tarea no encontrada'
+            }), 404
+        
+        # Verificar que sea una tarea publicada
+        if not tarea.es_tarea_publicada:
+            return jsonify({
+                'success': False,
+                'message': 'Este registro no es una tarea publicada'
+            }), 400
+        
+        # Verificar que la tarea pertenezca al estudiante actual
+        if tarea.estudianteId != current_user.id_usuario:
+            return jsonify({
+                'success': False,
+                'message': 'No tienes acceso a esta tarea'
+            }), 403
+        
+        # Formatear respuesta
+        tarea_data = {
+            'id_tarea': tarea.id_calificacion,
+            'titulo': tarea.nombre_calificacion,
+            'descripcion': tarea.descripcion_tarea or '',
+            'archivo_url': tarea.archivo_url,
+            'archivo_nombre': tarea.archivo_nombre,
+            'asignatura_id': tarea.asignaturaId,
+            'asignatura_nombre': tarea.asignatura.nombre if tarea.asignatura else 'N/A',
+            'profesor_id': tarea.profesor_id,
+            'profesor_nombre': tarea.profesor.nombre_completo if tarea.profesor else 'N/A',
+            'categoria_id': tarea.categoriaId,
+            'categoria_nombre': tarea.categoria.nombre if tarea.categoria else 'N/A',
+            'fecha_publicacion': tarea.fecha_registro.strftime('%Y-%m-%d %H:%M') if tarea.fecha_registro else None,
+            'fecha_vencimiento': tarea.fecha_vencimiento.strftime('%Y-%m-%d %H:%M') if tarea.fecha_vencimiento else None,
+            'valor': float(tarea.valor) if tarea.valor else None,
+            'calificada': tarea.valor is not None,
+            'observaciones': tarea.observaciones or ''
+        }
+        
+        return jsonify({
+            'success': True,
+            'tarea': tarea_data
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener tarea: {str(e)}'
+        }), 500
 
 @estudiante_bp.route('/mi-equipo')
 @login_required

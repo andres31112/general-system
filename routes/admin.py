@@ -14,7 +14,8 @@ from controllers.models import (
     Usuario, Rol, Clase, Curso, Asignatura, Sede, Salon, 
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, AsignacionEquipo, Equipo, Incidente, Mantenimiento, Comunicacion, 
-    Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion
+    Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion,
+    CicloAcademico, PeriodoAcademico
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -1470,6 +1471,13 @@ def gestion_cursos():
     form = CursoForm()
     return render_template('superadmin/gestion_academica/cursos.html', form=form)
 
+@admin_bp.route('/periodos')
+@login_required
+@role_required(1)
+def gestion_periodos():
+    """Gestión de Periodos y Ciclos Académicos"""
+    return render_template('superadmin/gestion_academica/periodos.html')
+
 @admin_bp.route('/api/cursos', methods=['GET', 'POST', 'DELETE'])
 @login_required
 @role_required(1)
@@ -2234,12 +2242,15 @@ def api_cargar_horario_curso(curso_id):
 
         asignaciones = {}
         salones_asignaciones = {}
+        profesores_asignaciones = {}  # ✅ NUEVO: Para manejar profesores específicos
         
         for asignacion in asignaciones_db:
             clave = f"{asignacion.dia_semana}-{asignacion.hora_inicio}"
             asignaciones[clave] = asignacion.asignatura_id
             if asignacion.id_salon_fk:
                 salones_asignaciones[clave] = asignacion.id_salon_fk
+            if hasattr(asignacion, 'profesor_id') and asignacion.profesor_id:  # ✅ NUEVO
+                profesores_asignaciones[clave] = asignacion.profesor_id
 
         # Obtener bloques del horario general
         bloques_horario = []
@@ -2262,6 +2273,7 @@ def api_cargar_horario_curso(curso_id):
         print(f"📥 Cargando horario para curso {curso_id}:")
         print(f"   Asignaciones: {len(asignaciones)}")
         print(f"   Salones: {len(salones_asignaciones)}")
+        print(f"   Profesores: {len(profesores_asignaciones)}")  # ✅ NUEVO
         print(f"   Bloques: {len(bloques_horario)}")
 
         return jsonify({
@@ -2270,6 +2282,7 @@ def api_cargar_horario_curso(curso_id):
             'nombre_curso': curso.nombreCurso,
             'asignaciones': asignaciones,
             'salones_asignaciones': salones_asignaciones,
+            'profesores_asignaciones': profesores_asignaciones,  # ✅ NUEVO
             'bloques_horario': bloques_horario,
             'tiene_horario_general': curso.horario_general_id is not None
         })
@@ -2277,6 +2290,53 @@ def api_cargar_horario_curso(curso_id):
     except Exception as e:
         print(f"❌ Error cargando horario del curso: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/profesores/asignatura/<int:asignatura_id>')
+@login_required
+@role_required(1)
+def api_profesores_por_asignatura(asignatura_id):
+    """✅ NUEVO ENDPOINT: API para obtener profesores asignados a una asignatura específica"""
+    try:
+        # Importar la función desde profesor.py
+        from routes.profesor import obtener_profesores_por_asignatura
+        
+        profesores = obtener_profesores_por_asignatura(asignatura_id)
+        
+        return jsonify({
+            'success': True,
+            'profesores': profesores,
+            'total': len(profesores)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo profesores por asignatura: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al obtener profesores: {str(e)}'
+        }), 500
+
+@admin_bp.route('/api/profesores/validar/<int:profesor_id>/<int:asignatura_id>')
+@login_required
+@role_required(1)
+def api_validar_profesor_asignatura(profesor_id, asignatura_id):
+    """✅ NUEVO ENDPOINT: API para validar si un profesor está asignado a una asignatura"""
+    try:
+        # Importar la función desde profesor.py
+        from routes.profesor import validar_profesor_asignatura
+        
+        es_valido = validar_profesor_asignatura(profesor_id, asignatura_id)
+        
+        return jsonify({
+            'success': True,
+            'es_valido': es_valido
+        })
+        
+    except Exception as e:
+        print(f"❌ Error validando profesor-asignatura: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error al validar: {str(e)}'
+        }), 500
 
 @admin_bp.route('/api/horario_curso/compartir', methods=['POST'])
 @login_required
@@ -4678,3 +4738,588 @@ def api_eliminar_notificaciones():
             'message': f'Error: {str(e)}'
         }), 500
 
+
+# ============================================================================
+# GESTIÓN DE CICLOS Y PERIODOS ACADÉMICOS
+# ============================================================================
+
+@admin_bp.route('/periodos')
+@admin_bp.route('/periodos/dashboard')
+@login_required
+@role_required(1)
+def periodos_dashboard():
+    """Panel principal de gestión de ciclos y periodos académicos."""
+    return render_template('superadmin/gestion_academica/periodos.html')
+
+
+# ==================== CICLOS ACADÉMICOS ====================
+
+@admin_bp.route('/api/ciclos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_ciclos():
+    """Obtiene todos los ciclos académicos."""
+    try:
+        from services.periodo_service import obtener_todos_los_ciclos
+        
+        ciclos = obtener_todos_los_ciclos()
+        
+        return jsonify({
+            'success': True,
+            'ciclos': [ciclo.to_dict() for ciclo in ciclos]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo ciclos: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/ciclos', methods=['POST'])
+@login_required
+@role_required(1)
+def api_crear_ciclo():
+    """Crea un nuevo ciclo académico."""
+    try:
+        from services.periodo_service import crear_ciclo_academico
+        
+        data = request.get_json()
+        nombre = data.get('nombre')
+        fecha_inicio = datetime.strptime(data.get('fecha_inicio'), '%Y-%m-%d').date()
+        fecha_fin = datetime.strptime(data.get('fecha_fin'), '%Y-%m-%d').date()
+        
+        ciclo, error = crear_ciclo_academico(nombre, fecha_inicio, fecha_fin)
+        
+        if error:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ciclo académico creado exitosamente',
+            'ciclo': ciclo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error creando ciclo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/ciclos/<int:ciclo_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_ciclo(ciclo_id):
+    """Obtiene un ciclo académico específico."""
+    try:
+        from controllers.models import CicloAcademico
+        
+        ciclo = CicloAcademico.query.get(ciclo_id)
+        if not ciclo:
+            return jsonify({
+                'success': False,
+                'message': 'Ciclo no encontrado'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'ciclo': ciclo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/ciclos/<int:ciclo_id>/activar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_activar_ciclo(ciclo_id):
+    """Activa un ciclo académico."""
+    try:
+        from services.periodo_service import activar_ciclo
+        
+        success, error = activar_ciclo(ciclo_id)
+        
+        if error:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ciclo activado exitosamente'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error activando ciclo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/ciclos/<int:ciclo_id>', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_ciclo(ciclo_id):
+    """Actualiza un ciclo académico."""
+    try:
+        from controllers.models import CicloAcademico
+        
+        ciclo = CicloAcademico.query.get(ciclo_id)
+        if not ciclo:
+            return jsonify({
+                'success': False,
+                'message': 'Ciclo no encontrado'
+            }), 404
+        
+        # No permitir editar ciclos cerrados
+        if ciclo.estado == 'cerrado':
+            return jsonify({
+                'success': False,
+                'message': 'No se puede editar un ciclo cerrado'
+            }), 400
+        
+        data = request.get_json()
+        
+        # Actualizar campos
+        if 'nombre' in data:
+            ciclo.nombre = data['nombre']
+        if 'fecha_inicio' in data:
+            from datetime import datetime
+            ciclo.fecha_inicio = datetime.strptime(data['fecha_inicio'], '%Y-%m-%d').date()
+        if 'fecha_fin' in data:
+            from datetime import datetime
+            ciclo.fecha_fin = datetime.strptime(data['fecha_fin'], '%Y-%m-%d').date()
+        
+        # Validar fechas
+        if ciclo.fecha_inicio >= ciclo.fecha_fin:
+            return jsonify({
+                'success': False,
+                'message': 'La fecha de inicio debe ser anterior a la fecha de fin'
+            }), 400
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ciclo actualizado exitosamente',
+            'ciclo': ciclo.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error actualizando ciclo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/ciclos/<int:ciclo_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_ciclo(ciclo_id):
+    """Elimina un ciclo académico."""
+    try:
+        from controllers.models import CicloAcademico
+        
+        ciclo = CicloAcademico.query.get(ciclo_id)
+        if not ciclo:
+            return jsonify({
+                'success': False,
+                'message': 'Ciclo no encontrado'
+            }), 404
+        
+        # No permitir eliminar ciclo activo
+        if ciclo.activo:
+            return jsonify({
+                'success': False,
+                'message': 'No se puede eliminar el ciclo activo'
+            }), 400
+        
+        # No permitir eliminar si tiene periodos
+        if ciclo.periodos and len(ciclo.periodos) > 0:
+            return jsonify({
+                'success': False,
+                'message': 'No se puede eliminar un ciclo que tiene periodos. Elimine los periodos primero.'
+            }), 400
+        
+        nombre_ciclo = ciclo.nombre
+        db.session.delete(ciclo)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Ciclo "{nombre_ciclo}" eliminado exitosamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando ciclo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/ciclos/activo', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_ciclo_activo():
+    """Obtiene el ciclo académico activo."""
+    try:
+        from services.periodo_service import obtener_ciclo_activo
+        
+        ciclo = obtener_ciclo_activo()
+        
+        if not ciclo:
+            return jsonify({
+                'success': True,
+                'ciclo': None,
+                'message': 'No hay ciclo activo'
+            })
+        
+        return jsonify({
+            'success': True,
+            'ciclo': ciclo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+# ==================== PERIODOS ACADÉMICOS ====================
+
+@admin_bp.route('/api/periodos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_periodos():
+    """Obtiene todos los periodos de un ciclo."""
+    try:
+        from services.periodo_service import obtener_periodos_ciclo
+        
+        ciclo_id = request.args.get('ciclo_id', type=int)
+        
+        if not ciclo_id:
+            return jsonify({
+                'success': False,
+                'message': 'Se requiere ciclo_id'
+            }), 400
+        
+        periodos = obtener_periodos_ciclo(ciclo_id)
+        
+        return jsonify({
+            'success': True,
+            'periodos': [periodo.to_dict() for periodo in periodos]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo periodos: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/periodos', methods=['POST'])
+@login_required
+@role_required(1)
+def api_crear_periodo():
+    """Crea un nuevo periodo académico."""
+    try:
+        from services.periodo_service import crear_periodo
+        
+        data = request.get_json()
+        ciclo_id = data.get('ciclo_id')
+        numero_periodo = data.get('numero_periodo')
+        nombre = data.get('nombre')
+        fecha_inicio = datetime.strptime(data.get('fecha_inicio'), '%Y-%m-%d').date()
+        fecha_fin = datetime.strptime(data.get('fecha_fin'), '%Y-%m-%d').date()
+        fecha_cierre_notas = datetime.strptime(data.get('fecha_cierre_notas'), '%Y-%m-%d').date()
+        dias_notificacion = data.get('dias_notificacion', 7)
+        
+        periodo, error = crear_periodo(
+            ciclo_id, numero_periodo, nombre, 
+            fecha_inicio, fecha_fin, fecha_cierre_notas, 
+            dias_notificacion
+        )
+        
+        if error:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Periodo creado exitosamente',
+            'periodo': periodo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error creando periodo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/periodos/<int:periodo_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_periodo(periodo_id):
+    """Obtiene un periodo académico específico."""
+    try:
+        from controllers.models import PeriodoAcademico
+        
+        periodo = PeriodoAcademico.query.get(periodo_id)
+        if not periodo:
+            return jsonify({
+                'success': False,
+                'message': 'Periodo no encontrado'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'periodo': periodo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/periodos/<int:periodo_id>', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_periodo(periodo_id):
+    """Actualiza un periodo académico."""
+    try:
+        from services.periodo_service import actualizar_periodo
+        
+        data = request.get_json()
+        
+        # Convertir fechas si vienen en el request
+        if 'fecha_inicio' in data:
+            data['fecha_inicio'] = datetime.strptime(data['fecha_inicio'], '%Y-%m-%d').date()
+        if 'fecha_fin' in data:
+            data['fecha_fin'] = datetime.strptime(data['fecha_fin'], '%Y-%m-%d').date()
+        if 'fecha_cierre_notas' in data:
+            data['fecha_cierre_notas'] = datetime.strptime(data['fecha_cierre_notas'], '%Y-%m-%d').date()
+        
+        periodo, error = actualizar_periodo(periodo_id, data)
+        
+        if error:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Periodo actualizado exitosamente',
+            'periodo': periodo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error actualizando periodo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/periodos/<int:periodo_id>', methods=['DELETE'])
+@login_required
+@role_required(1)
+def api_eliminar_periodo(periodo_id):
+    """Elimina un periodo académico."""
+    try:
+        from services.periodo_service import eliminar_periodo
+        
+        success, error = eliminar_periodo(periodo_id)
+        
+        if error:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Periodo eliminado exitosamente'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error eliminando periodo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/periodos/<int:periodo_id>/cerrar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_cerrar_periodo(periodo_id):
+    """Cierra un periodo académico."""
+    try:
+        from services.periodo_service import cerrar_periodo
+        
+        success, error = cerrar_periodo(periodo_id)
+        
+        if error:
+            return jsonify({
+                'success': False,
+                'message': error
+            }), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Periodo cerrado exitosamente. Se han generado los reportes.'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error cerrando periodo: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/periodos/activo', methods=['GET'])
+@login_required
+@role_required(1)
+def api_obtener_periodo_activo():
+    """Obtiene el periodo académico activo."""
+    try:
+        from services.periodo_service import obtener_periodo_activo
+        
+        periodo = obtener_periodo_activo()
+        
+        if not periodo:
+            return jsonify({
+                'success': True,
+                'periodo': None,
+                'message': 'No hay periodo activo'
+            })
+        
+        return jsonify({
+            'success': True,
+            'periodo': periodo.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+# ==================== FINALIZACIÓN DE CICLO ====================
+
+@admin_bp.route('/api/ciclos/<int:ciclo_id>/finalizar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_finalizar_ciclo(ciclo_id):
+    """Finaliza un ciclo escolar completo (promoción de estudiantes)."""
+    try:
+        from services.promocion_service import finalizar_ciclo_escolar
+        
+        resultado = finalizar_ciclo_escolar(ciclo_id)
+        
+        if not resultado.get('success', False):
+            return jsonify(resultado), 400
+        
+        return jsonify({
+            'success': True,
+            'message': 'Ciclo escolar finalizado exitosamente',
+            'resultado': resultado
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error finalizando ciclo: {str(e)}'
+        }), 500
+
+
+# ==================== REPORTES DE PERIODOS ====================
+
+@admin_bp.route('/api/reportes/periodo/<int:periodo_id>')
+@login_required
+@role_required(1)
+def api_reportes_periodo(periodo_id):
+    """Obtiene los reportes generados de un periodo."""
+    try:
+        from services.reporte_service import obtener_reportes_periodo
+        
+        reportes = obtener_reportes_periodo(periodo_id)
+        
+        return jsonify({
+            'success': True,
+            'reportes': [reporte.to_dict() for reporte in reportes]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/reportes/ciclo/<int:ciclo_id>')
+@login_required
+@role_required(1)
+def api_reportes_ciclo(ciclo_id):
+    """Obtiene los reportes generados de un ciclo."""
+    try:
+        from services.reporte_service import obtener_reportes_ciclo
+        
+        reportes = obtener_reportes_ciclo(ciclo_id)
+        
+        return jsonify({
+            'success': True,
+            'reportes': [reporte.to_dict() for reporte in reportes]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/api/reportes/promocion/<int:ciclo_id>', methods=['POST'])
+@login_required
+@role_required(1)
+def api_generar_reporte_promocion(ciclo_id):
+    """Genera el reporte de promoción de un ciclo."""
+    try:
+        from services.reporte_service import generar_reporte_promocion
+        
+        reporte = generar_reporte_promocion(ciclo_id)
+        
+        if not reporte:
+            return jsonify({
+                'success': False,
+                'message': 'No se pudo generar el reporte'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'message': 'Reporte de promoción generado exitosamente',
+            'reporte': reporte.to_dict()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500

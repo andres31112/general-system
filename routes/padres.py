@@ -3,8 +3,9 @@ from flask_login import login_required, current_user
 from controllers.decorators import role_required, permission_required
 from controllers.models import (
     db, Usuario, Rol, Comunicacion, SolicitudConsulta, Asignatura,
-    Calificacion, Asistencia, Clase, Matricula, Curso, HorarioCompartido, Salon, Sede
-)
+    Calificacion, Asistencia, Clase, Matricula, Curso, HorarioCompartido, HorarioCurso, Salon, Sede,
+    CicloAcademico, PeriodoAcademico
+    )
 
 padre_bp = Blueprint('padre', __name__, url_prefix='/padre')
 
@@ -51,22 +52,28 @@ def dashboard():
                 # Obtener calificaciones del hijo
                 calificaciones_hijo = Calificacion.query.filter_by(estudianteId=hijo.id_usuario).all()
                 if calificaciones_hijo:
-                    valores = [float(cal.valor) for cal in calificaciones_hijo if cal.valor is not None]
-                    if valores:
-                        promedio_hijo = sum(valores) / len(valores)
-                        promedios_hijos.append(promedio_hijo)
-                
+                    try:
+                        valores = [float(cal.valor) for cal in calificaciones_hijo if cal.valor is not None and cal.valor != '']
+                        if valores:
+                            promedio_hijo = sum(valores) / len(valores)
+                            promedios_hijos.append(promedio_hijo)
+                    except (ValueError, TypeError) as e:
+                        print(f"Error calculando promedio para hijo {hijo.id_usuario}: {e}")
+                        continue
+         
                 # Obtener clases inscritas del hijo
                 clases_hijo = Matricula.query.filter_by(estudianteId=hijo.id_usuario).count()
                 total_clases_inscritas += clases_hijo
                 
                 # Obtener calificaciones recientes (últimas 5)
-                calificaciones_recientes_hijo = Calificacion.query.filter_by(estudianteId=hijo.id_usuario).order_by(Calificacion.fecha_registro.desc()).limit(5).all()
+                calificaciones_recientes_hijo = Calificacion.query.filter_by(
+                    estudianteId=hijo.id_usuario
+                ).order_by(Calificacion.fecha_registro.desc()).limit(5).all()
                 calificaciones_recientes.extend(calificaciones_recientes_hijo)
             
             if promedios_hijos:
-                promedio_general = sum(promedios_hijos) / len(promedios_hijos)
-            
+                promedio_general = round(sum(promedios_hijos) / len(promedios_hijos), 2)
+                 
             # Obtener mensajes de profesores (comunicaciones donde el padre es destinatario)
             mensajes_profesores = Comunicacion.query.filter_by(destinatario_id=current_user.id_usuario).count()
             
@@ -142,6 +149,44 @@ def horario_clases():
     
     return render_template('padres/horario_clases.html', hijos=hijos)
 
+@padre_bp.route('/estudiante/<int:estudiante_id>/detalle')
+@login_required
+@role_required('Padre')
+def detalle_estudiante(estudiante_id):
+    """Página con detalle completo del estudiante: calendario, asistencias, tareas y consultas."""
+    # Verificar que el estudiante pertenece al padre
+    if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+        flash('No tienes permisos para acceder a este estudiante', 'danger')
+        return redirect(url_for('padre.informacion_academica'))
+    
+    estudiante = Usuario.query.get_or_404(estudiante_id)
+    return render_template('padres/detalle_estudiante.html', estudiante=estudiante)
+
+@padre_bp.route('/estudiante/<int:estudiante_id>/calificaciones')
+@login_required
+@role_required('Padre')
+def ver_calificaciones_hijo(estudiante_id):
+    """Redirige a las calificaciones del estudiante (primera asignatura disponible)."""
+    from controllers.models import Calificacion
+    
+    # Verificar que el estudiante pertenece al padre
+    if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+        flash('No tienes permisos para acceder a este estudiante', 'danger')
+        return redirect(url_for('padre.informacion_academica'))
+    
+    # Obtener la primera asignatura con calificaciones para este estudiante
+    primera_calificacion = Calificacion.query.filter_by(estudianteId=estudiante_id).first()
+    
+    if primera_calificacion and primera_calificacion.asignaturaId:
+        # Redirigir a ver las calificaciones de la primera asignatura
+        return redirect(url_for('padre.ver_calificaciones_estudiante', 
+                              estudiante_id=estudiante_id, 
+                              asignatura_id=primera_calificacion.asignaturaId))
+    else:
+        # Si no hay calificaciones, mostrar mensaje
+        flash('Aún no hay calificaciones registradas para este estudiante', 'info')
+        return redirect(url_for('padre.detalle_estudiante', estudiante_id=estudiante_id))
+
 # API Routes para Información Académica
 @padre_bp.route('/api/estadisticas_estudiante/<int:estudiante_id>')
 @login_required
@@ -150,52 +195,50 @@ def api_estadisticas_estudiante(estudiante_id):
     """API para obtener estadísticas generales de un estudiante."""
     try:
         # Verificar que el estudiante pertenece al padre
-        estudiante = current_user.hijos.filter_by(id_usuario=estudiante_id).first()
-        
-        if not estudiante:
-            return jsonify({'success': False, 'message': 'Estudiante no encontrado'}), 404
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+            return jsonify({'success': False, 'message': 'No tienes permisos'}), 403
         
         # Calcular promedio general de todas las calificaciones
         from sqlalchemy import func
-        calificaciones = Calificacion.query.filter_by(estudiante_id=estudiante_id).all()
+        calificaciones = Calificacion.query.filter_by(estudianteId=estudiante_id).filter(Calificacion.valor.isnot(None)).all()
         
         if calificaciones:
-            suma_notas = sum([cal.nota for cal in calificaciones if cal.nota is not None])
+            suma_notas = sum([float(cal.valor) for cal in calificaciones if cal.valor is not None])
             promedio_general = round(suma_notas / len(calificaciones), 2) if calificaciones else 0
         else:
             promedio_general = 0
         
         # Contar asistencias
         total_asistencias = Asistencia.query.filter_by(
-            estudiante_id=estudiante_id,
+            estudianteId=estudiante_id,
             estado='presente'
         ).count()
         
         # Contar fallas
         total_fallas = Asistencia.query.filter_by(
-            estudiante_id=estudiante_id,
+            estudianteId=estudiante_id,
             estado='falta'
         ).count()
         
         # Contar retardos
         total_retardos = Asistencia.query.filter_by(
-            estudiante_id=estudiante_id,
+            estudianteId=estudiante_id,
             estado='retardo'
         ).count()
         
-        estadisticas = {
-            'promedio_general': promedio_general,
-            'total_asistencias': total_asistencias,
-            'total_fallas': total_fallas,
-            'total_retardos': total_retardos
-        }
+        # Contar tareas pendientes
+        tareas_pendientes = Calificacion.query.filter_by(
+            estudianteId=estudiante_id,
+            es_tarea_publicada=True
+        ).filter(Calificacion.valor.is_(None)).count()
         
         return jsonify({
             'success': True,
             'promedio_general': promedio_general,
             'total_asistencias': total_asistencias,
             'total_fallas': total_fallas,
-            'total_retardos': total_retardos
+            'total_retardos': total_retardos,
+            'tareas_pendientes': tareas_pendientes
         })
         
     except Exception as e:
@@ -209,30 +252,31 @@ def api_promedios_estudiante(estudiante_id):
     """API para obtener promedios por asignatura de un estudiante."""
     try:
         # Verificar que el estudiante pertenece al padre
-        estudiante = current_user.hijos.filter_by(id_usuario=estudiante_id).first()
-        
-        if not estudiante:
-            return jsonify({'success': False, 'message': 'Estudiante no encontrado'}), 404
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+            return jsonify({'success': False, 'message': 'No tienes permisos'}), 403
         
         # Obtener calificaciones agrupadas por asignatura
         from sqlalchemy import func
         
         promedios_query = db.session.query(
+            Asignatura.id_asignatura,
             Asignatura.nombre,
-            func.avg(Calificacion.nota).label('promedio'),
+            func.avg(Calificacion.valor).label('promedio'),
             func.count(Calificacion.id_calificacion).label('num_calificaciones')
         ).join(
-            Calificacion, Calificacion.asignatura_id == Asignatura.id_asignatura
+            Calificacion, Calificacion.asignaturaId == Asignatura.id_asignatura
         ).filter(
-            Calificacion.estudiante_id == estudiante_id
+            Calificacion.estudianteId == estudiante_id,
+            Calificacion.valor.isnot(None)
         ).group_by(
             Asignatura.id_asignatura, Asignatura.nombre
         ).all()
         
         promedios = []
-        for asignatura_nombre, promedio, num_calificaciones in promedios_query:
+        for asignatura_id, asignatura_nombre, promedio, num_calificaciones in promedios_query:
             if promedio is not None:
                 promedios.append({
+                    'asignatura_id': asignatura_id,
                     'asignatura': asignatura_nombre,
                     'promedio': round(float(promedio), 2),
                     'num_calificaciones': num_calificaciones
@@ -289,6 +333,187 @@ def api_asistencia_estudiante(estudiante_id):
     except Exception as e:
         current_app.logger.error(f"Error obteniendo asistencia: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+@padre_bp.route('/api/asistencia_mes/<int:estudiante_id>')
+@login_required
+@role_required('Padre')
+def api_asistencia_mes(estudiante_id):
+    """API para obtener asistencias de un estudiante por mes (para calendario)."""
+    try:
+        # Verificar que el estudiante pertenece al padre
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+            return jsonify({'success': False, 'message': 'No tienes permisos'}), 403
+        
+        year = request.args.get('year', type=int)
+        month = request.args.get('month', type=int)
+        
+        if not year or not month:
+            from datetime import datetime
+            now = datetime.now()
+            year = now.year
+            month = now.month
+        
+        # Obtener asistencias del mes con información de asignatura
+        from datetime import datetime
+        fecha_inicio = datetime(year, month, 1)
+        if month == 12:
+            fecha_fin = datetime(year + 1, 1, 1)
+        else:
+            fecha_fin = datetime(year, month + 1, 1)
+        
+        asistencias = db.session.query(
+            Asistencia, Clase, Asignatura, Usuario, HorarioCurso, Salon
+        ).join(
+            Clase, Asistencia.claseId == Clase.id_clase
+        ).join(
+            Asignatura, Clase.asignaturaId == Asignatura.id_asignatura
+        ).join(
+            Usuario, Clase.profesorId == Usuario.id_usuario
+        ).outerjoin(
+            HorarioCurso, 
+            db.and_(
+                HorarioCurso.curso_id == Clase.cursoId,
+                HorarioCurso.asignatura_id == Clase.asignaturaId
+            )
+        ).outerjoin(
+            Salon, HorarioCurso.id_salon_fk == Salon.id_salon
+        ).filter(
+            Asistencia.estudianteId == estudiante_id,
+            Asistencia.fecha >= fecha_inicio,
+            Asistencia.fecha < fecha_fin
+        ).order_by(Asistencia.fecha).all()
+        
+        # Agrupar por día
+        asistencias_por_dia = {}
+        for asistencia, clase, asignatura, profesor, horario_curso, salon in asistencias:
+            fecha_key = asistencia.fecha.strftime('%Y-%m-%d')
+            
+            if fecha_key not in asistencias_por_dia:
+                asistencias_por_dia[fecha_key] = []
+            
+            # Obtener hora del horario_curso si existe, sino usar valores por defecto
+            hora_inicio = horario_curso.hora_inicio if horario_curso else '--'
+            hora_fin = horario_curso.hora_fin if horario_curso else '--'
+            salon_nombre = salon.nombre if salon else 'Sin asignar'
+            
+            asistencias_por_dia[fecha_key].append({
+                'asignatura': asignatura.nombre,
+                'estado': asistencia.estado,
+                'excusa': asistencia.excusa if asistencia.excusa else False,
+                'observaciones': getattr(asistencia, 'observaciones', ''),
+                'hora_inicio': hora_inicio,
+                'hora_fin': hora_fin,
+                'profesor': profesor.nombre_completo if profesor else 'Sin asignar',
+                'salon': salon_nombre
+            })
+        
+        return jsonify({
+            'success': True,
+            'asistencias_por_dia': asistencias_por_dia
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo asistencias del mes: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@padre_bp.route('/api/tareas_estudiante/<int:estudiante_id>')
+@login_required
+@role_required('Padre')
+def api_tareas_estudiante(estudiante_id):
+    """API para obtener tareas asignadas al estudiante."""
+    try:
+        # Verificar que el estudiante pertenece al padre
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+            return jsonify({'success': False, 'message': 'No tienes permisos'}), 403
+        
+        # Obtener tareas publicadas (calificaciones con es_tarea_publicada=True)
+        tareas = db.session.query(
+            Calificacion, Asignatura
+        ).join(
+            Asignatura, Calificacion.asignaturaId == Asignatura.id_asignatura
+        ).filter(
+            Calificacion.estudianteId == estudiante_id,
+            Calificacion.es_tarea_publicada == True
+        ).order_by(
+            Calificacion.fecha_vencimiento.desc().nullslast(),
+            Calificacion.fecha_registro.desc()
+        ).all()
+        
+        current_app.logger.info(f"Buscando tareas para estudiante {estudiante_id}")
+        current_app.logger.info(f"Tareas encontradas: {len(tareas)}")
+        
+        tareas_list = []
+        for tarea, asignatura in tareas:
+            tareas_list.append({
+                'id_tarea': tarea.id_calificacion,
+                'titulo': tarea.nombre_calificacion,
+                'nombre_calificacion': tarea.nombre_calificacion,
+                'asignatura': asignatura.nombre,
+                'asignatura_id': asignatura.id_asignatura,
+                'descripcion_tarea': tarea.descripcion_tarea,
+                'fecha_vencimiento': tarea.fecha_vencimiento.isoformat() if tarea.fecha_vencimiento else None,
+                'archivo_url': tarea.archivo_url,
+                'archivo_nombre': tarea.archivo_nombre,
+                'completada': tarea.valor is not None,
+                'calificacion': float(tarea.valor) if tarea.valor else None,
+                'fecha_registro': tarea.fecha_registro.isoformat() if tarea.fecha_registro else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'tareas': tareas_list
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo tareas: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@padre_bp.route('/api/consultas_estudiante/<int:estudiante_id>')
+@login_required
+@role_required('Padre')
+def api_consultas_estudiante(estudiante_id):
+    """API para obtener consultas realizadas sobre un estudiante."""
+    try:
+        # Verificar que el estudiante pertenece al padre
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+            return jsonify({'success': False, 'message': 'No tienes permisos'}), 403
+        
+        # Obtener consultas del estudiante
+        consultas = db.session.query(
+            SolicitudConsulta, Asignatura, Usuario
+        ).join(
+            Asignatura, SolicitudConsulta.asignatura_id == Asignatura.id_asignatura
+        ).join(
+            Usuario, SolicitudConsulta.profesor_id == Usuario.id_usuario
+        ).filter(
+            SolicitudConsulta.estudiante_id == estudiante_id,
+            SolicitudConsulta.padre_id == current_user.id_usuario
+        ).order_by(
+            SolicitudConsulta.fecha_solicitud.desc()
+        ).all()
+        
+        consultas_list = []
+        for consulta, asignatura, profesor in consultas:
+            consultas_list.append({
+                'id_solicitud': consulta.id_solicitud,
+                'asignatura': asignatura.nombre,
+                'asignatura_id': asignatura.id_asignatura,
+                'profesor_nombre': profesor.nombre_completo,
+                'justificacion': consulta.justificacion,
+                'estado': consulta.estado,
+                'respuesta_profesor': consulta.respuesta_profesor,
+                'fecha_solicitud': consulta.fecha_solicitud.isoformat() if consulta.fecha_solicitud else None,
+                'fecha_respuesta': consulta.fecha_respuesta.isoformat() if consulta.fecha_respuesta else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'consultas': consultas_list
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo consultas: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 
 @padre_bp.route('/api/horario_estudiante/<int:estudiante_id>')
 @login_required
@@ -531,7 +756,8 @@ def api_obtener_solicitudes():
 def ver_calificaciones_estudiante(estudiante_id, asignatura_id):
     """Página para mostrar las calificaciones de un estudiante específico cuando se acepta una solicitud."""
     from controllers.models import Calificacion, CategoriaCalificacion
-    
+    from datetime import datetime
+
     # Verificar que el estudiante sea hijo del padre
     if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
         flash('No tienes permisos para ver las calificaciones de este estudiante', 'error')
@@ -543,12 +769,20 @@ def ver_calificaciones_estudiante(estudiante_id, asignatura_id):
     calificaciones = Calificacion.query.filter_by(
         estudianteId=estudiante_id,
         asignaturaId=asignatura_id
-    ).all()
+    ).order_by(Calificacion.fecha_registro.desc()).all()
     
-    # Obtener categorías de calificación
+    # Obtener la última fecha de registro de calificaciones
+    ultima_fecha_reporte = None
+    if calificaciones:
+        for cal in calificaciones:
+            if cal.fecha_registro:
+                ultima_fecha_reporte = cal.fecha_registro
+                break
+    
+    # Obtener TODAS las categorías de calificación
     categorias = CategoriaCalificacion.query.all()
     
-    # Organizar calificaciones por categoría
+    # Organizar calificaciones por categoría (TODAS las categorías, incluso sin calificaciones)
     calificaciones_por_categoria = {}
     for categoria in categorias:
         calificaciones_por_categoria[categoria.id_categoria] = {
@@ -573,9 +807,10 @@ def ver_calificaciones_estudiante(estudiante_id, asignatura_id):
         else:
             promedios_por_categoria[categoria_id] = 0
     
-    # Calcular promedio general
-    if promedios_por_categoria:
-        promedio_general = sum(promedios_por_categoria.values()) / len(promedios_por_categoria)
+    # Calcular promedio general (solo de categorías con calificaciones)
+    promedios_con_valores = [p for p in promedios_por_categoria.values() if p > 0]
+    if promedios_con_valores:
+        promedio_general = sum(promedios_con_valores) / len(promedios_con_valores)
     else:
         promedio_general = 0
     
@@ -584,7 +819,8 @@ def ver_calificaciones_estudiante(estudiante_id, asignatura_id):
                          asignatura=Asignatura.query.get(asignatura_id),
                          calificaciones_por_categoria=calificaciones_por_categoria,
                          promedios_por_categoria=promedios_por_categoria,
-                         promedio_general=promedio_general)
+                         promedio_general=promedio_general,
+                         ultima_fecha_reporte=ultima_fecha_reporte)
 
 # ==================== COMUNICACIONES PARA PADRES ====================
 
@@ -1000,4 +1236,355 @@ def api_contador_notificaciones():
         return jsonify({
             'success': False,
             'message': f'Error obteniendo contador: {str(e)}'
+        }), 500
+
+# ============================================================================
+# RUTAS API - PERIODOS ACADÉMICOS
+# ============================================================================
+
+@padre_bp.route('/api/periodo-activo', methods=['GET'])
+@login_required
+@role_required('Padre')
+def api_periodo_activo():
+    """API para obtener el periodo académico activo."""
+    try:
+        from services.periodo_service import obtener_periodo_activo
+        
+        periodo = obtener_periodo_activo()
+        if periodo:
+            return jsonify({
+                'success': True,
+                'periodo': periodo.to_dict()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No hay periodo activo'
+            })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo periodo activo: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/periodos', methods=['GET'])
+@login_required
+@role_required('Padre')
+def api_periodos():
+    """API para obtener todos los periodos del ciclo activo."""
+    try:
+        from services.periodo_service import obtener_ciclo_activo, obtener_periodos_ciclo
+        
+        ciclo = obtener_ciclo_activo()
+        if not ciclo:
+            return jsonify({
+                'success': False,
+                'message': 'No hay ciclo activo'
+            })
+        
+        periodos = obtener_periodos_ciclo(ciclo.id_ciclo)
+        return jsonify({
+            'success': True,
+            'periodos': [p.to_dict() for p in periodos]
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo periodos: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/hijo/<int:hijo_id>/calificaciones', methods=['GET'])
+@login_required
+@role_required('Padre')
+def api_calificaciones_hijo_por_periodo(hijo_id):
+    """API para obtener calificaciones de un hijo, opcionalmente filtradas por periodo."""
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, hijo_id):
+            return jsonify({
+                'success': False,
+                'message': 'No autorizado para ver las calificaciones de este estudiante'
+            }), 403
+        
+        periodo_id = request.args.get('periodo_id', type=int)
+        
+        # Construir query base
+        query = Calificacion.query.filter_by(estudianteId=hijo_id)
+        
+        # Filtrar por periodo si se especifica
+        if periodo_id:
+            query = query.filter_by(periodo_academico_id=periodo_id)
+        
+        calificaciones = query.order_by(Calificacion.fecha_registro.desc()).all()
+        
+        calificaciones_data = []
+        for cal in calificaciones:
+            cal_dict = {
+                'id': cal.id_calificacion,
+                'asignatura': cal.asignatura.nombre_asignatura if cal.asignatura else 'N/A',
+                'valor': float(cal.valor) if cal.valor else None,
+                'fecha': cal.fecha_registro.strftime('%Y-%m-%d') if cal.fecha_registro else None,
+                'observaciones': cal.observaciones,
+                'periodo_id': cal.periodo_academico_id
+            }
+            calificaciones_data.append(cal_dict)
+        
+        return jsonify({
+            'success': True,
+            'calificaciones': calificaciones_data
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo calificaciones: {str(e)}'
+        }), 500
+
+@padre_bp.route('/api/hijo/<int:hijo_id>/asistencias', methods=['GET'])
+@login_required
+@role_required('Padre')
+def api_asistencias_hijo_por_periodo(hijo_id):
+    """API para obtener asistencias de un hijo, opcionalmente filtradas por periodo."""
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, hijo_id):
+            return jsonify({
+                'success': False,
+                'message': 'No autorizado para ver las asistencias de este estudiante'
+            }), 403
+        
+        periodo_id = request.args.get('periodo_id', type=int)
+        
+        # Construir query base
+        query = Asistencia.query.filter_by(estudianteId=hijo_id)
+        
+        # Filtrar por periodo si se especifica
+        if periodo_id:
+            query = query.filter_by(periodo_academico_id=periodo_id)
+        
+        asistencias = query.order_by(Asistencia.fecha.desc()).all()
+        
+        # Calcular estadísticas
+        total = len(asistencias)
+        presentes = sum(1 for a in asistencias if a.estado == 'Presente')
+        ausentes = sum(1 for a in asistencias if a.estado == 'Ausente')
+        tardes = sum(1 for a in asistencias if a.estado == 'Tarde')
+        porcentaje = round((presentes / total * 100) if total > 0 else 0, 2)
+        
+        asistencias_data = []
+        for asist in asistencias:
+            asist_dict = {
+                'id': asist.id_asistencia,
+                'fecha': asist.fecha.strftime('%Y-%m-%d') if asist.fecha else None,
+                'estado': asist.estado,
+                'clase_id': asist.claseId,
+                'periodo_id': asist.periodo_academico_id
+            }
+            asistencias_data.append(asist_dict)
+        
+        return jsonify({
+            'success': True,
+            'asistencias': asistencias_data,
+            'estadisticas': {
+                'total': total,
+                'presentes': presentes,
+                'ausentes': ausentes,
+                'tardes': tardes,
+                'porcentaje_asistencia': porcentaje
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error obteniendo asistencias: {str(e)}'
+        }), 500
+
+# ============================================================================
+# RUTAS - TAREAS ACADÉMICAS
+# ============================================================================
+
+@padre_bp.route('/tareas/<int:hijo_id>')
+@login_required
+@role_required('Padre')
+def ver_tareas_hijo(hijo_id):
+    """Vista para que el padre vea las tareas de su hijo/a."""
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, hijo_id):
+            flash('No tienes autorización para ver las tareas de este estudiante', 'error')
+            return redirect(url_for('padre.dashboard'))
+        
+        hijo = Usuario.query.get_or_404(hijo_id)
+        
+        # Obtener el curso del hijo
+        matricula = Matricula.query.filter_by(estudianteId=hijo_id).first()
+        
+        if not matricula:
+            flash('El estudiante no está matriculado en ningún curso', 'warning')
+            return redirect(url_for('padre.dashboard'))
+        
+        curso = Curso.query.get(matricula.cursoId)
+        
+        return render_template('padres/tareas.html', hijo=hijo, curso=curso)
+    
+    except Exception as e:
+        flash(f'Error al cargar tareas: {str(e)}', 'error')
+        return redirect(url_for('padre.dashboard'))
+
+
+@padre_bp.route('/tareas/<int:hijo_id>/<int:tarea_id>')
+@login_required
+@role_required('Padre')
+def ver_detalle_tarea_hijo(hijo_id, tarea_id):
+    """Vista para que el padre vea el detalle de una tarea de su hijo/a."""
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, hijo_id):
+            flash('No tienes autorización para ver esta información', 'error')
+            return redirect(url_for('padre.dashboard'))
+        
+        hijo = Usuario.query.get_or_404(hijo_id)
+        tarea = TareaAcademica.query.get_or_404(tarea_id)
+        
+        # Verificar que el hijo esté en el curso de la tarea
+        matricula = Matricula.query.filter_by(
+            estudianteId=hijo_id,
+            cursoId=tarea.curso_id
+        ).first()
+        
+        if not matricula:
+            flash('El estudiante no tiene acceso a esta tarea', 'error')
+            return redirect(url_for('padre.ver_tareas_hijo', hijo_id=hijo_id))
+        
+        return render_template('padres/detalle_tarea.html', hijo=hijo, tarea=tarea)
+    
+    except Exception as e:
+        flash(f'Error al cargar tarea: {str(e)}', 'error')
+        return redirect(url_for('padre.ver_tareas_hijo', hijo_id=hijo_id))
+
+
+@padre_bp.route('/api/hijo/<int:hijo_id>/tareas', methods=['GET'])
+@login_required
+@role_required('Padre')
+def api_tareas_hijo(hijo_id):
+    """
+    Obtiene todas las tareas publicadas de un hijo específico.
+    """
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, hijo_id):
+            return jsonify({
+                'success': False,
+                'message': 'No autorizado para ver las tareas de este estudiante'
+            }), 403
+        
+        # Consultar tareas del hijo
+        tareas = Calificacion.query.filter_by(
+            estudianteId=hijo_id,
+            es_tarea_publicada=True
+        ).order_by(Calificacion.fecha_registro.desc()).all()
+        
+        # Formatear respuesta
+        tareas_data = []
+        for tarea in tareas:
+            tareas_data.append({
+                'id_tarea': tarea.id_calificacion,
+                'titulo': tarea.nombre_calificacion,
+                'descripcion': tarea.descripcion_tarea or '',
+                'archivo_url': tarea.archivo_url,
+                'archivo_nombre': tarea.archivo_nombre,
+                'asignatura_id': tarea.asignaturaId,
+                'asignatura_nombre': tarea.asignatura.nombre if tarea.asignatura else 'N/A',
+                'profesor_id': tarea.profesor_id,
+                'profesor_nombre': tarea.profesor.nombre_completo if tarea.profesor else 'N/A',
+                'categoria_id': tarea.categoriaId,
+                'categoria_nombre': tarea.categoria.nombre if tarea.categoria else 'N/A',
+                'fecha_publicacion': tarea.fecha_registro.strftime('%Y-%m-%d %H:%M') if tarea.fecha_registro else None,
+                'fecha_vencimiento': tarea.fecha_vencimiento.strftime('%Y-%m-%d %H:%M') if tarea.fecha_vencimiento else None,
+                'valor': float(tarea.valor) if tarea.valor else None,
+                'calificada': tarea.valor is not None
+            })
+        
+        return jsonify({
+            'success': True,
+            'tareas': tareas_data
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener tareas: {str(e)}'
+        }), 500
+
+
+@padre_bp.route('/api/hijo/<int:hijo_id>/tareas/<int:tarea_id>', methods=['GET'])
+@login_required
+@role_required('Padre')
+def api_obtener_tarea_hijo(hijo_id, tarea_id):
+    """
+    Obtiene el detalle completo de una tarea específica de un hijo.
+    """
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, hijo_id):
+            return jsonify({
+                'success': False,
+                'message': 'No autorizado para ver esta información'
+            }), 403
+        
+        # Buscar la tarea
+        tarea = Calificacion.query.get(tarea_id)
+        
+        if not tarea:
+            return jsonify({
+                'success': False,
+                'message': 'Tarea no encontrada'
+            }), 404
+        
+        # Verificar que sea una tarea publicada
+        if not tarea.es_tarea_publicada:
+            return jsonify({
+                'success': False,
+                'message': 'Este registro no es una tarea publicada'
+            }), 400
+        
+        # Verificar que la tarea pertenezca al hijo
+        if tarea.estudianteId != hijo_id:
+            return jsonify({
+                'success': False,
+                'message': 'La tarea no pertenece a este estudiante'
+            }), 403
+        
+        # Formatear respuesta
+        tarea_data = {
+            'id_tarea': tarea.id_calificacion,
+            'titulo': tarea.nombre_calificacion,
+            'descripcion': tarea.descripcion_tarea or '',
+            'archivo_url': tarea.archivo_url,
+            'archivo_nombre': tarea.archivo_nombre,
+            'asignatura_id': tarea.asignaturaId,
+            'asignatura_nombre': tarea.asignatura.nombre if tarea.asignatura else 'N/A',
+            'profesor_id': tarea.profesor_id,
+            'profesor_nombre': tarea.profesor.nombre_completo if tarea.profesor else 'N/A',
+            'categoria_id': tarea.categoriaId,
+            'categoria_nombre': tarea.categoria.nombre if tarea.categoria else 'N/A',
+            'fecha_publicacion': tarea.fecha_registro.strftime('%Y-%m-%d %H:%M') if tarea.fecha_registro else None,
+            'fecha_vencimiento': tarea.fecha_vencimiento.strftime('%Y-%m-%d %H:%M') if tarea.fecha_vencimiento else None,
+            'valor': float(tarea.valor) if tarea.valor else None,
+            'calificada': tarea.valor is not None,
+            'observaciones': tarea.observaciones or ''
+        }
+        
+        return jsonify({
+            'success': True,
+            'tarea': tarea_data
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error al obtener tarea: {str(e)}'
         }), 500

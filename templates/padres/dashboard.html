@@ -13,7 +13,13 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <p class="mb-0 fw-semibold text-white-50">Promedio General</p>
-                            <h3 class="card-title fw-bold">{{ promedio_general if promedio_general > 0 else 'N/A' }}</h3>
+                            <h3 class="card-title fw-bold">
+                                {% if promedio_general and promedio_general > 0 %}
+                                    {{ "%.2f"|format(promedio_general) }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </h3>
                         </div>
                         <i class="fas fa-chart-line fa-3x text-white-50"></i>
                     </div>
@@ -113,12 +119,16 @@
                         {% for calificacion in calificaciones_recientes %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <div>
-                                <div class="fw-semibold">{{ calificacion.asignatura }}</div>
-                                <small class="text-muted">{{ calificacion.hijo }} - {{ calificacion.fecha }}</small>
+                                <div class="fw-semibold">{{ calificacion.asignatura.nombre if calificacion.asignatura else 'N/A' }}</div>
+                                <small class="text-muted">{{ calificacion.estudiante.nombre_completo if calificacion.estudiante else 'N/A' }}</small>
                             </div>
-                            <span class="badge {% if calificacion.valor >= 4.0 %}bg-success{% elif calificacion.valor >= 3.0 %}bg-warning{% else %}bg-danger{% endif %}">
-                                {{ calificacion.valor }}
-                            </span>
+                            {% if calificacion.valor %}
+                                <span class="badge {% if calificacion.valor >= 4.0 %}bg-success{% elif calificacion.valor >= 3.0 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ "%.2f"|format(calificacion.valor) }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">Pendiente</span>
+                            {% endif %}
                         </li>
                         {% endfor %}
                     </ul>

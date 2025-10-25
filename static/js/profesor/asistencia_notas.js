@@ -1,5 +1,61 @@
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- PERIODO ACADEMICO ---
+    let periodoActivo = null;
+    let periodoCerrado = false;
+
+    // Cargar periodo activo
+    function cargarPeriodoActivo() {
+        return fetch('/profesor/api/periodo-activo')
+            .then(response => response.json())
+            .then(payload => {
+                if (payload && payload.success && payload.periodo) {
+                    periodoActivo = payload.periodo;
+                    periodoCerrado = !payload.periodo.puede_modificar_notas;
+                    
+                    // Actualizar UI
+                    document.getElementById('periodo-nombre-asist').textContent = periodoActivo.nombre;
+                    document.getElementById('periodo-fechas-asist').textContent = 
+                        `${periodoActivo.fecha_inicio} - ${periodoActivo.fecha_fin}`;
+                    
+                    const estadoBadge = document.getElementById('periodo-estado-text-asist');
+                    if (periodoActivo.estado === 'activo') {
+                        if (periodoCerrado) {
+                            estadoBadge.innerHTML = '<i class="fas fa-lock"></i> Cerrado';
+                            document.getElementById('periodo-cerrado-alerta').style.display = 'block';
+                        } else {
+                            estadoBadge.innerHTML = '<i class="fas fa-check-circle"></i> Activo';
+                        }
+                    } else if (periodoActivo.estado === 'cerrado') {
+                        estadoBadge.innerHTML = '<i class="fas fa-ban"></i> Cerrado';
+                        document.getElementById('periodo-cerrado-alerta').style.display = 'block';
+                        periodoCerrado = true;
+                    }
+                    
+                    return periodoActivo;
+                } else {
+                    showAlert('No hay un periodo académico activo. Contacte al administrador.');
+                    periodoCerrado = true;
+                    return null;
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar periodo:', error);
+                showAlert('Error al cargar el periodo académico.');
+                periodoCerrado = true;
+                return null;
+            });
+    }
+
+    // Validar si se puede modificar
+    function validarPeriodoAbierto(accion = 'modificar') {
+        if (periodoCerrado || !periodoActivo) {
+            showAlert(`No se puede ${accion}. El periodo académico está cerrado.`);
+            return false;
+        }
+        return true;
+    }
+
     // --- GENERAL & VIEW SWITCHING ---
     const attendanceTab = document.getElementById('attendance-tab');
     const gradesTab = document.getElementById('grades-tab');
@@ -262,6 +318,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSummary();
     };
     const saveDailyAttendance = () => {
+        // Validar periodo antes de guardar
+        if (!validarPeriodoAbierto('guardar asistencia')) {
+            return;
+        }
+        
         const date = selectedDateForDailyView;
         const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         if (!attendanceData[dateKey]) {
@@ -404,6 +465,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         gradesTableBody.querySelectorAll('.grade-input').forEach(input => {
             input.addEventListener('change', (e) => {
+                // Validar periodo antes de modificar nota
+                if (!validarPeriodoAbierto('modificar calificaciones')) {
+                    e.target.value = e.target.defaultValue || '';
+                    return;
+                }
+                
                 const min = parseFloat(minGradeInput.value);
                 const max = parseFloat(maxGradeInput.value);
                 let value = parseFloat(e.target.value);
@@ -431,6 +498,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Grades Actions
     document.getElementById('add-assignment-btn').addEventListener('click', () => {
+        // Validar periodo antes de crear asignación
+        if (!validarPeriodoAbierto('crear asignaciones')) {
+            return;
+        }
+        
         showPrompt("Nueva Asignación", "Introduce el nombre de la nueva asignación:", (name) => {
             if (name && name.trim() !== '') {
                 assignmentNames.push(name.trim());
@@ -517,7 +589,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INITIAL RENDER ---
+    cargarPeriodoActivo().then(() => {
     loadGradesData();
     showMonthlyView();
     renderGradesTable();
+    });
 });
+

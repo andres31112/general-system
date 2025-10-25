@@ -77,8 +77,8 @@ class Usuario(db.Model, UserMixin):
     # Relación con matrículas
     matriculas = db.relationship('Matricula', back_populates='estudiante', foreign_keys='Matricula.estudianteId')
     
-    # Relación con calificaciones
-    calificaciones = db.relationship('Calificacion', back_populates='estudiante')
+    # Relación con calificaciones (como estudiante)
+    calificaciones = db.relationship('Calificacion', back_populates='estudiante', foreign_keys='Calificacion.estudianteId')
     
     # Relación con asistencias
     asistencias = db.relationship('Asistencia', back_populates='estudiante_rel')
@@ -327,11 +327,20 @@ class Calificacion(db.Model):
     nombre_calificacion = db.Column(db.String(200), nullable=True)
     observaciones = db.Column(db.Text)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+        
+    # Campos adicionales para tareas publicadas
+    descripcion_tarea = db.Column(db.Text, nullable=True)  # Descripción detallada de la tarea
+    archivo_url = db.Column(db.String(500), nullable=True)  # URL o path del archivo adjunto
+    archivo_nombre = db.Column(db.String(200), nullable=True)  # Nombre original del archivo
+    fecha_vencimiento = db.Column(db.DateTime, nullable=True)  # Fecha límite para entregar
+    es_tarea_publicada = db.Column(db.Boolean, default=False)  # True si es una tarea publicada visible para estudiantes/padres
+    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=True)  # Profesor que creó la tarea
     
     # Relaciones
     estudiante = db.relationship('Usuario', back_populates='calificaciones', foreign_keys=[estudianteId])
     asignatura = db.relationship('Asignatura', back_populates='calificaciones', foreign_keys=[asignaturaId])
     categoria = db.relationship('CategoriaCalificacion', back_populates='calificaciones', foreign_keys=[categoriaId])
+    profesor = db.relationship('Usuario', foreign_keys=[profesor_id])
 
     def __repr__(self):
         return f'<Calificacion {self.estudianteId} - {self.valor}>'
@@ -425,6 +434,7 @@ class HorarioCurso(db.Model):
     id_horario_curso = db.Column(db.Integer, primary_key=True)
     curso_id = db.Column(db.Integer, db.ForeignKey('curso.id_curso'), nullable=False)
     asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
+    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)  # ✅ NUEVO CAMPO
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
     hora_fin = db.Column(db.String(5), nullable=False)  # ✅ YA ESTÁ DEFINIDO CORRECTAMENTE
@@ -435,6 +445,7 @@ class HorarioCurso(db.Model):
     # Relaciones
     curso = db.relationship('Curso', back_populates='horarios_especificos')
     asignatura = db.relationship('Asignatura', back_populates='horarios_asignados')
+    profesor = db.relationship('Usuario', foreign_keys=[profesor_id])  # ✅ NUEVA RELACIÓN
     horario_general = db.relationship('HorarioGeneral', back_populates='horarios_cursos')
     salon = db.relationship('Salon', back_populates='horarios_asignados')
     
@@ -443,6 +454,8 @@ class HorarioCurso(db.Model):
             'id_horario_curso': self.id_horario_curso,
             'curso_id': self.curso_id,
             'asignatura_id': self.asignatura_id,
+            'profesor_id': self.profesor_id,  # ✅ NUEVO CAMPO
+            'profesor_nombre': self.profesor.nombre_completo if self.profesor else None,  # ✅ NOMBRE DEL PROFESOR
             'dia_semana': self.dia_semana,
             'hora_inicio': self.hora_inicio,
             'hora_fin': self.hora_fin,  # ✅ INCLUIR HORA_FIN
@@ -974,3 +987,102 @@ class Notificacion(db.Model):
     
     def __repr__(self):
         return f"<Notificacion {self.id_notificacion} - {self.titulo}>"
+
+
+# ================================
+# Modelos de Gestión Académica por Periodos
+# ================================
+
+class CicloAcademico(db.Model):
+    """Representa un año o ciclo escolar completo."""
+    __tablename__ = 'ciclo_academico'
+    
+    id_ciclo = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)  # Ej: "Año Escolar 2024-2025"
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=False)
+    estado = db.Column(db.Enum('planificado', 'activo', 'cerrado', name='estado_ciclo_enum'), default='planificado')
+    activo = db.Column(db.Boolean, default=False)  # Solo un ciclo puede estar activo
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    periodos = db.relationship('PeriodoAcademico', back_populates='ciclo', cascade='all, delete-orphan')
+    
+    def to_dict(self):
+        return {
+            'id_ciclo': self.id_ciclo,
+            'nombre': self.nombre,
+            'fecha_inicio': self.fecha_inicio.strftime('%Y-%m-%d') if self.fecha_inicio else None,
+            'fecha_fin': self.fecha_fin.strftime('%Y-%m-%d') if self.fecha_fin else None,
+            'estado': self.estado,
+            'activo': self.activo,
+            'fecha_creacion': self.fecha_creacion.strftime('%Y-%m-%d %H:%M') if self.fecha_creacion else None
+        }
+    
+    def __repr__(self):
+        return f"<CicloAcademico {self.id_ciclo} - {self.nombre}>"
+
+
+class PeriodoAcademico(db.Model):
+    """Representa un periodo o trimestre dentro de un ciclo académico."""
+    __tablename__ = 'periodo_academico'
+    
+    id_periodo = db.Column(db.Integer, primary_key=True)
+    ciclo_academico_id = db.Column(db.Integer, db.ForeignKey('ciclo_academico.id_ciclo'), nullable=False)
+    numero_periodo = db.Column(db.Integer, nullable=False)  # 1, 2, 3, 4
+    nombre = db.Column(db.String(100), nullable=False)  # Ej: "Primer Trimestre"
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=False)
+    fecha_cierre_notas = db.Column(db.Date, nullable=False)
+    estado = db.Column(db.Enum('planificado', 'activo', 'en_cierre', 'cerrado', name='estado_periodo_enum'), default='planificado')
+    dias_notificacion_anticipada = db.Column(db.Integer, default=7)
+    fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relaciones
+    ciclo = db.relationship('CicloAcademico', back_populates='periodos')
+    
+    def to_dict(self):
+        from datetime import date
+        dias_para_cierre = None
+        if self.fecha_cierre_notas and self.estado == 'activo':
+            delta = self.fecha_cierre_notas - date.today()
+            dias_para_cierre = delta.days if delta.days >= 0 else 0
+        
+        return {
+            'id_periodo': self.id_periodo,
+            'ciclo_academico_id': self.ciclo_academico_id,
+            'numero_periodo': self.numero_periodo,
+            'nombre': self.nombre,
+            'fecha_inicio': self.fecha_inicio.strftime('%Y-%m-%d') if self.fecha_inicio else None,
+            'fecha_fin': self.fecha_fin.strftime('%Y-%m-%d') if self.fecha_fin else None,
+            'fecha_cierre_notas': self.fecha_cierre_notas.strftime('%Y-%m-%d') if self.fecha_cierre_notas else None,
+            'estado': self.estado,
+            'dias_notificacion_anticipada': self.dias_notificacion_anticipada,
+            'dias_para_cierre': dias_para_cierre,
+            'puede_modificar_notas': self.puede_modificar_notas(),
+            'fecha_creacion': self.fecha_creacion.strftime('%Y-%m-%d %H:%M') if self.fecha_creacion else None
+        }
+    
+    def esta_activo(self):
+        """Verifica si el periodo está activo."""
+        return self.estado == 'activo'
+    
+    def puede_modificar_notas(self):
+        """Verifica si aún se pueden modificar las notas."""
+        from datetime import date
+        if self.estado in ['cerrado', 'en_cierre']:
+            return False
+        if self.fecha_cierre_notas and date.today() > self.fecha_cierre_notas:
+            return False
+        return True
+    
+    def dias_para_cierre(self):
+        """Calcula los días restantes para el cierre de notas."""
+        from datetime import date
+        if self.fecha_cierre_notas:
+            delta = self.fecha_cierre_notas - date.today()
+            return delta.days if delta.days >= 0 else 0
+        return None
+    
+    def __repr__(self):
+        return f"<PeriodoAcademico {self.id_periodo} - {self.nombre}>"

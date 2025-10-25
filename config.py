@@ -2,7 +2,7 @@ import os
 
 class Config:
     # Configuración de la base de datos
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:3112@127.0.0.1:3306/institucion_db'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:@127.0.0.1:3306/institucion_db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Clave secreta para la seguridad de la aplicación
@@ -22,3 +22,8 @@ class Config:
     SERVER_NAME = 'localhost:5000'  # Cambiar por tu dominio en producción
     APPLICATION_ROOT = '/'
     PREFERRED_URL_SCHEME = 'http'  # Cambiar a 'https' en producción
+        
+    # Configuración para subida de archivos
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'tareas')
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # Límite de 16MB para archivos
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'rar'}

@@ -568,6 +568,25 @@
 
 {% block content %}
 <div class="container">
+    <!-- Periodo Académico Activo -->
+    <div id="periodo-banner" class="card animate-entrance" style="animation-delay: 0s; margin-bottom: 20px; background: linear-gradient(135deg, #0D3B66, #1a5080); color: white; border: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.2rem; color: white;">
+                    <i class="fas fa-calendar-alt"></i> 
+                    <span id="periodo-nombre">Cargando periodo...</span>
+                </h2>
+                <p style="margin: 5px 0 0 0; font-size: 0.85rem; opacity: 0.9;" id="periodo-fechas">...</p>
+            </div>
+            <div style="text-align: right;">
+                <div id="periodo-estado" style="font-size: 0.85rem; font-weight: 600; padding: 5px 15px; background: rgba(255,255,255,0.2); border-radius: 20px; display: inline-block;">
+                    <i class="fas fa-info-circle"></i> <span id="periodo-estado-text">...</span>
+                </div>
+                <p style="margin: 5px 0 0 0; font-size: 0.75rem; opacity: 0.8;" id="periodo-advertencia"></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Sección 1: Clases Actuales con Notificaciones -->
     <div class="card animate-entrance" style="animation-delay: 0.1s;">
         <h2><i class="fas fa-clock"></i> Clases Actuales</h2> <!-- Título de sección -->
@@ -858,8 +877,53 @@
             });
     }
 
+    // Cargar periodo activo
+    function cargarPeriodoActivo() {
+        fetch('/profesor/api/periodo-activo')
+            .then(response => response.json())
+            .then(payload => {
+                if (payload && payload.success && payload.periodo) {
+                    const p = payload.periodo;
+                    document.getElementById('periodo-nombre').textContent = p.nombre;
+                    document.getElementById('periodo-fechas').textContent = 
+                        `Del ${p.fecha_inicio} al ${p.fecha_fin}`;
+                    
+                    const estadoText = document.getElementById('periodo-estado-text');
+                    const advertencia = document.getElementById('periodo-advertencia');
+                    
+                    if (p.estado === 'activo') {
+                        estadoText.innerHTML = '<i class="fas fa-check-circle"></i> Activo';
+                        
+                        // Verificar si puede modificar notas
+                        if (!p.puede_modificar_notas) {
+                            advertencia.innerHTML = '<i class="fas fa-lock"></i> Periodo cerrado para modificaciones';
+                        } else if (p.dias_para_cierre !== null && p.dias_para_cierre <= 7) {
+                            advertencia.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Faltan ${p.dias_para_cierre} días para cierre`;
+                        }
+                    } else if (p.estado === 'en_cierre') {
+                        estadoText.innerHTML = '<i class="fas fa-lock"></i> En cierre';
+                        advertencia.innerHTML = '<i class="fas fa-info-circle"></i> No se pueden modificar notas';
+                    } else if (p.estado === 'cerrado') {
+                        estadoText.innerHTML = '<i class="fas fa-ban"></i> Cerrado';
+                        advertencia.innerHTML = '<i class="fas fa-info-circle"></i> Periodo finalizado';
+                    } else {
+                        estadoText.innerHTML = '<i class="fas fa-clock"></i> ' + p.estado;
+                    }
+                } else {
+                    document.getElementById('periodo-nombre').textContent = 'No hay periodo activo';
+                    document.getElementById('periodo-fechas').textContent = 'Contacte al administrador';
+                    document.getElementById('periodo-estado-text').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Sin periodo';
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar periodo:', error);
+                document.getElementById('periodo-nombre').textContent = 'Error al cargar periodo';
+            });
+    }
+
     // Cargar datos reales al iniciar
     cargarEstadisticas();
+    cargarPeriodoActivo();
 
     // Timer para clase en curso (simulación)
     function actualizarTimerClase() {

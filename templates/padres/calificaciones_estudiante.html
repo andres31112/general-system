@@ -4,224 +4,507 @@
 
 {% block extra_css %}
 <style>
-    .calificaciones-container {
-        background: var(--card-bg);
-        border-radius: 15px;
-        box-shadow: var(--shadow);
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    
-    .estudiante-header {
+    .page-header {
         background: var(--gradient-primary);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
         color: var(--white);
-        border-radius: 15px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        text-align: center;
+        box-shadow: var(--shadow);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .page-header h2 {
+        color: var(--white);
+        margin: 0;
+        font-size: 1.4rem;
+    }
+
+    .page-header p {
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0.25rem 0;
+        font-size: 0.85rem;
+    }
+
+    .page-header i {
+        color: var(--accent2);
+        font-size: 1rem;
     }
     
-    .estudiante-header h2 {
+    .estudiante-info-card {
+        background: linear-gradient(135deg, rgba(13, 59, 102, 0.95), rgba(16, 85, 135, 0.95));
+        color: var(--white);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        box-shadow: var(--shadow-hover);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .estudiante-info-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        animation: pulse 15s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    .estudiante-info-card h2 {
         margin: 0;
         font-weight: 700;
+        font-size: 1.4rem;
+        position: relative;
+        z-index: 1;
     }
     
-    .estudiante-header p {
-        margin: 0.5rem 0 0 0;
-        opacity: 0.9;
+    .estudiante-info-card p {
+        margin: 0.35rem 0;
+        opacity: 0.95;
+        font-size: 0.9rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .periodo-selector {
+        background: var(--gradient-secondary);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(244, 211, 94, 0.4);
+    }
+
+    .periodo-selector strong {
+        color: var(--accent4);
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.9rem;
+    }
+
+    .periodo-selector i {
+        color: var(--accent2);
+        font-size: 0.85rem;
+    }
+
+    .periodo-selector select {
+        margin-left: 8px;
+        padding: 0.4rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--accent4);
+        background: var(--white);
+        color: var(--accent4);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.85rem;
+    }
+
+    .periodo-selector select:hover {
+        background: var(--accent4);
+        color: var(--white);
+    }
+
+    .periodo-info {
+        font-size: 0.8rem;
+        color: var(--accent4);
+        font-weight: 600;
+    }
+    
+    .resumen-categorias {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .resumen-categoria {
+        background: var(--white);
+        border: 1px solid rgba(13, 59, 102, 0.15);
+        border-radius: 8px;
+        padding: 0.65rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .resumen-categoria::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--gradient-accent);
+    }
+
+    .resumen-categoria:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        border-color: rgba(13, 59, 102, 0.3);
+    }
+    
+    .resumen-categoria-nombre {
+        font-weight: 600;
+        color: var(--accent4);
+        margin-bottom: 0.4rem;
+        font-size: 0.8rem;
+    }
+    
+    .resumen-categoria-promedio {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--accent4);
+    }
+
+    .calificaciones-container {
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid rgba(13, 59, 102, 0.1);
+    }
+
+    .calificaciones-container h4 {
+        color: var(--accent4);
+        border-bottom: 2px solid transparent;
+        border-image: var(--gradient-primary);
+        border-image-slice: 1;
+        padding-bottom: 0.65rem;
+        margin-bottom: 1.25rem;
+        font-size: 1.1rem;
+    }
+
+    .categorias-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .categorias-grid {
+            grid-template-columns: 1fr;
+        }
     }
     
     .categoria-section {
-        background: var(--light-gray);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border-left: 4px solid var(--accent4);
+        background: linear-gradient(to right, rgba(13, 59, 102, 0.05), rgba(255, 255, 255, 0.9));
+        border-radius: 8px;
+        padding: 0.75rem;
+        border-left: 3px solid var(--accent2);
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        height: fit-content;
+    }
+
+    .categoria-section:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
     }
     
     .categoria-header {
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
-        margin-bottom: 1rem;
+        margin-bottom: 0.65rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
     
     .categoria-nombre {
-        font-size: 1.2rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: var(--accent4);
         margin: 0;
     }
     
     .categoria-promedio {
-        background: var(--accent3);
-        color: var(--black);
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        background: var(--gradient-secondary);
+        color: var(--accent4);
+        padding: 0.35rem 0.75rem;
+        border-radius: 15px;
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 0.85rem;
+        border: 1px solid rgba(244, 211, 94, 0.4);
+        box-shadow: 0 2px 6px rgba(244, 211, 94, 0.3);
     }
     
     .calificacion-item {
         background: var(--white);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 0.75rem;
+        border: 1px solid rgba(13, 59, 102, 0.1);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.5rem;
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
+        transition: all 0.3s ease;
+        gap: 0.75rem;
     }
     
+    .calificacion-item:hover {
+        border-color: rgba(13, 59, 102, 0.3);
+        box-shadow: var(--shadow);
+        transform: translateY(-1px);
+    }
+
     .calificacion-item:last-child {
         margin-bottom: 0;
     }
     
     .calificacion-nombre {
         font-weight: 600;
-        color: var(--black);
+        color: var(--accent4);
         flex: 1;
+        font-size: 0.85rem;
+    }
+
+    .calificacion-nombre small {
+        color: var(--gray);
+        font-weight: 400;
+        font-size: 0.75rem;
     }
     
     .calificacion-valor {
-        background: var(--accent4);
+        background: var(--gradient-primary);
         color: var(--white);
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        padding: 0.35rem 0.75rem;
+        border-radius: 15px;
         font-weight: 700;
-        font-size: 1.1rem;
-        min-width: 60px;
+        font-size: 0.9rem;
+        min-width: 50px;
         text-align: center;
+        box-shadow: 0 2px 6px rgba(13, 59, 102, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.3);
     }
     
+    .promedio-general-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.25rem;
+        margin-top: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .promedio-general-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .promedio-general {
-        background: var(--gradient-secondary);
-        border-radius: 15px;
-        padding: 2rem;
+        background: var(--gradient-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
         text-align: center;
-        margin-top: 2rem;
+        box-shadow: var(--shadow-hover);
+        border: 2px solid rgba(255, 255, 255, 0.3);
     }
     
     .promedio-numero {
-        font-size: 3rem;
+        font-size: 2.5rem;
         font-weight: 700;
-        color: var(--black);
-        margin-bottom: 0.5rem;
+        color: var(--white);
+        margin-bottom: 0.35rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
     
     .promedio-label {
-        font-size: 1.2rem;
-        color: var(--accent4);
+        font-size: 1rem;
+        color: var(--white);
         font-weight: 600;
+        opacity: 0.95;
+    }
+
+    .estado-container {
+        background: var(--white);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(13, 59, 102, 0.1);
+    }
+
+    .estado-badge-large {
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.15rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        box-shadow: var(--shadow);
     }
     
     .estado-aprobado {
-        color: #28a745;
+        background: linear-gradient(135deg, #4CAF50, #66BB6A);
+        color: var(--white);
     }
     
     .estado-reprobado {
-        color: #dc3545;
+        background: var(--gradient-accent);
+        color: var(--white);
     }
     
     .btn-volver {
-        background: var(--gradient-primary);
-        border: none;
-        color: var(--white);
-        padding: 0.75rem 2rem;
-        border-radius: 10px;
+        background: var(--white);
+        color: var(--accent4);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
         font-weight: 600;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        transition: all var(--transition-speed) ease;
+        gap: 0.4rem;
+        transition: all 0.3s ease;
+        font-size: 0.85rem;
     }
     
     .btn-volver:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-hover);
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
         color: var(--white);
     }
     
     .no-calificaciones {
         text-align: center;
-        padding: 3rem 2rem;
+        padding: 4rem 2rem;
         color: var(--gray);
     }
     
     .no-calificaciones i {
-        font-size: 4rem;
-        margin-bottom: 1rem;
+        font-size: 5rem;
+        margin-bottom: 1.5rem;
         color: var(--accent2);
+        opacity: 0.4;
     }
-    
-    .resumen-categorias {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    
-    .resumen-categoria {
-        background: var(--white);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 1rem;
+
+    .empty-categoria {
         text-align: center;
+        padding: 0.65rem;
+        color: var(--gray);
+        background: rgba(13, 59, 102, 0.05);
+        border-radius: 6px;
+        font-size: 0.8rem;
     }
-    
-    .resumen-categoria-nombre {
-        font-weight: 600;
-        color: var(--accent4);
-        margin-bottom: 0.5rem;
+
+    .empty-categoria i {
+        color: var(--accent2);
+        opacity: 0.5;
+        font-size: 0.85rem;
+        margin-right: 0.35rem;
     }
-    
-    .resumen-categoria-promedio {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--black);
+
+    .empty-categoria p {
+        margin: 0;
+        font-size: 0.8rem;
+        display: inline;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .categoria-section {
+        animation: fadeInUp 0.5s ease;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-dark mb-1">
-                        <i class="fas fa-chart-line me-2 text-primary"></i>
-                        Calificaciones del Estudiante
-                    </h2>
-                    <p class="text-muted mb-0">Información académica detallada</p>
-                </div>
-                <a href="{{ url_for('padre.consultar_estudiante') }}" class="btn-volver">
-                    <i class="fas fa-arrow-left"></i>
-                    Volver a Solicitudes
-                </a>
+    <!-- Page Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h2 class="fw-bold mb-2">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Calificaciones del Estudiante
+                </h2>
+                <p class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información académica detallada
+                </p>
             </div>
+            <a href="{{ url_for('padre.detalle_estudiante', estudiante_id=estudiante.id_usuario) }}" class="btn-volver">
+                <i class="fas fa-arrow-left"></i>
+                Volver a Detalles
+            </a>
         </div>
     </div>
 
     <!-- Header del Estudiante -->
-    <div class="estudiante-header">
+    <div class="estudiante-info-card">
         <h2>{{ estudiante.nombre_completo }}</h2>
-        <p>{{ asignatura.nombre }}</p>
+        <p><i class="fas fa-book me-2"></i>{{ asignatura.nombre }}</p>
+        {% if ultima_fecha_reporte %}
+        <p style="font-size: 0.95rem; margin-top: 0.5rem;">
+            <i class="fas fa-calendar-check me-2"></i>
+            Última actualización: {{ ultima_fecha_reporte.strftime('%d/%m/%Y a las %H:%M') }}
+        </p>
+        {% endif %}
+    </div>
+
+    <!-- Selector de Periodo Académico -->
+    <div class="periodo-selector">
+        <div>
+            <strong>
+                <i class="fas fa-calendar-alt"></i>
+                Periodo Académico:
+            </strong>
+            <select id="selector-periodo">
+                <option value="">Cargando periodos...</option>
+            </select>
+        </div>
+        <div id="periodo-info" class="periodo-info">
+            <i class="fas fa-info-circle me-1"></i>
+            <span id="periodo-fechas-text">Seleccione un periodo</span>
+        </div>
     </div>
 
     {% if calificaciones_por_categoria %}
         <!-- Resumen por Categorías -->
         <div class="resumen-categorias">
             {% for categoria_id, data in calificaciones_por_categoria.items() %}
-                {% if data.calificaciones %}
                 <div class="resumen-categoria">
                     <div class="resumen-categoria-nombre">{{ data.categoria.nombre }}</div>
                     <div class="resumen-categoria-promedio">
-                        {{ "%.2f"|format(promedios_por_categoria[categoria_id]) }}
+                        {% if data.calificaciones and promedios_por_categoria[categoria_id] > 0 %}
+                            {{ "%.2f"|format(promedios_por_categoria[categoria_id]) }}
+                        {% else %}
+                            <span style="color: #999;">Sin calificaciones</span>
+                        {% endif %}
                     </div>
                 </div>
-                {% endif %}
             {% endfor %}
         </div>
 
@@ -232,52 +515,69 @@
                 Calificaciones Detalladas
             </h4>
             
+            <div class="categorias-grid">
             {% for categoria_id, data in calificaciones_por_categoria.items() %}
-                {% if data.calificaciones %}
                 <div class="categoria-section">
                     <div class="categoria-header">
                         <h5 class="categoria-nombre">{{ data.categoria.nombre }}</h5>
                         <div class="categoria-promedio">
-                            Promedio: {{ "%.2f"|format(promedios_por_categoria[categoria_id]) }}
+                            {% if data.calificaciones and promedios_por_categoria[categoria_id] > 0 %}
+                                Promedio: {{ "%.2f"|format(promedios_por_categoria[categoria_id]) }}
+                            {% else %}
+                                <span style="color: #999; font-size: 0.9rem;">Sin calificaciones</span>
+                            {% endif %}
                         </div>
                     </div>
                     
-                    {% for calificacion in data.calificaciones %}
-                    <div class="calificacion-item">
-                        <div class="calificacion-nombre">
-                            {{ calificacion.nombre_calificacion or 'Sin nombre' }}
-                            {% if calificacion.observaciones %}
-                                <br><small class="text-muted">{{ calificacion.observaciones }}</small>
-                            {% endif %}
+                    {% if data.calificaciones %}
+                        {% for calificacion in data.calificaciones %}
+                        <div class="calificacion-item">
+                            <div class="calificacion-nombre">
+                                {{ calificacion.nombre_calificacion or 'Sin nombre' }}
+                                {% if calificacion.observaciones %}
+                                    <br><small class="text-muted">{{ calificacion.observaciones }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="calificacion-valor">
+                                {% if calificacion.valor %}
+                                    {{ "%.2f"|format(calificacion.valor) }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="calificacion-valor">
-                            {% if calificacion.valor %}
-                                {{ "%.2f"|format(calificacion.valor) }}
-                            {% else %}
-                                -
-                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-categoria">
+                            <i class="fas fa-info-circle"></i>
+                            <p>No hay calificaciones registradas</p>
                         </div>
-                    </div>
-                    {% endfor %}
+                    {% endif %}
                 </div>
-                {% endif %}
             {% endfor %}
+            </div>
         </div>
 
-        <!-- Promedio General -->
-        <div class="promedio-general">
-            <div class="promedio-numero {{ 'estado-aprobado' if promedio_general >= 3.0 else 'estado-reprobado' }}">
-                {{ "%.2f"|format(promedio_general) }}
+        <!-- Promedio General y Estado -->
+        <div class="promedio-general-container">
+            <div class="promedio-general">
+                <div class="promedio-numero">
+                    {{ "%.2f"|format(promedio_general) }}
+                </div>
+                <div class="promedio-label">
+                    <i class="fas fa-chart-line me-2"></i>Promedio General
+                </div>
             </div>
-            <div class="promedio-label">Promedio General</div>
-            <div class="mt-2">
+            <div class="estado-container">
                 {% if promedio_general >= 3.0 %}
-                    <span class="badge bg-success fs-6">
-                        <i class="fas fa-check me-1"></i>Aprobado
+                    <span class="estado-badge-large estado-aprobado">
+                        <i class="fas fa-check-circle"></i>
+                        Aprobado
                     </span>
                 {% else %}
-                    <span class="badge bg-danger fs-6">
-                        <i class="fas fa-times me-1"></i>Reprobado
+                    <span class="estado-badge-large estado-reprobado">
+                        <i class="fas fa-times-circle"></i>
+                        Reprobado
                     </span>
                 {% endif %}
             </div>
@@ -295,6 +595,67 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Cargar periodos académicos
+    const selectorPeriodo = document.getElementById('selector-periodo');
+    const periodoFechasText = document.getElementById('periodo-fechas-text');
+    let periodos = [];
+    let periodoActual = null;
+    
+    // Cargar lista de periodos
+    fetch('/padre/api/periodos')
+        .then(response => response.json())
+        .then(payload => {
+            if (payload && payload.success && payload.periodos) {
+                periodos = payload.periodos;
+                selectorPeriodo.innerHTML = '<option value="">Todos los periodos</option>';
+                
+                periodos.forEach(periodo => {
+                    const option = document.createElement('option');
+                    option.value = periodo.id_periodo;
+                    option.textContent = periodo.nombre;
+                    if (periodo.estado === 'activo') {
+                        option.selected = true;
+                        periodoActual = periodo;
+                        mostrarInfoPeriodo(periodo);
+                    }
+                    selectorPeriodo.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando periodos:', error);
+            selectorPeriodo.innerHTML = '<option value="">Error al cargar periodos</option>';
+        });
+    
+    // Función para mostrar info del periodo
+    function mostrarInfoPeriodo(periodo) {
+        if (periodo) {
+            periodoFechasText.textContent = `${periodo.fecha_inicio} - ${periodo.fecha_fin}`;
+        } else {
+            periodoFechasText.textContent = 'Mostrando todos los periodos';
+        }
+    }
+    
+    // Manejar cambio de periodo
+    selectorPeriodo.addEventListener('change', function() {
+        const periodoId = this.value;
+        
+        if (periodoId) {
+            const periodo = periodos.find(p => p.id_periodo == periodoId);
+            mostrarInfoPeriodo(periodo);
+            // Recargar la página con el filtro de periodo
+            const url = new URL(window.location.href);
+            url.searchParams.set('periodo_id', periodoId);
+            window.location.href = url.toString();
+        } else {
+            mostrarInfoPeriodo(null);
+            // Recargar sin filtro
+            const url = new URL(window.location.href);
+            url.searchParams.delete('periodo_id');
+            window.location.href = url.toString();
+        }
+    });
+    
     // Agregar animaciones a las calificaciones
     const calificacionItems = document.querySelectorAll('.calificacion-item');
     calificacionItems.forEach((item, index) => {

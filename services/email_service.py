@@ -5,7 +5,7 @@ import time
 from flask_mail import Message
 from flask import current_app, render_template, url_for
 from extensions import mail
-from itsdangerous import URLSafeTimedSerializer  # ✅ AGREGAR ESTA IMPORTACIÓN
+from itsdangerous import URLSafeTimedSerializer  
 
 
 def generate_verification_code():
@@ -14,11 +14,11 @@ def generate_verification_code():
     return ''.join(secrets.choice(characters) for _ in range(8))
 
 def get_serializer():
-    """✅ FUNCIÓN CORREGIDA: Obtiene el serializador de forma consistente"""
+    """ FUNCIÓN CORREGIDA: Obtiene el serializador de forma consistente"""
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
 
 def generate_verification_token(user_id, code, email):
-    """✅ FUNCIÓN CORREGIDA: Genera token de verificación consistente"""
+    """FUNCIÓN CORREGIDA: Genera token de verificación consistente"""
     s = get_serializer() 
     return s.dumps({
         'user_id': user_id,
@@ -29,7 +29,6 @@ def generate_verification_token(user_id, code, email):
 def send_welcome_email(usuario, verification_code):
     """Envía correo de bienvenida con código de verificación y link directo"""
     try:
-        # ✅ CORREGIDO: Ahora generate_verification_token está definida
         verification_token = generate_verification_token(
             usuario.id_usuario, 
             verification_code, 
@@ -38,7 +37,7 @@ def send_welcome_email(usuario, verification_code):
         
         verification_url = url_for('auth.verify_email_with_token', token=verification_token, _external=True)
         
-        # ✅ DEBUG: Mostrar información del token
+        # DEBUG: Mostrar información del token
         print(f"DEBUG: Token generado para {usuario.correo}: {verification_token}")
         print(f"DEBUG: URL de verificación: {verification_url}")
         
