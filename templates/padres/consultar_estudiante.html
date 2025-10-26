@@ -4,12 +4,60 @@
 
 {% block extra_css %}
 <style>
+    .page-header {
+        background: var(--gradient-primary);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: var(--white);
+        box-shadow: var(--shadow);
+        border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .page-header h2 {
+        color: var(--white);
+        margin: 0;
+        font-size: 2rem;
+    }
+
+    .page-header p {
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0;
+    }
+
+    .page-header i {
+        color: var(--accent2);
+    }
+
     .form-container {
         background: var(--card-bg);
         border-radius: 15px;
         box-shadow: var(--shadow);
         padding: 2rem;
         margin-bottom: 2rem;
+        border: 2px solid rgba(13, 59, 102, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .form-container:hover {
+        border-color: rgba(13, 59, 102, 0.2);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .form-container h4 {
+        color: var(--accent4);
+        border-bottom: 3px solid transparent;
+        border-image: var(--gradient-accent);
+        border-image-slice: 1;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-container h4 i {
+        background: var(--gradient-accent);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .solicitudes-container {
@@ -17,74 +65,134 @@
         border-radius: 15px;
         box-shadow: var(--shadow);
         padding: 2rem;
+        border: 2px solid rgba(13, 59, 102, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .solicitudes-container:hover {
+        border-color: rgba(13, 59, 102, 0.2);
+        box-shadow: var(--shadow-hover);
+    }
+
+    .solicitudes-container h4 {
+        color: var(--accent4);
+        border-bottom: 3px solid transparent;
+        border-image: var(--gradient-secondary);
+        border-image-slice: 1;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .solicitudes-container h4 i {
+        background: var(--gradient-secondary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
     
     .solicitud-item {
-        border: 1px solid var(--border);
-        border-radius: 10px;
+        background: var(--white);
+        border: 2px solid rgba(13, 59, 102, 0.1);
+        border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 1rem;
-        transition: all var(--transition-speed) ease;
+        transition: all 0.3s ease;
     }
     
     .solicitud-item:hover {
         box-shadow: var(--shadow-hover);
-        transform: translateY(-2px);
+        transform: translateY(-3px);
+        border-color: rgba(13, 59, 102, 0.3);
+    }
+
+    .solicitud-item h6 {
+        color: var(--accent4);
     }
     
     .estado-badge {
         padding: 0.5rem 1rem;
-        border-radius: 20px;
+        border-radius: 25px;
         font-weight: 600;
         font-size: 0.85rem;
+        border: 2px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
-    .estado-pendiente {
-        background: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeaa7;
+    .estado-badge.estado-pendiente {
+        background: var(--gradient-secondary);
+        color: var(--accent4);
+        border-color: rgba(244, 211, 94, 0.4);
     }
     
-    .estado-aceptada {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
+    .estado-badge.estado-aceptada {
+        background: linear-gradient(135deg, #4CAF50, #66BB6A);
+        color: var(--white);
+        border-color: rgba(76, 175, 80, 0.4);
     }
     
-    .estado-denegada {
-        background: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+    .estado-badge.estado-denegada {
+        background: var(--gradient-accent);
+        color: var(--white);
+        border-color: rgba(249, 87, 56, 0.4);
     }
     
     .form-label {
         font-weight: 600;
-        color: var(--black);
+        color: var(--accent4);
         margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-label i {
+        color: var(--accent2);
     }
     
     .form-control, .form-select {
-        border-radius: 8px;
-        border: 1px solid var(--border);
+        border-radius: 10px;
+        border: 2px solid rgba(13, 59, 102, 0.2);
         padding: 0.75rem 1rem;
-        transition: all var(--transition-speed) ease;
+        transition: all 0.3s ease;
+        background: var(--white);
     }
     
     .form-control:focus, .form-select:focus {
         border-color: var(--accent4);
-        box-shadow: 0 0 0 0.2rem rgba(13, 59, 102, 0.25);
+        box-shadow: 0 0 0 0.3rem rgba(13, 59, 102, 0.15);
+        background: var(--white);
+    }
+
+    .form-text {
+        color: var(--gray);
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
     }
     
     .btn-primary {
         background: var(--gradient-primary);
         border: none;
-        padding: 0.75rem 2rem;
+        padding: 0.85rem 2rem;
         font-weight: 600;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+        color: var(--white);
+        border: 2px solid rgba(255, 255, 255, 0.3);
     }
     
     .btn-primary:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
         box-shadow: var(--shadow-hover);
+        background: linear-gradient(135deg, #0B3D66, #105587);
+        color: var(--white);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
     }
     
     .loading-spinner {
@@ -94,6 +202,34 @@
     .loading-spinner.show {
         display: inline-block;
     }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1.5rem;
+        color: var(--gray);
+    }
+
+    .empty-state i {
+        color: var(--accent2);
+        opacity: 0.5;
+    }
+
+    .empty-state h5 {
+        color: var(--accent4);
+        margin-top: 1rem;
+    }
+
+    .alert-info {
+        background: linear-gradient(135deg, rgba(13, 59, 102, 0.1), rgba(16, 85, 135, 0.1));
+        border: 2px solid rgba(13, 59, 102, 0.2);
+        border-radius: 10px;
+        color: var(--accent4);
+        padding: 1rem;
+    }
+
+    .alert-info strong {
+        color: var(--accent4);
+    }
 </style>
 {% endblock %}
 
@@ -101,13 +237,16 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="page-header">
                 <div>
-                    <h2 class="fw-bold text-dark mb-1">
-                        <i class="fas fa-search me-2 text-primary"></i>
+                    <h2 class="fw-bold mb-2">
+                        <i class="fas fa-search me-2"></i>
                         Consultar Estudiante
                     </h2>
-                    <p class="text-muted mb-0">Envía solicitudes para revisar las notas y reportes académicos de tu hijo/a</p>
+                    <p class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Envía solicitudes para revisar las notas y reportes académicos de tu hijo/a
+                    </p>
                 </div>
             </div>
         </div>
@@ -238,10 +377,10 @@
                     {% endfor %}
                     
                     {% if not solicitudes %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">No tienes solicitudes enviadas</h5>
-                        <p class="text-muted">Envía tu primera solicitud usando el formulario</p>
+                    <div class="empty-state">
+                        <i class="fas fa-inbox fa-4x mb-3"></i>
+                        <h5>No tienes solicitudes enviadas</h5>
+                        <p>Envía tu primera solicitud usando el formulario</p>
                     </div>
                     {% endif %}
                 </div>

@@ -1,0 +1,489 @@
+{% extends 'padres/base.html' %}
+
+{% block title %}Tareas de {{ hijo.nombre_completo if hijo else 'Estudiante' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-2">
+                    <i class="fas fa-tasks me-2"></i>Tareas Académicas
+                </h2>
+                <p class="mb-0">
+                    <i class="fas fa-user-graduate me-2"></i>{{ hijo.nombre_completo if hijo else 'Estudiante' }}
+                    {% if curso %}
+                    <span class="mx-2">•</span>
+                    <i class="fas fa-graduation-cap me-2"></i>{{ curso.nombreCurso }}
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{{ url_for('padre.detalle_estudiante', estudiante_id=hijo.id_usuario) }}" class="btn btn-warning">
+                <i class="fas fa-eye me-2"></i>Ver Detalles
+            </a>
+        </div>
+    </div>
+
+    <!-- Resumen y Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label">Filtrar por Asignatura</label>
+                            <select class="form-select" id="filtroAsignatura">
+                                <option value="">Todas las asignaturas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100" onclick="filtrarYMostrarTareas()">
+                                <i class="fas fa-filter me-2"></i>Filtrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-tasks fa-2x me-3"></i>
+                                <div>
+                                    <h3 class="mb-0" id="totalTareas">0</h3>
+                                    <small>Tareas Totales</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Tareas -->
+    <div class="row" id="listaTareas">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-muted">Cargando tareas...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle Tarea -->
+<div class="modal fade" id="modalDetalleTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloDetalle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetalle">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Variables de colores del sistema */
+:root {
+    --accent1: #F95738; /* Rojo */
+    --accent2: #EE964B; /* Naranja */
+    --accent3: #F4D35E; /* Amarillo */
+    --accent4: #0D3B66; /* Azul oscuro */
+    --light: #FAF0CA;
+    --white: #FFFFFF;
+    --black: #333333;
+    --gray: #666666;
+    --light-gray: #F8F9FA;
+    --border: #E9ECEF;
+    --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+    --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+    --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+    --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+    --gradient-warning: linear-gradient(135deg, var(--accent2), #f0a868);
+}
+
+/* Header de página */
+.page-header {
+    background: var(--gradient-warning);
+    color: var(--accent4);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    border: 3px solid rgba(13, 59, 102, 0.3);
+}
+
+.page-header h2,
+.page-header p,
+.page-header i {
+    color: var(--accent4) !important;
+}
+
+.btn-warning {
+    background: var(--gradient-primary);
+    border: none;
+    color: var(--white);
+    font-weight: 600;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #1a5080, var(--accent4));
+    color: var(--white);
+}
+
+/* Tarjetas de tareas */
+.card {
+    border-radius: 15px;
+    border: 2px solid rgba(13, 59, 102, 0.2);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-hover);
+    border-color: var(--accent4);
+}
+
+.card-tarea {
+    border-radius: 15px;
+    border: 2px solid rgba(13, 59, 102, 0.15);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-tarea::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.6s;
+}
+
+.card-tarea:hover::before {
+    left: 100%;
+}
+
+.card-tarea:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--accent2);
+}
+
+.badge-asignatura {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    background: var(--gradient-accent) !important;
+}
+
+.archivo-adjunto {
+    background: var(--light);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 2px dashed var(--accent3);
+}
+
+/* Bordes de estado para tareas */
+.tarea-vencida {
+    border-left: 5px solid var(--accent1);
+}
+
+.tarea-proxima {
+    border-left: 5px solid var(--accent2);
+}
+
+.tarea-activa {
+    border-left: 5px solid var(--accent4);
+}
+
+/* Card de estadística */
+.bg-primary {
+    background: var(--gradient-secondary) !important;
+    color: var(--accent4) !important;
+    border: 3px solid rgba(13, 59, 102, 0.3) !important;
+}
+
+.bg-primary h3,
+.bg-primary small,
+.bg-primary i {
+    color: var(--accent4) !important;
+}
+
+.btn-primary {
+    background: var(--gradient-accent);
+    border: none;
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #ff6b4a, var(--accent1));
+}
+
+.btn-outline-primary {
+    color: var(--accent2);
+    border-color: var(--accent2);
+}
+
+.btn-outline-primary:hover {
+    background: var(--gradient-warning);
+    border-color: var(--accent2);
+    color: var(--white);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #34ce57);
+    border: none;
+}
+
+.text-danger {
+    color: var(--accent1) !important;
+}
+
+.text-warning {
+    color: var(--accent2) !important;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.bg-danger {
+    background: var(--gradient-accent) !important;
+}
+
+.bg-warning {
+    background: var(--gradient-warning) !important;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #28a745, #34ce57) !important;
+}
+</style>
+
+<script>
+const hijoId = {{ hijo.id_usuario if hijo else 'null' }};
+let todasLasTareas = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (hijoId) {
+        cargarTareas();
+    } else {
+        mostrarError('No se pudo identificar al estudiante');
+    }
+});
+
+function cargarTareas() {
+    fetch(`/padre/api/hijo/${hijoId}/tareas`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                todasLasTareas = data.tareas;
+                cargarAsignaturas(todasLasTareas);
+                filtrarYMostrarTareas();
+            } else {
+                mostrarError('Error al cargar tareas');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar tareas');
+        });
+}
+
+function cargarAsignaturas(tareas) {
+    const asignaturas = [...new Set(tareas.map(t => t.asignatura_nombre))];
+    const select = document.getElementById('filtroAsignatura');
+    
+    select.innerHTML = '<option value="">Todas las asignaturas</option>';
+    asignaturas.forEach(asig => {
+        select.innerHTML += `<option value="${asig}">${asig}</option>`;
+    });
+}
+
+function filtrarYMostrarTareas() {
+    const filtro = document.getElementById('filtroAsignatura').value;
+    const tareasFiltradas = filtro 
+        ? todasLasTareas.filter(t => t.asignatura_nombre === filtro)
+        : todasLasTareas;
+    
+    document.getElementById('totalTareas').textContent = tareasFiltradas.length;
+    mostrarTareas(tareasFiltradas);
+}
+
+function mostrarTareas(tareas) {
+    const container = document.getElementById('listaTareas');
+    
+    if (tareas.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No hay tareas publicadas</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tareas.map(tarea => {
+        const claseEstado = obtenerClaseEstado(tarea.fecha_vencimiento);
+        const iconoEstado = obtenerIconoEstado(tarea.fecha_vencimiento);
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card card-tarea ${claseEstado}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">${tarea.titulo}</h5>
+                            <span class="badge badge-asignatura bg-primary">${tarea.asignatura_nombre}</span>
+                        </div>
+                        
+                        ${tarea.descripcion ? `
+                            <p class="card-text text-muted small">
+                                ${tarea.descripcion.substring(0, 100)}${tarea.descripcion.length > 100 ? '...' : ''}
+                            </p>
+                        ` : ''}
+                        
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>${tarea.profesor_nombre}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>${tarea.fecha_publicacion}
+                            </small>
+                            ${tarea.fecha_vencimiento ? `
+                                <br>
+                                <small class="${iconoEstado.clase}">
+                                    <i class="${iconoEstado.icono} me-1"></i>${iconoEstado.texto}: ${tarea.fecha_vencimiento}
+                                </small>
+                            ` : ''}
+                            ${tarea.archivo_nombre ? `
+                                <br>
+                                <small class="text-success">
+                                    <i class="fas fa-paperclip me-1"></i>Tiene archivo adjunto
+                                </small>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <button class="btn btn-sm btn-outline-primary w-100" onclick="verDetalleTarea(${tarea.id_tarea})">
+                            <i class="fas fa-eye me-1"></i>Ver Detalle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function obtenerClaseEstado(fechaVencimiento) {
+    if (!fechaVencimiento) return 'tarea-activa';
+    
+    const ahora = new Date();
+    const vencimiento = new Date(fechaVencimiento);
+    const diferencia = vencimiento - ahora;
+    const dias = diferencia / (1000 * 60 * 60 * 24);
+    
+    if (dias < 0) return 'tarea-vencida';
+    if (dias < 3) return 'tarea-proxima';
+    return 'tarea-activa';
+}
+
+function obtenerIconoEstado(fechaVencimiento) {
+    if (!fechaVencimiento) return { icono: 'fas fa-info-circle', clase: 'text-muted', texto: 'Sin fecha límite' };
+    
+    const ahora = new Date();
+    const vencimiento = new Date(fechaVencimiento);
+    const diferencia = vencimiento - ahora;
+    const dias = diferencia / (1000 * 60 * 60 * 24);
+    
+    if (dias < 0) return { icono: 'fas fa-exclamation-triangle', clase: 'text-danger', texto: 'Vencida' };
+    if (dias < 3) return { icono: 'fas fa-clock', clase: 'text-warning', texto: 'Próxima a vencer' };
+    return { icono: 'fas fa-clock', clase: 'text-success', texto: 'Fecha límite' };
+}
+
+function verDetalleTarea(tareaId) {
+    fetch(`/padre/api/hijo/${hijoId}/tareas/${tareaId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarDetalleTarea(data.tarea);
+            } else {
+                mostrarError(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar el detalle de la tarea');
+        });
+}
+
+function mostrarDetalleTarea(tarea) {
+    document.getElementById('tituloDetalle').textContent = tarea.titulo;
+    
+    const iconoEstado = obtenerIconoEstado(tarea.fecha_vencimiento);
+    
+    document.getElementById('contenidoDetalle').innerHTML = `
+        <div class="mb-3">
+            <span class="badge bg-primary">${tarea.asignatura_nombre}</span>
+            ${tarea.categoria_nombre !== 'N/A' ? `<span class="badge bg-secondary ms-2">${tarea.categoria_nombre}</span>` : ''}
+            ${tarea.fecha_vencimiento ? `<span class="badge ${iconoEstado.clase.replace('text-', 'bg-')} ms-2">${iconoEstado.texto}</span>` : ''}
+        </div>
+        
+        ${tarea.descripcion ? `
+            <div class="mb-3">
+                <h6><i class="fas fa-file-alt me-2"></i>Descripción:</h6>
+                <p class="ps-3">${tarea.descripcion.replace(/\n/g, '<br>')}</p>
+            </div>
+        ` : ''}
+        
+        <div class="mb-3">
+            <h6><i class="fas fa-info-circle me-2"></i>Información:</h6>
+            <ul class="list-unstyled ps-3">
+                <li class="mb-2"><i class="fas fa-user me-2"></i><strong>Profesor:</strong> ${tarea.profesor_nombre}</li>
+                <li class="mb-2"><i class="fas fa-calendar me-2"></i><strong>Publicado:</strong> ${tarea.fecha_publicacion}</li>
+                ${tarea.fecha_vencimiento ? `<li class="mb-2"><i class="${iconoEstado.icono} me-2"></i><strong>Fecha límite:</strong> <span class="${iconoEstado.clase}">${tarea.fecha_vencimiento}</span></li>` : ''}
+            </ul>
+        </div>
+        
+        ${tarea.archivo_url ? `
+            <div class="archivo-adjunto">
+                <h6><i class="fas fa-paperclip me-2"></i>Archivo Adjunto:</h6>
+                <p class="mb-2"><i class="fas fa-file me-2"></i>${tarea.archivo_nombre}</p>
+                <a href="${tarea.archivo_url}" class="btn btn-success" target="_blank" download>
+                    <i class="fas fa-download me-2"></i>Descargar Archivo
+                </a>
+            </div>
+        ` : ''}
+        
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle me-2"></i>
+            Como padre/madre, puede ver y descargar el material de la tarea para ayudar a su hijo/a con sus estudios.
+        </div>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('modalDetalleTarea')).show();
+}
+
+function mostrarError(mensaje) {
+    alert(mensaje);
+}
+</script>
+{% endblock %}
+

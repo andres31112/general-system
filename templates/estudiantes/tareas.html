@@ -1,0 +1,317 @@
+{% extends 'estudiantes/base.html' %}
+
+{% block title %}Mis Tareas - {{ curso.nombreCurso if curso else 'Panel de Estudiante' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="mb-4">
+        <h2 class="mb-1">📚 Mis Tareas</h2>
+        <p class="text-muted mb-0">
+            <i class="fas fa-graduation-cap me-2"></i>{{ curso.nombreCurso if curso else 'Mi Curso' }}
+        </p>
+    </div>
+
+    <!-- Filtros y Resumen -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label">Filtrar por Asignatura</label>
+                            <select class="form-select" id="filtroAsignatura">
+                                <option value="">Todas las asignaturas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100" onclick="cargarTareas()">
+                                <i class="fas fa-filter me-2"></i>Filtrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-tasks fa-2x me-3"></i>
+                        <div>
+                            <h3 class="mb-0" id="totalTareas">0</h3>
+                            <small>Tareas Publicadas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Tareas -->
+    <div class="row" id="listaTareas">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-muted">Cargando tareas...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle Tarea -->
+<div class="modal fade" id="modalDetalleTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloDetalle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetalle">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card-tarea {
+    transition: all 0.3s ease;
+    border: 1px solid #e0e0e0;
+    height: 100%;
+    position: relative;
+}
+
+.card-tarea:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.badge-asignatura {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.archivo-adjunto {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px dashed #dee2e6;
+}
+
+.tarea-vencida {
+    border-left: 4px solid #dc3545;
+}
+
+.tarea-proxima {
+    border-left: 4px solid #ffc107;
+}
+
+.tarea-activa {
+    border-left: 4px solid #28a745;
+}
+</style>
+
+<script>
+let todasLasTareas = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    cargarTareas();
+});
+
+function cargarTareas() {
+    fetch('/estudiante/api/mis-tareas')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                todasLasTareas = data.tareas;
+                cargarAsignaturas(todasLasTareas);
+                filtrarYMostrarTareas();
+            } else {
+                mostrarError('Error al cargar tareas');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar tareas');
+        });
+}
+
+function cargarAsignaturas(tareas) {
+    const asignaturas = [...new Set(tareas.map(t => t.asignatura_nombre))];
+    const select = document.getElementById('filtroAsignatura');
+    
+    select.innerHTML = '<option value="">Todas las asignaturas</option>';
+    asignaturas.forEach(asig => {
+        select.innerHTML += `<option value="${asig}">${asig}</option>`;
+    });
+}
+
+function filtrarYMostrarTareas() {
+    const filtro = document.getElementById('filtroAsignatura').value;
+    const tareasFiltradas = filtro 
+        ? todasLasTareas.filter(t => t.asignatura_nombre === filtro)
+        : todasLasTareas;
+    
+    document.getElementById('totalTareas').textContent = tareasFiltradas.length;
+    mostrarTareas(tareasFiltradas);
+}
+
+function mostrarTareas(tareas) {
+    const container = document.getElementById('listaTareas');
+    
+    if (tareas.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No hay tareas publicadas</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tareas.map(tarea => {
+        const claseEstado = obtenerClaseEstado(tarea.fecha_vencimiento);
+        const iconoEstado = obtenerIconoEstado(tarea.fecha_vencimiento);
+        
+        return `
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card card-tarea ${claseEstado}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">${tarea.titulo}</h5>
+                            <span class="badge badge-asignatura bg-primary">${tarea.asignatura_nombre}</span>
+                        </div>
+                        
+                        ${tarea.descripcion ? `
+                            <p class="card-text text-muted small">
+                                ${tarea.descripcion.substring(0, 100)}${tarea.descripcion.length > 100 ? '...' : ''}
+                            </p>
+                        ` : ''}
+                        
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>${tarea.profesor_nombre}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>${tarea.fecha_publicacion}
+                            </small>
+                            ${tarea.fecha_vencimiento ? `
+                                <br>
+                                <small class="${iconoEstado.clase}">
+                                    <i class="${iconoEstado.icono} me-1"></i>${iconoEstado.texto}: ${tarea.fecha_vencimiento}
+                                </small>
+                            ` : ''}
+                            ${tarea.archivo_nombre ? `
+                                <br>
+                                <small class="text-success">
+                                    <i class="fas fa-paperclip me-1"></i>Tiene archivo adjunto
+                                </small>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <button class="btn btn-sm btn-outline-primary w-100" onclick="verDetalleTarea(${tarea.id_tarea})">
+                            <i class="fas fa-eye me-1"></i>Ver Detalle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function obtenerClaseEstado(fechaVencimiento) {
+    if (!fechaVencimiento) return 'tarea-activa';
+    
+    const ahora = new Date();
+    const vencimiento = new Date(fechaVencimiento);
+    const diferencia = vencimiento - ahora;
+    const dias = diferencia / (1000 * 60 * 60 * 24);
+    
+    if (dias < 0) return 'tarea-vencida';
+    if (dias < 3) return 'tarea-proxima';
+    return 'tarea-activa';
+}
+
+function obtenerIconoEstado(fechaVencimiento) {
+    if (!fechaVencimiento) return { icono: 'fas fa-info-circle', clase: 'text-muted', texto: 'Sin fecha límite' };
+    
+    const ahora = new Date();
+    const vencimiento = new Date(fechaVencimiento);
+    const diferencia = vencimiento - ahora;
+    const dias = diferencia / (1000 * 60 * 60 * 24);
+    
+    if (dias < 0) return { icono: 'fas fa-exclamation-triangle', clase: 'text-danger', texto: 'Vencida' };
+    if (dias < 3) return { icono: 'fas fa-clock', clase: 'text-warning', texto: 'Próxima a vencer' };
+    return { icono: 'fas fa-clock', clase: 'text-success', texto: 'Fecha límite' };
+}
+
+function verDetalleTarea(tareaId) {
+    fetch(`/estudiante/api/tareas/${tareaId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarDetalleTarea(data.tarea);
+            } else {
+                mostrarError(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar el detalle de la tarea');
+        });
+}
+
+function mostrarDetalleTarea(tarea) {
+    document.getElementById('tituloDetalle').textContent = tarea.titulo;
+    
+    const iconoEstado = obtenerIconoEstado(tarea.fecha_vencimiento);
+    
+    document.getElementById('contenidoDetalle').innerHTML = `
+        <div class="mb-3">
+            <span class="badge bg-primary">${tarea.asignatura_nombre}</span>
+            ${tarea.categoria_nombre !== 'N/A' ? `<span class="badge bg-secondary ms-2">${tarea.categoria_nombre}</span>` : ''}
+            ${tarea.fecha_vencimiento ? `<span class="badge ${iconoEstado.clase.replace('text-', 'bg-')} ms-2">${iconoEstado.texto}</span>` : ''}
+        </div>
+        
+        ${tarea.descripcion ? `
+            <div class="mb-3">
+                <h6><i class="fas fa-file-alt me-2"></i>Descripción:</h6>
+                <p class="ps-3">${tarea.descripcion.replace(/\n/g, '<br>')}</p>
+            </div>
+        ` : ''}
+        
+        <div class="mb-3">
+            <h6><i class="fas fa-info-circle me-2"></i>Información:</h6>
+            <ul class="list-unstyled ps-3">
+                <li class="mb-2"><i class="fas fa-user me-2"></i><strong>Profesor:</strong> ${tarea.profesor_nombre}</li>
+                <li class="mb-2"><i class="fas fa-calendar me-2"></i><strong>Publicado:</strong> ${tarea.fecha_publicacion}</li>
+                ${tarea.fecha_vencimiento ? `<li class="mb-2"><i class="${iconoEstado.icono} me-2"></i><strong>Fecha límite:</strong> <span class="${iconoEstado.clase}">${tarea.fecha_vencimiento}</span></li>` : ''}
+            </ul>
+        </div>
+        
+        ${tarea.archivo_url ? `
+            <div class="archivo-adjunto">
+                <h6><i class="fas fa-paperclip me-2"></i>Archivo Adjunto:</h6>
+                <p class="mb-2"><i class="fas fa-file me-2"></i>${tarea.archivo_nombre}</p>
+                <a href="${tarea.archivo_url}" class="btn btn-success" target="_blank" download>
+                    <i class="fas fa-download me-2"></i>Descargar Archivo
+                </a>
+            </div>
+        ` : ''}
+    `;
+    
+    new bootstrap.Modal(document.getElementById('modalDetalleTarea')).show();
+}
+
+function mostrarError(mensaje) {
+    alert(mensaje);
+}
+</script>
+{% endblock %}
+

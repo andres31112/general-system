@@ -7,6 +7,8 @@ from controllers.models import (
 )
 from datetime import datetime, date
 import json
+import os
+from werkzeug.utils import secure_filename
 
 profesor_bp = Blueprint('profesor', __name__, url_prefix='/profesor')
 
@@ -269,6 +271,43 @@ def verificar_asignatura_profesor_en_curso(asignatura_id, profesor_id, curso_id)
     ).first()
 
     return bool(acceso_horario or acceso_clase)
+
+def obtener_profesores_por_asignatura(asignatura_id):
+    """✅ NUEVA FUNCIÓN: Obtiene todos los profesores asignados a una asignatura específica."""
+    try:
+        # Obtener profesores desde la tabla intermedia asignatura_profesor
+        profesores = db.session.query(Usuario).join(
+            Usuario.asignaturas
+        ).filter(
+            Asignatura.id_asignatura == asignatura_id,
+            Usuario.id_rol_fk == 2  # Solo profesores (rol_id = 2)
+        ).all()
+        
+        return [
+            {
+                'id_usuario': prof.id_usuario,
+                'nombre_completo': prof.nombre_completo,
+                'correo': prof.correo
+            } for prof in profesores
+        ]
+    except Exception as e:
+        print(f"Error obteniendo profesores por asignatura: {str(e)}")
+        return []
+
+def validar_profesor_asignatura(profesor_id, asignatura_id):
+    """✅ NUEVA FUNCIÓN: Valida si un profesor está asignado a una asignatura específica."""
+    try:
+        asignacion = db.session.query(Usuario).join(
+            Usuario.asignaturas
+        ).filter(
+            Usuario.id_usuario == profesor_id,
+            Asignatura.id_asignatura == asignatura_id
+        ).first()
+        
+        return asignacion is not None
+    except Exception as e:
+        print(f"Error validando profesor-asignatura: {str(e)}")
+        return False
 
 def calcular_pendientes(profesor_id, curso_id):
     """Calcula tareas pendientes (asistencias no registradas para hoy)."""
@@ -2226,6 +2265,336 @@ def api_categorias_modificar(cat_id):
         return jsonify({'success': False, 'message': f'Error actualizando categoría: {str(e)}'}), 500
 
 # ============================================================================ #
+# APIs - TAREAS ACADÉMICAS
+# ============================================================================ #
+
+# ============================================================================ #
+# GESTIÓN DE TAREAS ACADÉMICAS
+# ============================================================================ #
+
+def allowed_file(filename):
+    """Verifica si el archivo tiene una extensión permitida."""
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'rar', 'ppt', 'pptx', 'xls', 'xlsx'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@profesor_bp.route('/api/crear-tarea', methods=['POST'])
+@login_required
+def api_crear_tarea():
+    """
+    Crea y publica una nueva tarea académica como calificación para todos los estudiantes del curso.
+    La tarea se crea como un registro de Calificacion con es_tarea_publicada=True.
+    """
+    try:
+        # Verificar curso seleccionado
+        curso_id = session.get('curso_seleccionado')
+        if not curso_id:
+            return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+
+        # Verificar acceso del profesor al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+
+        # Obtener datos del formulario
+        titulo = request.form.get('titulo', '').strip()
+        descripcion = request.form.get('descripcion', '').strip()
+        asignatura_id = request.form.get('asignatura_id')
+        categoria_id = request.form.get('categoria_id')
+        fecha_vencimiento = request.form.get('fecha_vencimiento')
+
+        # Validar campos requeridos
+        if not titulo:
+            return jsonify({'success': False, 'message': 'El título es requerido'}), 400
+        
+        if not descripcion:
+            return jsonify({'success': False, 'message': 'La descripción es requerida'}), 400
+            
+        if not asignatura_id:
+            return jsonify({'success': False, 'message': 'La asignatura es requerida'}), 400
+
+        # Si no se especifica categoría, usar la primera disponible
+        if not categoria_id:
+            primera_categoria = CategoriaCalificacion.query.first()
+            if primera_categoria:
+                categoria_id = primera_categoria.id_categoria
+            else:
+                return jsonify({'success': False, 'message': 'No hay categorías de calificación configuradas'}), 400
+
+        # Procesar archivo adjunto si existe
+        archivo_url = None
+        archivo_nombre = None
+        if 'archivo' in request.files:
+            archivo = request.files['archivo']
+            if archivo and archivo.filename:
+                if allowed_file(archivo.filename):
+                    filename = secure_filename(archivo.filename)
+                    # Agregar timestamp para evitar conflictos de nombres
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"{timestamp}_{filename}"
+                    
+                    # Crear directorio si no existe
+                    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'tareas')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    
+                    # Guardar archivo
+                    filepath = os.path.join(upload_folder, filename)
+                    archivo.save(filepath)
+                    
+                    archivo_url = f'/static/uploads/tareas/{filename}'
+                    archivo_nombre = archivo.filename
+                else:
+                    return jsonify({'success': False, 'message': 'Tipo de archivo no permitido'}), 400
+
+        # Convertir fecha de vencimiento si existe
+        fecha_venc_dt = None
+        if fecha_vencimiento:
+            try:
+                fecha_venc_dt = datetime.strptime(fecha_vencimiento, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                return jsonify({'success': False, 'message': 'Formato de fecha inválido'}), 400
+
+        # Obtener estudiantes del curso
+        estudiantes = obtener_estudiantes_por_curso(curso_id)
+        if not estudiantes:
+            return jsonify({'success': False, 'message': 'No hay estudiantes matriculados en este curso'}), 400
+
+        # Crear una calificación (tarea) para cada estudiante
+        tareas_creadas = []
+        asignatura = Asignatura.query.get(asignatura_id)
+        
+        for estudiante in estudiantes:
+            est_id = getattr(estudiante, 'id_usuario', None)
+            if est_id:
+                nueva_tarea = Calificacion(
+                    estudianteId=est_id,
+                    asignaturaId=int(asignatura_id),
+                    categoriaId=int(categoria_id),
+                    nombre_calificacion=titulo,
+                    descripcion_tarea=descripcion,
+                    archivo_url=archivo_url,
+                    archivo_nombre=archivo_nombre,
+                    fecha_vencimiento=fecha_venc_dt,
+                    es_tarea_publicada=True,
+                    profesor_id=current_user.id_usuario,
+                    valor=None,
+                    observaciones=''
+                )
+                db.session.add(nueva_tarea)
+                tareas_creadas.append(nueva_tarea)
+
+        # Crear notificaciones (si el servicio está disponible)
+        # Las notificaciones se agregan a la sesión pero NO se hace commit aún
+        try:
+            from services.notification_service import crear_notificacion
+            
+            for estudiante in estudiantes:
+                est_id = getattr(estudiante, 'id_usuario', None)
+                if not est_id:
+                    continue
+                
+                # Notificar al estudiante (sin commit automático)
+                try:
+                    crear_notificacion(
+                        usuario_id=est_id,
+                        titulo='Nueva Tarea Publicada',
+                        mensaje=f'Se ha publicado una nueva tarea "{titulo}" en {asignatura.nombre if asignatura else "tu curso"}',
+                        tipo='tarea',
+                        link='/estudiante/tareas',
+                        auto_commit=False
+                    )
+                except Exception as e:
+                    print(f'Error creando notificación para estudiante {est_id}: {str(e)}')
+                
+                # Notificar a los padres del estudiante (sin commit automático)
+                try:
+                    estudiante_obj = Usuario.query.get(est_id)
+                    if estudiante_obj and hasattr(estudiante_obj, 'padres'):
+                        # padres es un query dinámico, obtener todos los padres
+                        padres_list = estudiante_obj.padres.all()
+                        for padre in padres_list:
+                            try:
+                                crear_notificacion(
+                                    usuario_id=padre.id_usuario,
+                                    titulo='Nueva Tarea Asignada',
+                                    mensaje=f'Nueva tarea "{titulo}" para {estudiante_obj.nombre_completo} en {asignatura.nombre if asignatura else "el curso"}',
+                                    tipo='tarea',
+                                    link=f'/padre/tareas/{est_id}',
+                                    auto_commit=False
+                                )
+                            except Exception as e:
+                                print(f'Error creando notificación para padre {padre.id_usuario}: {str(e)}')
+                except Exception as e:
+                    print(f'Error obteniendo padres del estudiante {est_id}: {str(e)}')
+        except ImportError:
+            print('Servicio de notificaciones no disponible')
+
+        # Guardar todas las tareas y notificaciones en una sola transacción
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Tarea creada y publicada exitosamente para {len(tareas_creadas)} estudiantes',
+            'total_estudiantes': len(tareas_creadas)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error al crear tarea: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/obtener-tareas', methods=['GET'])
+@login_required
+def api_obtener_tareas():
+    """
+    Obtiene las tareas publicadas del curso seleccionado.
+    Retorna una lista sin duplicados (agrupadas por nombre_calificacion).
+    """
+    try:
+        # Verificar curso seleccionado
+        curso_id = session.get('curso_seleccionado')
+        if not curso_id:
+            return jsonify({'success': False, 'message': 'No hay curso seleccionado'}), 400
+
+        # Verificar acceso del profesor al curso
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+
+        asignatura_id = request.args.get('asignatura_id')
+        
+        # Obtener IDs de estudiantes del curso
+        estudiantes = obtener_estudiantes_por_curso(curso_id)
+        estudiantes_ids = [getattr(est, 'id_usuario', None) for est in estudiantes if hasattr(est, 'id_usuario')]
+        
+        if not estudiantes_ids:
+            return jsonify({'success': True, 'tareas': []})
+        
+        # Consultar tareas publicadas
+        query = db.session.query(Calificacion).filter(
+            Calificacion.estudianteId.in_(estudiantes_ids),
+            Calificacion.es_tarea_publicada == True,
+            Calificacion.profesor_id == current_user.id_usuario
+        )
+        
+        if asignatura_id:
+            query = query.filter(Calificacion.asignaturaId == int(asignatura_id))
+        
+        tareas = query.order_by(Calificacion.fecha_registro.desc()).all()
+        
+        # Agrupar por nombre para evitar duplicados (una tarea por estudiante)
+        tareas_unicas = {}
+        for tarea in tareas:
+            if tarea.nombre_calificacion not in tareas_unicas:
+                tareas_unicas[tarea.nombre_calificacion] = tarea
+        
+        # Formatear respuesta
+        tareas_data = []
+        for tarea in tareas_unicas.values():
+            tareas_data.append({
+                'id_tarea': tarea.id_calificacion,
+                'titulo': tarea.nombre_calificacion,
+                'descripcion': tarea.descripcion_tarea or '',
+                'archivo_url': tarea.archivo_url,
+                'archivo_nombre': tarea.archivo_nombre,
+                'asignatura_id': tarea.asignaturaId,
+                'asignatura_nombre': tarea.asignatura.nombre if tarea.asignatura else 'N/A',
+                'profesor_id': tarea.profesor_id,
+                'profesor_nombre': tarea.profesor.nombre_completo if tarea.profesor else current_user.nombre_completo,
+                'categoria_id': tarea.categoriaId,
+                'categoria_nombre': tarea.categoria.nombre if tarea.categoria else 'N/A',
+                'fecha_publicacion': tarea.fecha_registro.strftime('%Y-%m-%d %H:%M') if tarea.fecha_registro else None,
+                'fecha_vencimiento': tarea.fecha_vencimiento.strftime('%Y-%m-%d %H:%M') if tarea.fecha_vencimiento else None,
+                'publicada': tarea.es_tarea_publicada
+            })
+        
+        return jsonify({
+            'success': True,
+            'tareas': tareas_data
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener tareas: {str(e)}'}), 500
+
+
+@profesor_bp.route('/api/eliminar-tarea/<int:tarea_id>', methods=['DELETE'])
+@login_required
+def api_eliminar_tarea(tarea_id):
+    """
+    Elimina una tarea académica completamente.
+    Elimina todas las copias de la tarea (una por cada estudiante) y el archivo adjunto si existe.
+    """
+    try:
+        # Buscar la tarea
+        tarea = Calificacion.query.get(tarea_id)
+        
+        if not tarea:
+            return jsonify({'success': False, 'message': 'Tarea no encontrada'}), 404
+        
+        # Verificar que sea una tarea publicada
+        if not tarea.es_tarea_publicada:
+            return jsonify({'success': False, 'message': 'Este registro no es una tarea publicada'}), 400
+        
+        # Verificar que el profesor sea el dueño
+        if tarea.profesor_id != current_user.id_usuario:
+            return jsonify({'success': False, 'message': 'No tienes permiso para eliminar esta tarea'}), 403
+        
+        # Obtener todas las copias de la tarea (una por estudiante)
+        nombre_tarea = tarea.nombre_calificacion
+        tareas_relacionadas = Calificacion.query.filter_by(
+            nombre_calificacion=nombre_tarea,
+            es_tarea_publicada=True,
+            profesor_id=current_user.id_usuario
+        ).all()
+        
+        # Eliminar archivo adjunto si existe
+        if tarea.archivo_url:
+            try:
+                # Construir la ruta completa del archivo
+                filepath = os.path.join(current_app.root_path, tarea.archivo_url.lstrip('/'))
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception:
+                pass  # Si falla la eliminación del archivo, continuar
+        
+        # Eliminar todas las tareas relacionadas
+        for t in tareas_relacionadas:
+            db.session.delete(t)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Tarea eliminada exitosamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Error al eliminar tarea: {str(e)}'}), 500
+
+
+@profesor_bp.route('/tareas')
+@login_required
+def tareas_academicas():
+    """Vista para gestionar tareas académicas."""
+    curso_id = session.get('curso_seleccionado')
+    if not curso_id:
+        flash('Por favor, selecciona un curso primero', 'warning')
+        return redirect(url_for('profesor.dashboard'))
+    
+    curso = Curso.query.get(curso_id)
+    if not curso:
+        flash('Curso no encontrado', 'error')
+        return redirect(url_for('profesor.dashboard'))
+    
+    # Obtener asignaturas del profesor en este curso
+    asignaturas = obtener_asignaturas_del_profesor_en_curso(current_user.id_usuario, curso_id)
+    categorias = CategoriaCalificacion.query.all()
+    
+    return render_template('profesores/tareas.html', 
+                         curso=curso, 
+                         asignaturas=asignaturas,
+                         categorias=categorias)
+
+# ============================================================================ #
 # APIs - ASIGNATURAS
 # ============================================================================ #
 
@@ -2979,4 +3348,73 @@ def api_estadisticas_solicitudes():
         return jsonify({
             'success': False,
             'message': f'Error obteniendo estadísticas: {str(e)}'
+        }), 500
+
+
+
+# ============================================================================ #
+# APIS - GESTIÓN DE PERIODOS ACADÉMICOS (PROFESORES)
+# ============================================================================ #
+
+@profesor_bp.route('/api/periodo-activo', methods=['GET'])
+@login_required
+def api_obtener_periodo_activo_profesor():
+    """Obtiene el periodo académico activo actual."""
+    try:
+        from services.periodo_service import obtener_periodo_activo
+        
+        periodo = obtener_periodo_activo()
+        
+        if not periodo:
+            return jsonify({
+                'success': True,
+                'periodo': None,
+                'message': 'No hay periodo activo'
+            })
+        
+        # Incluir información adicional útil para el profesor
+        dias_restantes = periodo.dias_para_cierre()
+        
+        return jsonify({
+            'success': True,
+            'periodo': {
+                **periodo.to_dict(),
+                'dias_para_cierre': dias_restantes,
+                'puede_modificar': periodo.puede_modificar_notas()
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@profesor_bp.route('/api/periodos', methods=['GET'])
+@login_required
+def api_obtener_periodos_profesor():
+    """Obtiene todos los periodos del ciclo activo."""
+    try:
+        from services.periodo_service import obtener_ciclo_activo, obtener_periodos_ciclo
+        
+        ciclo = obtener_ciclo_activo()
+        if not ciclo:
+            return jsonify({
+                'success': True,
+                'periodos': [],
+                'message': 'No hay ciclo activo'
+            })
+        
+        periodos = obtener_periodos_ciclo(ciclo.id_ciclo)
+        
+        return jsonify({
+            'success': True,
+            'periodos': [p.to_dict() for p in periodos]
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
         }), 500

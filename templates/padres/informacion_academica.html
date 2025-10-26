@@ -4,478 +4,255 @@
 
 {% block extra_css %}
 <style>
-    .estudiante-card {
-        background: var(--card-bg);
-        border-radius: 15px;
+    :root {
+        --accent1: #F95738;
+        --accent2: #EE964B;
+        --accent3: #F4D35E;
+        --accent4: #0D3B66;
+        --light: #FAF0CA;
+        --white: #FFFFFF;
+        --black: #333333;
+        --gray: #666666;
+        --light-gray: #F8F9FA;
+        --border: #E9ECEF;
+        --card-bg: #FFFFFF;
+        --header-bg: #FFFFFF;
+        --main-bg: #F8F9FA;
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    body {
+        background-color: var(--main-bg);
+    }
+
+    /* Header de la página */
+    .page-header {
+        background: linear-gradient(135deg, var(--accent4), #1a5080);
+        color: var(--white);
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
         box-shadow: var(--shadow);
-        transition: all var(--transition-speed) ease;
-        cursor: pointer;
-        border: 2px solid transparent;
+    }
+
+    .page-header h2 {
+        color: var(--white);
+        font-weight: 700;
+        font-size: 2rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .page-header h2 i {
+        font-size: 2rem;
+        color: var(--accent3);
+    }
+
+    .page-header p {
+        margin: 10px 0 0 0;
+        opacity: 0.95;
+        font-size: 1.05rem;
+    }
+
+    /* Tarjetas de estudiantes */
+    .estudiante-card {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 30px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        text-decoration: none;
+        color: var(--black);
+    }
+
+    .estudiante-card:nth-child(3n+1) {
+        border-top: 4px solid var(--accent4);
+    }
+
+    .estudiante-card:nth-child(3n+2) {
+        border-top: 4px solid var(--accent1);
+    }
+
+    .estudiante-card:nth-child(3n) {
+        border-top: 4px solid var(--accent2);
     }
 
     .estudiante-card:hover {
         transform: translateY(-5px);
         box-shadow: var(--shadow-hover);
-        border-color: var(--accent4);
     }
 
-    .estudiante-card.selected {
-        border-color: var(--accent4);
-        background: linear-gradient(135deg, rgba(13, 59, 102, 0.05), rgba(13, 59, 102, 0.1));
-    }
-
-    .estudiante-info {
-        padding: 1.5rem;
-    }
-
-    .estudiante-avatar {
-        width: 60px;
-        height: 60px;
+    .estudiante-icon {
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
-        background: var(--gradient-primary);
         display: flex;
         align-items: center;
         justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 2rem;
+        font-weight: 700;
         color: var(--white);
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
+    }
+
+    .estudiante-card:nth-child(3n+1) .estudiante-icon {
+        background: linear-gradient(135deg, var(--accent4), #1a5080);
+        box-shadow: 0 4px 15px rgba(13, 59, 102, 0.3);
+    }
+
+    .estudiante-card:nth-child(3n+2) .estudiante-icon {
+        background: linear-gradient(135deg, var(--accent1), #ff6b4a);
+        box-shadow: 0 4px 15px rgba(249, 87, 56, 0.3);
+    }
+
+    .estudiante-card:nth-child(3n) .estudiante-icon {
+        background: linear-gradient(135deg, var(--accent2), #f0a868);
+        box-shadow: 0 4px 15px rgba(238, 150, 75, 0.3);
     }
 
     .estudiante-nombre {
-        font-size: 1.1rem;
-        font-weight: 600;
         color: var(--accent4);
-        margin-bottom: 0.5rem;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-bottom: 10px;
     }
 
     .estudiante-documento {
         color: var(--gray);
-        font-size: 0.9rem;
-        margin-bottom: 0;
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
 
-    .info-section {
-        background: var(--card-bg);
-        border-radius: 15px;
-        box-shadow: var(--shadow);
-        margin-bottom: 2rem;
-        overflow: hidden;
-    }
-
-    .info-header {
-        background: var(--gradient-primary);
-        color: var(--white);
-        padding: 1rem 1.5rem;
+    .btn-ver-detalles {
+        background: linear-gradient(135deg, var(--accent3), #e9c440);
+        color: var(--black);
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
         font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    .info-content {
-        padding: 1.5rem;
-    }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: var(--light-gray);
-        border-radius: 10px;
-        padding: 1.5rem;
-        text-align: center;
-        transition: all var(--transition-speed) ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow);
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--accent4);
-        margin-bottom: 0.5rem;
-    }
-
-    .stat-label {
-        color: var(--gray);
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-
-    .asistencia-table {
+        transition: all 0.3s;
         width: 100%;
-        border-collapse: collapse;
-        margin-top: 1rem;
     }
 
-    .asistencia-table th,
-    .asistencia-table td {
-        padding: 0.75rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border);
+    .btn-ver-detalles:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
     }
 
-    .asistencia-table th {
-        background: var(--light-gray);
-        font-weight: 600;
-        color: var(--accent4);
-    }
-
-    .asistencia-table tr:hover {
-        background: var(--light-gray);
-    }
-
-    .badge-asistencia {
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .badge-presente {
-        background: #d4edda;
-        color: #155724;
-    }
-
-    .badge-falta {
-        background: #f8d7da;
-        color: #721c24;
-    }
-
-    .badge-retardo {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .badge-excusa {
-        background: #cce5ff;
-        color: #004085;
-    }
-
+    /* Estado vacío */
     .no-data {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 60px 40px;
         text-align: center;
-        padding: 3rem 2rem;
         color: var(--gray);
     }
 
     .no-data i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        color: var(--accent2);
+        font-size: 5rem;
+        margin-bottom: 20px;
+        color: var(--accent3);
+        opacity: 0.5;
     }
 
-    .loading-spinner {
-        display: none;
-        text-align: center;
-        padding: 2rem;
-    }
-
-    .loading-spinner.show {
-        display: block;
-    }
-
-    .spinner-border {
+    .no-data h4 {
         color: var(--accent4);
+        font-weight: 700;
+        margin-bottom: 10px;
+        font-size: 1.5rem;
+    }
+
+    .no-data p {
+        color: var(--gray);
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .estudiante-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+        }
+
+        .estudiante-nombre {
+            font-size: 1.1rem;
+        }
+
+        .estudiante-card {
+            padding: 20px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-dark mb-1">
-                        <i class="fas fa-graduation-cap me-2 text-primary"></i>
+<div class="container-fluid py-4">
+    <!-- Header de la página -->
+    <div class="page-header">
+        <h2>
+            <i class="fas fa-graduation-cap"></i>
                         Información Académica
                     </h2>
-                    <p class="text-muted mb-0">Consulta el rendimiento académico de tus hijos</p>
-                </div>
+        <p>Selecciona a un estudiante para ver su información detallada</p>
             </div>
 
-            <!-- Selección de Estudiante -->
             {% if hijos %}
-            <div class="info-section mb-4">
-                <div class="info-header">
-                    <i class="fas fa-user-graduate me-2"></i>
-                    Seleccionar Estudiante
-                </div>
-                <div class="info-content">
+    <!-- Tarjetas de estudiantes -->
                     <div class="row">
                         {% for hijo in hijos %}
-                        <div class="col-md-4 mb-3">
-                            <div class="estudiante-card" onclick="seleccionarEstudiante({{ hijo.id_usuario }}, '{{ hijo.nombre_completo }}')">
-                                <div class="estudiante-info text-center">
-                                    <div class="estudiante-avatar mx-auto">
-                                        {{ hijo.nombre[0] }}{{ hijo.apellido[0] }}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <a href="{{ url_for('padre.detalle_estudiante', estudiante_id=hijo.id_usuario) }}" class="text-decoration-none">
+                <div class="estudiante-card">
+                    <div class="estudiante-icon">
+                        {{ hijo.nombre[0]|upper }}{{ hijo.apellido[0]|upper }}
                                     </div>
                                     <h5 class="estudiante-nombre">{{ hijo.nombre_completo }}</h5>
-                                    <p class="estudiante-documento">{{ hijo.no_identidad }}</p>
+                    <p class="estudiante-documento">
+                        <i class="fas fa-id-card"></i>
+                        <span>{{ hijo.no_identidad }}</span>
+                    </p>
+                    <button type="button" class="btn-ver-detalles">
+                        <i class="fas fa-eye"></i>
+                        Ver Información Completa
+                    </button>
                                 </div>
-                            </div>
+            </a>
                         </div>
                         {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Información del Estudiante Seleccionado -->
-            <div id="infoEstudiante" style="display: none;">
-                <!-- Estadísticas Generales -->
-                <div class="info-section">
-                    <div class="info-header">
-                        <i class="fas fa-chart-line me-2"></i>
-                        Estadísticas Generales
-                    </div>
-                    <div class="info-content">
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value" id="promedioGeneral">--</div>
-                                <div class="stat-label">Promedio General</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="totalAsistencias">--</div>
-                                <div class="stat-label">Total Asistencias</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="totalFallas">--</div>
-                                <div class="stat-label">Total Fallas</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="totalRetardos">--</div>
-                                <div class="stat-label">Total Retardos</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Promedios por Asignatura -->
-                <div class="info-section">
-                    <div class="info-header">
-                        <i class="fas fa-book me-2"></i>
-                        Promedios por Asignatura
-                    </div>
-                    <div class="info-content">
-                        <div class="loading-spinner" id="loadingPromedios">
-                            <div class="spinner-border" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                            <p class="mt-2">Cargando promedios...</p>
-                        </div>
-                        <div id="promediosContent">
-                            <!-- Los promedios se cargarán aquí -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Historial de Asistencia -->
-                <div class="info-section">
-                    <div class="info-header">
-                        <i class="fas fa-calendar-check me-2"></i>
-                        Historial de Asistencia
-                    </div>
-                    <div class="info-content">
-                        <div class="loading-spinner" id="loadingAsistencia">
-                            <div class="spinner-border" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                            <p class="mt-2">Cargando asistencia...</p>
-                        </div>
-                        <div id="asistenciaContent">
-                            <!-- El historial se cargará aquí -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Consultar Estudiante -->
-                <div class="info-section">
-                    <div class="info-header">
-                        <i class="fas fa-search me-2"></i>
-                        Consultar con Profesores
-                    </div>
-                    <div class="info-content">
-                        <p class="text-muted mb-3">
-                            ¿Necesitas consultar algo específico sobre el rendimiento de tu hijo? 
-                            Puedes enviar una solicitud a los profesores.
-                        </p>
-                        <a href="{{ url_for('padre.consultar_estudiante') }}" class="btn btn-primary">
-                            <i class="fas fa-paper-plane me-2"></i>
-                            Enviar Consulta
-                        </a>
-                    </div>
-                </div>
             </div>
 
             {% else %}
+    <!-- Estado vacío -->
             <div class="no-data">
                 <i class="fas fa-user-graduate"></i>
                 <h4>No tienes hijos registrados</h4>
-                <p>Contacta con la administración para registrar a tus hijos en el sistema.</p>
+        <p>Contacta con la administración de la institución para vincular a tus hijos al sistema.</p>
             </div>
             {% endif %}
-        </div>
-    </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-let estudianteSeleccionado = null;
-
-function seleccionarEstudiante(estudianteId, nombreEstudiante) {
-    // Remover selección anterior
-    document.querySelectorAll('.estudiante-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    
-    // Seleccionar nuevo estudiante
-    event.currentTarget.classList.add('selected');
-    estudianteSeleccionado = estudianteId;
-    
-    // Mostrar información del estudiante
-    document.getElementById('infoEstudiante').style.display = 'block';
-    
-    // Actualizar título
-    document.querySelector('.info-header').innerHTML = 
-        `<i class="fas fa-user-graduate me-2"></i>Información de ${nombreEstudiante}`;
-    
-    // Cargar datos del estudiante
-    cargarDatosEstudiante(estudianteId);
-}
-
-async function cargarDatosEstudiante(estudianteId) {
-    try {
-        // Cargar estadísticas generales
-        await cargarEstadisticas(estudianteId);
-        
-        // Cargar promedios por asignatura
-        await cargarPromedios(estudianteId);
-        
-        // Cargar historial de asistencia
-        await cargarAsistencia(estudianteId);
-        
-    } catch (error) {
-        console.error('Error cargando datos del estudiante:', error);
-        mostrarError('Error al cargar la información del estudiante');
-    }
-}
-
-async function cargarEstadisticas(estudianteId) {
-    try {
-        const response = await fetch(`/padre/api/estadisticas_estudiante/${estudianteId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            document.getElementById('promedioGeneral').textContent = data.promedio_general || '--';
-            document.getElementById('totalAsistencias').textContent = data.total_asistencias || '--';
-            document.getElementById('totalFallas').textContent = data.total_fallas || '--';
-            document.getElementById('totalRetardos').textContent = data.total_retardos || '--';
-        }
-    } catch (error) {
-        console.error('Error cargando estadísticas:', error);
-    }
-}
-
-async function cargarPromedios(estudianteId) {
-    const loadingElement = document.getElementById('loadingPromedios');
-    const contentElement = document.getElementById('promediosContent');
-    
-    loadingElement.classList.add('show');
-    contentElement.innerHTML = '';
-    
-    try {
-        const response = await fetch(`/padre/api/promedios_estudiante/${estudianteId}`);
-        const data = await response.json();
-        
-        if (data.success && data.promedios.length > 0) {
-            let html = '<div class="table-responsive"><table class="table table-hover">';
-            html += '<thead><tr><th>Asignatura</th><th>Promedio</th><th>Estado</th></tr></thead><tbody>';
-            
-            data.promedios.forEach(promedio => {
-                const estado = promedio.promedio >= 3.0 ? 'Aprobado' : 'Reprobado';
-                const badgeClass = promedio.promedio >= 3.0 ? 'badge-presente' : 'badge-falta';
-                
-                html += `<tr>
-                    <td>${promedio.asignatura}</td>
-                    <td>${promedio.promedio.toFixed(2)}</td>
-                    <td><span class="badge-asistencia ${badgeClass}">${estado}</span></td>
-                </tr>`;
-            });
-            
-            html += '</tbody></table></div>';
-            contentElement.innerHTML = html;
-        } else {
-            contentElement.innerHTML = '<div class="no-data"><p>No hay promedios disponibles</p></div>';
-        }
-    } catch (error) {
-        console.error('Error cargando promedios:', error);
-        contentElement.innerHTML = '<div class="alert alert-danger">Error al cargar los promedios</div>';
-    } finally {
-        loadingElement.classList.remove('show');
-    }
-}
-
-async function cargarAsistencia(estudianteId) {
-    const loadingElement = document.getElementById('loadingAsistencia');
-    const contentElement = document.getElementById('asistenciaContent');
-    
-    loadingElement.classList.add('show');
-    contentElement.innerHTML = '';
-    
-    try {
-        const response = await fetch(`/padre/api/asistencia_estudiante/${estudianteId}`);
-        const data = await response.json();
-        
-        if (data.success && data.asistencia.length > 0) {
-            let html = '<div class="table-responsive"><table class="asistencia-table">';
-            html += '<thead><tr><th>Fecha</th><th>Asignatura</th><th>Estado</th><th>Excusa</th></tr></thead><tbody>';
-            
-            data.asistencia.forEach(registro => {
-                let badgeClass = 'badge-presente';
-                let estado = 'Presente';
-                
-                if (registro.estado === 'falta') {
-                    badgeClass = 'badge-falta';
-                    estado = 'Falta';
-                } else if (registro.estado === 'retardo') {
-                    badgeClass = 'badge-retardo';
-                    estado = 'Retardo';
-                }
-                
-                const excusa = registro.excusa ? 'Sí' : 'No';
-                const excusaClass = registro.excusa ? 'badge-excusa' : '';
-                
-                html += `<tr>
-                    <td>${new Date(registro.fecha).toLocaleDateString()}</td>
-                    <td>${registro.asignatura}</td>
-                    <td><span class="badge-asistencia ${badgeClass}">${estado}</span></td>
-                    <td><span class="badge-asistencia ${excusaClass}">${excusa}</span></td>
-                </tr>`;
-            });
-            
-            html += '</tbody></table></div>';
-            contentElement.innerHTML = html;
-        } else {
-            contentElement.innerHTML = '<div class="no-data"><p>No hay registros de asistencia</p></div>';
-        }
-    } catch (error) {
-        console.error('Error cargando asistencia:', error);
-        contentElement.innerHTML = '<div class="alert alert-danger">Error al cargar la asistencia</div>';
-    } finally {
-        loadingElement.classList.remove('show');
-    }
-}
-
-function mostrarError(mensaje) {
-    // Implementar notificación de error
-    console.error(mensaje);
-}
-</script>
 {% endblock %}

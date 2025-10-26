@@ -1,0 +1,1658 @@
+{% extends 'superadmin/gestion_academica/dashboard.html' %}
+
+{% block title %}Gestión de Periodos Académicos{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =======================================
+   VARIABLES CSS - Paleta de colores coherente (igual a Comunicaciones)
+   ======================================= */
+:root {
+    --accent1: #F95738; /* Acento rojo */
+    --accent2: #EE964B; /* Acento naranja */
+    --accent3: #F4D35E; /* Acento amarillo */
+    --accent4: #0D3B66; /* Acento azul oscuro */
+    --light: #FAF0CA; /* Fondo claro */
+    --white: #FFFFFF; /* Blanco */
+    --black: #333333; /* Negro para texto */
+    --gray: #666666; /* Gris para subtítulos */
+    --light-gray: #F8F9FA; /* Gris claro para fondos */
+    --border: #E9ECEF; /* Bordes */
+    --card-bg: #FFFFFF; /* Fondo de tarjetas */
+    --header-bg: #FFFFFF; /* Fondo de encabezado */
+    --main-bg: #F8F9FA; /* Fondo principal */
+    --shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Sombra estándar */
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15); /* Sombra en hover */
+    --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080); /* Gradiente primario */
+    --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440); /* Gradiente secundario */
+    --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a); /* Gradiente acento */
+    --gradient-warning: linear-gradient(135deg, var(--accent2), #f0a868); /* Gradiente warning */
+}
+
+/* =======================================
+   ESTILOS GENERALES
+   ======================================= */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
+    color: var(--black);
+}
+
+/* Título principal con estilo del sistema */
+.text-principal, .page-title {
+    color: var(--accent4);
+    font-weight: 800;
+    font-size: 2.5rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+.text-principal::after, .page-title::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: var(--gradient-accent);
+    border-radius: 2px;
+}
+
+.text-principal i, .page-title i {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-right: 15px;
+}
+
+/* =======================================
+   TARJETAS BASE
+   ======================================= */
+.card {
+    border-radius: 20px;
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+/* =======================================
+   BOTONES
+   ======================================= */
+.btn {
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #1a5080, var(--accent4));
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: var(--white);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    color: var(--white);
+}
+
+.btn-warning {
+    background: var(--gradient-secondary);
+    color: var(--black);
+}
+
+.btn-danger {
+    background: var(--gradient-accent);
+    color: var(--white);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--gray), #888);
+    color: var(--white);
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--accent4);
+    color: var(--accent4);
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: var(--accent4);
+}
+
+/* =======================================
+   BADGES
+   ======================================= */
+.badge {
+    padding: 0.5rem 1rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.badge-info {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+}
+
+.badge-warning {
+    background: var(--gradient-secondary);
+    color: var(--black);
+}
+
+.badge-secondary {
+    background: linear-gradient(135deg, var(--gray), #888);
+}
+
+.badge-primary {
+    background: var(--gradient-primary);
+}
+
+/* =======================================
+   MODALES
+   ======================================= */
+.modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: var(--gradient-primary);
+    color: var(--white);
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+.modal-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.modal-body {
+    padding: 2rem;
+    background: var(--white);
+}
+
+.modal-footer {
+    background: var(--light-gray);
+    border: none;
+    padding: 1.5rem 2rem;
+}
+
+/* Botón cerrar (X) */
+.modal-header .close {
+    padding: 0.5rem;
+    margin: -0.5rem -0.5rem -0.5rem auto;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0.9;
+    cursor: pointer;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: auto !important;
+    z-index: 10;
+    position: relative;
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+    background: transparent !important;
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+.modal-header .close:focus {
+    outline: none;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.modal-header .close span {
+    color: white !important;
+    pointer-events: none;
+}
+
+/* Botones del modal */
+.modal-footer .btn {
+    min-width: 120px;
+    font-weight: 600;
+    border-radius: 10px;
+    padding: 0.65rem 1.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.modal-footer .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.modal-footer .btn:active {
+    transform: translateY(0);
+}
+
+.modal-footer .btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    border: none;
+    color: white;
+}
+
+.modal-footer .btn-primary {
+    background: var(--gradient-primary);
+    border: none;
+    color: white;
+}
+
+.modal-footer .btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    color: white;
+}
+
+.modal-footer .btn-info {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    border: none;
+    color: white;
+}
+
+.modal-footer .btn-danger {
+    background: var(--gradient-accent);
+    border: none;
+    color: white;
+}
+
+/* =======================================
+   FORM CONTROLS
+   ======================================= */
+.form-control {
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--accent4);
+    box-shadow: 0 0 0 0.2rem rgba(13, 59, 102, 0.15);
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--accent4);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+/* =======================================
+   ALERTAS
+   ======================================= */
+.alert {
+    border-radius: 15px;
+    border: none;
+    padding: 1.5rem 2rem;
+    box-shadow: var(--shadow);
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #e9f7ef 100%);
+    color: #155724;
+    border-left: 5px solid #28a745;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #e3f2fd 100%);
+    color: #0c5460;
+    border-left: 5px solid #17a2b8;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%);
+    color: #856404;
+    border-left: 5px solid var(--accent3);
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #ffe6e9 100%);
+    color: #721c24;
+    border-left: 5px solid var(--accent1);
+}
+
+/* =======================================
+   ANIMACIONES
+   ======================================= */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* =======================================
+   TABLAS
+   ======================================= */
+.table {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.table thead {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 59, 102, 0.05);
+}
+
+/* =======================================
+   SPINNER
+   ======================================= */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3rem;
+    color: var(--accent4);
+}
+
+/* =======================================
+   RESPONSIVE
+   ======================================= */
+@media (max-width: 768px) {
+    .page-title, .text-principal {
+        font-size: 1.8rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+    
+    .btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Principal -->
+    <header class="text-center mb-5">
+        <h1 class="text-principal">
+            <i class="fas fa-calendar-alt"></i> Gestión de Ciclos y Periodos Académicos
+        </h1>
+        <p class="lead text-muted" style="color: var(--gray) !important;">
+            Administra el año escolar, trimestres y periodos de evaluación
+        </p>
+    </header>
+    
+    <!-- Botones de acción principales -->
+    <div class="mb-4">
+        <button class="btn btn-primary" onclick="mostrarModalNuevoCiclo()">
+            <i class="fas fa-plus"></i> Nuevo Ciclo Académico
+        </button>
+        <button class="btn btn-info" id="btnActualizarDatos" onclick="cargarDatos()">
+            <i class="fas fa-sync"></i> Actualizar
+        </button>
+    </div>
+
+    <!-- Alert para mensajes -->
+    <div id="alertContainer"></div>
+
+    <!-- Ciclo activo destacado -->
+    <div id="cicloActivoContainer" class="mb-4"></div>
+
+    <!-- Lista de todos los ciclos -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Todos los Ciclos Académicos</h5>
+        </div>
+        <div class="card-body">
+            <div id="ciclosContainer">
+                <div class="text-center py-5">
+                    <p>Cargando ciclos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nuevo Ciclo -->
+<div class="modal fade" id="modalNuevoCiclo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--gradient-primary); color: white;">
+                <h5 class="modal-title" style="font-weight: 700; font-size: 1.3rem;">
+                    <i class="fas fa-plus-circle"></i> Crear Nuevo Ciclo Académico
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevoCiclo">
+                    <div class="form-group">
+                        <label>Nombre del Ciclo *</label>
+                        <input type="text" class="form-control" id="cicloNombre" 
+                               placeholder="Ej: Año Escolar 2024-2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Inicio *</label>
+                        <input type="date" class="form-control" id="cicloFechaInicio" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Fin *</label>
+                        <input type="date" class="form-control" id="cicloFechaFin" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarNuevoCiclo()"><i class="fas fa-save"></i> Crear Ciclo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Ciclo -->
+<div class="modal fade" id="modalEditarCiclo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--gradient-warning); color: white;">
+                <h5 class="modal-title" style="font-weight: 700; font-size: 1.3rem;">
+                    <i class="fas fa-edit"></i> Editar Ciclo Académico
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarCiclo">
+                    <input type="hidden" id="editarCicloId">
+                    <div class="form-group">
+                        <label>Nombre del Ciclo *</label>
+                        <input type="text" class="form-control" id="editarCicloNombre" 
+                               placeholder="Ej: Año Escolar 2024-2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Inicio *</label>
+                        <input type="date" class="form-control" id="editarCicloFechaInicio" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Fin *</label>
+                        <input type="date" class="form-control" id="editarCicloFechaFin" required>
+                    </div>
+                    <div class="alert alert-info" style="font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> <strong>Nota:</strong> No se pueden editar ciclos cerrados.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-info" onclick="guardarEdicionCiclo()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalles del Ciclo -->
+<div class="modal fade" id="modalDetallesCiclo" tabindex="-1" role="dialog" aria-labelledby="modalDetallesCicloLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--gradient-primary); color: white;">
+                <h5 class="modal-title" id="modalDetallesCicloLabel">
+                    <i class="fas fa-info-circle"></i> Detalles del Ciclo Académico
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar" onclick="cerrarModalDetalles()">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 2.5rem; background: linear-gradient(135deg, var(--light) 0%, #ffffff 100%);">
+                <!-- Información del Ciclo -->
+                <div class="card mb-3 animate-fade-in" style="background: var(--gradient-primary); color: white; border: none; box-shadow: var(--shadow); overflow: hidden;">
+                    <div class="card-body" style="position: relative; z-index: 2; padding: 1.25rem 1.5rem;">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h5 id="detalleCicloNombre" style="color: white; font-weight: 700; margin-bottom: 0.5rem; font-size: 1.15rem;">
+                                    <i class="fas fa-calendar-alt"></i> Ciclo Académico
+                                </h5>
+                                <div style="display: flex; align-items: center;">
+                                    <span style="font-size: 0.85rem; opacity: 0.9; margin-right: 0.5rem;">Estado:</span>
+                                    <span id="detalleCicloEstado" class="badge badge-light" style="background: rgba(255,255,255,0.95); color: var(--accent4); font-weight: 600; font-size: 0.75rem;">activo</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 0.75rem; backdrop-filter: blur(10px);">
+                                    <div style="margin-bottom: 0.4rem;">
+                                        <i class="fas fa-calendar-check" style="color: var(--accent3); font-size: 0.75rem; margin-right: 0.35rem;"></i>
+                                        <strong style="font-size: 0.75rem; opacity: 0.9;">Inicio:</strong>
+                                        <span id="detalleCicloFechaInicio" style="font-size: 0.85rem; font-weight: 600; margin-left: 0.25rem;"></span>
+                                    </div>
+                                    <div style="margin-bottom: 0.4rem;">
+                                        <i class="fas fa-calendar-times" style="color: var(--accent1); font-size: 0.75rem; margin-right: 0.35rem;"></i>
+                                        <strong style="font-size: 0.75rem; opacity: 0.9;">Fin:</strong>
+                                        <span id="detalleCicloFechaFin" style="font-size: 0.85rem; font-weight: 600; margin-left: 0.25rem;"></span>
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-clock" style="color: var(--accent2); font-size: 0.75rem; margin-right: 0.35rem;"></i>
+                                        <strong style="font-size: 0.75rem; opacity: 0.9;">Creado:</strong>
+                                        <span id="detalleCicloFechaCreacion" style="font-size: 0.8rem; font-weight: 600; margin-left: 0.25rem;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Decoración de fondo -->
+                    <div style="position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle, rgba(249, 87, 56, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+                    <div style="position: absolute; bottom: 0; left: 0; width: 150px; height: 150px; background: radial-gradient(circle, rgba(244, 211, 94, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+                </div>
+
+                <!-- Periodos del Ciclo -->
+                <div class="card animate-fade-in" style="background: white; border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: 20px; overflow: hidden; animation-delay: 0.2s;">
+                    <div class="card-header" style="background: var(--gradient-secondary); padding: 1.5rem 2rem; border: none;">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <h5 style="color: var(--black); margin: 0; font-weight: 700; font-size: 1.3rem;">
+                                <i class="fas fa-calendar-week"></i> Periodos Académicos
+                            </h5>
+                            <button class="btn btn-success" onclick="agregarPeriodoDetalle()" style="box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);">
+                                <i class="fas fa-plus-circle"></i> Agregar Periodo
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding: 1.5rem 2rem;">
+
+                        <div id="listaPeriodosDetalle">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Cargando...</span>
+                                </div>
+                                <p class="mt-2" style="color: var(--gray);">Cargando periodos...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: linear-gradient(135deg, var(--light-gray) 0%, #ffffff 100%); border: none; padding: 1.5rem 2rem;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="cerrarModalDetalles()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Periodo -->
+<div class="modal fade" id="modalEditarPeriodo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--gradient-warning); color: white;">
+                <h5 class="modal-title" style="font-weight: 700; font-size: 1.3rem;">
+                    <i class="fas fa-edit"></i> Editar Periodo Académico
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarPeriodo">
+                    <input type="hidden" id="editarPeriodoId">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Número de Periodo *</label>
+                                <select class="form-control" id="editarPeriodoNumero" required>
+                                    <option value="1">1 - Primer Periodo</option>
+                                    <option value="2">2 - Segundo Periodo</option>
+                                    <option value="3">3 - Tercer Periodo</option>
+                                    <option value="4">4 - Cuarto Periodo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Nombre del Periodo *</label>
+                                <input type="text" class="form-control" id="editarPeriodoNombre" 
+                                       placeholder="Ej: Primer Trimestre" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Fecha de Inicio *</label>
+                                <input type="date" class="form-control" id="editarPeriodoFechaInicio" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Fecha de Fin *</label>
+                                <input type="date" class="form-control" id="editarPeriodoFechaFin" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Fecha de Cierre de Notas *</label>
+                                <input type="date" class="form-control" id="editarPeriodoFechaCierre" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Días de Notificación Anticipada</label>
+                                <input type="number" class="form-control" id="editarPeriodoDiasNotificacion" 
+                                       min="0" placeholder="7">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info" style="font-size: 0.9rem;">
+                        <i class="fas fa-info-circle"></i> <strong>Nota:</strong> No se pueden editar periodos cerrados.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-info" onclick="guardarEdicionPeriodo()">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nuevo Periodo -->
+<div class="modal fade" id="modalNuevoPeriodo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+                <h5 class="modal-title" style="font-weight: 700; font-size: 1.3rem;">
+                    <i class="fas fa-calendar-plus"></i> Agregar Periodo al Ciclo
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevoPeriodo">
+                    <input type="hidden" id="periodoCicloId">
+                    <div class="form-group">
+                        <label>Número de Periodo *</label>
+                        <select class="form-control" id="periodoNumero" required>
+                            <option value="1">1 - Primer Periodo</option>
+                            <option value="2">2 - Segundo Periodo</option>
+                            <option value="3">3 - Tercer Periodo</option>
+                            <option value="4">4 - Cuarto Periodo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Periodo *</label>
+                        <input type="text" class="form-control" id="periodoNombre" 
+                               placeholder="Ej: Primer Trimestre" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Fecha Inicio *</label>
+                                <input type="date" class="form-control" id="periodoFechaInicio" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Fecha Fin *</label>
+                                <input type="date" class="form-control" id="periodoFechaFin" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Cierre de Notas *</label>
+                        <input type="date" class="form-control" id="periodoFechaCierre" required>
+                        <small class="form-text text-muted">Fecha límite para ingresar notas</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Notificar con anticipación (días)</label>
+                        <input type="number" class="form-control" id="periodoDiasNotificacion" 
+                               value="7" min="1" max="30">
+                        <small class="form-text text-muted">Días antes del cierre para notificar a profesores</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="crearPeriodo()">Crear Periodo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Alerta Personalizada -->
+<div class="modal fade" id="modalAlerta" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden;">
+            <div class="modal-header" id="modalAlertaHeader" style="border: none; padding: 1.5rem 2rem;">
+                <h5 class="modal-title" id="modalAlertaTitulo" style="font-weight: 700; font-size: 1.2rem;">
+                    <i id="modalAlertaIcono" class="fas fa-info-circle"></i> <span id="modalAlertaTituloTexto">Información</span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar" style="background: transparent; border: none;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem 2rem;">
+                <p id="modalAlertaMensaje" style="margin: 0; font-size: 1rem; line-height: 1.6;"></p>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 1rem 2rem;">
+                <button type="button" class="btn btn-primary" data-dismiss="modal" style="min-width: 100px;">
+                    <i class="fas fa-check"></i> Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación Personalizada -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden;">
+            <div class="modal-header" style="background: var(--gradient-warning); color: white; border: none; padding: 1.5rem 2rem;">
+                <h5 class="modal-title" style="font-weight: 700; font-size: 1.2rem;">
+                    <i class="fas fa-exclamation-triangle"></i> Confirmación
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar" style="background: transparent; border: none;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem 2rem;">
+                <p id="modalConfirmacionMensaje" style="margin: 0; font-size: 1rem; line-height: 1.6;"></p>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 1rem 2rem;">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmar">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- jQuery y Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// CÓDIGO INLINE PARA EVITAR PROBLEMAS DE CACHÉ
+console.log('=== SCRIPT INLINE CARGADO ===');
+
+// ============================================================================
+// FUNCIONES DE ALERTAS PERSONALIZADAS
+// ============================================================================
+
+// Función para mostrar alertas con diseño
+function mostrarAlerta(mensaje, tipo = 'info') {
+    const header = document.getElementById('modalAlertaHeader');
+    const icono = document.getElementById('modalAlertaIcono');
+    const tituloTexto = document.getElementById('modalAlertaTituloTexto');
+    const mensajeElement = document.getElementById('modalAlertaMensaje');
+    
+    // Configurar según el tipo
+    switch(tipo) {
+        case 'success':
+            header.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+            header.style.color = 'white';
+            icono.className = 'fas fa-check-circle';
+            tituloTexto.textContent = 'Éxito';
+            break;
+        case 'error':
+            header.style.background = 'var(--gradient-accent)';
+            header.style.color = 'white';
+            icono.className = 'fas fa-times-circle';
+            tituloTexto.textContent = 'Error';
+            break;
+        case 'warning':
+            header.style.background = 'var(--gradient-warning)';
+            header.style.color = 'white';
+            icono.className = 'fas fa-exclamation-triangle';
+            tituloTexto.textContent = 'Advertencia';
+            break;
+        default:
+            header.style.background = 'var(--gradient-primary)';
+            header.style.color = 'white';
+            icono.className = 'fas fa-info-circle';
+            tituloTexto.textContent = 'Información';
+    }
+    
+    mensajeElement.innerHTML = mensaje;
+    $('#modalAlerta').modal('show');
+}
+
+// Función para mostrar confirmación con diseño
+function mostrarConfirmacion(mensaje, callback) {
+    document.getElementById('modalConfirmacionMensaje').innerHTML = mensaje;
+    
+    // Remover event listeners anteriores
+    const btnConfirmar = document.getElementById('btnConfirmar');
+    const nuevoBtn = btnConfirmar.cloneNode(true);
+    btnConfirmar.parentNode.replaceChild(nuevoBtn, btnConfirmar);
+    
+    // Agregar nuevo event listener
+    document.getElementById('btnConfirmar').onclick = function() {
+        $('#modalConfirmacion').modal('hide');
+        if (callback) callback();
+    };
+    
+    $('#modalConfirmacion').modal('show');
+}
+
+let ciclos = [];
+let periodos = {};
+
+async function cargarCiclos() {
+    console.log('1. Iniciando cargarCiclos()');
+    const container = document.getElementById('ciclosContainer');
+    
+    try {
+        console.log('2. Haciendo fetch a /admin/api/ciclos');
+        const response = await fetch('/admin/api/ciclos');
+        console.log('3. Response recibido:', response.status);
+        
+        const data = await response.json();
+        console.log('4. Data:', data);
+        
+        ciclos = data.ciclos || [];
+        console.log('5. Total ciclos:', ciclos.length);
+        
+        if (ciclos.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 animate-fade-in">
+                    <div class="mb-4">
+                        <i class="fas fa-calendar-check" style="font-size: 5rem; color: var(--accent4); opacity: 0.3;"></i>
+                    </div>
+                    <h3 style="color: var(--accent4); font-weight: 700;">✅ Sistema Listo</h3>
+                    <p class="lead text-muted">No hay ciclos académicos registrados. Comienza creando el primero.</p>
+                    <button class="btn btn-primary btn-lg mt-4" onclick="crearPrimerCiclo()">
+                        <i class="fas fa-plus-circle"></i> Crear Primer Ciclo Académico
+                    </button>
+                </div>
+            `;
+        } else {
+            let html = '<div class="row">';
+            ciclos.forEach((ciclo, index) => {
+                const isActive = ciclo.activo;
+                html += `
+                    <div class="col-lg-6 mb-4 animate-fade-in" style="animation-delay: ${index * 0.1}s;">
+                        <div class="card ${isActive ? 'ciclo-activo' : ''}" style="height: 100%;">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="fas fa-calendar"></i> ${ciclo.nombre}</h5>
+                                    <span class="badge ${isActive ? 'badge-success' : 'badge-secondary'}">${ciclo.estado}</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-check" style="color: var(--accent4);"></i>
+                                    <strong>Inicio:</strong> ${ciclo.fecha_inicio}
+                                </p>
+                                <p class="mb-3">
+                                    <i class="fas fa-calendar-times" style="color: var(--accent1);"></i>
+                                    <strong>Fin:</strong> ${ciclo.fecha_fin}
+                                </p>
+                                <div class="btn-group mb-2" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="verDetallesCiclo(${ciclo.id_ciclo})" title="Ver detalles y periodos">
+                                        <i class="fas fa-eye"></i> Ver Detalles
+                                    </button>
+                                    ${!isActive && ciclo.estado !== 'cerrado' ? `
+                                        <button class="btn btn-success btn-sm" onclick="activarCiclo(${ciclo.id_ciclo})" title="Activar ciclo">
+                                            <i class="fas fa-play"></i> Activar
+                                        </button>
+                                    ` : ''}
+                                    ${ciclo.estado !== 'cerrado' ? `
+                                        <button class="btn btn-info btn-sm" onclick="editarCiclo(${ciclo.id_ciclo})" title="Editar ciclo">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                    ` : ''}
+                                    ${!isActive ? `
+                                        <button class="btn btn-danger btn-sm" onclick="eliminarCiclo(${ciclo.id_ciclo}, '${ciclo.nombre}')" title="Eliminar ciclo">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+    } catch (error) {
+        console.error('ERROR:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <h4>❌ Error al cargar</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function crearPrimerCiclo() {
+    // Limpiar el formulario
+    document.getElementById('formNuevoCiclo').reset();
+    // Abrir el modal
+    $('#modalNuevoCiclo').modal('show');
+}
+
+function guardarNuevoCiclo() {
+    const nombre = document.getElementById('cicloNombre').value.trim();
+    const inicio = document.getElementById('cicloFechaInicio').value;
+    const fin = document.getElementById('cicloFechaFin').value;
+    
+    if (!nombre || !inicio || !fin) {
+        mostrarAlerta('Por favor complete todos los campos', 'warning');
+        return;
+    }
+    
+    fetch('/admin/api/ciclos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nombre: nombre,
+            fecha_inicio: inicio,
+            fecha_fin: fin
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            $('#modalNuevoCiclo').modal('hide');
+            mostrarAlerta('¡Ciclo creado exitosamente!', 'success');
+            cargarCiclos();
+        } else {
+            mostrarAlerta('Error: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        mostrarAlerta('Error de conexión: ' + error.message, 'error');
+    });
+}
+
+// Función para editar un ciclo
+async function editarCiclo(cicloId) {
+    try {
+        // Obtener los datos del ciclo
+        const response = await fetch(`/admin/api/ciclos/${cicloId}`);
+        const data = await response.json();
+        
+        if (data.success && data.ciclo) {
+            const ciclo = data.ciclo;
+            
+            // Llenar el formulario con los datos actuales
+            document.getElementById('editarCicloId').value = ciclo.id_ciclo;
+            document.getElementById('editarCicloNombre').value = ciclo.nombre;
+            document.getElementById('editarCicloFechaInicio').value = ciclo.fecha_inicio;
+            document.getElementById('editarCicloFechaFin').value = ciclo.fecha_fin;
+            
+            // Mostrar el modal
+            $('#modalEditarCiclo').modal('show');
+        } else {
+            mostrarAlerta('No se pudo cargar el ciclo', 'error');
+        }
+    } catch (error) {
+        mostrarAlerta('Error: ' + error.message, 'error');
+    }
+}
+
+// Función para guardar los cambios del ciclo
+function guardarEdicionCiclo() {
+    const cicloId = document.getElementById('editarCicloId').value;
+    const nombre = document.getElementById('editarCicloNombre').value.trim();
+    const inicio = document.getElementById('editarCicloFechaInicio').value;
+    const fin = document.getElementById('editarCicloFechaFin').value;
+    
+    if (!nombre || !inicio || !fin) {
+        mostrarAlerta('Por favor complete todos los campos', 'warning');
+        return;
+    }
+    
+    fetch(`/admin/api/ciclos/${cicloId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            nombre: nombre,
+            fecha_inicio: inicio,
+            fecha_fin: fin
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            $('#modalEditarCiclo').modal('hide');
+            mostrarAlerta('¡Ciclo actualizado exitosamente!', 'success');
+            cargarCiclos();
+        } else {
+            mostrarAlerta('Error: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        mostrarAlerta('Error: ' + error.message, 'error');
+    });
+}
+
+// Función para activar un ciclo
+async function activarCiclo(cicloId) {
+    try {
+        // Obtener información del ciclo primero
+        const ciclo = ciclos.find(c => c.id_ciclo === cicloId);
+        if (!ciclo) {
+            mostrarAlerta('No se encontró el ciclo', 'error');
+            return;
+        }
+        
+        mostrarConfirmacion(
+            `¿Está seguro de que desea activar el ciclo <strong>"${ciclo.nombre}"</strong>?<br><br>` +
+            `<div style="text-align: left; background: rgba(255,193,7,0.1); padding: 1rem; border-radius: 8px; margin-top: 1rem;">` +
+            `<i class="fas fa-info-circle" style="color: #ffc107;"></i> <strong>Nota:</strong> ` +
+            `Si hay otro ciclo activo, será desactivado automáticamente.` +
+            `</div>`,
+            async () => {
+                try {
+                    // Mostrar indicador de carga
+                    const loadingHtml = `
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="sr-only">Cargando...</span>
+                            </div>
+                            <p class="mt-2" style="color: var(--gray);">Activando ciclo...</p>
+                        </div>
+                    `;
+                    
+                    const response = await fetch(`/admin/api/ciclos/${cicloId}/activar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        mostrarAlerta(
+                            `<div style="text-align: center;">` +
+                            `<i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745; margin-bottom: 1rem;"></i>` +
+                            `<p style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem;">¡Ciclo Activado!</p>` +
+                            `<p style="margin: 0;">El ciclo "${ciclo.nombre}" está ahora activo.</p>` +
+                            `</div>`,
+                            'success'
+                        );
+                        
+                        // Recargar ciclos
+                        cargarCiclos();
+                    } else {
+                        mostrarAlerta(
+                            `<strong>No se pudo activar el ciclo</strong><br><br>` +
+                            `${data.message}`,
+                            'error'
+                        );
+                    }
+                } catch (error) {
+                    console.error('Error al activar ciclo:', error);
+                    mostrarAlerta(
+                        `<strong>Error de conexión</strong><br><br>` +
+                        `No se pudo comunicar con el servidor: ${error.message}`,
+                        'error'
+                    );
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error: ' + error.message, 'error');
+    }
+}
+
+// Función para eliminar un ciclo
+async function eliminarCiclo(cicloId, nombreCiclo) {
+    mostrarConfirmacion(
+        `¿Está seguro de que desea eliminar el ciclo <strong>"${nombreCiclo}"</strong>?<br><br>Esta acción no se puede deshacer.`,
+        async () => {
+            try {
+                const response = await fetch(`/admin/api/ciclos/${cicloId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarAlerta(data.message, 'success');
+                    cargarCiclos();
+                } else {
+                    mostrarAlerta(data.message, 'error');
+                }
+            } catch (error) {
+                mostrarAlerta('Error: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ============================================================================
+// FUNCIONES PARA GESTIÓN DE DETALLES DEL CICLO Y PERIODOS
+// ============================================================================
+
+let cicloDetalleActual = null;
+
+// Función para cerrar el modal de detalles
+function cerrarModalDetalles() {
+    $('#modalDetallesCiclo').modal('hide');
+    cicloDetalleActual = null;
+}
+
+// Función para ver los detalles de un ciclo
+async function verDetallesCiclo(cicloId) {
+    try {
+        // Cargar información del ciclo
+        const responseCiclo = await fetch(`/admin/api/ciclos/${cicloId}`);
+        const dataCiclo = await responseCiclo.json();
+        
+        if (!dataCiclo.success) {
+            mostrarAlerta('Error al cargar el ciclo', 'error');
+            return;
+        }
+        
+        cicloDetalleActual = dataCiclo.ciclo;
+        
+        // Llenar información del ciclo
+        document.getElementById('detalleCicloNombre').innerHTML = 
+            `<i class="fas fa-calendar-alt"></i> ${cicloDetalleActual.nombre}`;
+        
+        const estadoBadge = cicloDetalleActual.activo ? 'badge-success' : 
+                           cicloDetalleActual.estado === 'cerrado' ? 'badge-secondary' : 'badge-primary';
+        document.getElementById('detalleCicloEstado').className = `badge badge-light`;
+        document.getElementById('detalleCicloEstado').textContent = 
+            cicloDetalleActual.activo ? 'ACTIVO' : cicloDetalleActual.estado.toUpperCase();
+        
+        document.getElementById('detalleCicloFechaInicio').textContent = cicloDetalleActual.fecha_inicio;
+        document.getElementById('detalleCicloFechaFin').textContent = cicloDetalleActual.fecha_fin;
+        document.getElementById('detalleCicloFechaCreacion').textContent = cicloDetalleActual.fecha_creacion;
+        
+        // Cargar periodos del ciclo
+        await cargarPeriodosDetalle(cicloId);
+        
+        // Mostrar el modal
+        $('#modalDetallesCiclo').modal('show');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al cargar detalles: ' + error.message, 'error');
+    }
+}
+
+// Función para cargar los periodos en el modal de detalles
+async function cargarPeriodosDetalle(cicloId) {
+    const container = document.getElementById('listaPeriodosDetalle');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando periodos...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch(`/admin/api/periodos?ciclo_id=${cicloId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Error al cargar periodos
+                </div>
+            `;
+            return;
+        }
+        
+        const periodos = data.periodos || [];
+        
+        if (periodos.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times" style="font-size: 3rem; color: var(--gray); opacity: 0.3;"></i>
+                    <p class="text-muted mt-3">No hay periodos registrados en este ciclo</p>
+                    <button class="btn btn-success mt-2" onclick="agregarPeriodoDetalle()">
+                        <i class="fas fa-plus"></i> Agregar Primer Periodo
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // Renderizar periodos
+        let html = '<div class="table-responsive"><table class="table table-hover">';
+        html += `
+            <thead style="background: var(--gradient-primary); color: white;">
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>Fechas</th>
+                    <th>Cierre Notas</th>
+                    <th>Estado</th>
+                    <th>Días Rest.</th>
+                    <th style="text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        periodos.forEach(periodo => {
+            const estadoBadge = periodo.estado === 'activo' ? 'badge-success' :
+                               periodo.estado === 'cerrado' ? 'badge-secondary' :
+                               periodo.estado === 'en_cierre' ? 'badge-warning' : 'badge-info';
+            
+            const puedeEditar = periodo.estado !== 'cerrado';
+            const puedeEliminar = periodo.estado !== 'activo';
+            
+            html += `
+                <tr>
+                    <td><strong>${periodo.numero_periodo}</strong></td>
+                    <td>${periodo.nombre}</td>
+                    <td><small>${periodo.fecha_inicio} <br> ${periodo.fecha_fin}</small></td>
+                    <td><small>${periodo.fecha_cierre_notas}</small></td>
+                    <td><span class="badge ${estadoBadge}">${periodo.estado}</span></td>
+                    <td>${periodo.dias_para_cierre !== null ? periodo.dias_para_cierre + ' días' : '-'}</td>
+                    <td style="text-align: center;">
+                        <div class="btn-group btn-group-sm">
+                            ${puedeEditar ? `
+                                <button class="btn btn-info btn-sm" onclick="editarPeriodoModal(${periodo.id_periodo})" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            ` : ''}
+                            ${puedeEliminar ? `
+                                <button class="btn btn-danger btn-sm" onclick="eliminarPeriodo(${periodo.id_periodo}, '${periodo.nombre}')" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-times-circle"></i> Error de conexión: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Función para agregar periodo desde el modal de detalles
+function agregarPeriodoDetalle() {
+    if (!cicloDetalleActual) {
+        mostrarAlerta('No se ha seleccionado un ciclo', 'error');
+        return;
+    }
+    
+    // Cerrar modal de detalles y abrir modal de nuevo periodo
+    $('#modalDetallesCiclo').modal('hide');
+    
+    setTimeout(() => {
+        agregarPeriodo(cicloDetalleActual.id_ciclo);
+    }, 300);
+}
+
+// Función para editar un periodo
+async function editarPeriodoModal(periodoId) {
+    try {
+        const response = await fetch(`/admin/api/periodos/${periodoId}`);
+        const data = await response.json();
+        
+        if (!data.success || !data.periodo) {
+            mostrarAlerta('Error al cargar el periodo', 'error');
+            return;
+        }
+        
+        const periodo = data.periodo;
+        
+        // Llenar el formulario
+        document.getElementById('editarPeriodoId').value = periodo.id_periodo;
+        document.getElementById('editarPeriodoNumero').value = periodo.numero_periodo;
+        document.getElementById('editarPeriodoNombre').value = periodo.nombre;
+        document.getElementById('editarPeriodoFechaInicio').value = periodo.fecha_inicio;
+        document.getElementById('editarPeriodoFechaFin').value = periodo.fecha_fin;
+        document.getElementById('editarPeriodoFechaCierre').value = periodo.fecha_cierre_notas;
+        document.getElementById('editarPeriodoDiasNotificacion').value = periodo.dias_notificacion_anticipada || 7;
+        
+        // Mostrar modal
+        $('#modalEditarPeriodo').modal('show');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error: ' + error.message, 'error');
+    }
+}
+
+// Función para guardar edición de periodo
+async function guardarEdicionPeriodo() {
+    const periodoId = document.getElementById('editarPeriodoId').value;
+    const numero = document.getElementById('editarPeriodoNumero').value;
+    const nombre = document.getElementById('editarPeriodoNombre').value.trim();
+    const inicio = document.getElementById('editarPeriodoFechaInicio').value;
+    const fin = document.getElementById('editarPeriodoFechaFin').value;
+    const cierre = document.getElementById('editarPeriodoFechaCierre').value;
+    const diasNotif = document.getElementById('editarPeriodoDiasNotificacion').value || 7;
+    
+    if (!numero || !nombre || !inicio || !fin || !cierre) {
+        mostrarAlerta('Por favor complete todos los campos obligatorios', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/periodos/${periodoId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                numero_periodo: parseInt(numero),
+                nombre: nombre,
+                fecha_inicio: inicio,
+                fecha_fin: fin,
+                fecha_cierre_notas: cierre,
+                dias_notificacion: parseInt(diasNotif)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            $('#modalEditarPeriodo').modal('hide');
+            mostrarAlerta('¡Periodo actualizado exitosamente!', 'success');
+            
+            // Recargar periodos en el modal de detalles si está abierto
+            if (cicloDetalleActual) {
+                await cargarPeriodosDetalle(cicloDetalleActual.id_ciclo);
+            }
+            
+            // Recargar lista principal
+            cargarCiclos();
+        } else {
+            mostrarAlerta('Error: ' + data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error: ' + error.message, 'error');
+    }
+}
+
+// Función para eliminar un periodo
+async function eliminarPeriodo(periodoId, nombrePeriodo) {
+    mostrarConfirmacion(
+        `¿Está seguro de que desea eliminar el periodo <strong>"${nombrePeriodo}"</strong>?<br><br>Esta acción no se puede deshacer.`,
+        async () => {
+            try {
+                const response = await fetch(`/admin/api/periodos/${periodoId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarAlerta(data.message, 'success');
+                    
+                    // Recargar periodos en el modal de detalles si está abierto
+                    if (cicloDetalleActual) {
+                        await cargarPeriodosDetalle(cicloDetalleActual.id_ciclo);
+                    }
+                    
+                    // Recargar lista principal
+                    cargarCiclos();
+                } else {
+                    mostrarAlerta(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarAlerta('Error: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ============================================================================
+
+let cicloIdSeleccionado = null;
+
+function agregarPeriodo(cicloId) {
+    cicloIdSeleccionado = cicloId;
+    // Limpiar el formulario
+    document.getElementById('formNuevoPeriodo').reset();
+    // Abrir el modal
+    $('#modalNuevoPeriodo').modal('show');
+}
+
+function crearPeriodo() {
+    const numero = document.getElementById('periodoNumero').value;
+    const nombre = document.getElementById('periodoNombre').value.trim();
+    const inicio = document.getElementById('periodoFechaInicio').value;
+    const fin = document.getElementById('periodoFechaFin').value;
+    const cierre = document.getElementById('periodoFechaCierre').value;
+    const diasNotif = document.getElementById('periodoDiasNotificacion').value || 7;
+    
+    if (!numero || !nombre || !inicio || !fin || !cierre) {
+        mostrarAlerta('Por favor complete todos los campos obligatorios', 'warning');
+        return;
+    }
+    
+    fetch('/admin/api/periodos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ciclo_id: parseInt(cicloIdSeleccionado),
+            numero_periodo: parseInt(numero),
+            nombre: nombre,
+            fecha_inicio: inicio,
+            fecha_fin: fin,
+            fecha_cierre_notas: cierre,
+            dias_notificacion: parseInt(diasNotif)
+        })
+    })
+    .then(r => r.json())
+    .then(async data => {
+        if (data.success) {
+            $('#modalNuevoPeriodo').modal('hide');
+            mostrarAlerta('¡Periodo creado exitosamente!', 'success');
+            
+            // Recargar periodos en el modal de detalles si está abierto
+            if (cicloDetalleActual && cicloDetalleActual.id_ciclo === cicloIdSeleccionado) {
+                await cargarPeriodosDetalle(cicloDetalleActual.id_ciclo);
+                // Reabrir modal de detalles después de un momento
+                setTimeout(() => {
+                    $('#modalDetallesCiclo').modal('show');
+                }, 300);
+            }
+            
+            cargarCiclos();
+        } else {
+            mostrarAlerta('Error: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        mostrarAlerta('Error: ' + error.message, 'error');
+    });
+}
+
+function cargarDatos() {
+    cargarCiclos();
+}
+
+function mostrarModalNuevoCiclo() {
+    crearPrimerCiclo();
+}
+
+console.log('Esperando DOM...');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM LISTO - Cargando datos...');
+    cargarCiclos();
+    
+    // ============================================================================
+    // CONFIGURACIÓN DE TODOS LOS MODALES
+    // ============================================================================
+    
+    // Modal: Nuevo Ciclo
+    $('#modalNuevoCiclo').on('hidden.bs.modal', function () {
+        document.getElementById('formNuevoCiclo').reset();
+    });
+    $('#modalNuevoCiclo .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de nuevo ciclo');
+        $('#modalNuevoCiclo').modal('hide');
+    });
+    $('#modalNuevoCiclo button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Cancelar de nuevo ciclo');
+        $('#modalNuevoCiclo').modal('hide');
+    });
+    
+    // Modal: Editar Ciclo
+    $('#modalEditarCiclo').on('hidden.bs.modal', function () {
+        document.getElementById('formEditarCiclo').reset();
+    });
+    $('#modalEditarCiclo .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de editar ciclo');
+        $('#modalEditarCiclo').modal('hide');
+    });
+    $('#modalEditarCiclo button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Cancelar de editar ciclo');
+        $('#modalEditarCiclo').modal('hide');
+    });
+    
+    // Modal: Detalles del Ciclo
+    $('#modalDetallesCiclo').on('hidden.bs.modal', function () {
+        cicloDetalleActual = null;
+    });
+    $('#modalDetallesCiclo .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de detalles ciclo');
+        cerrarModalDetalles();
+    });
+    $('#modalDetallesCiclo button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Cerrar de detalles ciclo');
+        cerrarModalDetalles();
+    });
+    
+    // Modal: Nuevo Periodo
+    $('#modalNuevoPeriodo').on('hidden.bs.modal', function () {
+        document.getElementById('formNuevoPeriodo').reset();
+    });
+    $('#modalNuevoPeriodo .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de nuevo periodo');
+        $('#modalNuevoPeriodo').modal('hide');
+    });
+    $('#modalNuevoPeriodo button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Cancelar de nuevo periodo');
+        $('#modalNuevoPeriodo').modal('hide');
+    });
+    
+    // Modal: Editar Periodo
+    $('#modalEditarPeriodo').on('hidden.bs.modal', function () {
+        document.getElementById('formEditarPeriodo').reset();
+    });
+    $('#modalEditarPeriodo .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de editar periodo');
+        $('#modalEditarPeriodo').modal('hide');
+    });
+    $('#modalEditarPeriodo button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Cancelar de editar periodo');
+        $('#modalEditarPeriodo').modal('hide');
+    });
+    
+    // Modal: Alerta Personalizada
+    $('#modalAlerta .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de alerta');
+        $('#modalAlerta').modal('hide');
+    });
+    $('#modalAlerta button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Aceptar de alerta');
+        $('#modalAlerta').modal('hide');
+    });
+    
+    // Modal: Confirmación Personalizada
+    $('#modalConfirmacion .close').on('click', function(e) {
+        e.preventDefault();
+        console.log('✓ Click en X de confirmación');
+        $('#modalConfirmacion').modal('hide');
+    });
+    $('#modalConfirmacion button[data-dismiss="modal"]').on('click', function(e) {
+        console.log('✓ Click en Cancelar de confirmación');
+        $('#modalConfirmacion').modal('hide');
+    });
+    
+    console.log('✓ Todos los event listeners de modales configurados');
+});
+</script>
+
+{% endblock %}
+

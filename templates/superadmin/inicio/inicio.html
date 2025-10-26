@@ -1,875 +1,871 @@
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>Dashboard - AcentraX</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    </head>
-    <body>
- {% extends "base.html" %}
-    {% block content %}
-    <style>
-    /* 🌈 Paleta de colores del sistema */
-    :root {
-        --accent1: #F95738;
-        --accent2: #EE964B;
-        --accent3: #F4D35E;
-        --accent4: #0D3B66;
-        --light: #FAF0CA;
-        --white: #FFFFFF;
-        --black: #333333;
-        --gray: #666666;
-        --light-gray: #F8F9FA;
-        --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
-        --gradient-accent: linear-gradient(135deg, var(--accent3), #e9c440);
-        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
-        --shadow-strong: 0 10px 30px rgba(0, 0, 0, 0.2);
-    }
+{% extends "base.html" %}
+{% block content %}
+<style>
+/* 🌈 Paleta de colores del sistema */
+:root {
+    --accent1: #F95738;
+    --accent2: #EE964B;
+    --accent3: #F4D35E;
+    --accent4: #0D3B66;
+    --light: #FAF0CA;
+    --white: #FFFFFF;
+    --black: #333333;
+    --gray: #666666;
+    --light-gray: #F8F9FA;
+    --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+    --gradient-accent: linear-gradient(135deg, var(--accent3), #e9c440);
+    --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+    --shadow-strong: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
 
-    /* --- Estilos generales --- */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+/* --- Estilos generales --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 
+body {
+    background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
+    color: var(--black);
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* --- Animaciones de Fondo --- */
+.background-animation {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.floating-shapes {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(45deg, var(--accent3), var(--accent1));
+    opacity: 0.1;
+    animation: float 20s infinite linear;
+}
+
+.shape-1 {
+    width: 200px;
+    height: 200px;
+    top: 10%;
+    left: 5%;
+    animation-delay: 0s;
+}
+
+.shape-2 {
+    width: 150px;
+    height: 150px;
+    top: 60%;
+    right: 10%;
+    animation-delay: -5s;
+    background: linear-gradient(45deg, var(--accent4), var(--accent2));
+}
+
+.shape-3 {
+    width: 100px;
+    height: 100px;
+    bottom: 20%;
+    left: 20%;
+    animation-delay: -10s;
+    background: linear-gradient(45deg, var(--accent1), var(--accent3));
+}
+
+.pulse-dots {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--accent4);
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: pulse 4s infinite ease-in-out;
+}
+
+.dot-1 { top: 30%; left: 15%; animation-delay: 0s; }
+.dot-2 { top: 70%; right: 20%; animation-delay: -1s; }
+.dot-3 { bottom: 40%; left: 80%; animation-delay: -2s; }
+.dot-4 { top: 20%; right: 30%; animation-delay: -3s; }
+
+@keyframes float {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 0.1;
+    }
+    25% {
+        transform: translate(20px, -20px) rotate(90deg);
+        opacity: 0.15;
+    }
+    50% {
+        transform: translate(-15px, 15px) rotate(180deg);
+        opacity: 0.2;
+    }
+    75% {
+        transform: translate(10px, -10px) rotate(270deg);
+        opacity: 0.15;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 0.6;
+    }
+}
+
+.container-fluid {
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* --- Header con Efectos --- */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--gradient-primary);
+    color: var(--white);
+    padding: 25px 30px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-strong);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-header::before {
+    content: "";
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    animation: rotate 20s linear infinite;
+}
+
+.dashboard-header::after {
+    content: "";
+    position: absolute;
+    bottom: -30px;
+    left: -30px;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(244, 211, 94, 0.1) 0%, rgba(244, 211, 94, 0) 70%);
+    border-radius: 50%;
+    animation: rotate 15s linear infinite reverse;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.header-title i {
+    font-size: 36px;
+    color: var(--accent3);
+    background: rgba(255, 255, 255, 0.15);
+    padding: 12px;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    animation: glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 10px rgba(244, 211, 94, 0.3);
+    }
+    to {
+        box-shadow: 0 0 20px rgba(244, 211, 94, 0.6);
+    }
+}
+
+.header-title h1 {
+    color: var(--white);
+    font-weight: 700;
+    font-size: 1.8rem;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.header-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-top: 5px;
+    font-weight: 400;
+}
+
+/* --- Grid de Tarjetas con Efectos --- */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.card-link-style {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 25px 20px;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    text-decoration: none;
+    color: var(--black);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+}
+
+.card-link-style::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.6s;
+}
+
+.card-link-style:hover::before {
+    left: 100%;
+}
+
+.card-link-style:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: var(--shadow-hover);
+    text-decoration: none;
+    color: var(--black);
+}
+
+/* Colores de borde para las tarjetas */
+.card-primary { 
+    border-left: 4px solid var(--accent4);
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(13, 59, 102, 0.05));
+}
+.card-success { 
+    border-left: 4px solid var(--accent1);
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(249, 87, 56, 0.05));
+}
+.card-info { 
+    border-left: 4px solid var(--accent2);
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(238, 150, 75, 0.05));
+}
+.card-warning { 
+    border-left: 4px solid var(--accent3);
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(244, 211, 94, 0.05));
+}
+.card-danger { 
+    border-left: 4px solid #dc3545;
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(220, 53, 69, 0.05));
+}
+
+.icon-circle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 16px;
+    margin: 0 auto 15px auto;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.icon-circle::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    border-radius: 16px;
+    z-index: 1;
+}
+
+.icon-circle i {
+    position: relative;
+    z-index: 2;
+    transition: transform 0.3s ease;
+}
+
+.card-link-style:hover .icon-circle {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.card-link-style:hover .icon-circle i {
+    transform: scale(1.2);
+}
+
+/* Colores para los íconos */
+.bg-primary-soft { background: rgba(13, 59, 102, 0.1); }
+.text-primary { color: var(--accent4) !important; }
+.bg-success-soft { background: rgba(249, 87, 56, 0.1); }
+.text-success { color: var(--accent1) !important; }
+.bg-info-soft { background: rgba(238, 150, 75, 0.1); }
+.text-info { color: var(--accent2) !important; }
+.bg-warning-soft { background: rgba(244, 211, 94, 0.1); }
+.text-warning { color: var(--accent3) !important; }
+.bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
+.text-danger { color: #dc3545 !important; }
+
+.card-title {
+    font-weight: 600;
+    color: var(--accent4);
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+.card-link-style:hover .card-title {
+    color: var(--accent1);
+}
+
+.card-description {
+    color: var(--gray);
+    text-align: center;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 0;
+    transition: color 0.3s ease;
+}
+
+.card-link-style:hover .card-description {
+    color: var(--black);
+}
+
+/* --- Panel Lateral con Efectos --- */
+.welcome-card {
+    background: linear-gradient(135deg, rgba(13, 59, 102, 0.9), rgba(26, 80, 128, 0.8));
+    border-radius: 16px;
+    box-shadow: var(--shadow-strong);
+    border: none;
+    position: relative;
+    overflow: hidden;
+    height: fit-content;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.welcome-card::before {
+    content: "";
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(244, 211, 94, 0.2) 0%, rgba(244, 211, 94, 0) 70%);
+    border-radius: 50%;
+    animation: rotate 20s linear infinite;
+}
+
+.text-white {
+    color: var(--white) !important;
+}
+
+.illustration-placeholder {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.illustration-placeholder i {
+    color: var(--accent3) !important;
+    font-size: 3rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 15px;
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    animation: bounce 4s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* --- Botones con Efectos --- */
+.btn {
+    background: var(--gradient-accent);
+    color: var(--black);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+    color: var(--black);
+}
+
+.btn-light {
+    background: var(--white);
+    color: var(--accent4);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--white);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: var(--white);
+}
+
+/* --- Secciones --- */
+.quick-access-section {
+    margin-top: 30px;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--accent4);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.section-title::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent1), transparent);
+    margin-left: 10px;
+}
+
+.section-title i {
+    color: var(--accent1);
+    font-size: 1.5rem;
+}
+
+/* --- Acciones Principales --- */
+.main-actions {
+    margin: 1.5rem 0;
+}
+
+.main-actions .btn {
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    padding: 14px 20px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1200px) {
+    .cards-grid {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
     body {
-        background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%);
-        color: var(--black);
-        min-height: 100vh;
+        padding: 15px;
+    }
+    
+    .dashboard-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
         padding: 20px;
-        position: relative;
-        overflow-x: hidden;
+    }
+    
+    .header-title h1 {
+        font-size: 1.5rem;
+    }
+    
+    .header-title i {
+        font-size: 32px;
+        padding: 10px;
+    }
+    
+    .btn {
+        width: 100%;
     }
 
-    /* --- Animaciones de Fondo --- */
-    .background-animation {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1;
-        pointer-events: none;
+    .cards-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
     }
 
     .floating-shapes {
-        position: absolute;
-        border-radius: 50%;
-        background: linear-gradient(45deg, var(--accent3), var(--accent1));
-        opacity: 0.1;
-        animation: float 20s infinite linear;
+        display: none;
     }
+}
 
-    .shape-1 {
-        width: 200px;
-        height: 200px;
-        top: 10%;
-        left: 5%;
-        animation-delay: 0s;
-    }
+.fw-bold {
+    font-weight: 700 !important;
+}
 
-    .shape-2 {
-        width: 150px;
-        height: 150px;
-        top: 60%;
-        right: 10%;
-        animation-delay: -5s;
-        background: linear-gradient(45deg, var(--accent4), var(--accent2));
-    }
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
 
-    .shape-3 {
-        width: 100px;
-        height: 100px;
-        bottom: 20%;
-        left: 20%;
-        animation-delay: -10s;
-        background: linear-gradient(45deg, var(--accent1), var(--accent3));
-    }
+.w-100 {
+    width: 100%;
+}
 
-    .pulse-dots {
-        position: absolute;
-        width: 8px;
-        height: 8px;
-        background: var(--accent4);
-        border-radius: 50%;
-        opacity: 0.3;
-        animation: pulse 4s infinite ease-in-out;
+/* --- Animaciones de Entrada --- */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-    .dot-1 { top: 30%; left: 15%; animation-delay: 0s; }
-    .dot-2 { top: 70%; right: 20%; animation-delay: -1s; }
-    .dot-3 { bottom: 40%; left: 80%; animation-delay: -2s; }
-    .dot-4 { top: 20%; right: 30%; animation-delay: -3s; }
+.fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
 
-    @keyframes float {
-        0%, 100% {
-            transform: translate(0, 0) rotate(0deg);
-            opacity: 0.1;
-        }
-        25% {
-            transform: translate(20px, -20px) rotate(90deg);
-            opacity: 0.15;
-        }
-        50% {
-            transform: translate(-15px, 15px) rotate(180deg);
-            opacity: 0.2;
-        }
-        75% {
-            transform: translate(10px, -10px) rotate(270deg);
-            opacity: 0.15;
-        }
-    }
-
-    @keyframes pulse {
-        0%, 100% {
-            transform: scale(1);
-            opacity: 0.3;
-        }
-        50% {
-            transform: scale(1.5);
-            opacity: 0.6;
-        }
-    }
-
-    .container-fluid {
-        max-width: 1400px;
-        margin: 0 auto;
-        position: relative;
-        z-index: 1;
-    }
-
-    /* --- Header con Efectos --- */
-    .dashboard-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: var(--gradient-primary);
-        color: var(--white);
-        padding: 25px 30px;
-        border-radius: 16px;
-        margin-bottom: 25px;
-        box-shadow: var(--shadow-strong);
-        position: relative;
-        overflow: hidden;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .dashboard-header::before {
-        content: "";
-        position: absolute;
-        top: -60px;
-        right: -60px;
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
-        border-radius: 50%;
-        animation: rotate 20s linear infinite;
-    }
-
-    .dashboard-header::after {
-        content: "";
-        position: absolute;
-        bottom: -30px;
-        left: -30px;
-        width: 100px;
-        height: 100px;
-        background: radial-gradient(circle, rgba(244, 211, 94, 0.1) 0%, rgba(244, 211, 94, 0) 70%);
-        border-radius: 50%;
-        animation: rotate 15s linear infinite reverse;
-    }
-
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-
-    .header-title {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        position: relative;
-        z-index: 1;
-    }
-
-    .header-title i {
-        font-size: 36px;
-        color: var(--accent3);
-        background: rgba(255, 255, 255, 0.15);
-        padding: 12px;
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        animation: glow 3s ease-in-out infinite alternate;
-    }
-
-    @keyframes glow {
-        from {
-            box-shadow: 0 0 10px rgba(244, 211, 94, 0.3);
-        }
-        to {
-            box-shadow: 0 0 20px rgba(244, 211, 94, 0.6);
-        }
-    }
-
-    .header-title h1 {
-        color: var(--white);
-        font-weight: 700;
-        font-size: 1.8rem;
-        margin: 0;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .header-subtitle {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin-top: 5px;
-        font-weight: 400;
-    }
-
-    /* --- Grid de Tarjetas con Efectos --- */
-    .cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 20px;
-        margin-bottom: 25px;
-    }
-
-    .card-link-style {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 16px;
-        box-shadow: var(--shadow);
-        padding: 25px 20px;
-        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        text-decoration: none;
-        color: var(--black);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        position: relative;
-        overflow: hidden;
-        cursor: pointer;
-        border: 1px solid rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-    }
-
-    .card-link-style::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-        transition: left 0.6s;
-    }
-
-    .card-link-style:hover::before {
-        left: 100%;
-    }
-
-    .card-link-style:hover {
-        transform: translateY(-8px) scale(1.02);
-        box-shadow: var(--shadow-hover);
-        text-decoration: none;
-        color: var(--black);
-    }
-
-    /* Colores de borde para las tarjetas */
-    .card-primary { 
-        border-left: 4px solid var(--accent4);
-        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(13, 59, 102, 0.05));
-    }
-    .card-success { 
-        border-left: 4px solid var(--accent1);
-        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(249, 87, 56, 0.05));
-    }
-    .card-info { 
-        border-left: 4px solid var(--accent2);
-        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(238, 150, 75, 0.05));
-    }
-    .card-warning { 
-        border-left: 4px solid var(--accent3);
-        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(244, 211, 94, 0.05));
-    }
-    .card-danger { 
-        border-left: 4px solid #dc3545;
-        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(220, 53, 69, 0.05));
-    }
-
-    .icon-circle {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 70px;
-        height: 70px;
-        border-radius: 16px;
-        margin: 0 auto 15px auto;
-        transition: all 0.4s ease;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .icon-circle::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: inherit;
-        border-radius: 16px;
-        z-index: 1;
-    }
-
-    .icon-circle i {
-        position: relative;
-        z-index: 2;
-        transition: transform 0.3s ease;
-    }
-
-    .card-link-style:hover .icon-circle {
-        transform: scale(1.1) rotate(5deg);
-    }
-
-    .card-link-style:hover .icon-circle i {
-        transform: scale(1.2);
-    }
-
-    /* Colores para los íconos */
-    .bg-primary-soft { background: rgba(13, 59, 102, 0.1); }
-    .text-primary { color: var(--accent4) !important; }
-    .bg-success-soft { background: rgba(249, 87, 56, 0.1); }
-    .text-success { color: var(--accent1) !important; }
-    .bg-info-soft { background: rgba(238, 150, 75, 0.1); }
-    .text-info { color: var(--accent2) !important; }
-    .bg-warning-soft { background: rgba(244, 211, 94, 0.1); }
-    .text-warning { color: var(--accent3) !important; }
-    .bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
-    .text-danger { color: #dc3545 !important; }
-
-    .card-title {
-        font-weight: 600;
-        color: var(--accent4);
-        text-align: center;
-        margin-bottom: 8px;
-        font-size: 1.1rem;
-        transition: color 0.3s ease;
-    }
-
-    .card-link-style:hover .card-title {
-        color: var(--accent1);
-    }
-
-    .card-description {
-        color: var(--gray);
-        text-align: center;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        margin-bottom: 0;
-        transition: color 0.3s ease;
-    }
-
-    .card-link-style:hover .card-description {
-        color: var(--black);
-    }
-    
-    /* --- Panel Lateral con Efectos --- */
-    .welcome-card {
-        background: linear-gradient(135deg, rgba(13, 59, 102, 0.9), rgba(26, 80, 128, 0.8));
-        border-radius: 16px;
-        box-shadow: var(--shadow-strong);
-        border: none;
-        position: relative;
-        overflow: hidden;
-        height: fit-content;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .welcome-card::before {
-        content: "";
-        position: absolute;
-        top: -50px;
-        right: -50px;
-        width: 150px;
-        height: 150px;
-        background: radial-gradient(circle, rgba(244, 211, 94, 0.2) 0%, rgba(244, 211, 94, 0) 70%);
-        border-radius: 50%;
-        animation: rotate 20s linear infinite;
-    }
-
-    .text-white {
-        color: var(--white) !important;
-    }
-
-    .illustration-placeholder {
-        text-align: center;
-        margin-bottom: 1.5rem;
-        position: relative;
-    }
-
-    .illustration-placeholder i {
-        color: var(--accent3) !important;
-        font-size: 3rem;
-        background: rgba(255, 255, 255, 0.15);
-        padding: 15px;
-        border-radius: 16px;
-        backdrop-filter: blur(10px);
-        animation: bounce 4s ease-in-out infinite;
-    }
-
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-    
-    /* --- Botones con Efectos --- */
-    .btn {
-        background: var(--gradient-accent);
-        color: var(--black);
-        border: none;
-        padding: 12px 20px;
-        border-radius: 10px;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-weight: 600;
-        transition: all 0.3s;
-        font-size: 0.9rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .btn::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-        transition: left 0.5s;
-    }
-
-    .btn:hover::before {
-        left: 100%;
-    }
-
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-        text-decoration: none;
-        color: var(--black);
-    }
-
-    .btn-light {
-        background: var(--white);
-        color: var(--accent4);
-    }
-
-    .btn-secondary {
-        background: rgba(255, 255, 255, 0.2);
-        color: var(--white);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        backdrop-filter: blur(10px);
-    }
-
-    .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.3);
-        color: var(--white);
-    }
-
-    /* --- Secciones --- */
-    .quick-access-section {
-        margin-top: 30px;
-    }
-
-    .section-title {
-        font-size: 1.3rem;
-        font-weight: 600;
-        color: var(--accent4);
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        position: relative;
-    }
-
-    .section-title::after {
-        content: "";
-        flex: 1;
-        height: 2px;
-        background: linear-gradient(90deg, var(--accent1), transparent);
-        margin-left: 10px;
-    }
-
-    .section-title i {
-        color: var(--accent1);
-        font-size: 1.5rem;
-    }
-
-    /* --- Acciones Principales --- */
-    .main-actions {
-        margin: 1.5rem 0;
-    }
-
-    .main-actions .btn {
-        margin-bottom: 12px;
-        font-size: 0.95rem;
-        padding: 14px 20px;
-    }
-
-    /* --- Responsive --- */
-    @media (max-width: 1200px) {
-        .cards-grid {
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        }
-    }
-
-    @media (max-width: 768px) {
-        body {
-            padding: 15px;
-        }
-        
-        .dashboard-header {
-            flex-direction: column;
-            text-align: center;
-            gap: 15px;
-            padding: 20px;
-        }
-        
-        .header-title h1 {
-            font-size: 1.5rem;
-        }
-        
-        .header-title i {
-            font-size: 32px;
-            padding: 10px;
-        }
-        
-        .btn {
-            width: 100%;
-        }
-
-        .cards-grid {
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-
-        .floating-shapes {
-            display: none;
-        }
-    }
-
-    .fw-bold {
-        font-weight: 700 !important;
-    }
-
-    .mb-4 {
-        margin-bottom: 1.5rem !important;
-    }
-
-    .w-100 {
-        width: 100%;
-    }
-
-    /* --- Animaciones de Entrada --- */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .fade-in-up {
-        animation: fadeInUp 0.6s ease-out;
-    }
-
-    .stagger-delay-1 { animation-delay: 0.1s; }
-    .stagger-delay-2 { animation-delay: 0.2s; }
-    .stagger-delay-3 { animation-delay: 0.3s; }
+.stagger-delay-1 { animation-delay: 0.1s; }
+.stagger-delay-2 { animation-delay: 0.2s; }
+.stagger-delay-3 { animation-delay: 0.3s; }
 </style>
 
 <!-- Animaciones de Fondo -->
 <div class="background-animation">
-    <div class="floating-shapes shape-1"></div>
-    <div class="floating-shapes shape-2"></div>
-    <div class="floating-shapes shape-3"></div>
-    <div class="pulse-dots dot-1"></div>
-    <div class="pulse-dots dot-2"></div>
-    <div class="pulse-dots dot-3"></div>
-    <div class="pulse-dots dot-4"></div>
+<div class="floating-shapes shape-1"></div>
+<div class="floating-shapes shape-2"></div>
+<div class="floating-shapes shape-3"></div>
+<div class="pulse-dots dot-1"></div>
+<div class="pulse-dots dot-2"></div>
+<div class="pulse-dots dot-3"></div>
+<div class="pulse-dots dot-4"></div>
 </div>
 
 <div class="container-fluid p-3">
-    <!-- Header con Efectos -->
-    <div class="dashboard-header fade-in-up">
-        <div class="header-title">
-            <i class="fas fa-tachometer-alt"></i>
-            <div>
-                <h1>Panel AcentraX</h1>
-                <div class="header-subtitle">Sistema de gestión académica - <span id="currentDateTime"></span></div>
+<!-- Header con Efectos -->
+<div class="dashboard-header fade-in-up">
+    <div class="header-title">
+        <i class="fas fa-tachometer-alt"></i>
+        <div>
+            <h1>Panel AcentraX</h1>
+            <div class="header-subtitle">Sistema de gestión académica - <span id="currentDateTime"></span></div>
+        </div>
+    </div>
+    <div class="header-actions">
+        <button class="btn btn-light" onclick="refreshDashboard()">
+            <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+    </div>
+</div>
+
+<!-- Contenido Principal -->
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Gestión de Usuarios -->
+        <div class="quick-access-section">
+            <h3 class="section-title fade-in-up">
+                <i class="fas fa-users"></i>
+                Gestión de Usuarios
+            </h3>
+            <div class="cards-grid">
+                <a href="{{ url_for('admin.profesores') }}" class="card-link-style card-primary fade-in-up stagger-delay-1">
+                    <div class="icon-circle bg-primary-soft">
+                        <i class="fas fa-chalkboard-teacher fa-2x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Profesores</h5>
+                    <p class="card-description">Gestionar docentes y asignaciones</p>
+                </a>
+
+                <a href="{{ url_for('admin.estudiantes') }}" class="card-link-style card-success fade-in-up stagger-delay-2">
+                    <div class="icon-circle bg-success-soft">
+                        <i class="fas fa-user-graduate fa-2x text-success"></i>
+                    </div>
+                    <h5 class="card-title">Estudiantes</h5>
+                    <p class="card-description">Administrar alumnos y matrículas</p>
+                </a>
+
+                <a href="{{ url_for('admin.padres') }}" class="card-link-style card-info fade-in-up stagger-delay-3">
+                    <div class="icon-circle bg-info-soft">
+                        <i class="fas fa-user-friends fa-2x text-info"></i>
+                    </div>
+                    <h5 class="card-title">Padres</h5>
+                    <p class="card-description">Gestionar acudientes</p>
+                </a>
             </div>
         </div>
-        <div class="header-actions">
-            <button class="btn btn-light" onclick="refreshDashboard()">
-                <i class="fas fa-sync-alt"></i> Actualizar
-            </button>
+
+        <!-- Gestión Académica -->
+        <div class="quick-access-section">
+            <h3 class="section-title fade-in-up">
+                <i class="fas fa-book-open"></i>
+                Gestión Académica
+            </h3>
+            <div class="cards-grid">
+                <a href="{{ url_for('admin.gestion_sedes') }}" class="card-link-style card-primary fade-in-up stagger-delay-1">
+                    <div class="icon-circle bg-primary-soft">
+                        <i class="fas fa-building fa-2x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Sedes</h5>
+                    <p class="card-description">Administrar ubicaciones</p>
+                </a>
+
+                <a href="{{ url_for('admin.gestion_cursos') }}" class="card-link-style card-success fade-in-up stagger-delay-2">
+                    <div class="icon-circle bg-success-soft">
+                        <i class="fas fa-book fa-2x text-success"></i>
+                    </div>
+                    <h5 class="card-title">Cursos</h5>
+                    <p class="card-description">Gestionar cursos académicos</p>
+                </a>
+
+                <a href="{{ url_for('admin.gestion_asignaturas') }}" class="card-link-style card-info fade-in-up stagger-delay-3">
+                    <div class="icon-circle bg-info-soft">
+                        <i class="fas fa-clipboard-list fa-2x text-info"></i>
+                    </div>
+                    <h5 class="card-title">Asignaturas</h5>
+                    <p class="card-description">Administrar materias</p>
+                </a>
+
+                <a href="{{ url_for('admin.gestion_periodos') }}" class="card-link-style card-warning fade-in-up stagger-delay-4">
+                    <div class="icon-circle bg-warning-soft">
+                        <i class="fas fa-calendar-alt fa-2x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Periodos Académicos</h5>
+                    <p class="card-description">Gestionar ciclos y trimestres</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Sistema de Horarios -->
+        <div class="quick-access-section">
+            <h3 class="section-title fade-in-up">
+                <i class="fas fa-clock"></i>
+                Horarios
+            </h3>
+            <div class="cards-grid">
+                <a href="{{ url_for('admin.gestion_horarios') }}" class="card-link-style card-warning fade-in-up stagger-delay-1">
+                    <div class="icon-circle bg-warning-soft">
+                        <i class="fas fa-calendar-alt fa-2x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Horarios Generales</h5>
+                    <p class="card-description">Configurar horarios</p>
+                </a>
+
+                <a href="{{ url_for('admin.gestion_horarios_cursos') }}" class="card-link-style card-warning fade-in-up stagger-delay-2">
+                    <div class="icon-circle bg-warning-soft">
+                        <i class="fas fa-calendar-day fa-2x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Horarios por Curso</h5>
+                    <p class="card-description">Asignar horarios específicos</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Gestión de Inventario -->
+        <div class="quick-access-section">
+            <h3 class="section-title fade-in-up">
+                <i class="fas fa-laptop-house"></i>
+                Inventario
+            </h3>
+            <div class="cards-grid">
+                <a href="{{ url_for('admin.equipos') }}" class="card-link-style card-primary fade-in-up stagger-delay-1">
+                    <div class="icon-circle bg-primary-soft">
+                        <i class="fas fa-laptop fa-2x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Equipos</h5>
+                    <p class="card-description">Gestionar equipos tecnológicos</p>
+                </a>
+
+                <a href="{{ url_for('admin.salones') }}" class="card-link-style card-success fade-in-up stagger-delay-2">
+                    <div class="icon-circle bg-success-soft">
+                        <i class="fas fa-door-open fa-2x text-success"></i>
+                    </div>
+                    <h5 class="card-title">Salones</h5>
+                    <p class="card-description">Administrar aulas</p>
+                </a>
+
+                <a href="{{ url_for('admin.incidentes') }}" class="card-link-style card-danger fade-in-up stagger-delay-3">
+                    <div class="icon-circle bg-danger-soft">
+                        <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                    </div>
+                    <h5 class="card-title">Incidentes</h5>
+                    <p class="card-description">Reportar problemas</p>
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Contenido Principal -->
-    <div class="row">
-        <div class="col-lg-8">
-            <!-- Gestión de Usuarios -->
-            <div class="quick-access-section">
-                <h3 class="section-title fade-in-up">
-                    <i class="fas fa-users"></i>
-                    Gestión de Usuarios
-                </h3>
-                <div class="cards-grid">
-                    <a href="{{ url_for('admin.profesores') }}" class="card-link-style card-primary fade-in-up stagger-delay-1">
-                        <div class="icon-circle bg-primary-soft">
-                            <i class="fas fa-chalkboard-teacher fa-2x text-primary"></i>
-                        </div>
-                        <h5 class="card-title">Profesores</h5>
-                        <p class="card-description">Gestionar docentes y asignaciones</p>
-                    </a>
+    <!-- Panel Lateral con Efectos -->
+    <div class="col-lg-4">
+        <div class="card text-white welcome-card fade-in-up">
+            <div class="card-body p-4">
+                <div class="illustration-placeholder">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <h4 class="fw-bold text-center mb-3">¡Bienvenido!</h4>
+                <p class="small text-white-50 text-center mb-4">
+                    Control central del sistema AcentraX
+                </p>
 
-                    <a href="{{ url_for('admin.estudiantes') }}" class="card-link-style card-success fade-in-up stagger-delay-2">
-                        <div class="icon-circle bg-success-soft">
-                            <i class="fas fa-user-graduate fa-2x text-success"></i>
-                        </div>
-                        <h5 class="card-title">Estudiantes</h5>
-                        <p class="card-description">Administrar alumnos y matrículas</p>
+                <!-- Acciones Principales -->
+                <div class="main-actions">
+                    <a href="{{ url_for('admin.crear_usuario') }}" class="btn btn-secondary w-100 mb-3">
+                        <i class="fas fa-user-plus"></i> Crear Usuario
                     </a>
-
-                    <a href="{{ url_for('admin.padres') }}" class="card-link-style card-info fade-in-up stagger-delay-3">
-                        <div class="icon-circle bg-info-soft">
-                            <i class="fas fa-user-friends fa-2x text-info"></i>
-                        </div>
-                        <h5 class="card-title">Padres</h5>
-                        <p class="card-description">Gestionar acudientes</p>
+                    <a href="{{ url_for('admin.verification_codes') }}" class="btn btn-secondary w-100 mb-3">
+                        <i class="fas fa-key"></i> Códigos Verificación
                     </a>
                 </div>
-            </div>
 
-            <!-- Gestión Académica -->
-            <div class="quick-access-section">
-                <h3 class="section-title fade-in-up">
-                    <i class="fas fa-book-open"></i>
-                    Gestión Académica
-                </h3>
-                <div class="cards-grid">
-                    <a href="{{ url_for('admin.gestion_sedes') }}" class="card-link-style card-primary fade-in-up stagger-delay-1">
-                        <div class="icon-circle bg-primary-soft">
-                            <i class="fas fa-building fa-2x text-primary"></i>
-                        </div>
-                        <h5 class="card-title">Sedes</h5>
-                        <p class="card-description">Administrar ubicaciones</p>
-                    </a>
-
-                    <a href="{{ url_for('admin.gestion_cursos') }}" class="card-link-style card-success fade-in-up stagger-delay-2">
-                        <div class="icon-circle bg-success-soft">
-                            <i class="fas fa-book fa-2x text-success"></i>
-                        </div>
-                        <h5 class="card-title">Cursos</h5>
-                        <p class="card-description">Gestionar cursos académicos</p>
-                    </a>
-
-                    <a href="{{ url_for('admin.gestion_asignaturas') }}" class="card-link-style card-info fade-in-up stagger-delay-3">
-                        <div class="icon-circle bg-info-soft">
-                            <i class="fas fa-clipboard-list fa-2x text-info"></i>
-                        </div>
-                        <h5 class="card-title">Asignaturas</h5>
-                        <p class="card-description">Administrar materias</p>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Sistema de Horarios -->
-            <div class="quick-access-section">
-                <h3 class="section-title fade-in-up">
-                    <i class="fas fa-clock"></i>
-                    Horarios
-                </h3>
-                <div class="cards-grid">
-                    <a href="{{ url_for('admin.gestion_horarios') }}" class="card-link-style card-warning fade-in-up stagger-delay-1">
-                        <div class="icon-circle bg-warning-soft">
-                            <i class="fas fa-calendar-alt fa-2x text-warning"></i>
-                        </div>
-                        <h5 class="card-title">Horarios Generales</h5>
-                        <p class="card-description">Configurar horarios</p>
-                    </a>
-
-                    <a href="{{ url_for('admin.gestion_horarios_cursos') }}" class="card-link-style card-warning fade-in-up stagger-delay-2">
-                        <div class="icon-circle bg-warning-soft">
-                            <i class="fas fa-calendar-day fa-2x text-warning"></i>
-                        </div>
-                        <h5 class="card-title">Horarios por Curso</h5>
-                        <p class="card-description">Asignar horarios específicos</p>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Gestión de Inventario -->
-            <div class="quick-access-section">
-                <h3 class="section-title fade-in-up">
-                    <i class="fas fa-laptop-house"></i>
-                    Inventario
-                </h3>
-                <div class="cards-grid">
-                    <a href="{{ url_for('admin.equipos') }}" class="card-link-style card-primary fade-in-up stagger-delay-1">
-                        <div class="icon-circle bg-primary-soft">
-                            <i class="fas fa-laptop fa-2x text-primary"></i>
-                        </div>
-                        <h5 class="card-title">Equipos</h5>
-                        <p class="card-description">Gestionar equipos tecnológicos</p>
-                    </a>
-
-                    <a href="{{ url_for('admin.salones') }}" class="card-link-style card-success fade-in-up stagger-delay-2">
-                        <div class="icon-circle bg-success-soft">
-                            <i class="fas fa-door-open fa-2x text-success"></i>
-                        </div>
-                        <h5 class="card-title">Salones</h5>
-                        <p class="card-description">Administrar aulas</p>
-                    </a>
-
-                    <a href="{{ url_for('admin.incidentes') }}" class="card-link-style card-danger fade-in-up stagger-delay-3">
-                        <div class="icon-circle bg-danger-soft">
-                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
-                        </div>
-                        <h5 class="card-title">Incidentes</h5>
-                        <p class="card-description">Reportar problemas</p>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Panel Lateral con Efectos -->
-        <div class="col-lg-4">
-            <div class="card text-white welcome-card fade-in-up">
-                <div class="card-body p-4">
-                    <div class="illustration-placeholder">
-                        <i class="fas fa-cogs"></i>
-                    </div>
-                    <h4 class="fw-bold text-center mb-3">¡Bienvenido!</h4>
-                    <p class="small text-white-50 text-center mb-4">
-                        Control central del sistema AcentraX
-                    </p>
-
-                    <!-- Acciones Principales -->
-                    <div class="main-actions">
-                        <a href="{{ url_for('admin.crear_usuario') }}" class="btn btn-secondary w-100 mb-3">
-                            <i class="fas fa-user-plus"></i> Crear Usuario
+                <!-- Accesos Rápidos -->
+                <div class="mt-4">
+                    <h6 class="text-white text-center mb-3">Accesos Rápidos</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.comunicaciones') }}" class="btn btn-secondary">
+                            <i class="fas fa-envelope"></i> Comunicaciones
                         </a>
-                        <a href="{{ url_for('admin.verification_codes') }}" class="btn btn-secondary w-100 mb-3">
-                            <i class="fas fa-key"></i> Códigos Verificación
+                        <a href="{{ url_for('admin.reportes_calificaciones') }}" class="btn btn-secondary">
+                            <i class="fas fa-chart-bar"></i> Reportes
                         </a>
-                    </div>
-
-                    <!-- Accesos Rápidos -->
-                    <div class="mt-4">
-                        <h6 class="text-white text-center mb-3">Accesos Rápidos</h6>
-                        <div class="d-grid gap-2">
-                            <a href="{{ url_for('admin.comunicaciones') }}" class="btn btn-secondary">
-                                <i class="fas fa-envelope"></i> Comunicaciones
-                            </a>
-                            <a href="{{ url_for('admin.reportes_calificaciones') }}" class="btn btn-secondary">
-                                <i class="fas fa-chart-bar"></i> Reportes
-                            </a>
-                            <a href="{{ url_for('admin.sistema_votaciones') }}" class="btn btn-secondary">
-                                <i class="fas fa-vote-yea"></i> Votaciones
-                            </a>
-                            <a href="{{ url_for('admin.calendario_eventos') }}" class="btn btn-secondary">
-                                <i class="fas fa-calendar"></i> Calendario
-                            </a>
-                        </div>
+                        <a href="{{ url_for('admin.sistema_votaciones') }}" class="btn btn-secondary">
+                            <i class="fas fa-vote-yea"></i> Votaciones
+                        </a>
+                        <a href="{{ url_for('admin.calendario_eventos') }}" class="btn btn-secondary">
+                            <i class="fas fa-calendar"></i> Calendario
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+</div>
 
 <script>
-    // Función para actualizar fecha y hora
-    function updateDateTime() {
-        const now = new Date();
-        const options = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        };
-        document.getElementById('currentDateTime').textContent = now.toLocaleDateString('es-ES', options);
-    }
+// Función para actualizar fecha y hora
+function updateDateTime() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('es-ES', options);
+}
 
-    // Función para actualizar el dashboard
-    function refreshDashboard() {
-        // Efecto visual de actualización
-        document.body.style.opacity = '0.8';
-        setTimeout(() => {
-            document.body.style.opacity = '1';
-            updateDateTime();
-        }, 300);
-    }
-
-    // Efectos de interacción mejorados
-    document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar fecha y hora
+// Función para actualizar el dashboard
+function refreshDashboard() {
+    // Efecto visual de actualización
+    document.body.style.opacity = '0.8';
+    setTimeout(() => {
+        document.body.style.opacity = '1';
         updateDateTime();
-        setInterval(updateDateTime, 60000);
+    }, 300);
+}
+
+// Efectos de interacción mejorados
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar fecha y hora
+    updateDateTime();
+    setInterval(updateDateTime, 60000);
+    
+    // Efectos hover mejorados para tarjetas
+    const cards = document.querySelectorAll('.card-link-style');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px) scale(1.02)';
+        });
         
-        // Efectos hover mejorados para tarjetas
-        const cards = document.querySelectorAll('.card-link-style');
-        cards.forEach(card => {
-            card.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-8px) scale(1.02)';
-            });
-            
-            card.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-
-        // Efecto de entrada escalonada
-        const staggerElements = document.querySelectorAll('.stagger-delay-1, .stagger-delay-2, .stagger-delay-3');
-        staggerElements.forEach((el, index) => {
-            el.style.animationDelay = `${index * 0.1}s`;
-        });
-
-        // Efecto de parallax suave en el fondo
-        document.addEventListener('mousemove', function(e) {
-            const shapes = document.querySelectorAll('.floating-shapes');
-            const x = e.clientX / window.innerWidth;
-            const y = e.clientY / window.innerHeight;
-            
-            shapes.forEach((shape, index) => {
-                const speed = (index + 1) * 0.5;
-                const xMove = (x - 0.5) * speed * 20;
-                const yMove = (y - 0.5) * speed * 20;
-                
-                shape.style.transform = `translate(${xMove}px, ${yMove}px)`;
-            });
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
         });
     });
+
+    // Efecto de entrada escalonada
+    const staggerElements = document.querySelectorAll('.stagger-delay-1, .stagger-delay-2, .stagger-delay-3');
+    staggerElements.forEach((el, index) => {
+        el.style.animationDelay = `${index * 0.1}s`;
+    });
+
+    // Efecto de parallax suave en el fondo
+    document.addEventListener('mousemove', function(e) {
+        const shapes = document.querySelectorAll('.floating-shapes');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+        
+        shapes.forEach((shape, index) => {
+            const speed = (index + 1) * 0.5;
+            const xMove = (x - 0.5) * speed * 20;
+            const yMove = (y - 0.5) * speed * 20;
+            
+            shape.style.transform = `translate(${xMove}px, ${yMove}px)`;
+        });
+    });
+});
 </script>
 {% endblock %}
-    </body>
-</html>

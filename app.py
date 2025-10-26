@@ -94,8 +94,8 @@ def inject_unread_notifications():
     try:
         if current_user.is_authenticated:
             # Lazy import to avoid circular imports
-            from services.notification_service import count_unread
-            unread = count_unread(current_user.id_usuario)
+            from services.notification_service import contar_notificaciones_no_leidas
+            unread = contar_notificaciones_no_leidas(current_user.id_usuario)
         else:
             unread = 0
     except Exception:

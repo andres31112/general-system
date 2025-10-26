@@ -420,3 +420,404 @@
     </div>
 </div>
 {% endblock %}
+        content: '';
+
+        position: absolute;
+
+        top: 0;
+
+        left: 0;
+
+        width: 100%;
+
+        height: 100%;
+
+        background: radial-gradient(circle at 20% 80%, rgba(244, 211, 94, 0.1) 0%, transparent 50%),
+
+                   radial-gradient(circle at 80% 20%, rgba(13, 59, 102, 0.05) 0%, transparent 50%);
+
+        opacity: 0;
+
+        transition: opacity 0.3s ease;
+
+    }
+
+
+
+    .card:hover::after {
+
+        opacity: 1;
+
+    }
+
+
+
+    /* Responsive */
+
+    @media (max-width: 768px) {
+
+        .text-principal {
+
+            font-size: 2rem;
+
+        }
+
+        
+
+        .card-body {
+
+            padding: 2rem;
+
+        }
+
+        
+
+        .card-icon {
+
+            width: 70px;
+
+            height: 70px;
+
+            font-size: 1.8rem;
+
+        }
+
+    }
+
+
+
+    /* Animación de entrada para las tarjetas */
+
+    @keyframes cardEntrance {
+
+        from {
+
+            opacity: 0;
+
+            transform: translateY(30px);
+
+        }
+
+        to {
+
+            opacity: 1;
+
+            transform: translateY(0);
+
+        }
+
+    }
+
+
+
+    .col-xl-4 {
+
+        animation: cardEntrance 0.6s ease-out;
+
+        animation-fill-mode: both;
+
+    }
+
+
+
+    .col-xl-4:nth-child(1) { animation-delay: 0.1s; }
+
+    .col-xl-4:nth-child(2) { animation-delay: 0.2s; }
+
+    .col-xl-4:nth-child(3) { animation-delay: 0.3s; }
+
+    .col-xl-4:nth-child(4) { animation-delay: 0.4s; }
+
+    .col-xl-4:nth-child(5) { animation-delay: 0.5s; }
+
+    .col-xl-4:nth-child(6) { animation-delay: 0.6s; }
+
+
+
+    /* Enlace de acceso mejorado */
+
+    .access-link {
+
+        color: var(--accent1) !important;
+
+        font-weight: 600;
+
+        text-decoration: none;
+
+        transition: all 0.3s ease;
+
+        display: inline-flex;
+
+        align-items: center;
+
+        gap: 0.5rem;
+
+    }
+
+
+
+    .access-link:hover {
+
+        color: var(--accent4) !important;
+
+        transform: translateX(5px);
+
+    }
+
+</style>
+
+
+
+<div class="container-fluid py-4">
+
+    <div class="row">
+
+        <div class="col-12 text-center">
+
+            <h1 class="text-principal">Gestión Académica</h1>
+
+            <p class="lead text-muted" style="font-size: 1.2rem; color: var(--gray) !important;">
+
+                Sistema integral de administración académica
+
+            </p>
+
+        </div>
+
+    </div>
+
+    
+
+    <div class="row g-4 mt-3">
+
+        <div class="col-xl-4 col-md-6 mb-4">
+
+            <a href="{{ url_for('admin.gestion_horarios') }}" class="card h-100 text-decoration-none">
+
+                <div class="card-body d-flex flex-column align-items-start">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-calendar-alt"></i>
+
+                    </div>
+
+                    <h5 class="card-title">Horarios Generales</h5>
+
+                    <p class="card-text">
+
+                        Gestiona y visualiza los horarios de las actividades académicas con interfaz intuitiva.
+
+                    </p>
+
+                    <div class="mt-auto pt-3">
+
+                        <span class="access-link">
+
+                            <i class="fas fa-arrow-right me-1"></i>Acceder al módulo
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+
+
+        <div class="col-xl-4 col-md-6 mb-4">
+
+            <a href="{{ url_for('admin.gestion_cursos') }}" class="card h-100 text-decoration-none">
+
+                <div class="card-body d-flex flex-column align-items-start">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-book-open"></i>
+
+                    </div>
+
+                    <h5 class="card-title">Cursos</h5>
+
+                    <p class="card-text">
+
+                        Administra la creación, edición y asignación de cursos académicos.
+
+                    </p>
+
+                    <div class="mt-auto pt-3">
+
+                        <span class="access-link">
+
+                            <i class="fas fa-arrow-right me-1"></i>Acceder al módulo
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+        
+
+        <div class="col-xl-4 col-md-6 mb-4">
+
+            <a href="{{ url_for('admin.gestion_asignaturas') }}" class="card h-100 text-decoration-none">
+
+                <div class="card-body d-flex flex-column align-items-start">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-clipboard-list"></i>
+
+                    </div>
+
+                    <h5 class="card-title">Asignaturas</h5>
+
+                    <p class="card-text">
+
+                        Gestiona el catálogo completo de asignaturas disponibles en la institución.
+
+                    </p>
+
+                    <div class="mt-auto pt-3">
+
+                        <span class="access-link">
+
+                            <i class="fas fa-arrow-right me-1"></i>Acceder al módulo
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+        
+
+        <div class="col-xl-4 col-md-6 mb-4">
+
+            <a href="" class="card h-100 text-decoration-none">
+
+                <div class="card-body d-flex flex-column align-items-start">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-user-tie"></i>
+
+                    </div>
+
+                    <h5 class="card-title">Profesores</h5>
+
+                    <p class="card-text">
+
+                        Administra los perfiles profesionales y asignaciones de docentes.
+
+                    </p>
+
+                    <div class="mt-auto pt-3">
+
+                        <span class="access-link">
+
+                            <i class="fas fa-arrow-right me-1"></i>Acceder al módulo
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+        
+
+        <div class="col-xl-4 col-md-6 mb-4">
+
+            <a href="{{ url_for('admin.estudiantes') }}" class="card h-100 text-decoration-none">
+
+                <div class="card-body d-flex flex-column align-items-start">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-user-graduate"></i>
+
+                    </div>
+
+                    <h5 class="card-title">Estudiantes</h5>
+
+                    <p class="card-text">
+
+                        Gestiona matriculas, perfiles y registros académicos de estudiantes.
+
+                    </p>
+
+                    <div class="mt-auto pt-3">
+
+                        <span class="access-link">
+
+                            <i class="fas fa-arrow-right me-1"></i>Acceder al módulo
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+
+
+        <div class="col-xl-4 col-md-6 mb-4">
+
+            <a href="{{ url_for('admin.gestion_sedes') }}" class="card h-100 text-decoration-none">
+
+                <div class="card-body d-flex flex-column align-items-start">
+
+                    <div class="card-icon">
+
+                        <i class="fas fa-chalkboard"></i>
+
+                    </div>
+
+                    <h5 class="card-title">Sedes</h5>
+
+                    <p class="card-text">
+
+                        Administra las diferentes sedes y sus configuraciones académicas.
+
+                    </p>
+
+                    <div class="mt-auto pt-3">
+
+                        <span class="access-link">
+
+                            <i class="fas fa-arrow-right me-1"></i>Acceder al módulo
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

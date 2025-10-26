@@ -1,0 +1,387 @@
+{% extends 'profesores/base.html' %}
+
+{% block title %}Tareas Académicas - {{ curso.nombreCurso if curso else 'Panel de Profesor' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">📚 Gestión de Tareas Académicas</h2>
+            <p class="text-muted mb-0">
+                <i class="fas fa-graduation-cap me-2"></i>{{ curso.nombreCurso if curso else 'Curso' }}
+            </p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaTarea">
+            <i class="fas fa-plus me-2"></i>Nueva Tarea
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Filtrar por Asignatura</label>
+                    <select class="form-select" id="filtroAsignatura">
+                        <option value="">Todas las asignaturas</option>
+                        {% for asignatura in asignaturas %}
+                        <option value="{{ asignatura.id_asignatura }}">{{ asignatura.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-secondary" onclick="cargarTareas()">
+                        <i class="fas fa-filter me-2"></i>Aplicar Filtro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Tareas -->
+    <div class="row" id="listaTareas">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-muted">Cargando tareas...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Tarea -->
+<div class="modal fade" id="modalNuevaTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-tasks me-2"></i>Publicar Nueva Tarea
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formNuevaTarea" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Título de la Tarea <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="titulo" required 
+                               placeholder="Ej: Tarea de Matemáticas - Capítulo 5">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Asignatura <span class="text-danger">*</span></label>
+                        <select class="form-select" name="asignatura_id" required>
+                            <option value="">Seleccione una asignatura</option>
+                            {% for asignatura in asignaturas %}
+                            <option value="{{ asignatura.id_asignatura }}">{{ asignatura.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Categoría (Opcional)</label>
+                        <select class="form-select" name="categoria_id">
+                            <option value="">Sin categoría</option>
+                            {% for categoria in categorias %}
+                            <option value="{{ categoria.id_categoria }}">{{ categoria.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" name="descripcion" rows="4" 
+                                  placeholder="Descripción detallada de la tarea..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Vencimiento (Opcional)</label>
+                        <input type="datetime-local" class="form-control" name="fecha_vencimiento">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Archivo Adjunto (Opcional)</label>
+                        <input type="file" class="form-control" name="archivo" id="archivoTarea"
+                               accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.zip,.rar,.ppt,.pptx,.xls,.xlsx">
+                        <small class="text-muted">
+                            Formatos permitidos: PDF, Word, Excel, PowerPoint, imágenes, ZIP, RAR (Máx. 16MB)
+                        </small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Al publicar esta tarea, se enviará una notificación automática a todos los estudiantes 
+                        del curso y a sus padres.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>Publicar Tarea
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ver Detalle Tarea -->
+<div class="modal fade" id="modalDetalleTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloDetalle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetalle">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="eliminarTareaActual()">
+                    <i class="fas fa-trash me-2"></i>Eliminar Tarea
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card-tarea {
+    transition: all 0.3s ease;
+    border: 1px solid #e0e0e0;
+    height: 100%;
+}
+
+.card-tarea:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.badge-asignatura {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.archivo-adjunto {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px dashed #dee2e6;
+}
+</style>
+
+<script>
+let tareaActualId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    cargarTareas();
+    
+    // Manejar envío del formulario
+    document.getElementById('formNuevaTarea').addEventListener('submit', function(e) {
+        e.preventDefault();
+        publicarTarea();
+    });
+});
+
+function cargarTareas() {
+    const asignaturaId = document.getElementById('filtroAsignatura').value;
+    const url = `/profesor/api/obtener-tareas${asignaturaId ? '?asignatura_id=' + asignaturaId : ''}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarTareas(data.tareas);
+            } else {
+                mostrarError('Error al cargar tareas');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarError('Error al cargar tareas');
+        });
+}
+
+function mostrarTareas(tareas) {
+    const container = document.getElementById('listaTareas');
+    
+    if (tareas.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No hay tareas publicadas</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tareas.map(tarea => `
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card card-tarea">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">${tarea.titulo}</h5>
+                        <span class="badge badge-asignatura bg-primary">${tarea.asignatura_nombre}</span>
+                    </div>
+                    
+                    ${tarea.descripcion ? `
+                        <p class="card-text text-muted small">
+                            ${tarea.descripcion.substring(0, 100)}${tarea.descripcion.length > 100 ? '...' : ''}
+                        </p>
+                    ` : ''}
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar me-1"></i>${tarea.fecha_publicacion}
+                        </small>
+                        ${tarea.fecha_vencimiento ? `
+                            <br>
+                            <small class="text-danger">
+                                <i class="fas fa-clock me-1"></i>Vence: ${tarea.fecha_vencimiento}
+                            </small>
+                        ` : ''}
+                        ${tarea.archivo_nombre ? `
+                            <br>
+                            <small class="text-success">
+                                <i class="fas fa-paperclip me-1"></i>Tiene archivo adjunto
+                            </small>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <button class="btn btn-sm btn-outline-primary" onclick="verDetalleTarea(${tarea.id_tarea})">
+                        <i class="fas fa-eye me-1"></i>Ver Detalle
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function publicarTarea() {
+    const form = document.getElementById('formNuevaTarea');
+    const formData = new FormData(form);
+    const btn = form.querySelector('button[type="submit"]');
+    const btnText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Publicando...';
+    
+    fetch('/profesor/api/crear-tarea', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarExito('Tarea publicada correctamente');
+            form.reset();
+            bootstrap.Modal.getInstance(document.getElementById('modalNuevaTarea')).hide();
+            cargarTareas();
+        } else {
+            mostrarError(data.message || 'Error al publicar tarea');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error al publicar tarea');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = btnText;
+    });
+}
+
+function verDetalleTarea(tareaId) {
+    fetch(`/profesor/api/obtener-tareas`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tarea = data.tareas.find(t => t.id_tarea === tareaId);
+                if (tarea) {
+                    tareaActualId = tareaId;
+                    mostrarDetalleTarea(tarea);
+                }
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function mostrarDetalleTarea(tarea) {
+    document.getElementById('tituloDetalle').textContent = tarea.titulo;
+    document.getElementById('contenidoDetalle').innerHTML = `
+        <div class="mb-3">
+            <span class="badge bg-primary">${tarea.asignatura_nombre}</span>
+            ${tarea.categoria_nombre !== 'N/A' ? `<span class="badge bg-secondary ms-2">${tarea.categoria_nombre}</span>` : ''}
+        </div>
+        
+        ${tarea.descripcion ? `
+            <div class="mb-3">
+                <h6>Descripción:</h6>
+                <p>${tarea.descripcion}</p>
+            </div>
+        ` : ''}
+        
+        <div class="mb-3">
+            <h6>Información:</h6>
+            <ul class="list-unstyled">
+                <li><i class="fas fa-calendar me-2"></i>Publicado: ${tarea.fecha_publicacion}</li>
+                ${tarea.fecha_vencimiento ? `<li><i class="fas fa-clock me-2"></i>Vencimiento: ${tarea.fecha_vencimiento}</li>` : ''}
+                <li><i class="fas fa-user me-2"></i>Profesor: ${tarea.profesor_nombre}</li>
+            </ul>
+        </div>
+        
+        ${tarea.archivo_url ? `
+            <div class="archivo-adjunto">
+                <h6><i class="fas fa-paperclip me-2"></i>Archivo Adjunto:</h6>
+                <p class="mb-2">${tarea.archivo_nombre}</p>
+                <a href="${tarea.archivo_url}" class="btn btn-sm btn-success" target="_blank" download>
+                    <i class="fas fa-download me-2"></i>Descargar
+                </a>
+            </div>
+        ` : ''}
+    `;
+    
+    new bootstrap.Modal(document.getElementById('modalDetalleTarea')).show();
+}
+
+function eliminarTareaActual() {
+    if (!tareaActualId) return;
+    
+    if (!confirm('¿Está seguro de eliminar esta tarea? Esta acción no se puede deshacer.')) {
+        return;
+    }
+    
+    fetch(`/profesor/api/eliminar-tarea/${tareaActualId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarExito('Tarea eliminada correctamente');
+            bootstrap.Modal.getInstance(document.getElementById('modalDetalleTarea')).hide();
+            cargarTareas();
+            tareaActualId = null;
+        } else {
+            mostrarError(data.message || 'Error al eliminar tarea');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarError('Error al eliminar tarea');
+    });
+}
+
+function mostrarExito(mensaje) {
+    // Puedes usar tu sistema de notificaciones existente
+    alert(mensaje);
+}
+
+function mostrarError(mensaje) {
+    // Puedes usar tu sistema de notificaciones existente
+    alert(mensaje);
+}
+</script>
+{% endblock %}
+

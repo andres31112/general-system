@@ -22,3 +22,8 @@ class Config:
     SERVER_NAME = 'localhost:5000'  # Cambiar por tu dominio en producción
     APPLICATION_ROOT = '/'
     PREFERRED_URL_SCHEME = 'http'  # Cambiar a 'https' en producción
+        
+    # Configuración para subida de archivos
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads', 'tareas')
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # Límite de 16MB para archivos
+    ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'rar'}
