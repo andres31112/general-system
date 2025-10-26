@@ -30,28 +30,28 @@
 <!-- TARJETAS RESUMEN -->
 <main class="container-fluid p-4 py-3">
     <section class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
             <div class="summary-card lista">
                 <i class="fa-solid fa-list"></i>
                 <h3 class="h6 mb-0">Total Equipos</h3>
                 <p class="number mb-0" id="total-equipos">0</p>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
             <div class="summary-card disponible">
                 <i class="fa-solid fa-thumbs-up"></i>
                 <h3 class="h6 mb-0">Disponibles</h3>
                 <p class="number mb-0" id="equipos-disponibles">0</p>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
             <div class="summary-card mantenimiento">
                 <i class="fa-solid fa-screwdriver-wrench"></i>
                 <h3 class="h6 mb-0">En Mantenimiento</h3>
                 <p class="number mb-0" id="equipos-mantenimiento">0</p>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
+        <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
             <div class="summary-card incidente">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 <h3 class="h6 mb-0">Con Incidentes</h3>
@@ -739,13 +739,13 @@ function renderizarTabla() {
             <td>${eq.sala || '-'}</td>
             <td>${eq.asignado_a || '-'}</td>
             <td>
-                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id})" title="Ver detalles">
+                <button class="btn btn-sm btn-info me-2" onclick="verEquipo(${eq.id || eq.equipoId || eq.id_equipo})" title="Ver detalles">
                     <i class="fa-solid fa-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id})" title="Editar equipo">
+                <button class="btn btn-sm btn-warning me-2" onclick="editarEquipo(${eq.id || eq.equipoId || eq.id_equipo})" title="Editar equipo">
                     <i class="fa-solid fa-pen"></i>
                 </button>
-                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id})" title="Eliminar equipo">
+                <button class="btn btn-sm btn-danger" onclick="eliminarEquipo(${eq.id || eq.equipoId || eq.id_equipo})" title="Eliminar equipo">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </td> 
@@ -1099,8 +1099,8 @@ async function guardarEdicionEquipo(e) {
 // ========================================
 // ELIMINAR EQUIPO
 // ========================================
-async function eliminarEquipo(id) {
-    const equipo = equiposGlobal.find(e => e.id_equipo === id);
+async function eliminarEquipo(id_equipo) {
+    const equipo = equiposGlobal.find(e => e.id_equipo === id_equipo);
     const nombreEquipo = equipo ? equipo.nombre : 'este equipo';
     
     if (!confirm(`¿Estás seguro de que deseas eliminar "${nombreEquipo}"? Esta acción no se puede deshacer.`)) {
@@ -1108,7 +1108,7 @@ async function eliminarEquipo(id) {
     }
     
     try {
-        const res = await fetch(`/admin/api/equipos/${id}`, { 
+        const res = await fetch(`/admin/api/equipos/${id_equipo}`, { 
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
