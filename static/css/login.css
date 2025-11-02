@@ -13,29 +13,48 @@ body {
     background-color: var(--color-blanco);
     font-family: 'Montserrat', sans-serif;
     margin: 0;
-    /* QUITAMOS display:flex, justify-content y align-items.
-       El centrado se hará en .card */
 }
 
+/* --- Botón de Regreso a Inicio --- */
+.back-home-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--color-primario);
+    border: none;
+    border-radius: 8px;
+    color: var(--color-blanco);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.back-home-btn:hover {
+    background-color: var(--color-primario-oscuro);
+}
 
 /* --- Tarjeta de Login --- */
 .card {
-    /* ESTA ES LA CLAVE PARA CENTRARLO CORRECTAMENTE */
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 10; /* Para que esté por encima de .circles */
+    z-index: 10;
 
     width: 300px;
     padding: 1.9rem 1.2rem;
     text-align: center;
     background: var(--color-fondo-seccion);
-    border-radius: 15px; /* Un poco más suave */
+    border-radius: 15px;
     border: 2px solid var(--color-primario);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
-
 
 /* --- Campos de Input --- */
 .field {
@@ -43,7 +62,7 @@ body {
     display: flex;
     align-items: center;
     gap: .5em;
-    background-color: #f0f0f0; /* Un gris más claro para mejor contraste */
+    background-color: #f0f0f0;
     border-radius: 8px;
     padding: .5em 1em;
     border: 1px solid transparent;
@@ -72,7 +91,6 @@ body {
     color: var(--color-texto-secundario);
 }
 
-
 /* --- Texto --- */
 .title {
     margin-bottom: 1rem;
@@ -80,7 +98,6 @@ body {
     font-weight: 500;
     color: var(--color-primario);
 }
-
 
 /* --- Botones --- */
 .btn {
@@ -113,16 +130,15 @@ body {
     color: var(--color-primario);
 }
 
-
 /* --- Fondo Animado --- */
 .circles {
-    position: fixed; /* 'fixed' es mejor para fondos que no se mueven con el scroll */
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    z-index: 1; /* Detrás del contenido */
+    z-index: 1;
 }
 
 .circles li {
