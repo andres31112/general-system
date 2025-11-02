@@ -1,4 +1,4 @@
-// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN - VERSIÓN CORREGIDA
+// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN - VERSIÓN COMPLETA Y MEJORADA
 
 // Configuración
 const API_URLS = {
@@ -8,13 +8,16 @@ const API_URLS = {
     crearCandidato: '/admin/crear-candidato',
     editarCandidato: '/admin/candidatos/',
     eliminarCandidato: '/admin/candidatos/',
-    publicarResultados: '/admin/publicar-resultados'
+    publicarResultados: '/admin/publicar-resultados',
+    ocultarResultados: '/admin/ocultar-resultados',
+    estadoPublicacion: '/admin/estado-publicacion'
 };
 
 // Estado de la aplicación
 let estado = {
     candidatos: [],
-    horarioActual: null
+    horarioActual: null,
+    resultadosPublicados: false
 };
 
 // Elementos DOM
@@ -376,6 +379,177 @@ async function eliminarCandidato(id) {
     }
 }
 
+// GESTIÓN DE PUBLICACIÓN DE RESULTADOS
+async function publicarResultados() {
+    const btnPublicar = document.getElementById('btn-publicar-resultados');
+    
+    if (!confirm('¿Está seguro de publicar los resultados? Esta acción hará los resultados visibles para todos los usuarios en la página principal.')) {
+        return;
+    }
+
+    try {
+        // Deshabilitar botón y mostrar loading
+        btnPublicar.disabled = true;
+        btnPublicar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
+        
+        console.log('📢 Publicando resultados...');
+        const data = await apiRequest(API_URLS.publicarResultados, {
+            method: 'POST'
+        });
+
+        if (data.success) {
+            mostrarNotificacion(data.message || '✅ Resultados publicados correctamente', 'success');
+            
+            // Actualizar la interfaz para mostrar que están publicados
+            btnPublicar.innerHTML = '<i class="fas fa-eye"></i> Resultados Publicados';
+            btnPublicar.classList.remove('btn-success');
+            btnPublicar.classList.add('btn-secondary');
+            btnPublicar.onclick = null; // Remover el evento de publicación
+            
+            // Agregar botón para ocultar resultados
+            agregarBotonOcultar();
+            
+            // Actualizar estado local
+            estado.resultadosPublicados = true;
+            
+        } else {
+            throw new Error(data.error || 'Error al publicar resultados');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error publicando resultados:', error);
+        mostrarNotificacion(error.message, 'error');
+        
+        // Restaurar botón
+        btnPublicar.disabled = false;
+        btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
+        
+    } finally {
+        // Asegurarse de que el botón se restaure en caso de error
+        setTimeout(() => {
+            if (btnPublicar.disabled && btnPublicar.innerHTML.includes('Publicando')) {
+                btnPublicar.disabled = false;
+                btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
+            }
+        }, 3000);
+    }
+}
+
+async function ocultarResultados() {
+    if (!confirm('¿Está seguro de ocultar los resultados? Los usuarios ya no podrán verlos en la página principal.')) {
+        return;
+    }
+
+    try {
+        const btnOcultar = document.getElementById('btn-ocultar-resultados');
+        if (btnOcultar) {
+            btnOcultar.disabled = true;
+            btnOcultar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ocultando...';
+        }
+
+        const response = await fetch(API_URLS.ocultarResultados, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+
+        if (data.success) {
+            mostrarNotificacion(data.message || '✅ Resultados ocultados correctamente', 'success');
+            
+            // Restaurar botón de publicación
+            const btnPublicar = document.getElementById('btn-publicar-resultados');
+            btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
+            btnPublicar.classList.remove('btn-secondary');
+            btnPublicar.classList.add('btn-success');
+            btnPublicar.onclick = publicarResultados;
+            btnPublicar.disabled = false;
+            
+            // Remover botón de ocultar
+            if (btnOcultar) {
+                btnOcultar.remove();
+            }
+            
+            // Actualizar estado local
+            estado.resultadosPublicados = false;
+            
+        } else {
+            throw new Error(data.error || 'Error al ocultar resultados');
+        }
+    } catch (error) {
+        console.error('❌ Error ocultando resultados:', error);
+        mostrarNotificacion(error.message, 'error');
+        
+        // Restaurar botón de ocultar
+        const btnOcultar = document.getElementById('btn-ocultar-resultados');
+        if (btnOcultar) {
+            btnOcultar.disabled = false;
+            btnOcultar.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar Resultados';
+        }
+    }
+}
+
+// Función para agregar botón de ocultar
+function agregarBotonOcultar() {
+    const resultsActions = document.querySelector('.results-actions');
+    
+    // Verificar si ya existe el botón
+    if (!document.getElementById('btn-ocultar-resultados')) {
+        const btnOcultar = document.createElement('button');
+        btnOcultar.id = 'btn-ocultar-resultados';
+        btnOcultar.className = 'btn btn-warning';
+        btnOcultar.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar Resultados';
+        btnOcultar.onclick = ocultarResultados;
+        
+        resultsActions.appendChild(btnOcultar);
+    }
+}
+
+// Función para verificar el estado de publicación al cargar la página
+async function verificarEstadoPublicacion() {
+    try {
+        const data = await apiRequest(API_URLS.estadoPublicacion);
+        
+        if (data.success && data.estado.resultados_publicados) {
+            // Los resultados están publicados, actualizar interfaz
+            const btnPublicar = document.getElementById('btn-publicar-resultados');
+            if (btnPublicar) {
+                btnPublicar.innerHTML = '<i class="fas fa-eye"></i> Resultados Publicados';
+                btnPublicar.classList.remove('btn-success');
+                btnPublicar.classList.add('btn-secondary');
+                btnPublicar.onclick = null;
+                btnPublicar.disabled = true;
+                
+                // Agregar botón para ocultar
+                agregarBotonOcultar();
+                
+                // Actualizar estado local
+                estado.resultadosPublicados = true;
+            }
+        } else {
+            // Los resultados no están publicados, asegurar que el botón esté en estado normal
+            const btnPublicar = document.getElementById('btn-publicar-resultados');
+            if (btnPublicar) {
+                btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
+                btnPublicar.classList.remove('btn-secondary');
+                btnPublicar.classList.add('btn-success');
+                btnPublicar.onclick = publicarResultados;
+                btnPublicar.disabled = false;
+                
+                // Remover botón de ocultar si existe
+                const btnOcultar = document.getElementById('btn-ocultar-resultados');
+                if (btnOcultar) {
+                    btnOcultar.remove();
+                }
+                
+                // Actualizar estado local
+                estado.resultadosPublicados = false;
+            }
+        }
+    } catch (error) {
+        console.error('Error verificando estado de publicación:', error);
+    }
+}
+
 // EVENTOS Y CONFIGURACIÓN
 function configurarEventos() {
     console.log('🔄 Configurando eventos...');
@@ -489,27 +663,10 @@ function configurarEventos() {
         });
     }
 
+    // Botón de publicar resultados
     const btnPublicarResultados = document.getElementById('btn-publicar-resultados');
     if (btnPublicarResultados) {
-        btnPublicarResultados.addEventListener('click', async () => {
-            if (confirm('¿Está seguro de publicar los resultados? Esta acción no se puede deshacer.')) {
-                try {
-                    const response = await fetch(API_URLS.publicarResultados, {
-                        method: 'POST'
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        mostrarNotificacion('Resultados publicados correctamente', 'success');
-                    } else {
-                        throw new Error(data.error || 'Error al publicar resultados');
-                    }
-                } catch (error) {
-                    mostrarNotificacion(error.message, 'error');
-                }
-            }
-        });
+        btnPublicarResultados.addEventListener('click', publicarResultados);
     }
 }
 
@@ -527,7 +684,7 @@ function mostrarPreviewImagen(input, previewElement) {
     }
 }
 
-// INICIALIZACIÓN
+// INICIALIZACIÓN MEJORADA
 async function inicializar() {
     console.log('🚀 Inicializando sistema de administración...');
     
@@ -535,6 +692,7 @@ async function inicializar() {
         configurarEventos();
         await cargarHorarioActual();
         await cargarCandidatos();
+        await verificarEstadoPublicacion(); // Verificar estado de publicación
         
         console.log('✅ Sistema inicializado correctamente');
         
@@ -551,3 +709,10 @@ async function inicializar() {
 
 // Iniciar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', inicializar);
+
+// Utilidades globales (para acceso desde HTML)
+window.cargarCandidatos = cargarCandidatos;
+window.editarCandidato = editarCandidato;
+window.eliminarCandidato = eliminarCandidato;
+window.publicarResultados = publicarResultados;
+window.ocultarResultados = ocultarResultados;

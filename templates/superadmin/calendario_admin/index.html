@@ -9,10 +9,9 @@
 </head>
 <body>
     <!-- Botón de Dashboard -->
-<a href="{{ url_for('admin.inicio') }}" id="btn-dashboard" class="btn btn-secondary dashboard-btn">
-  <i class="fas fa-arrow-left"></i> Dashboard
-</a>
-
+    <a href="{{ url_for('admin.inicio') }}" id="btn-dashboard" class="btn btn-secondary dashboard-btn">
+        <i class="fas fa-arrow-left"></i> Dashboard
+    </a>
 
     <div class="container">
         <h1>Calendario de Eventos</h1>
@@ -107,7 +106,6 @@
             </div>
         </div>
 
-        <!-- Resto del código se mantiene igual -->
         <!-- Guía de Colores -->
         <div class="color-guide">
             <h4><i class="fas fa-palette"></i> Guía de Colores</h4>
@@ -202,11 +200,87 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="close-btn" onclick="closeModal()">
-                    <i class="fas fa-times"></i> Cerrar
+                <button id="editBtn" class="edit-btn">
+                    <i class="fas fa-edit"></i> Editar Evento
                 </button>
                 <button id="deleteBtn" class="delete-btn">
                     <i class="fas fa-trash-alt"></i> Eliminar Evento
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edición del Evento (Más Compacto) -->
+    <div id="editEvent" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Editar Evento</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <input type="text" id="editTitle" placeholder="Título del evento" required>
+                    <div class="input-focus-line"></div>
+                </div>
+                <div class="input-group">
+                    <textarea id="editDescription" placeholder="Descripción del evento" rows="2" required></textarea>
+                    <div class="input-focus-line"></div>
+                </div>
+                <div class="date-time-group">
+                    <div class="input-group">
+                        <input type="date" id="editDate" required>
+                        <div class="input-focus-line"></div>
+                    </div>
+                    <div class="input-group">
+                        <input type="time" id="editTime" required>
+                        <div class="input-focus-line"></div>
+                    </div>
+                </div>
+                
+                <!-- Selector de Roles Compacto -->
+                <div class="input-group role-selector-container">
+                    <p class="select-instruction">
+                        <i class="fas fa-mouse-pointer"></i> Destinatarios:
+                    </p>
+                    <div class="role-selector-wrapper">
+                        <div class="role-options-grid">
+                            <div class="role-option" data-value="Estudiante">
+                                <div class="role-icon">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                                <div class="role-content">
+                                    <span class="role-title">Estudiantes</span>
+                                    <span class="role-description">Para estudiantes</span>
+                                </div>
+                                <div class="role-checkbox">
+                                    <div class="checkmark"></div>
+                                </div>
+                                <div class="role-glow"></div>
+                            </div>
+                            <div class="role-option" data-value="Profesor">
+                                <div class="role-icon">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                </div>
+                                <div class="role-content">
+                                    <span class="role-title">Profesores</span>
+                                    <span class="role-description">Para profesores</span>
+                                </div>
+                                <div class="role-checkbox">
+                                    <div class="checkmark"></div>
+                                </div>
+                                <div class="role-glow"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="selected-roles-display">
+                        <span class="selected-label">Seleccionados:</span>
+                        <div class="selected-roles-tags" id="editSelectedRolesTags"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveEditBtn" class="submit-btn">
+                    <i class="fas fa-save"></i> Guardar
                 </button>
             </div>
         </div>

@@ -866,6 +866,26 @@ class HorarioVotacion(db.Model):
         return f"<HorarioVotacion {self.inicio}-{self.fin}>"
 
 
+
+
+class EstadoPublicacion(db.Model):
+    __tablename__ = 'estado_publicacion'
+    
+    id_estado = db.Column(db.Integer, primary_key=True)
+    resultados_publicados = db.Column(db.Boolean, default=False, nullable=False)
+    fecha_publicacion = db.Column(db.DateTime, default=datetime.now)
+    usuario_publico = db.Column(db.String(100))
+    ultima_actualizacion = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    def to_dict(self):
+        return {
+            'id_estado': self.id_estado,
+            'resultados_publicados': self.resultados_publicados,
+            'fecha_publicacion': self.fecha_publicacion.isoformat() if self.fecha_publicacion else None,
+            'usuario_publico': self.usuario_publico,
+            'ultima_actualizacion': self.ultima_actualizacion.isoformat() if self.ultima_actualizacion else None
+        }
+
 # ================================
 # Modelo de Reportes de Calificaciones
 # ================================

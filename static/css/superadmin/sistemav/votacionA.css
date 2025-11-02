@@ -98,6 +98,29 @@
     font-weight: 600;
 }
 
+
+/* Estilos para el estado de publicación */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Animación para el spinner */
+.fa-spin {
+    animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para resultados publicados */
+.results-published {
+    border: 2px solid #28a745;
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+} 
+
 /* Responsive */
 @media (max-width: 768px) {
     .result-item {

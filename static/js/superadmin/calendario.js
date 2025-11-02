@@ -2,6 +2,8 @@ let events = [];
 let currentDate = new Date();
 let selectedEventIndex = null;
 let selectedRoles = new Set(['Estudiante']); // Valor por defecto
+let editingEventId = null;
+let editSelectedRoles = new Set();
 
 // Inicialización cuando el DOM está listo
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadEvents();
     createParticles();
     initializeRoleSelector();
+    initializeEditRoleSelector();
 });
 
 function initializeCalendar() {
@@ -18,6 +21,7 @@ function initializeCalendar() {
     // Establecer fecha mínima en el input de fecha (hoy)
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').min = today;
+    document.getElementById('editDate').min = today;
     
     // Mostrar tooltips en hover
     setupTooltips();
@@ -33,27 +37,46 @@ function setupEventListeners() {
     
     // Validación de fecha y hora
     document.getElementById('date').addEventListener('change', updateTimeValidation);
+    document.getElementById('editDate').addEventListener('change', updateEditTimeValidation);
     
-    // Cerrar modal con ESC
+    // Cerrar modales con ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeModal();
+            closeEditModal();
         }
     });
     
-    // Cerrar modal haciendo click fuera
+    // Cerrar modales haciendo click fuera
     document.getElementById('eventDetails').addEventListener('click', function(e) {
         if (e.target === this) {
             closeModal();
         }
     });
     
+    document.getElementById('editEvent').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEditModal();
+        }
+    });
+    
+    // Botón de edición
+    document.getElementById('editBtn').addEventListener('click', function() {
+        if (selectedEventIndex !== null) {
+            const event = events[selectedEventIndex];
+            openEditModal(event);
+        }
+    });
+    
+    // Botón de guardar edición
+    document.getElementById('saveEditBtn').addEventListener('click', saveEditedEvent);
+    
     // Efectos de hover en botones de navegación
     setupNavigationEffects();
 }
 
 function initializeRoleSelector() {
-    const roleOptions = document.querySelectorAll('.role-option');
+    const roleOptions = document.querySelectorAll('.role-option:not(#editEvent .role-option)');
     
     roleOptions.forEach(option => {
         option.addEventListener('click', function(e) {
@@ -97,6 +120,50 @@ function initializeRoleSelector() {
     
     // Inicializar display con el valor por defecto
     updateSelectedRolesDisplay();
+}
+
+function initializeEditRoleSelector() {
+    const roleOptions = document.querySelectorAll('#editEvent .role-option');
+    
+    roleOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const role = this.dataset.value;
+            
+            if (editSelectedRoles.has(role)) {
+                editSelectedRoles.delete(role);
+                this.classList.remove('selected');
+                createDeselectParticles(this);
+            } else {
+                editSelectedRoles.add(role);
+                this.classList.add('selected');
+                createSelectParticles(this);
+            }
+            
+            // Asegurar que siempre haya al menos un rol seleccionado
+            if (editSelectedRoles.size === 0) {
+                editSelectedRoles.add('Estudiante');
+                document.querySelector('#editEvent .role-option[data-value="Estudiante"]').classList.add('selected');
+                createSelectParticles(document.querySelector('#editEvent .role-option[data-value="Estudiante"]'));
+            }
+            
+            updateEditSelectedRolesDisplay();
+            createRippleEffect(e);
+        });
+        
+        // Efectos de hover mejorados
+        option.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('selected')) {
+                this.style.transform = 'translateY(-3px) scale(1.02)';
+            }
+        });
+        
+        option.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('selected')) {
+                this.style.transform = 'translateY(0) scale(1)';
+            }
+        });
+    });
 }
 
 function createSelectParticles(element) {
@@ -213,6 +280,61 @@ function updateSelectedRolesDisplay() {
             }
             
             updateSelectedRolesDisplay();
+        });
+    });
+}
+
+function updateEditSelectedRolesDisplay() {
+    const tagsContainer = document.getElementById('editSelectedRolesTags');
+    tagsContainer.innerHTML = '';
+    
+    if (editSelectedRoles.size === 0) {
+        const emptyMessage = document.createElement('span');
+        emptyMessage.className = 'empty-message';
+        emptyMessage.textContent = 'Ningún rol seleccionado';
+        emptyMessage.style.color = 'var(--gray)';
+        emptyMessage.style.fontStyle = 'italic';
+        tagsContainer.appendChild(emptyMessage);
+        return;
+    }
+    
+    editSelectedRoles.forEach(role => {
+        const tag = document.createElement('div');
+        tag.className = `role-tag ${role.toLowerCase()}`;
+        
+        const icon = role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫';
+        tag.innerHTML = `
+            ${icon} ${role}
+            <button class="tag-remove" data-role="${role}">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        tagsContainer.appendChild(tag);
+    });
+    
+    // Agregar event listeners para los botones de eliminar
+    document.querySelectorAll('#editEvent .tag-remove').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const role = this.dataset.role;
+            
+            // No permitir eliminar si es el último rol
+            if (editSelectedRoles.size <= 1) {
+                showToast('Debe haber al menos un rol seleccionado', 'warning');
+                return;
+            }
+            
+            editSelectedRoles.delete(role);
+            
+            // Deseleccionar la opción correspondiente
+            const roleOption = document.querySelector(`#editEvent .role-option[data-value="${role}"]`);
+            if (roleOption) {
+                roleOption.classList.remove('selected');
+                createDeselectParticles(roleOption);
+            }
+            
+            updateEditSelectedRolesDisplay();
         });
     });
 }
@@ -553,6 +675,21 @@ function updateTimeValidation() {
     }
 }
 
+function updateEditTimeValidation() {
+    const selectedDate = document.getElementById('editDate').value;
+    const today = new Date().toISOString().split('T')[0];
+    const timeInput = document.getElementById('editTime');
+    
+    if (selectedDate === today) {
+        const now = new Date();
+        const currentHour = now.getHours().toString().padStart(2, '0');
+        const currentMinute = now.getMinutes().toString().padStart(2, '0');
+        timeInput.min = `${currentHour}:${currentMinute}`;
+    } else {
+        timeInput.min = '00:00';
+    }
+}
+
 function renderEvents() {
     document.querySelectorAll(".day").forEach(dayDiv => {
         const dayEventsDiv = dayDiv.querySelector(".events");
@@ -635,7 +772,122 @@ function closeModal() {
     setTimeout(() => {
         modal.style.display = "none";
         modalContent.style.animation = '';
+        selectedEventIndex = null;
     }, 300);
+}
+
+// Función para abrir el modal de edición
+function openEditModal(event) {
+    editingEventId = event.id;
+    
+    // Llenar el formulario con los datos actuales del evento
+    document.getElementById("editTitle").value = event.title;
+    document.getElementById("editDescription").value = event.description;
+    document.getElementById("editDate").value = event.date;
+    document.getElementById("editTime").value = event.time;
+    
+    // Configurar roles seleccionados
+    const roles = typeof event.role === 'string' ? event.role.split(',') : [event.role];
+    editSelectedRoles = new Set(roles);
+    
+    // Actualizar la UI de roles
+    updateEditRoleSelector();
+    
+    // Cerrar el modal de detalles
+    closeModal();
+    
+    // Mostrar el modal de edición
+    const modal = document.getElementById("editEvent");
+    modal.style.display = "flex";
+}
+
+// Función para cerrar el modal de edición
+function closeEditModal() {
+    const modal = document.getElementById("editEvent");
+    const modalContent = modal.querySelector('.modal-content');
+    modalContent.style.animation = 'modalSlideIn 0.3s ease reverse';
+    
+    setTimeout(() => {
+        modal.style.display = "none";
+        modalContent.style.animation = '';
+        editingEventId = null;
+        editSelectedRoles.clear();
+    }, 300);
+}
+
+// Función para actualizar el selector de roles en el modal de edición
+function updateEditRoleSelector() {
+    const roleOptions = document.querySelectorAll('#editEvent .role-option');
+    
+    roleOptions.forEach(option => {
+        const role = option.dataset.value;
+        if (editSelectedRoles.has(role)) {
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
+    });
+    
+    updateEditSelectedRolesDisplay();
+}
+
+// Función para guardar los cambios del evento editado
+function saveEditedEvent() {
+    const title = document.getElementById("editTitle").value;
+    const description = document.getElementById("editDescription").value;
+    const date = document.getElementById("editDate").value;
+    const time = document.getElementById("editTime").value;
+    const roles = Array.from(editSelectedRoles);
+
+    // Validaciones básicas
+    if (!title || !description || !date || !time) {
+        showToast("⚠️ Rellena todos los campos obligatorios", 'error');
+        return;
+    }
+
+    // Validar que la fecha no sea del pasado
+    if (!validarFechaFutura(date, time)) {
+        return;
+    }
+
+    // Mostrar indicador de carga
+    const saveBtn = document.getElementById('saveEditBtn');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    saveBtn.disabled = true;
+
+    fetch(`/admin/eventos/${editingEventId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            nombre: title,
+            descripcion: description,
+            fecha: date,
+            hora: time,
+            rol_destino: roles.join(',')
+        })
+    })
+    .then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            throw new Error(data.error || "❌ No se pudo actualizar el evento");
+        }
+        return data;
+    })
+    .then(data => {
+        console.log("✅ Evento actualizado:", data);
+        loadEvents();
+        closeEditModal();
+        showToast("🎉 Evento actualizado con éxito", 'success');
+    })
+    .catch(err => {
+        console.error("❌ Error actualizando evento:", err);
+        showToast("⚠️ No se pudo actualizar el evento: " + err.message, 'error');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
 }
 
 function deleteEvent(id) {
@@ -688,33 +940,7 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// Función para limpiar selección de roles (opcional)
-function clearRoleSelection() {
-    selectedRoles.clear();
-    selectedRoles.add('Estudiante'); // Valor por defecto
-    
-    // Actualizar UI
-    document.querySelectorAll('.role-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    document.querySelector('.role-option[data-value="Estudiante"]').classList.add('selected');
-    updateSelectedRolesDisplay();
-}
-
-// Función para seleccionar todos los roles
-function selectAllRoles() {
-    selectedRoles.clear();
-    document.querySelectorAll('.role-option').forEach(option => {
-        const role = option.dataset.value;
-        selectedRoles.add(role);
-        option.classList.add('selected');
-        createSelectParticles(option);
-    });
-    updateSelectedRolesDisplay();
-}
-
 // Exportar funciones para uso global
 window.addEvent = addEvent;
 window.closeModal = closeModal;
-window.clearRoleSelection = clearRoleSelection;
-window.selectAllRoles = selectAllRoles;
+window.closeEditModal = closeEditModal;
