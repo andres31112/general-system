@@ -54,6 +54,16 @@ class Usuario(db.Model, UserMixin):
     id_rol_fk = db.Column(db.Integer, db.ForeignKey('roles.id_rol'), nullable=False)
     estado_cuenta = db.Column(db.Enum('activa', 'inactiva', name='estado_cuenta_enum'), nullable=False, default='activa')
     
+        
+    voto_registrado = db.Column(db.Boolean, default=False)
+    def puede_votar(self):
+        """Determina si el usuario puede votar (solo estudiantes)"""
+        return self.es_estudiante() and not self.voto_registrado
+    
+    def ha_votado(self):
+        """Verifica si el estudiante ya votó"""
+        return self.es_estudiante() and self.voto_registrado
+
     # Nuevos campos para verificación de email
     temp_password = db.Column(db.String(100), nullable=True)
     email_verified = db.Column(db.Boolean, default=False)
@@ -865,6 +875,26 @@ class HorarioVotacion(db.Model):
     def __repr__(self):
         return f"<HorarioVotacion {self.inicio}-{self.fin}>"
 
+
+
+
+class EstadoPublicacion(db.Model):
+    __tablename__ = 'estado_publicacion'
+    
+    id_estado = db.Column(db.Integer, primary_key=True)
+    resultados_publicados = db.Column(db.Boolean, default=False, nullable=False)
+    fecha_publicacion = db.Column(db.DateTime, default=datetime.now)
+    usuario_publico = db.Column(db.String(100))
+    ultima_actualizacion = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    def to_dict(self):
+        return {
+            'id_estado': self.id_estado,
+            'resultados_publicados': self.resultados_publicados,
+            'fecha_publicacion': self.fecha_publicacion.isoformat() if self.fecha_publicacion else None,
+            'usuario_publico': self.usuario_publico,
+            'ultima_actualizacion': self.ultima_actualizacion.isoformat() if self.ultima_actualizacion else None
+        }
 
 # ================================
 # Modelo de Reportes de Calificaciones

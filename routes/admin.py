@@ -15,7 +15,7 @@ from controllers.models import (
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, AsignacionEquipo, Equipo, Incidente, Mantenimiento, Comunicacion, 
     Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion,
-    CicloAcademico, PeriodoAcademico
+    CicloAcademico, PeriodoAcademico,EstadoPublicacion, Voto
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -3494,31 +3494,17 @@ def api_detalle_incidente(id_incidente):
         print(f"Error al obtener detalle del incidente: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
+
 # ==================== CALENDARIO Y EVENTOS ====================
 
 # 📌 Vista del calendario de eventos (HTML)
 @admin_bp.route("/eventos/calendario", methods=["GET"])
 @login_required
 def calendario_eventos():
+    
     return render_template("superadmin/calendario_admin/index.html")
 
-# 📌 API: Eliminar evento
-@admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
-@login_required
-def eliminar_evento(evento_id):
-    try:
-        evento = Evento.query.get(evento_id)
-        if not evento:
-            return jsonify({"error": "Evento no encontrado"}), 404
-
-        db.session.delete(evento)
-        db.session.commit()
-        return jsonify({"mensaje": "Evento eliminado correctamente ✅"}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-
-# 📌 API: Listar todos los eventos (JSON)
+# 📌 API: Obtener todos los eventos
 @admin_bp.route("/eventos", methods=["GET"])
 @login_required
 def listar_eventos():
@@ -3537,7 +3523,6 @@ def listar_eventos():
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # 📌 API: Crear un nuevo evento
 @admin_bp.route("/eventos", methods=["POST"])
@@ -3582,7 +3567,66 @@ def crear_evento():
         print("❌ Error creando evento:", str(e))  # Debug en consola
         return jsonify({"error": str(e)}), 400
 
+# 📌 API: Actualizar evento existente
+@admin_bp.route("/eventos/<int:evento_id>", methods=["PUT"])
+@login_required
+def actualizar_evento(evento_id):
+    data = request.get_json()
+    print("📥 Payload actualización recibido:", data)
 
+    try:
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            return jsonify({"error": "Evento no encontrado"}), 404
+
+        # Leer valores (aceptando minúsculas o mayúsculas)
+        nombre = data.get("nombre") or data.get("Nombre")
+        descripcion = data.get("descripcion") or data.get("Descripcion")
+        fecha_str = data.get("fecha") or data.get("Fecha")
+        hora_str = data.get("hora") or data.get("Hora")
+        rol_destino = data.get("rol_destino") or data.get("RolDestino")
+
+        if not fecha_str or not hora_str:
+            return jsonify({"error": "Faltan fecha u hora"}), 400
+
+        # 🕒 Normalizar hora: quitar "a. m." / "p. m." y convertir a 24h
+        hora_str = hora_str.replace("a. m.", "AM").replace("p. m.", "PM").strip()
+
+        try:
+            hora_dt = datetime.strptime(hora_str, "%I:%M %p")  # 12h → 24h
+        except ValueError:
+            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")  # fallback
+
+        # Actualizar campos
+        evento.nombre = nombre
+        evento.descripcion = descripcion
+        evento.fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        evento.hora = hora_dt.time()
+        evento.rol_destino = rol_destino
+
+        db.session.commit()
+        return jsonify({"mensaje": "Evento actualizado correctamente ✅"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print("❌ Error actualizando evento:", str(e))
+        return jsonify({"error": str(e)}), 400
+
+# 📌 API: Eliminar evento
+@admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
+@login_required
+def eliminar_evento(evento_id):
+    try:
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            return jsonify({"error": "Evento no encontrado"}), 404
+
+        db.session.delete(evento)
+        db.session.commit()
+        return jsonify({"mensaje": "Evento eliminado correctamente ✅"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 # ==================== SISTEMA DE VOTACIÓN ====================
 
@@ -3662,7 +3706,8 @@ def listar_candidatos():
             "categoria": c.categoria,
             "tarjeton": c.tarjeton,
             "propuesta": c.propuesta,
-            "foto": c.foto
+            "foto": c.foto,
+            "votos": c.votos  # 🔥 ESTA LÍNEA FALTABA
         })
     return jsonify(lista)
 
@@ -3670,23 +3715,72 @@ def listar_candidatos():
 @login_required
 @role_required(1)
 def crear_candidato():
-    """API para crear candidato"""
+    """API para crear candidato con manejo de errores específicos"""
     try:
-        nombre = request.form.get("nombre")
-        tarjeton = request.form.get("tarjeton")
-        propuesta = request.form.get("propuesta")
-        categoria = request.form.get("categoria")
+        nombre = request.form.get("nombre", "").strip()
+        tarjeton = request.form.get("tarjeton", "").strip()
+        propuesta = request.form.get("propuesta", "").strip()
+        categoria = request.form.get("categoria", "").strip()
         foto = request.files.get("foto")
 
-        if not nombre or not tarjeton or not propuesta or not categoria:
-            return jsonify({"ok": False, "error": "Todos los campos son obligatorios"}), 400
+        # 🔥 VALIDACIONES DETALLADAS
+        if not nombre:
+            return jsonify({"ok": False, "error": "⚠️ El nombre del candidato es obligatorio"}), 400
+        
+        if not tarjeton:
+            return jsonify({"ok": False, "error": "⚠️ El número de tarjetón es obligatorio"}), 400
+        
+        if not propuesta:
+            return jsonify({"ok": False, "error": "⚠️ La propuesta es obligatoria"}), 400
+        
+        if not categoria:
+            return jsonify({"ok": False, "error": "⚠️ La categoría es obligatoria"}), 400
 
+        # 🔥 VALIDAR TARJETÓN ÚNICO
+        candidato_existente = Candidato.query.filter_by(tarjeton=tarjeton).first()
+        if candidato_existente:
+            return jsonify({
+                "ok": False, 
+                "error": f"❌ El tarjetón {tarjeton} ya está registrado para el candidato {candidato_existente.nombre}"
+            }), 400
+
+        # 🔥 VALIDAR NOMBRE ÚNICO (opcional, pero recomendado)
+        nombre_existente = Candidato.query.filter_by(nombre=nombre).first()
+        if nombre_existente:
+            return jsonify({
+                "ok": False, 
+                "error": f"❌ Ya existe un candidato registrado con el nombre {nombre}"
+            }), 400
+
+        # 🔥 VALIDAR ARCHIVO DE FOTO
         filename = None
         if foto:
+            # Validar que sea una imagen
+            if not foto.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                return jsonify({
+                    "ok": False, 
+                    "error": "❌ Formato de imagen no válido. Use PNG, JPG, JPEG o GIF"
+                }), 400
+            
+            # Validar tamaño del archivo (max 5MB)
+            if len(foto.read()) > 5 * 1024 * 1024:
+                return jsonify({
+                    "ok": False, 
+                    "error": "❌ La imagen es demasiado grande. Máximo 5MB"
+                }), 400
+            
+            foto.seek(0)  # Volver al inicio del archivo después de leer
             filename = secure_filename(foto.filename)
+            
+            # Crear nombre único para evitar sobreescrituras
+            nombre_base = secure_filename(nombre)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"{nombre_base}_{timestamp}_{filename}"
+            
             path = os.path.join(current_app.static_folder, "images/candidatos", filename)
             foto.save(path)
 
+        # 🔥 CREAR CANDIDATO
         nuevo = Candidato(
             nombre=nombre,
             tarjeton=tarjeton,
@@ -3697,16 +3791,21 @@ def crear_candidato():
         db.session.add(nuevo)
         db.session.commit()
 
-        # devolver lista actualizada
+        # Devolver lista actualizada
         candidatos = Candidato.query.all()
         return jsonify({
             "ok": True,
+            "mensaje": f"✅ Candidato {nombre} creado exitosamente",
             "candidatos": [c.to_dict() for c in candidatos]
         })
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        print(f"❌ Error inesperado al crear candidato: {str(e)}")
+        return jsonify({
+            "ok": False, 
+            "error": f"❌ Error interno del servidor: {str(e)}"
+        }), 500
 
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["PUT", "POST"])
 @login_required
@@ -3785,21 +3884,47 @@ def editar_candidato(candidato_id):
         db.session.rollback()
         print("❌ Error al editar candidato:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
-
+    
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["DELETE"])
 @login_required
 @role_required(1)
 def eliminar_candidato(candidato_id):
-    """API para eliminar candidato"""
+    """API para eliminar candidato y permitir que estudiantes vuelvan a votar"""
     try:
         candidato = Candidato.query.get(candidato_id)
         if not candidato:
             return jsonify({"ok": False, "error": "Candidato no encontrado"}), 404
 
+        # Encontrar todos los votos asociados a este candidato
+        votos_asociados = Voto.query.filter_by(candidato_id=candidato_id).all()
+        total_votos = len(votos_asociados)
+        
+        estudiantes_liberados = 0
+        
+        if total_votos > 0:
+            # Obtener IDs únicos de los que votaron
+            usuarios_votantes_ids = list(set([voto.estudiante_id for voto in votos_asociados]))
+            
+            # Filtrar solo los estudiantes
+            estudiantes_afectados = Usuario.query.filter(
+                Usuario.id_usuario.in_(usuarios_votantes_ids),
+                Usuario.id_rol_fk == 3  # ID del rol estudiante
+            ).all()
+            
+            # Permitir que los estudiantes vuelvan a votar
+            for estudiante in estudiantes_afectados:
+                estudiante.voto_registrado = False
+                estudiantes_liberados += 1
+            
+            # Eliminar los registros de votos
+            for voto in votos_asociados:
+                db.session.delete(voto)
+
+        # Eliminar el candidato
         db.session.delete(candidato)
         db.session.commit()
 
-        # Devolver la lista actualizada de candidatos para refrescar resultados
+        # Devolver lista actualizada
         candidatos = Candidato.query.all()
         candidatos_data = [
             {
@@ -3808,15 +3933,268 @@ def eliminar_candidato(candidato_id):
                 "categoria": c.categoria,
                 "tarjeton": c.tarjeton,
                 "propuesta": c.propuesta,
-                "votos": c.votos
+                "votos": c.votos,
+                "foto": c.foto
             }
             for c in candidatos
         ]
 
-        return jsonify({"ok": True, "candidatos": candidatos_data}), 200
+        mensaje = "✅ Candidato eliminado correctamente"
+        if total_votos > 0:
+            mensaje += f". {estudiantes_liberados} estudiante(s) pueden volver a votar."
+
+        return jsonify({
+            "ok": True, 
+            "mensaje": mensaje,
+            "candidatos": candidatos_data
+        }), 200
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": f"Error al eliminar candidato: {str(e)}"}), 500
+
+
+
+# 📌 Ruta de prueba para verificar que todo funciona
+@admin_bp.route("/test-sistema-votos", methods=["POST"])
+@login_required
+def test_sistema_votos():
+    """Prueba completa del sistema de votos"""
+    try:
+        # 1. Verificar campo voto_registrado
+        estudiante = Usuario.query.filter_by(id_rol_fk=3).first()  # Primer estudiante
+        if not estudiante:
+            return jsonify({"error": "No hay estudiantes"}), 400
+            
+        print(f"✅ Estudiante: {estudiante.nombre}")
+        print(f"✅ voto_registrado: {estudiante.voto_registrado}")
+        
+        # 2. Verificar candidatos
+        candidatos = Candidato.query.all()
+        print(f"✅ Candidatos: {len(candidatos)}")
+        
+        for c in candidatos:
+            print(f"   - {c.nombre}: {c.votos} votos")
+        
+        # 3. Hacer una prueba de voto
+        if candidatos:
+            candidato_prueba = candidatos[0]
+            votos_antes = candidato_prueba.votos
+            
+            # Simular voto
+            candidato_prueba.votos += 1
+            estudiante.voto_registrado = True
+            db.session.commit()
+            
+            # Verificar después
+            db.session.refresh(candidato_prueba)
+            votos_despues = candidato_prueba.votos
+            
+            return jsonify({
+                "ok": True,
+                "prueba": {
+                    "candidato": candidato_prueba.nombre,
+                    "votos_antes": votos_antes,
+                    "votos_despues": votos_despues,
+                    "estudiante_voto_registrado": estudiante.voto_registrado
+                }
+            })
+        
+        return jsonify({"error": "No hay candidatos"})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# ==================== GESTIÓN DE PUBLICACIÓN DE RESULTADOS ====================
+
+@admin_bp.route("/estado-publicacion", methods=["GET"])
+def obtener_estado_publicacion():
+    """API para obtener el estado actual de publicación"""
+    try:
+        estado = EstadoPublicacion.query.first()
+        
+        if not estado:
+            # Crear estado por defecto si no existe
+            estado = EstadoPublicacion(
+                resultados_publicados=False,
+                usuario_publico='Sistema'
+            )
+            db.session.add(estado)
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'estado': estado.to_dict()
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo estado de publicación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener estado: {str(e)}"
+        }), 500
+
+@admin_bp.route("/publicar-resultados", methods=["POST"])
+@login_required
+@role_required(1)
+def publicar_resultados():
+    """API para publicar los resultados de la votación"""
+    try:
+        # Obtener el usuario actual - CORREGIDO
+        from flask_login import current_user
+        
+        # Usar el campo correcto 'nombre' en lugar de 'username'
+        usuario = current_user.nombre if current_user.is_authenticated else 'Administrador'
+        
+        print(f"📢 Intentando publicar resultados como: {usuario}")
+        
+        # Buscar o crear el estado de publicación
+        estado = EstadoPublicacion.query.first()
+        
+        if estado:
+            print(f"✅ Estado encontrado, actualizando...")
+            # Actualizar estado existente
+            estado.resultados_publicados = True
+            estado.fecha_publicacion = datetime.now()
+            estado.usuario_publico = usuario
+        else:
+            print(f"🆕 Creando nuevo estado de publicación...")
+            # Crear nuevo estado
+            estado = EstadoPublicacion(
+                resultados_publicados=True,
+                fecha_publicacion=datetime.now(),
+                usuario_publico=usuario
+            )
+            db.session.add(estado)
+        
+        db.session.commit()
+        
+        print(f"📢 Resultados publicados correctamente por: {usuario}")
+        
+        return jsonify({
+            "success": True, 
+            "message": "Resultados publicados correctamente. Ahora son visibles para todos los usuarios.",
+            "fecha_publicacion": estado.fecha_publicacion.isoformat(),
+            "publicado_por": usuario
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error al publicar resultados: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False, 
+            "error": f"Error al publicar resultados: {str(e)}"
+        }), 500
+
+@admin_bp.route("/ocultar-resultados", methods=["POST"])
+@login_required
+@role_required(1)
+def ocultar_resultados():
+    """API para ocultar los resultados de la votación"""
+    try:
+        from flask_login import current_user
+        
+        # Usar el campo correcto 'nombre' en lugar de 'username'
+        usuario = current_user.nombre if current_user.is_authenticated else 'Administrador'
+        
+        print(f"🔒 Intentando ocultar resultados como: {usuario}")
+        
+        estado = EstadoPublicacion.query.first()
+        
+        if estado:
+            estado.resultados_publicados = False
+            estado.usuario_publico = usuario
+        else:
+            estado = EstadoPublicacion(
+                resultados_publicados=False,
+                usuario_publico=usuario
+            )
+            db.session.add(estado)
+        
+        db.session.commit()
+        
+        print(f"🔒 Resultados ocultados correctamente por: {usuario}")
+        
+        return jsonify({
+            "success": True, 
+            "message": "Resultados ocultados correctamente.",
+            "fecha_ocultacion": datetime.now().isoformat(),
+            "ocultado_por": usuario
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error al ocultar resultados: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False, 
+            "error": f"Error al ocultar resultados: {str(e)}"
+        }), 500
+
+@admin_bp.route("/resultados-publicos", methods=["GET"])
+def resultados_publicos():
+    """API para obtener resultados públicos de la votación (solo si están publicados)"""
+    try:
+        # Verificar si los resultados están publicados
+        estado = EstadoPublicacion.query.first()
+        
+        if not estado or not estado.resultados_publicados:
+            return jsonify({
+                'success': True,
+                'resultados_publicados': False,
+                'message': 'Los resultados no están disponibles públicamente.'
+            }), 200
+        
+        # Obtener todos los candidatos con sus votos
+        candidatos = Candidato.query.all()
+        
+        # Estructurar los datos por categorías
+        resultados = {
+            'personero': [],
+            'contralor': [],
+            'cabildante': []
+        }
+        
+        for candidato in candidatos:
+            resultado_candidato = {
+                'id': candidato.id_candidato,
+                'nombre': candidato.nombre,
+                'tarjeton': candidato.tarjeton,
+                'propuesta': candidato.propuesta,
+                'foto': candidato.foto,
+                'votos': candidato.votos or 0,
+                'categoria': candidato.categoria
+            }
+            
+            if candidato.categoria in resultados:
+                resultados[candidato.categoria].append(resultado_candidato)
+        
+        # Ordenar por votos descendente en cada categoría
+        for categoria in resultados:
+            resultados[categoria].sort(key=lambda x: x['votos'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'resultados_publicados': True,
+            'resultados': resultados,
+            'total_votos': sum(c.votos or 0 for c in candidatos),
+            'fecha_publicacion': estado.fecha_publicacion.isoformat() if estado.fecha_publicacion else None,
+            'publicado_por': estado.usuario_publico,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo resultados públicos: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener resultados: {str(e)}"
+        }), 500
 
 
 
