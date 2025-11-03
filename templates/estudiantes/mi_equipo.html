@@ -34,6 +34,21 @@
             color: var(--accent3);
         }
 
+        .header-icons i:hover {
+            color: var(--accent3);
+        }
+
+        .atras i:hover {
+            color: var(--accent4);
+            background: white;
+            padding: 5px 5px;
+            border-radius: 10px;
+        }
+
+        .logo {
+            font-size: 32px;
+        }
+
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -194,19 +209,37 @@
             color: var(--accent2);
             width: 20px;
         }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #333;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
-    <div class="container py-4">
+{% extends "estudiantes/base.html" %}
+{% block content %}
+    <div class="container">
         <!-- Header -->
         <header class="custom-header">
             <div class="d-flex justify-content-between align-items-center flex-wrap">
                 <div class="d-flex align-items-center gap-3">
+                    <a href="{{ url_for('estudiante.estudiante_panel') }}" class="btn-outline-secondary border-0 me-3 text-white atras">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </a>
                     <i class="fas fa-laptop logo-icon"></i>
                     <h1 class="h3 mb-0">Mi Equipo Asignado</h1>
                 </div>
                 <div class="d-flex align-items-center gap-2 bg-white bg-opacity-10 rounded px-3 py-2">
-                    <div class="user-avatar"></div>
+                    <div class="user-avatar" id="userAvatar"></div>
                 </div>
             </div>
         </header>
@@ -345,10 +378,26 @@
                             </div>
                             <h3 class="h5 mb-0">Estado del Equipo</h3>
                         </div>
-                        <div class="status-indicator d-flex align-items-center justify-content-center gap-2 mb-3">
+                        <div class="status-indicator d-flex align-items-center justify-content-center gap-2 mb-3" id="statusIndicator">
                             <i class="fas fa-check-circle"></i>
                             <span class="fw-bold">En Buen Estado - Operativo</span>
                         </div>
+                        
+                        <!-- Alerta de Incidentes -->
+                        <div id="incidentesAlert" class="alert alert-warning d-none mb-3">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="fas fa-exclamation-triangle fs-4"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="alert-heading mb-2">
+                                        <i class="fas fa-tools me-1"></i>
+                                        Incidentes Reportados
+                                    </h6>
+                                    <p class="mb-2 small" id="incidentesTexto">Este equipo tiene incidentes reportados pendientes de solución.</p>
+                                    <div id="incidentesLista"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="info-item">
@@ -384,7 +433,7 @@
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
                         <i class="fas fa-envelope"></i>
-                        <span>soporte.tecnico@colegio.edu.co</span>
+                        <span>Gestion.Acentrax@gmail.com</span>
                     </div>
                     <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
                         <i class="fas fa-phone"></i>
@@ -416,7 +465,7 @@
                 <div class="d-flex flex-column gap-2">
                     <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
                         <i class="fas fa-envelope"></i>
-                        <span>coordinacion@colegio.edu.co</span>
+                        <span>Gestion.Acentrax@gmail.com</span>
                     </div>
                     <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
                         <i class="fas fa-phone"></i>
@@ -483,22 +532,104 @@
                 specValues[3].textContent = equipo.procesador || 'N/A';
             }
 
-            // Actualizar estado del equipo
             const statusIndicator = document.querySelector('.status-indicator');
-            const statusText = statusIndicator.querySelector('span');
-            const estadoMap = {
-                'Disponible': { text: 'Disponible - Operativo', color: '#d4edda', textColor: '#155724' },
-                'Asignado': { text: 'Asignado - En Uso', color: '#d1ecf1', textColor: '#0c5460' },
-                'Mantenimiento': { text: 'En Mantenimiento', color: '#fff3cd', textColor: '#856404' },
-                'Incidente': { text: 'Reportado con Incidente', color: '#f8d7da', textColor: '#721c24' }
-            };
+            const statusText = statusIndicator?.querySelector('span');
+            const statusIcon = statusIndicator?.querySelector('i');
 
-            const estadoInfo = estadoMap[equipo.estado] || estadoMap['Disponible'];
-            statusIndicator.style.background = `linear-gradient(135deg, ${estadoInfo.color}, ${estadoInfo.color})`;
-            statusText.style.color = estadoInfo.textColor;
-            statusText.textContent = estadoInfo.text;
-            statusIndicator.querySelector('i').style.color = estadoInfo.textColor;
+            if (statusIndicator && statusText && statusIcon) {
+                const estadoMap = {
+                    'Disponible': { 
+                        text: 'Disponible - Operativo', 
+                        color: '#d4edda', 
+                        textColor: '#155724',
+                        icon: 'fa-check-circle'
+                    },
+                    'Asignado': { 
+                        text: 'Asignado - En Uso', 
+                        color: '#d1ecf1', 
+                        textColor: '#0c5460',
+                        icon: 'fa-user-check'
+                    },
+                    'Mantenimiento': { 
+                        text: 'En Mantenimiento', 
+                        color: '#fff3cd', 
+                        textColor: '#856404',
+                        icon: 'fa-tools'
+                    },
+                    'Incidente': { 
+                        text: 'Reportado con Incidente', 
+                        color: '#f8d7da', 
+                        textColor: '#721c24',
+                        icon: 'fa-exclamation-triangle'
+                    }
+                };
 
+                let estadoInfo = estadoMap[equipo.estado] || estadoMap['Disponible'];
+                
+                // ✅ SOBRESCRIBIR si tiene incidentes activos
+                if (equipo.tiene_incidentes) {
+                    estadoInfo = {
+                        text: `Reportado con ${equipo.total_incidentes} Incidente${equipo.total_incidentes > 1 ? 's' : ''}`,
+                        color: '#f8d7da',
+                        textColor: '#721c24',
+                        icon: 'fa-exclamation-triangle'
+                    };
+                }
+                
+                statusIndicator.style.background = `linear-gradient(135deg, ${estadoInfo.color}, ${estadoInfo.color})`;
+                statusText.style.color = estadoInfo.textColor;
+                statusText.textContent = estadoInfo.text;
+                statusIcon.style.color = estadoInfo.textColor;
+                statusIcon.className = `fas ${estadoInfo.icon}`;
+            }
+
+            // ✅ MOSTRAR SECCIÓN DE INCIDENTES si existen
+            const incidentesAlert = document.getElementById('incidentesAlert');
+            if (incidentesAlert) {
+                if (equipo.tiene_incidentes && equipo.incidentes && equipo.incidentes.length > 0) {
+                    const incidentesLista = document.getElementById('incidentesLista');
+                    
+                    // Mostrar la alerta
+                    incidentesAlert.classList.remove('d-none');
+                    
+                    // Actualizar el texto descriptivo
+                    const incidentesTexto = document.getElementById('incidentesTexto');
+                    if (incidentesTexto) {
+                        incidentesTexto.textContent = `Este equipo tiene ${equipo.total_incidentes} incidente${equipo.total_incidentes > 1 ? 's' : ''} reportado${equipo.total_incidentes > 1 ? 's' : ''} pendiente${equipo.total_incidentes > 1 ? 's' : ''} de solución.`;
+                    }
+                    
+                    // Renderizar lista de incidentes
+                    if (incidentesLista) {
+                        const prioridadColor = {
+                            'alta': 'danger',
+                            'media': 'warning',
+                            'baja': 'info'
+                        };
+                        
+                        incidentesLista.innerHTML = equipo.incidentes.map(inc => `
+                            <div class="alert alert-light border-start border-3 border-${prioridadColor[inc.prioridad] || 'info'} mb-2 p-2">
+                                <small>
+                                    <strong class="text-${prioridadColor[inc.prioridad] || 'info'}">
+                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                        PRIORIDAD ${inc.prioridad.toUpperCase()}
+                                    </strong>
+                                    <br>
+                                    <span class="text-dark">${inc.descripcion}</span>
+                                    <br>
+                                    <span class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        Reportado: ${inc.fecha || 'Sin fecha'}
+                                        ${inc.estado ? `| Estado: <span class="badge bg-secondary">${inc.estado}</span>` : ''}
+                                    </span>
+                                </small>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    // Ocultar la alerta si no hay incidentes
+                    incidentesAlert.classList.add('d-none');
+                }
+            }
             // Actualizar fechas de mantenimiento (si existen en los datos)
             const estadoInfoItems = document.querySelectorAll('.info-item-value');
             if (estadoInfoItems.length >= 6) {
@@ -532,11 +663,31 @@
             }
         }
 
+        // Se agregó código para obtener las iniciales del usuario
+        document.addEventListener('DOMContentLoaded', () => {
+            // Obtener y mostrar iniciales del usuario
+            fetch('/estudiante/api/usuario-actual')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.usuario) {
+                        const nombre = data.usuario.nombre || '';
+                        const apellido = data.usuario.apellido || '';
+                        const iniciales = (nombre.charAt(0) + apellido.charAt(0)).toUpperCase();
+                        document.getElementById('userAvatar').textContent = iniciales;
+                    }
+                })
+                .catch(error => console.error('Error obteniendo usuario:', error));
+            
+            // Cargar equipo asignado
+            loadStudentEquipment();
+        });
+ 
         // Inicializar la vista al cargar la página
         document.addEventListener('DOMContentLoaded', () => {
             loadStudentEquipment();
         });
     </script>
+{% endblock %}
 </body>
 </html>
         

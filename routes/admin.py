@@ -749,12 +749,12 @@ def api_detalle_mantenimiento(mantenimiento_id):
 def api_actualizar_mantenimiento(mantenimiento_id):
     """
     Actualiza el estado, técnico y fecha de realización de un mantenimiento.
-    También actualiza el estado del equipo asociado.
+    También actualiza el estado del equipo asociado y resuelve incidentes si se completa.
     """
     try:
         data = request.get_json()
         mantenimiento = Mantenimiento.query.get_or_404(mantenimiento_id)
-        equipo = Equipo.query.get(mantenimiento.equipo_id) # Obtener el equipo asociado
+        equipo = Equipo.query.get(mantenimiento.equipo_id)
 
         nuevo_estado = data.get('estado', mantenimiento.estado)
         tecnico = data.get('tecnico', mantenimiento.tecnico)
@@ -769,26 +769,79 @@ def api_actualizar_mantenimiento(mantenimiento_id):
         if fecha_realizada_str:
             mantenimiento.fecha_realizada = datetime.strptime(fecha_realizada_str, '%Y-%m-%d').date()
         elif nuevo_estado == 'completado' and not mantenimiento.fecha_realizada:
-            mantenimiento.fecha_realizada = date.today() # Establecer hoy si se completa y no hay fecha
+            mantenimiento.fecha_realizada = date.today()
 
-        # Lógica para actualizar el estado del equipo
+        # ✅ LÓGICA MEJORADA: Actualizar estado del equipo Y resolver incidentes
         if equipo:
             if nuevo_estado == 'completado':
-                equipo.estado = 'Disponible' # O el estado que corresponda después del mantenimiento
+                # Verificar si hay incidentes activos y resolverlos
+                incidentes_activos = Incidente.query.filter(
+                    Incidente.equipo_id == equipo.id_equipo,
+                    Incidente.estado.in_(['reportado', 'en_proceso'])
+                ).all()
+                
+                # Resolver todos los incidentes activos
+                for incidente in incidentes_activos:
+                    incidente.estado = 'resuelto'
+                    incidente.fecha_solucion = datetime.utcnow()
+                    incidente.solucion_propuesta = f"Resuelto mediante mantenimiento #{mantenimiento_id}"
+                
+                # Actualizar estado del equipo
+                # Verificar si hay otros mantenimientos pendientes
+                otros_mantenimientos = Mantenimiento.query.filter(
+                    Mantenimiento.equipo_id == equipo.id_equipo,
+                    Mantenimiento.id_mantenimiento != mantenimiento_id,
+                    Mantenimiento.estado.in_(['pendiente', 'en_progreso'])
+                ).first()
+                
+                if not otros_mantenimientos:
+                    # Verificar si quedan incidentes activos
+                    incidentes_restantes = Incidente.query.filter(
+                        Incidente.equipo_id == equipo.id_equipo,
+                        Incidente.estado.in_(['reportado', 'en_proceso'])
+                    ).first()
+                    
+                    if not incidentes_restantes:
+                        equipo.estado = 'Disponible'
+                    else:
+                        equipo.estado = 'Incidente'
+                        
             elif nuevo_estado == 'cancelado':
-                # Si se cancela, el equipo vuelve a su estado anterior o a 'Disponible'
-                # Aquí asumimos 'Disponible' si no hay un estado anterior claro
-                equipo.estado = 'Disponible'
+                # Si se cancela, verificar el estado real del equipo
+                incidentes_activos = Incidente.query.filter(
+                    Incidente.equipo_id == equipo.id_equipo,
+                    Incidente.estado.in_(['reportado', 'en_proceso'])
+                ).first()
+                
+                otros_mantenimientos = Mantenimiento.query.filter(
+                    Mantenimiento.equipo_id == equipo.id_equipo,
+                    Mantenimiento.id_mantenimiento != mantenimiento_id,
+                    Mantenimiento.estado.in_(['pendiente', 'en_progreso'])
+                ).first()
+                
+                if incidentes_activos:
+                    equipo.estado = 'Incidente'
+                elif otros_mantenimientos:
+                    equipo.estado = 'Mantenimiento'
+                else:
+                    equipo.estado = 'Disponible'
+                    
             elif nuevo_estado == 'en_progreso':
-                equipo.estado = 'Mantenimiento' # Asegurarse de que el equipo esté en mantenimiento
-            # Si es 'pendiente', el estado del equipo ya debería ser 'Mantenimiento' desde la programación
+                equipo.estado = 'Mantenimiento'
 
         db.session.commit()
+        
         return jsonify({
             'success': True,
             'message': 'Mantenimiento actualizado exitosamente.',
-            'mantenimiento_actualizado': mantenimiento.to_dict()
+            'equipo_actualizado': {
+                'id_equipo': equipo.id_equipo,
+                'estado': equipo.estado,
+                'tiene_incidentes': False if nuevo_estado == 'completado' else True,
+                'tiene_mantenimientos': False if nuevo_estado in ['completado', 'cancelado'] else True
+            }
         }), 200
+        
     except Exception as e:
         db.session.rollback()
         print(f"Error al actualizar mantenimiento: {e}")
@@ -2494,6 +2547,36 @@ def api_equipos_todos():
     equipos = Equipo.query.all()
     return jsonify([e.to_dict() for e in equipos])
 
+@admin_bp.route('/api/equipos')
+@login_required
+@role_required(1)
+def api_equipos():
+    """API para obtener la lista de equipos con conteos totales"""
+    try:
+        equipos = Equipo.query.all()
+        lista_equipos = []
+        
+        for equipo in equipos:
+            # ✅ Usar las relaciones directamente (más eficiente y correcto)
+            incidentes_count = len(equipo.incidentes)
+            mantenimientos_count = len(equipo.programaciones)
+            
+            lista_equipos.append({
+                'id': equipo.id_equipo,  # ✅ Incluir 'id' para compatibilidad
+                'id_equipo': equipo.id_equipo,
+                'nombre': equipo.nombre,
+                'estado': equipo.estado,
+                'salon_nombre': equipo.salon.nombre if equipo.salon else 'Sin salón',
+                'sede_nombre': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede',
+                'incidentes': incidentes_count,
+                'mantenimientos': mantenimientos_count
+            })
+        
+        return jsonify(lista_equipos)
+    except Exception as e:
+        current_app.logger.error(f"Error en api_equipos: {str(e)}")
+        return jsonify({'error': 'Error interno del servidor'}), 500
+    
 @admin_bp.route('/api/estudiantes-por-curso/<int:curso_id>', methods=['GET'])
 @login_required
 @role_required(1)
@@ -2625,6 +2708,51 @@ def api_equipos_con_incidentes():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/equipos/con-incidentes-activos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipos_con_incidentes_activos():
+    """
+    Retorna equipos que tienen incidentes activos (reportado o en_proceso)
+    para sugerirlos en el formulario de mantenimiento.
+    """
+    try:
+        equipos_db = db.session.query(
+            Equipo.id_equipo,
+            Equipo.nombre,
+            Equipo.estado,
+            Salon.nombre.label('salon_nombre'),
+            Sede.id_sede,
+            Sede.nombre.label('sede_nombre'),
+            db.func.count(Incidente.id_incidente).label('total_incidentes')
+        ).join(Incidente, Equipo.id_equipo == Incidente.equipo_id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
+         .filter(Incidente.estado.in_(['reportado', 'en_proceso']))\
+         .group_by(Equipo.id_equipo, Salon.nombre, Sede.id_sede, Sede.nombre)\
+         .order_by(db.func.count(Incidente.id_incidente).desc())\
+         .all()
+        
+        equipos = []
+        for eq in equipos_db:
+            equipos.append({
+                'id_equipo': eq.id_equipo,
+                'nombre': eq.nombre,
+                'estado': eq.estado,
+                'salon_nombre': eq.salon_nombre or "Sin Salón",
+                'sede_id': eq.id_sede,
+                'sede_nombre': eq.sede_nombre or "Sin Sede",
+                'total_incidentes': eq.total_incidentes,
+                'tiene_incidente_activo': True
+            })
+
+        return jsonify(equipos), 200
+
+    except Exception as e:
+        print(f"Error al listar equipos con incidentes activos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
 
 @admin_bp.route('/api/equipos/<int:id_equipo>', methods=['GET', 'DELETE'])
 @login_required
@@ -2928,58 +3056,72 @@ def reportes():
     """Muestra la página de reportes de inventario."""
     return render_template('superadmin/gestion_inventario/reportes.html')
 
-@admin_bp.route('/api/reportes/estado_equipos', methods=['GET'])
+@admin_bp.route('/api/incidentes/equipo/<int:equipo_id>', methods=['GET'])  # ✅ Cambié id_equipo por equipo_id
 @login_required
 @role_required(1)
-def api_reportes_estado_equipos():
+def api_incidentes_equipo(equipo_id):
+    """API para obtener el historial de incidentes de un equipo específico"""
+    try:
+        incidentes = Incidente.query.filter_by(equipo_id=equipo_id).order_by(Incidente.fecha.desc()).all()
+        return jsonify([i.to_dict() for i in incidentes])
+    except Exception as e:
+        current_app.logger.error(f"Error en api_incidentes_equipo: {str(e)}")
+        return jsonify({'error': 'Error al cargar datos'}), 500
+
+@admin_bp.route('/api/mantenimientos/equipo/<int:equipo_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_mantenimientos_equipo(equipo_id):
+    """API para obtener el historial de mantenimientos de un equipo específico"""
+    try:
+        mantenimientos = Mantenimiento.query.filter_by(equipo_id=equipo_id).order_by(Mantenimiento.fecha_programada.desc()).all()
+        return jsonify([
+            {
+                'fecha_programada': m.fecha_programada.isoformat() if m.fecha_programada else None,
+                'descripcion': m.descripcion or 'Sin descripción',
+                'estado': m.estado,
+                'tecnico': m.tecnico or 'No asignado'
+            } for m in mantenimientos
+        ])
+    except Exception as e:
+        current_app.logger.error(f"Error en api_mantenimientos_equipo: {str(e)}")
+        return jsonify({'error': 'Error al cargar datos'}), 500
+
+@admin_bp.route('/api/equipos/<int:equipo_id>/estado-detallado', methods=['GET'])
+@login_required
+@role_required(1)
+def api_estado_detallado_equipo(equipo_id):
     """
-    Proporciona datos para el gráfico de estado de equipos y las métricas principales.
+    Retorna el estado detallado de un equipo: incidentes activos y mantenimientos pendientes.
     """
     try:
-        # 1. Total de equipos
-        total = db.session.query(Equipo).count()
+        equipo = Equipo.query.get_or_404(equipo_id)
         
-        # 2. Conteo por estado del equipo
-        estados_raw = db.session.query(Equipo.estado, db.func.count(Equipo.estado))\
-                                .group_by(Equipo.estado).all()
-        estados = {e[0]: e[1] for e in estados_raw}
+        # Contar incidentes activos
+        incidentes_activos = Incidente.query.filter(
+            Incidente.equipo_id == equipo_id,
+            Incidente.estado.in_(['reportado', 'en_proceso'])
+        ).count()
         
-        # ✅ 3. Contar equipos con incidentes activos (sin importar su estado)
-        equipos_con_incidentes = db.session.query(Incidente.equipo_id)\
-            .distinct()\
-            .count()
+        # Contar mantenimientos pendientes/en progreso
+        mantenimientos_activos = Mantenimiento.query.filter(
+            Mantenimiento.equipo_id == equipo_id,
+            Mantenimiento.estado.in_(['pendiente', 'en_progreso'])
+        ).count()
         
-        # ✅ 4. Contar equipos con mantenimientos programados
-        equipos_con_mantenimientos = db.session.query(Mantenimiento.equipo_id)\
-            .filter(Mantenimiento.estado.in_(['pendiente', 'en_progreso']))\
-            .distinct()\
-            .count()
-            
-        # ✅ 5. Contar equipos con revisiones programadas
-        #equipos_con_revisiones = db.session.query(Revision.equipo_id)\
-            # .filter(Revision.estado.in_(['pendiente', 'en_progreso']))
-        
-        data = {
-            'total_equipos': total,
-            'estados': {
-                'Disponible': estados.get('Disponible', 0),
-                'Mantenimiento': estados.get('Mantenimiento', 0),
-                'Incidente': estados.get('Incidente', 0),
-                'Asignado': estados.get('Asignado', 0),
-                'Revisión': estados.get('Revisión', 0),
-                **{k: v for k, v in estados.items() if k not in ['Disponible', 'Mantenimiento', 'Incidente', 'Asignado', 'Revisión']}
-            },
-            'equipos_con_incidentes': equipos_con_incidentes,
-            'equipos_con_mantenimientos': equipos_con_mantenimientos
-            
-        }
-        
-        return jsonify(data), 200
+        return jsonify({
+            'success': True,
+            'equipo_id': equipo_id,
+            'estado_equipo': equipo.estado,
+            'tiene_incidentes_activos': incidentes_activos > 0,
+            'total_incidentes_activos': incidentes_activos,
+            'tiene_mantenimientos_activos': mantenimientos_activos > 0,
+            'total_mantenimientos_activos': mantenimientos_activos
+        }), 200
         
     except Exception as e:
-        print(f"Error en reportes estado equipos: {e}")
-        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
-
+        print(f"Error obteniendo estado detallado: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/reportes/equipos_por_sede', methods=['GET'])
 @login_required

@@ -1,590 +1,509 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reportes de Inventario</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/reporte.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reportes de Inventario</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    :root {
+      --accent1: #F95738;
+      --accent2: #EE964B;
+      --accent3: #F4D35E;
+      --accent4: #0D3B66;
+      --light: #FAF0CA;
+      --white: #FFFFFF;
+      --black: #333333;
+      --gray: #666666;
+      --light-gray: #F8F9FA;
+      --border: #E9ECEF;
+      --card-bg: #FFFFFF;
+      --main-bg: #F8F9FA;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+      --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+      --border-radius: 12px;
+      --transition: all 0.3s ease;
+    }
+
+    body { background: var(--main-bg); font-family: 'Segoe UI', sans-serif; }
+    .main-header { 
+      background: var(--gradient-primary); 
+      color: white; 
+      padding: 1.5rem 2rem; 
+      border-radius: 0 0 var(--border-radius) var(--border-radius); 
+      box-shadow: var(--shadow-hover);
+      margin-bottom: 2rem;
+    }
+    .nav-tabs .nav-link {
+      border: none;
+      color: var(--gray);
+      font-weight: 600;
+      padding: 1rem 1.5rem;
+      border-radius: var(--border-radius) var(--border-radius) 0 0;
+      transition: var(--transition);
+    }
+    .nav-tabs .nav-link.active {
+      background: white;
+      color: var(--accent4);
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      font-weight: 700;
+    }
+    .card {
+      border: none;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow-hover); }
+    .card-header {
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 1rem 1.5rem;
+    }
+    .table {
+      margin-bottom: 0;
+      background: white;
+    }
+    .table th {
+      background: var(--accent4);
+      color: white;
+      border: none;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+    .table td {
+      vertical-align: middle;
+      padding: 1rem;
+      border-color: var(--border);
+    }
+    .btn-detalle {
+      background: var(--accent1);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-detalle:hover {
+      background: #e03e1f;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .badge-incidente { background: var(--accent1); color: white; }
+    .badge-mantenimiento { background: var(--accent2); color: white; }
+    .modal-header {
+      background: var(--gradient-primary);
+      color: white;
+      border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    .modal-title i { margin-right: 0.5rem; }
+    .list-group-item {
+      border-left: 5px solid var(--accent4);
+      margin-bottom: 0.8rem;
+      border-radius: 0 var(--border-radius) var(--border-radius) 0;
+      padding: 1rem;
+      background: #f8f9fa;
+      transition: var(--transition);
+    }
+    .list-group-item:hover {
+      background: #e9ecef;
+      transform: translateX(4px);
+    }
+    .spinner-border-sm { width: 1.2rem; height: 1.2rem; }
+    #btnDescargarPDF {
+      background: var(--accent1);
+      border: none;
+    }
+    #btnDescargarPDF:hover {
+      background: #e03e1f;
+    }
+  </style>
 </head>
 <body>
 {% extends "base.html" %}
 {% block content %}
 
-<header class="main-header">
-    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-outline-secondary btn-sm border-0 me-3">
-        <i class="fa-solid fa-arrow-left"></i>
+<header class="main-header d-flex align-items-center justify-content-between">
+  <div class="d-flex align-items-center">
+    <a href="{{ url_for('admin.gestion_i') }}" class="btn btn-light rounded-circle me-3 shadow">
+      <i class="fa-solid fa-arrow-left"></i>
     </a>
-    <h1>Reportes de Inventario</h1>
-    <div class="header-icons">
-        <i class="fa-solid fa-bell"></i>
-        <i class="fa-solid fa-user"></i>
-    </div>
+    <h1 class="mb-0 fw-bold">
+      <i class="fa-solid fa-clipboard-list me-3"></i>Reportes de Inventario
+    </h1>
+  </div>
 </header>
 
-<div class="container-fluid py-3">
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card">
-                <div class="metric-number" id="totalEquipos">0</div>
-                <div class="metric-label">
-                    <i class="fa-solid fa-computer me-2"></i>Total Equipos
-                </div>
-            </div>
+<div class="container-fluid px-4">
+
+  <!-- Pestañas -->
+  <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="incidentes-tab" data-bs-toggle="tab" data-bs-target="#incidentes" type="button">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i> Incidentes
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="mantenimiento-tab" data-bs-toggle="tab" data-bs-target="#mantenimiento" type="button">
+        <i class="fa-solid fa-wrench me-2"></i> Mantenimiento
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- INCIDENTES -->
+    <div class="tab-pane fade show active" id="incidentes">
+      <div class="card">
+        <div class="card-header text-white" style="background: var(--accent1);">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i> Historial de Incidentes por Equipo
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card success">
-                <div class="metric-number" id="equiposDisponibles">0</div>
-                <div class="metric-label">
-                    <i class="fa-solid fa-check-circle me-2"></i>Disponibles
-                </div>
-            </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tablaIncidentes">
+              <thead>
+                <tr>
+                  <th>EQUIPO</th>
+                  <th>ESTADO</th>
+                  <th>SALÓN</th>
+                  <th>SEDE</th>
+                  <th>INCIDENTES</th>
+                  <th>ACCIÓN</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card warning">
-                <div class="metric-number" id="equiposMantenimiento">0</div>
-                <div class="metric-label">
-                    <i class="fa-solid fa-wrench me-2"></i>Mantenimiento
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card danger">
-                <div class="metric-number" id="equiposIncidente">0</div>
-                <div class="metric-label">
-                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Incidentes
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-lg-6 mb-4">
-            <div class="card dashboard-card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fa-solid fa-chart-pie me-2"></i>Estado de Equipos
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="estadosChart"></canvas>
-                    </div>
-                </div>
-            </div>
+    <!-- MANTENIMIENTO -->
+    <div class="tab-pane fade" id="mantenimiento">
+      <div class="card">
+        <div class="card-header text-white" style="background: var(--accent2);">
+          <i class="fa-solid fa-wrench me-2"></i> Historial de Mantenimientos por Equipo
         </div>
-        <div class="col-lg-6 mb-4">
-            <div class="card dashboard-card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">
-                        <i class="fa-solid fa-chart-bar me-2"></i>Equipos por Sede
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="sedesChart"></canvas>
-                    </div>
-                </div>
-            </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tablaMantenimientos">
+              <thead>
+                <tr>
+                  <th>EQUIPO</th>
+                  <th>ESTADO</th>
+                  <th>SALÓN</th>
+                  <th>SEDE</th>
+                  <th>MANTENIMIENTOS</th>
+                  <th>ACCIÓN</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
+</div>
 
-    <div class="row">
-        <!-- Tabla Salones -->
-        <div class="col-lg-6 mb-4">
-            <div class="card dashboard-card">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fa-solid fa-door-open me-2"></i>Salones
-                    </h5>
-                    <div class="export-buttons">
-                        <select id="limiteSalones" class="form-select form-select-sm" style="width: auto;">
-                            <option value="5">5</option>
-                            <option value="10">10</option>
-                            <option value="all">Todos</option>
-                        </select>
-                        <button id="exportSalonesPDF" class="btn btn-light btn-sm">
-                            <i class="fa-solid fa-file-pdf"></i> PDF
-                        </button>
-                        </div>
-                </div>
-                <div class="card-body">
-                    <div class="loading-spinner" id="loadingSalones">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table id="tablaSalones" class="table table-hover align-middle">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Tipo</th>
-                                    <th>Sede</th>
-                                    <th>Capacidad</th>
-                                    <th>Equipos</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <button id="prevSalones" class="btn btn-outline-secondary btn-sm">
-                            <i class="fa-solid fa-chevron-left"></i> Anterior
-                        </button>
-                        <span id="paginaSalones" class="small text-muted">Página 1</span>
-                        <button id="nextSalones" class="btn btn-outline-secondary btn-sm">
-                            Siguiente <i class="fa-solid fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+<!-- MODAL HISTORIAL -->
+<div class="modal fade" id="modalHistorial" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="modalTitulo">
+          <i class="fa-solid fa-history"></i> Historial de <span id="tipoHistorial"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="loadingHistorial" class="text-center py-5">
+          <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-3 text-muted">Cargando historial...</p>
         </div>
-        
-        <!-- Tabla Equipos -->
-        <div class="col-lg-6 mb-4">
-            <div class="card dashboard-card">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fa-solid fa-computer me-2"></i>Equipos
-                    </h5>
-                    <div class="export-buttons">
-                        <select id="limiteEquipos" class="form-select form-select-sm" style="width: auto;">
-                            <option value="5">5</option>
-                            <option value="10">10</option>
-                            <option value="all">Todos</option>
-                        </select>
-                        <button id="exportEquiposPDF" class="btn btn-light btn-sm">
-                            <i class="fa-solid fa-file-pdf"></i> PDF
-                        </button>
-                        </div>
-                </div>
-                <div class="card-body">
-                    <div class="loading-spinner" id="loadingEquipos">
-                        <div class="spinner-border text-success" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table id="tablaEquipos" class="table table-hover align-middle">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th>Estado</th>
-                                    <th>Salón</th>
-                                    <th>Sede</th>
-                                    <th>Asignado</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <button id="prevEquipos" class="btn btn-outline-secondary btn-sm">
-                            <i class="fa-solid fa-chevron-left"></i> Anterior
-                        </button>
-                        <span id="paginaEquipos" class="small text-muted">Página 1</span>
-                        <button id="nextEquipos" class="btn btn-outline-secondary btn-sm">
-                            Siguiente <i class="fa-solid fa-chevron-right"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div id="contenidoHistorial"></div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+          <i class="fa-solid fa-times me-2"></i> Cerrar
+        </button>
+        <button id="btnDescargarPDF" class="btn btn-danger px-5 shadow">
+          <i class="fa-solid fa-file-pdf me-2"></i> Descargar PDF
+        </button>
+      </div>
     </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
-    let estadosChartInstance = null;
-    let sedesChartInstance = null;
-    
-    // Colores personalizados para las gráficas
-    const estadoColors = {
-        'Disponible': '#28a745',
-        'Asignado': '#0078ad',
-        'Mantenimiento': '#ffc107',
-        'Incidente': '#dc3545',
-        'Revisión': '#17a2b8',
-        'Otro': '#6c757d'
+  const equipos = [];
+  const modal = new bootstrap.Modal(document.getElementById('modalHistorial'));
+  let historialActual = [];
+  let equipoActual = '';
+  let tipoHistorialActual = '';
+
+  async function cargarEquipos() {
+    try {
+      const res = await fetch('/admin/api/equipos');
+      const data = await res.json();
+      equipos.length = 0;
+      data.forEach(e => equipos.push({
+        id: e.id || e.id_equipo,
+        nombre: e.nombre || 'Sin nombre',
+        estado: e.estado || 'Desconocido',
+        salon: e.salon_nombre || 'Sin salón',
+        sede: e.sede_nombre || 'Sin sede',
+        incidentes: e.incidentes || 0,
+        mantenimientos: e.mantenimientos || 0
+      }));
+      renderTablas();
+    } catch (err) {
+      console.error('Error:', err);
+    }
+  }
+
+  function renderTablas() {
+    renderTabla('#tablaIncidentes', 'incidentes');
+    renderTabla('#tablaMantenimientos', 'mantenimientos');
+  }
+
+function renderTabla(selector, tipo) {
+    const tbody = document.querySelector(`${selector} tbody`);
+    tbody.innerHTML = '';
+
+    equipos.forEach(eq => {
+      const count = tipo === 'incidentes' ? eq.incidentes : eq.mantenimientos;
+      const badgeClass = tipo === 'incidentes' ? 'badge-incidente' : 'badge-mantenimiento';
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><strong>${eq.nombre}</strong></td>
+        <td><span class="badge" style="background: ${getColor(eq.estado)};">${eq.estado}</span></td>
+        <td>${eq.salon}</td>
+        <td>${eq.sede}</td>
+        <td><span class="badge ${badgeClass} fw-bold">${count}</span></td>
+        <td>
+          <button class="btn btn-sm btn-detalle ver-historial" 
+                  data-equipo-id="${eq.id}" 
+                  data-tipo="${tipo}">
+            <i class="fa-solid fa-eye me-1"></i> Ver
+          </button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    // ✅ Agregar event listeners DESPUÉS de crear los botones
+    document.querySelectorAll('.ver-historial').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const equipoId = this.getAttribute('data-equipo-id');
+        const tipo = this.getAttribute('data-tipo');
+        console.log('🔍 Clic en Ver historial:', { equipoId, tipo });
+        mostrarHistorial(equipoId, tipo);
+      });
+    });
+  }
+
+  function getColor(estado) {
+    const map = {
+      'Disponible': '#28a745',
+      'Asignado': '#0078ad',
+      'Mantenimiento': '#ffc107',
+      'Incidente': '#dc3545',
+      'Revisión': '#17a2b8'
     };
-    
-    // Variables de paginación
-    let salonesData = []; 
-    let equiposData = []; 
-    let limiteSalones = 5;
-    let limiteEquipos = 5;
-    let paginaSalonesActual = 1;
-    let paginaEquiposActual = 1;
+    return map[estado] || '#6c757d';
+  }
 
-    // Cargar métricas, gráficas y tablas
-    async function cargarDatosReportes() {
-        try {
-            const resEquipos = await fetch('/admin/api/reportes/estado_equipos');
-            if (!resEquipos.ok) throw new Error(`HTTP error! status: ${resEquipos.status}`);
-            const dataEquipos = await resEquipos.json();
-            actualizarMetricas(dataEquipos);
-            crearEstadosChart(dataEquipos.estados, dataEquipos.equipos_con_incidentes, dataEquipos.equipos_con_mantenimientos);
-
-            const resSedes = await fetch('/admin/api/reportes/equipos_por_sede');
-            if (!resSedes.ok) throw new Error(`HTTP error! status: ${resSedes.status}`);
-            const dataSedes = await resSedes.json();
-            crearSedesChart(dataSedes);
-
-            await cargarSalonesData(); 
-            await cargarEquiposData();
-            
-            renderizarSalones();
-            renderizarEquipos();
-        } catch (error) {
-            console.error('Error general al cargar los reportes:', error);
-            // Mostrar un mensaje de error en la UI si es posible
-        }
+async function mostrarHistorial(equipoId, tipo) {
+    // ✅ Validar que equipoId existe y no es undefined
+    if (!equipoId || equipoId === 'undefined' || equipoId === 'null') {
+      console.error('❌ ID de equipo inválido:', equipoId);
+      alert('Error: ID de equipo no válido');
+      return;
     }
 
-    // MODIFICADA: cargarSalonesData para usar /admin/api/salas_todas
-    async function cargarSalonesData() {
-        const loadingSalones = document.getElementById('loadingSalones');
-        loadingSalones.style.display = 'block';
-        try {
-            const res = await fetch('/admin/api/salas_todas'); 
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            const data = await res.json();
-            
-            salonesData = data.map(salon => ({
-                id: salon.id,
-                nombre: salon.nombre || 'Sin nombre',
-                tipo: salon.tipo || 'N/A',
-                sede: salon.sede_nombre || 'Sin sede',     
-                capacidad: salon.capacidad || 'N/A',
-                total_equipos: salon.total_equipos || 0,
-                cantidad_sillas: salon.cantidad_sillas || 0,
-                cantidad_mesas: salon.cantidad_mesas || 0
-            }));
-            
-        } catch (error) {
-            console.error('Error cargando datos de salones:', error);
-            salonesData = [];
-        } finally {
-            loadingSalones.style.display = 'none';
-        }
+    console.log('📋 Mostrando historial para:', { equipoId, tipo });
+
+    equipoActual = equipos.find(e => e.id === parseInt(equipoId))?.nombre || 'Equipo';
+    tipoHistorialActual = tipo;
+    historialActual = [];
+
+    const titulo = document.getElementById('tipoHistorial');
+    const contenido = document.getElementById('contenidoHistorial');
+    const loading = document.getElementById('loadingHistorial');
+    titulo.textContent = tipo === 'incidentes' ? 'Incidentes' : 'Mantenimientos';
+    loading.style.display = 'block';
+    contenido.innerHTML = '';
+    modal.show();
+
+    try {
+      const endpoint = tipo === 'incidentes' 
+        ? `/admin/api/incidentes/equipo/${equipoId}`
+        : `/admin/api/mantenimientos/equipo/${equipoId}`;
+
+      console.log('📡 Fetch desde:', endpoint);
+
+      const res = await fetch(endpoint);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
+      const data = await res.json();
+      console.log('📦 Datos recibidos:', data.length, 'registros');
+
+      if (!data || data.length === 0) {
+        contenido.innerHTML = '<div class="text-center py-5"><p class="text-muted fs-5">No hay registros.</p></div>';
+        loading.style.display = 'none';
+        historialActual = [];
+        return;
+      }
+
+      historialActual = data;
+
+      const lista = document.createElement('div');
+      lista.className = 'list-group';
+
+      data.forEach(item => {
+        const fecha = tipo === 'incidentes' 
+          ? new Date(item.fecha).toLocaleDateString('es-CO')
+          : new Date(item.fecha_programada).toLocaleDateString('es-CO');
+        const desc = item.descripcion || 'Sin descripción';
+        const responsable = tipo === 'incidentes' 
+          ? item.usuario_reporte || 'Anónimo'
+          : item.tecnico || 'No asignado';
+        const estado = item.estado || 'N/A';
+
+        const div = document.createElement('div');
+        div.className = 'list-group-item';
+        div.innerHTML = `
+          <div class="d-flex w-100 justify-content-between align-items-start">
+            <div class="me-3">
+              <h6 class="mb-1 text-primary">
+                <i class="fa-solid fa-calendar-alt me-2"></i>${fecha}
+              </h6>
+              <p class="mb-2 fw-medium">${desc}</p>
+              <small class="text-muted">
+                <i class="fa-solid fa-user me-1"></i> ${responsable}
+              </small>
+            </div>
+            <span class="badge ${estado.toLowerCase().includes('resuelto') ? 'bg-success' : 'bg-warning'} px-3 py-2">
+              ${estado}
+            </span>
+          </div>
+        `;
+        lista.appendChild(div);
+      });
+
+      contenido.appendChild(lista);
+    } catch (err) {
+      console.error('❌ Error:', err);
+      contenido.innerHTML = `
+        <div class="text-center py-5">
+          <p class="text-danger fs-5">Error al cargar datos</p>
+          <small class="text-muted">${err.message}</small>
+        </div>
+      `;
+    } finally {
+      loading.style.display = 'none';
+    }
+  }
+
+  // PDF INDIVIDUAL
+  document.getElementById('btnDescargarPDF').addEventListener('click', () => {
+    if (historialActual.length === 0) {
+      alert('No hay datos para exportar.');
+      return;
     }
 
-    // MODIFICADA: cargarEquiposData para usar /admin/api/equipos
-    async function cargarEquiposData() {
-        const loadingEquipos = document.getElementById('loadingEquipos');
-        loadingEquipos.style.display = 'block';
-        try {
-            const res = await fetch('/admin/api/equipos'); // Usar la API general de equipos
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            const data = await res.json();
-            
-            equiposData = data.map(equipo => ({
-                id: equipo.id,
-                nombre: equipo.nombre || 'Sin nombre',
-                estado: equipo.estado || 'Desconocido',
-                sala: equipo.salon_nombre || 'Sin salón',  
-                sede: equipo.sede_nombre || 'Sin sede',    
-                asignado_a: equipo.asignado_a || 'N/A'
-            }));
-            
-        } catch (error) {
-            console.error('Error cargando datos de equipos:', error);
-            equiposData = [];
-        } finally {
-            loadingEquipos.style.display = 'none';
-        }
-    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 20;
 
-    // Renderizar tablas con paginación
-    function renderizarSalones() {
-        const tbody = document.querySelector('#tablaSalones tbody');
-        tbody.innerHTML = '';
-        
-        let limite = limiteSalones === 'all' ? salonesData.length : parseInt(limiteSalones);
-        const inicio = (paginaSalonesActual - 1) * limite;
-        const fin = inicio + limite;
-        const salonesPagina = salonesData.slice(inicio, fin);
+    // Colores
+    const primary = [13, 59, 102];
+    const accent1 = [249, 87, 56];
+    const accent2 = [238, 150, 75];
 
-        if (salonesPagina.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted py-3">No hay salones para mostrar.</td></tr>';
-        }
+    // Título
+    doc.setFontSize(24);
+    doc.setTextColor(...primary);
+    doc.setFont('helvetica', 'bold');
+    doc.text('HISTORIAL DE EQUIPO', margin, y);
+    y += 10;
 
-        salonesPagina.forEach(salon => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${salon.nombre || '-'}</td>
-                <td>${salon.tipo || '-'}</td>
-                <td>${salon.sede || '-'}</td>
-                <td>${salon.capacidad || 'N/A'}</td>
-                <td>${salon.total_equipos || 0}</td>
-            `;
-            tbody.appendChild(row);
-        });
+    doc.setFontSize(18);
+    doc.setTextColor(...(tipoHistorialActual === 'incidentes' ? accent1 : accent2));
+    doc.text(equipoActual.toUpperCase(), margin, y);
+    y += 12;
 
-        const totalPaginas = Math.ceil(salonesData.length / limite);
-        const paginaSpan = document.getElementById('paginaSalones');
-        paginaSpan.textContent = limiteSalones === 'all' ? 'Todos' : `Página ${paginaSalonesActual} de ${totalPaginas}`;
-        
-        document.getElementById('prevSalones').disabled = paginaSalonesActual === 1 || limiteSalones === 'all';
-        document.getElementById('nextSalones').disabled = paginaSalonesActual >= totalPaginas || limiteSalones === 'all';
-    }
-    
-    function renderizarEquipos() {
-        const tbody = document.querySelector('#tablaEquipos tbody');
-        tbody.innerHTML = '';
+    doc.setFontSize(12);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Tipo: ${tipoHistorialActual.toUpperCase()}`, margin, y);
+    y += 6;
+    doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'})}`, margin, y);
+    y += 12;
 
-        let limite = limiteEquipos === 'all' ? equiposData.length : parseInt(limiteEquipos);
-        const inicio = (paginaEquiposActual - 1) * limite;
-        const fin = inicio + limite;
-        const equiposPagina = equiposData.slice(inicio, fin);
+    // Tabla
+    const headers = tipoHistorialActual === 'incidentes'
+      ? [['FECHA', 'DESCRIPCIÓN', 'REPORTADO POR', 'ESTADO']]
+      : [['FECHA', 'DESCRIPCIÓN', 'TÉCNICO', 'ESTADO']];
 
-        if (equiposPagina.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted py-3">No hay equipos para mostrar.</td></tr>';
-        }
-
-        equiposPagina.forEach(equipo => {
-            const estado = equipo.estado || 'Desconocido';
-            const estadoColor = estadoColors[estado] || estadoColors['Otro'];
-            
-            const estadoBadge = `<span class="status-badge" style="background-color: ${estadoColor}; color: white;">${estado}</span>`;
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${equipo.nombre || '-'}</td>
-                <td>${estadoBadge}</td>
-                <td>${equipo.sala || '-'}</td>
-                <td>${equipo.sede || '-'}</td>
-                <td>${equipo.asignado_a || 'N/A'}</td>
-            `;
-            tbody.appendChild(row);
-        });
-
-        const totalPaginas = Math.ceil(equiposData.length / limite);
-        const paginaSpan = document.getElementById('paginaEquipos');
-        paginaSpan.textContent = limiteEquipos === 'all' ? 'Todos' : `Página ${paginaEquiposActual} de ${totalPaginas}`;
-        
-        document.getElementById('prevEquipos').disabled = paginaEquiposActual === 1 || limiteEquipos === 'all';
-        document.getElementById('nextEquipos').disabled = paginaEquiposActual >= totalPaginas || limiteEquipos === 'all';
-    }
-
-    // Métricas y gráficas
-    function actualizarMetricas(data) {
-        const estados = data.estados;
-        document.getElementById('totalEquipos').textContent = data.total_equipos;
-        document.getElementById('equiposDisponibles').textContent = estados['Disponible'] || 0;
-        document.getElementById('equiposMantenimiento').textContent = data.equipos_con_mantenimientos || 0;
-        document.getElementById('equiposIncidente').textContent = data.equipos_con_incidentes || 0;
-    }
-
-
-    function crearEstadosChart(estados, equipos_con_incidentes, equipos_con_mantenimientos) {
-        const labels = [
-            'Total de Equipos', 
-            'Equipos con Incidentes', 
-            'Equipos con Mantenimientos o en Revisión', 
-            'Asignado',
-        ];
-        
-        const data = [
-            estados['Disponible'] || 0,
-            equipos_con_incidentes || 0,
-            equipos_con_mantenimientos || 0,
-            estados['Asignado'] || 0
-        ];
-        
-        const colores = [
-            '#28a745',  // Verde
-            '#dc3545',  // Rojo
-            '#ffc107',  // Amarillo
-            '#0078ad',  // Azul
-            '#17a2b8'   // Cyan
-        ];
-
-        const ctx = document.getElementById('estadosChart').getContext('2d');
-        
-        if (estadosChartInstance) {
-            estadosChartInstance.destroy();
-        }
-
-        estadosChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Cantidad de Equipos',
-                    data: data,
-                    backgroundColor: colores,
-                    borderColor: colores,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
-
-    function crearSedesChart(dataSedes) {
-        const labels = dataSedes.map(d => d.sede);
-        const data = dataSedes.map(d => d.total);
-        const ctx = document.getElementById('sedesChart').getContext('2d');
-        
-        if (sedesChartInstance) {
-            sedesChartInstance.destroy();
-        }
-
-        sedesChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Total de Equipos',
-                    data: data,
-                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--color-info'), 
-                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--color-info'),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
-                },
-                plugins: {
-                    legend: { display: false },
-                    title: { display: true, text: 'Equipos Registrados por Sede' }
-                }
-            }
-        });
-    }
-
-    // Exportación PDF con gráficas y tablas
-    async function exportarPDF(tipo) {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4'); 
-        let yOffset = 20;
-        
-        try {
-            if (tipo === 'salones') {
-                doc.setFontSize(28);
-                doc.text('Lista de Salones', 14, yOffset);
-                yOffset += 5;
-
-                const tablaSalones = salonesData.map(salon => [
-                    salon.nombre || '-',
-                    salon.tipo || '-',
-                    salon.sede || '-',
-                    salon.capacidad || 'N/A',
-                    salon.total_equipos || 0,
-                    salon.cantidad_sillas || 0,
-                    salon.cantidad_mesas || 0
-                ]);
-
-                doc.autoTable({
-                    head: [['Nombre', 'Tipo', 'Sede', 'Capacidad', 'Equipos', 'Cantidad Sillas', 'Cantidad Mesas']],
-                    body: tablaSalones,
-                    startY: yOffset,
-                    styles: { fontSize: 8 },
-                    headStyles: { fillColor: [22, 160, 133] },
-                    margin: { left: 14, right: 14 }
-                });
-            } else if (tipo === 'equipos') {
-                doc.setFontSize(14);
-                doc.text('3. Lista de Equipos', 14, yOffset);
-                yOffset += 6;
-
-                const tablaEquipos = equiposData.map(equipo => [
-                    equipo.nombre || '-',
-                    equipo.estado || 'Desconocido',
-                    equipo.sala || '-',
-                    equipo.sede || '-',
-                    equipo.asignado_a || 'N/A'
-                ]);
-
-                doc.autoTable({
-                    head: [['Nombre', 'Estado', 'Salón', 'Sede', 'Asignado']],
-                    body: tablaEquipos,
-                    startY: yOffset,
-                    styles: { fontSize: 8 },
-                    headStyles: { fillColor: [39, 174, 96] },
-                    margin: { left: 14, right: 14 }
-                });
-            }
-            doc.save(`reporte_inventario_${tipo}.pdf`);
-        } catch (error) {
-            console.error('Error al generar el PDF:', error);
-        }
-    }
-    // Eventos de paginación y exportación
-    document.getElementById('prevSalones').addEventListener('click', () => {
-        if (paginaSalonesActual > 1) {
-            paginaSalonesActual--;
-            renderizarSalones();
-        }
+    const rows = historialActual.map(item => {
+      const fecha = tipoHistorialActual === 'incidentes'
+        ? new Date(item.fecha).toLocaleDateString('es-CO')
+        : new Date(item.fecha_programada).toLocaleDateString('es-CO');
+      const desc = (item.descripcion || 'Sin descripción').substring(0, 70) + (item.descripcion?.length > 70 ? '...' : '');
+      const responsable = tipoHistorialActual === 'incidentes'
+        ? item.usuario_reporte || 'Anónimo'
+        : item.tecnico || 'No asignado';
+      return [fecha, desc, responsable, item.estado || 'N/A'];
     });
-    document.getElementById('nextSalones').addEventListener('click', () => {
-        const limite = limiteSalones === 'all' ? salonesData.length : parseInt(limiteSalones);
-        const totalPaginas = Math.ceil(salonesData.length / limite);
-        if (paginaSalonesActual < totalPaginas) {
-            paginaSalonesActual++;
-            renderizarSalones();
-        }
-    });
-    document.getElementById('limiteSalones').addEventListener('change', (e) => {
-        limiteSalones = e.target.value; // Mantener como string si es 'all'
-        paginaSalonesActual = 1;
-        renderizarSalones();
-    });
-    document.getElementById('exportSalonesPDF').addEventListener('click', () => {
-        exportarPDF('salones');
-    });
-    document.getElementById('prevEquipos').addEventListener('click', () => {
-        if (paginaEquiposActual > 1) {
-            paginaEquiposActual--;
-            renderizarEquipos();
-        }
-    });
-    document.getElementById('nextEquipos').addEventListener('click', () => {
-        const limite = limiteEquipos === 'all' ? equiposData.length : parseInt(limiteEquipos);
-        const totalPaginas = Math.ceil(equiposData.length / limite);
-        if (paginaEquiposActual < totalPaginas) {
-            paginaEquiposActual++;
-            renderizarEquipos();
-        }
-    });
-    document.getElementById('limiteEquipos').addEventListener('change', (e) => {
-        limiteEquipos = e.target.value; // Mantener como string si es 'all'
-        paginaEquiposActual = 1;
-        renderizarEquipos();
-    });
-    document.getElementById('exportEquiposPDF').addEventListener('click', () => {
-        exportarPDF('equipos');
-    });
-    // Inicializar carga de datos al cargar la página
-    window.onload = cargarDatosReportes;
-    // Estas dos líneas ya no son necesarias aquí, ya que cargarDatosReportes las llama
-    window.cargarEquiposData = cargarEquiposData;
-    window.cargarSalonesData = cargarSalonesData;
 
+    doc.autoTable({
+      head: headers,
+      body: rows,
+      startY: y,
+      theme: 'grid',
+      headStyles: { fillColor: primary, textColor: [255,255,255], fontStyle: 'bold' },
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 1: { cellWidth: 80 } },
+      margin: { left: margin, right: margin }
+    });
 
+    // Pie de página
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Sistema de Gestión de Inventario', margin, doc.internal.pageSize.getHeight() - 10);
+      doc.text(`Página ${i} de ${pageCount}`, pageWidth - margin - 35, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
+    }
 
+    const filename = `${equipoActual.replace(/[^a-z0-9]/gi, '_')}_${tipoHistorialActual}_${new Date().toISOString().slice(0,10)}.pdf`;
+    doc.save(filename);
+  });
+
+  // INICIO
+  window.addEventListener('DOMContentLoaded', cargarEquipos);
 </script>
+
 {% endblock %}
 </body>
 </html>

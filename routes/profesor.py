@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
-    HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta
+    HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta, AsignacionEquipo, Equipo, Rol
 )
 from datetime import datetime, date
 import json
@@ -3418,3 +3418,344 @@ def api_obtener_periodos_profesor():
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+
+# ==================== ASIGNACIÓN DE EQUIPOS POR PROFESORES ====================
+
+@profesor_bp.route('/asignar-equipos')
+@login_required
+def profesor_asignar_equipos():
+    """Vista para que profesores asignen equipos a sus estudiantes"""
+    return render_template('profesores/asignar_equipos.html')
+
+@profesor_bp.route('/api/profesor/mis-cursos', methods=['GET'])
+@login_required
+def api_profesor_mis_cursos():
+    """API para obtener los cursos del profesor logueado"""
+    try:
+        # Obtener clases del profesor
+        clases = Clase.query.filter_by(profesorId=current_user.id_usuario).all()
+        
+        # Obtener cursos únicos
+        cursos_ids = list(set([clase.cursoId for clase in clases]))
+        cursos = Curso.query.filter(Curso.id_curso.in_(cursos_ids)).all()
+        
+        cursos_data = []
+        for curso in cursos:
+            # Contar estudiantes del curso
+            total_estudiantes = Matricula.query.filter_by(cursoId=curso.id_curso).count()
+            
+            # Obtener sede
+            sede_nombre = curso.sede.nombre if curso.sede else 'Sin sede'
+            
+            cursos_data.append({
+                'id_curso': curso.id_curso,
+                'nombreCurso': curso.nombreCurso,
+                'sede': sede_nombre,
+                'total_estudiantes': total_estudiantes
+            })
+        
+        return jsonify({
+            'success': True,
+            'cursos': cursos_data
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo cursos del profesor: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profesor_bp.route('/api/profesor/estudiantes-curso/<int:curso_id>', methods=['GET'])
+@login_required
+def api_profesor_estudiantes_curso(curso_id):
+    """API para obtener estudiantes de un curso con sus equipos asignados"""
+    try:
+        # Verificar que el profesor tiene acceso a este curso
+        clase_profesor = Clase.query.filter_by(
+            profesorId=current_user.id_usuario,
+            cursoId=curso_id
+        ).first()
+        
+        if not clase_profesor:
+            return jsonify({
+                'success': False,
+                'error': 'No tienes acceso a este curso'
+            }), 403
+        
+        # Obtener estudiantes matriculados
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+        
+        estudiantes = db.session.query(Usuario).join(
+            Matricula, Usuario.id_usuario == Matricula.estudianteId
+        ).filter(
+            Usuario.id_rol_fk == rol_estudiante.id_rol,
+            Matricula.cursoId == curso_id,
+            Usuario.estado_cuenta == 'activa'
+        ).order_by(Usuario.nombre, Usuario.apellido).all()
+        
+        estudiantes_data = []
+        for estudiante in estudiantes:
+            # Obtener equipos asignados activos
+            asignaciones = AsignacionEquipo.query.filter_by(
+                estudiante_id=estudiante.id_usuario,
+                estado_asignacion='activa'
+            ).all()
+            
+            equipos_asignados = []
+            for asignacion in asignaciones:
+                if asignacion.equipo:
+                    equipos_asignados.append({
+                        'id_equipo': asignacion.equipo.id_equipo,
+                        'nombre': asignacion.equipo.nombre,
+                        'tipo': asignacion.equipo.tipo,
+                        'salon': asignacion.equipo.salon.nombre if asignacion.equipo.salon else 'Sin salón',
+                        'fecha_asignacion': asignacion.fecha_asignacion.strftime('%Y-%m-%d') if asignacion.fecha_asignacion else None
+                    })
+            
+            estudiantes_data.append({
+                'id_usuario': estudiante.id_usuario,
+                'nombre_completo': estudiante.nombre_completo,
+                'no_identidad': estudiante.no_identidad,
+                'correo': estudiante.correo,
+                'equipos_asignados': equipos_asignados,
+                'total_equipos': len(equipos_asignados)
+            })
+        
+        return jsonify({
+            'success': True,
+            'estudiantes': estudiantes_data
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo estudiantes: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profesor_bp.route('/api/equipos-disponibles', methods=['GET'])
+@login_required
+def api_profesor_equipos_disponibles():
+    """API para obtener equipos disponibles para asignar"""
+    try:
+        salon_id = request.args.get('salon_id', type=int)
+        
+        query = Equipo.query.filter_by(estado='Disponible')
+        
+        if salon_id:
+            query = query.filter_by(id_salon_fk=salon_id)
+        
+        equipos = query.all()
+        
+        equipos_data = []
+        for equipo in equipos:
+            equipos_data.append({
+                'id_equipo': equipo.id_equipo,
+                'nombre': equipo.nombre,
+                'tipo': equipo.tipo,
+                'id_referencia': equipo.id_referencia,
+                'salon': equipo.salon.nombre if equipo.salon else 'Sin salón',
+                'salon_id': equipo.id_salon_fk,
+                'sede': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede'
+            })
+        
+        return jsonify({
+            'success': True,
+            'equipos': equipos_data
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo equipos: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@profesor_bp.route('/api/devolver-equipo', methods=['POST'])
+@login_required
+def api_profesor_devolver_equipo():
+    try:
+        data = request.get_json()
+        asignacion_id = data.get('asignacion_id')
+
+        asignacion = AsignacionEquipo.query.get(asignacion_id)
+        if not asignacion:
+            return jsonify({'success': False, 'error': 'No encontrada'}), 404
+
+        # LIBERAR EL EQUIPO
+        equipo = asignacion.equipo
+        equipo.estado = 'Disponible'
+
+        # BORRAR LA ASIGNACIÓN (así el índice nunca se queja)
+        db.session.delete(asignacion)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Equipo "{equipo.nombre}" liberado'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+@profesor_bp.route('/api/cursos', methods=['GET'])
+@login_required
+def obtener_cursos_profesor():
+    """Devuelve los cursos del profesor logueado."""
+    try:
+        cursos = obtener_cursos_del_profesor(current_user.id_usuario)
+        data = [{
+            "id_curso": c.id_curso,
+            "nombreCurso": c.nombreCurso,
+            "sede": c.sede.nombre if c.sede else "Sin sede"
+        } for c in cursos]
+
+        return jsonify({"success": True, "cursos": data})
+    except Exception as e:
+        print(f"Error al obtener los cursos: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    
+@profesor_bp.route('/api/estudiantes-curso/<int:curso_id>', methods=['GET'])
+@login_required
+def api_estudiantes_curso(curso_id):
+    """API para obtener la lista de estudiantes de un curso con sus equipos asignados."""
+    try:
+        """if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'error': 'No tiene acceso a este curso'}), 403"""
+
+        estudiantes = obtener_estudiantes_por_curso(curso_id)
+        
+        estudiantes_data = []
+        for est in estudiantes:
+            # Obtener asignaciones activas del estudiante
+            asignaciones_activas = AsignacionEquipo.query.filter_by(
+                estudiante_id=est.id_usuario,
+                estado_asignacion='activa'
+            ).all()
+            
+            equipos_asignados = []
+            for asig in asignaciones_activas:
+                equipo = asig.equipo
+                equipos_asignados.append({
+                    'id_asignacion': asig.id_asignacion,
+                    'id_equipo': equipo.id_equipo,
+                    'nombre': equipo.nombre,
+                    'tipo': equipo.tipo,
+                    'id_referencia': equipo.id_referencia,
+                    'fecha_asignacion': asig.fecha_asignacion.strftime('%Y-%m-%d %H:%M')
+                })
+            
+            estudiantes_data.append({
+                'id_usuario': est.id_usuario,
+                'nombre_completo': est.nombre_completo,
+                'no_identidad': est.no_identidad,
+                'total_equipos': len(equipos_asignados),
+                'equipos_asignados': equipos_asignados
+            })
+            
+        return jsonify({
+            'success': True,
+            'estudiantes': estudiantes_data
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error cargando estudiantes y equipos: {e}")
+        return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
+    
+@profesor_bp.route('/api/asignar-equipo', methods=['POST'])
+@login_required
+def api_profesor_asignar_equipo():
+    try:
+        data = request.get_json()
+        estudiante_id = data.get('estudiante_id')
+        equipo_id = data.get('equipo_id')
+        observaciones = data.get('observaciones', '')
+
+        if not estudiante_id or not equipo_id:
+            return jsonify({'success': False, 'error': 'Faltan datos'}), 400
+
+        equipo = Equipo.query.get(equipo_id)
+        if not equipo:
+            return jsonify({'success': False, 'error': 'Equipo no existe'}), 404
+
+        # REGLA 1: El equipo debe estar DISPONIBLE
+        if equipo.estado != 'Disponible':
+            return jsonify({'success': False, 'error': f'Equipo "{equipo.nombre}" ya está asignado'}), 400
+
+        # REGLA 2: El estudiante NO puede tener otro equipo en la MISMA SALA
+        sala_id = equipo.id_salon_fk
+        asignacion_existente = AsignacionEquipo.query.join(Equipo).filter(
+            AsignacionEquipo.estudiante_id == estudiante_id,
+            AsignacionEquipo.estado_asignacion == 'activa',
+            Equipo.id_salon_fk == sala_id
+        ).first()
+
+        if asignacion_existente:
+            otro_equipo = asignacion_existente.equipo.nombre
+            return jsonify({'success': False, 'error': f'Ya tiene el equipo "{otro_equipo}" en esta sala'}), 400
+
+        # CREAR ASIGNACIÓN
+        nueva = AsignacionEquipo(
+            equipo_id=equipo_id,
+            estudiante_id=estudiante_id,
+            fecha_asignacion=datetime.now(),
+            estado_asignacion='activa',
+            observaciones=observaciones
+        )
+        equipo.estado = 'Asignado'
+
+        db.session.add(nueva)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Equipo "{equipo.nombre}" asignado a {estudiante_id}'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@profesor_bp.route('/api/todos-los-cursos', methods=['GET'])
+@login_required
+def api_todos_los_cursos():
+    """
+    Devuelve TODOS los cursos del sistema (sin filtro por profesor)
+    """
+    try:
+        cursos = Curso.query.all()
+        data = []
+        for c in cursos:
+            # Contamos estudiantes matriculados
+            total_est = db.session.query(Matricula).filter_by(cursoId=c.id_curso).count()
+            data.append({
+                "id_curso": c.id_curso,
+                "nombreCurso": c.nombreCurso,
+                "sede": c.sede.nombre if c.sede else "Sin sede",
+                "total_estudiantes": total_est
+            })
+
+        return jsonify({"success": True, "cursos": data})
+    except Exception as e:
+        current_app.logger.error(f"Error todos-los-cursos: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    
+@profesor_bp.route('/api/salas-por-curso/<int:curso_id>')
+@login_required
+def api_salas_por_curso(curso_id):
+    try:
+        salas = db.session.query(Salon).join(HorarioCurso).filter(
+            HorarioCurso.curso_id == curso_id
+        ).distinct().all()
+
+        data = [{
+            'id_salon': s.id_salon,
+            'nombre': s.nombre,
+            'sede': s.sede.nombre if s.sede else 'N/A'
+        } for s in salas]
+
+        return jsonify({'success': True, 'salas': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

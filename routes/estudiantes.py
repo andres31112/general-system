@@ -839,15 +839,16 @@ def mi_equipo():
     """
     return render_template('estudiantes/mi_equipo.html')
 
-
 @estudiante_bp.route('/api/mi-equipo', methods=['GET'])
 @login_required
 def api_mi_equipo():
     """
     API para obtener el equipo asignado al estudiante logueado
-    Busca en la tabla Equipo donde asignado_a coincida con el nombre del estudiante
+    Busca en la tabla AsignacionEquipo por el ID del estudiante
     """
     try:
+        from controllers.models import AsignacionEquipo, Equipo, Mantenimiento, Incidente
+        
         user_id = current_user.id_usuario
         usuario = Usuario.query.get(user_id)
         
@@ -857,39 +858,127 @@ def api_mi_equipo():
                 'error': 'Usuario no encontrado'
             }), 404
         
-        # Buscar equipo asignado al estudiante por nombre completo
-        nombre_completo = usuario.nombre_completo
-        equipo = Equipo.query.filter_by(asignado_a=nombre_completo).first()
+        # Buscar asignación activa del estudiante
+        asignacion = AsignacionEquipo.query.filter_by(
+            estudiante_id=user_id,
+            estado_asignacion='activa'
+        ).first()
         
-        if not equipo:
-            # También intentar buscar solo por nombre o apellido
-            equipo = Equipo.query.filter(
-                (Equipo.asignado_a.ilike(f'%{usuario.nombre}%')) |
-                (Equipo.asignado_a.ilike(f'%{usuario.apellido}%'))
-            ).first()
+        if not asignacion:
+            # El estudiante no tiene equipo asignado
+            return jsonify({
+                'success': False,
+                'message': 'No tienes equipo asignado actualmente'
+            }), 200
+        
+        # Obtener el equipo
+        equipo = asignacion.equipo
         
         if equipo:
-            # El estudiante tiene un equipo asignado
-            equipo_data = equipo.to_dict()
+            # Buscar incidentes activos del equipo
+            incidentes_activos = Incidente.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='reportado'
+            ).order_by(Incidente.fecha.desc()).all()
             
-            # Agregar información adicional si está disponible
-            equipo_data['procesador'] = equipo_data.get('sistema_operativo', 'N/A')  # Puedes ajustar esto
-            equipo_data['ultima_revision'] = None  # Conectar con tabla de mantenimiento si existe
-            equipo_data['proximo_mantenimiento'] = None  # Conectar con tabla de mantenimiento si existe
+            tiene_incidentes = len(incidentes_activos) > 0
+            
+            # Preparar información de incidentes
+            incidentes_info = []
+            for inc in incidentes_activos:
+                incidentes_info.append({
+                    'id_incidente': inc.id_incidente,
+                    'descripcion': inc.descripcion,
+                    'prioridad': inc.prioridad,
+                    'fecha': inc.fecha.strftime('%d %b %Y') if inc.fecha else None,
+                    'estado': inc.estado
+                })
+            
+            # Preparar datos del equipo
+            equipo_data = {
+                'id_equipo': equipo.id_equipo,
+                'id_referencia': equipo.id_referencia,
+                'nombre': equipo.nombre,
+                'tipo': equipo.tipo,
+                'estado': equipo.estado,
+                'sistema_operativo': equipo.sistema_operativo or 'N/A',
+                'ram': equipo.ram or 'N/A',
+                'disco_duro': equipo.disco_duro or 'N/A',
+                'procesador': equipo.sistema_operativo or 'N/A',
+                'descripcion': equipo.descripcion or '',
+                'observaciones': equipo.observaciones or '',
+                'salon': equipo.salon.nombre if equipo.salon else 'N/A',
+                'sede_nombre': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'N/A',
+                
+                # ✅ FECHA DE ASIGNACIÓN (desde la tabla AsignacionEquipo)
+                'fecha_asignacion': asignacion.fecha_asignacion.strftime('%d %b %Y') if asignacion.fecha_asignacion else 'N/A',
+                'fecha_adquisicion': asignacion.fecha_asignacion.strftime('%d %b %Y') if asignacion.fecha_asignacion else 'N/A',
+                
+                'observaciones_asignacion': asignacion.observaciones or '',
+                
+                # ✅ INFORMACIÓN DE INCIDENTES
+                'tiene_incidentes': tiene_incidentes,
+                'total_incidentes': len(incidentes_activos),
+                'incidentes': incidentes_info
+            }
+            
+            # Buscar último mantenimiento
+            ultimo_mantenimiento = Mantenimiento.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='realizado'
+            ).order_by(Mantenimiento.fecha_realizada.desc()).first()
+            
+            # Buscar próximo mantenimiento programado
+            proximo_mantenimiento = Mantenimiento.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='pendiente'
+            ).order_by(Mantenimiento.fecha_programada.asc()).first()
+            
+            equipo_data['ultima_revision'] = ultimo_mantenimiento.fecha_realizada.strftime('%d %b %Y') if ultimo_mantenimiento and ultimo_mantenimiento.fecha_realizada else None
+            equipo_data['proximo_mantenimiento'] = proximo_mantenimiento.fecha_programada.strftime('%d %b %Y') if proximo_mantenimiento and proximo_mantenimiento.fecha_programada else None
             
             return jsonify({
                 'success': True,
                 'equipo': equipo_data
             }), 200
         else:
-            # El estudiante no tiene equipo asignado
             return jsonify({
                 'success': False,
-                'message': 'No tienes equipo asignado actualmente'
-            }), 200
+                'message': 'Error al obtener información del equipo'
+            }), 500
             
     except Exception as e:
         print(f"ERROR en api_mi_equipo: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@estudiante_bp.route('/api/usuario-actual', methods=['GET'])
+@login_required
+def api_usuario_actual():
+    """
+    API para obtener información básica del usuario actual
+    """
+    try:
+        usuario = current_user
+        
+        return jsonify({
+            'success': True,
+            'usuario': {
+                'id_usuario': usuario.id_usuario,
+                'nombre': usuario.nombre,
+                'apellido': usuario.apellido,
+                'nombre_completo': usuario.nombre_completo,
+                'correo': usuario.correo,
+                'rol': usuario.rol_nombre if hasattr(usuario, 'rol_nombre') else None
+            }
+        }), 200
+            
+    except Exception as e:
+        print(f"ERROR en api_usuario_actual: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
