@@ -852,3 +852,100 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* ===== ESTILOS MEJORADOS PARA RESULTADOS ===== */
+.publication-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.publication-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.publication-header i {
+    font-size: 2rem;
+    color: #fff;
+}
+
+.publication-header h4 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.publication-header p {
+    margin: 5px 0 0 0;
+    opacity: 0.9;
+}
+
+.total-votes {
+    background: rgba(255,255,255,0.2);
+    padding: 10px 20px;
+    border-radius: 25px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+/* Estados de carga y error mejorados */
+.loading-state, .error-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: white;
+}
+
+.loading-state i, .error-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+/* Animaciones para los resultados */
+.results-category {
+    animation: slideInUp 0.6s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive para resultados */
+@media (max-width: 768px) {
+    .category-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .result-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .winner-badge {
+        align-self: flex-end;
+    }
+    
+    .candidate-details {
+        flex-direction: column;
+        gap: 8px;
+    }
+}

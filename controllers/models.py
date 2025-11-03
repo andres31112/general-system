@@ -54,6 +54,16 @@ class Usuario(db.Model, UserMixin):
     id_rol_fk = db.Column(db.Integer, db.ForeignKey('roles.id_rol'), nullable=False)
     estado_cuenta = db.Column(db.Enum('activa', 'inactiva', name='estado_cuenta_enum'), nullable=False, default='activa')
     
+        
+    voto_registrado = db.Column(db.Boolean, default=False)
+    def puede_votar(self):
+        """Determina si el usuario puede votar (solo estudiantes)"""
+        return self.es_estudiante() and not self.voto_registrado
+    
+    def ha_votado(self):
+        """Verifica si el estudiante ya votó"""
+        return self.es_estudiante() and self.voto_registrado
+
     # Nuevos campos para verificación de email
     temp_password = db.Column(db.String(100), nullable=True)
     email_verified = db.Column(db.Boolean, default=False)

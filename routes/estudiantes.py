@@ -58,7 +58,7 @@ def ver_horario():
 # Sistema de votación
 # =======================
 
-# 📌 Estado de la votación
+# 📌 Estado de la votación - VERSIÓN CORREGIDA
 @estudiante_bp.route("/estado/<int:usuario_id>")
 @login_required
 def estado(usuario_id):
@@ -83,7 +83,9 @@ def estado(usuario_id):
         else:
             votacion_abierta = (inicio <= ahora <= fin)
 
-        ya_voto = Voto.query.filter_by(estudiante_id=usuario_id).first() is not None
+        # Usar el campo voto_registrado
+        estudiante = Usuario.query.get(usuario_id)
+        ya_voto = estudiante.voto_registrado if estudiante else False
 
         return jsonify({
             "votacion_abierta": votacion_abierta,
@@ -94,7 +96,6 @@ def estado(usuario_id):
 
     except Exception as e:
         return jsonify({"error": str(e), "votacion_abierta": False}), 500
-
 
 # 📌 Obtener candidatos por categoría
 # 📌 Obtener candidatos por categoría
@@ -122,66 +123,95 @@ def listar_candidatos():
 
 
 
-# 📌 Registrar voto
-# 📌 Registrar voto
+# 📌 Registrar voto - CON MÁS LOGGING
 @estudiante_bp.route("/votar", methods=["POST"])
 @login_required
 def votar():
-    data = request.get_json()
-    estudiante_id = data.get("estudiante_id")
-    votos = data.get("votos")  # dict {categoria: candidato_id}
-
-    # --- Validar horario ---
-    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
-    if horario:
-        ahora = datetime.now().time()
-        if horario.inicio <= horario.fin:
-            if not (horario.inicio <= ahora <= horario.fin):
-                return jsonify({"error": "⏰ La votación no está abierta"}), 403
-        else:
-            if not (ahora >= horario.inicio or ahora <= horario.fin):
-                return jsonify({"error": "⏰ La votación no está abierta"}), 403
-
     try:
+        print("🎯 ===== VOTACIÓN INICIADA =====")
+        
+        # Verificar método y datos
+        print(f"📨 Método: {request.method}")
+        print(f"📦 Content-Type: {request.content_type}")
+        print(f"📊 Datos crudos: {request.get_data()}")
+        
+        data = request.get_json()
+        print(f"📋 JSON recibido: {data}")
+        
+        if not data:
+            return jsonify({"error": "No se recibieron datos"}), 400
+            
+        estudiante_id = data.get("estudiante_id")
+        votos = data.get("votos", {})
+        
+        print(f"👤 Estudiante ID: {estudiante_id}")
+        print(f"🗳️ Votos recibidos: {votos}")
+
+        # Validar estudiante
+        estudiante = Usuario.query.get(estudiante_id)
+        if not estudiante:
+            print("❌ Estudiante no encontrado en BD")
+            return jsonify({"error": "Estudiante no encontrado"}), 400
+
+        print(f"👤 Estudiante encontrado: {estudiante.nombre}")
+
+        # Verificar si ya votó
+        if estudiante.voto_registrado:
+            print("❌ ESTUDIANTE YA VOTÓ - voto_registrado=True")
+            return jsonify({"error": "Ya has votado anteriormente"}), 400
+
+        print("✅ Estudiante puede votar - voto_registrado=False")
+
+        # Procesar cada voto
+        votos_registrados = 0
         for categoria, candidato_id in votos.items():
-            if candidato_id == "blanco":
-                continue  # No se guarda nada en la tabla
+            print(f"📝 Procesando voto: {categoria} -> {candidato_id}")
+            
+            if candidato_id == "blanco" or not candidato_id:
+                print(f"⚪ Voto en blanco para {categoria}")
+                continue
 
-            # 🔍 Verificar si ya votó en esta categoría
-            voto_existente = (
-                Voto.query.join(Candidato, Voto.candidato_id == Candidato.id_candidato)
-                .filter(
-                    Voto.estudiante_id == estudiante_id,
-                    Candidato.categoria == categoria
-                )
-                .first()
-            )
+            # Verificar candidato
+            candidato = Candidato.query.get(int(candidato_id))
+            if not candidato:
+                print(f"❌ Candidato {candidato_id} no encontrado")
+                continue
 
-            if voto_existente:
-                return jsonify({"error": f"⚠️ Ya votaste en la categoría {categoria}"}), 400
-
-            # 🗳️ Registrar el nuevo voto
+            # Registrar voto
             nuevo_voto = Voto(
                 estudiante_id=estudiante_id,
                 candidato_id=int(candidato_id)
             )
             db.session.add(nuevo_voto)
 
-            # 🧮 Sumar 1 voto al candidato
-            candidato = Candidato.query.filter_by(id_candidato=int(candidato_id)).first()
-            if candidato:
-                if candidato.votos is None:
-                    candidato.votos = 0
-                candidato.votos += 1
+            # Incrementar contador
+            candidato.votos += 1
+            votos_registrados += 1
+            print(f"✅ VOTO REGISTRADO: {candidato.nombre} ahora tiene {candidato.votos} votos")
 
+        if votos_registrados == 0:
+            print("⚠️ No se registraron votos válidos")
+            return jsonify({"error": "No se seleccionaron candidatos válidos"}), 400
+
+        # Marcar estudiante
+        estudiante.voto_registrado = True
+        print(f"🎓 ESTUDIANTE MARCADO: {estudiante.nombre} -> voto_registrado=True")
+
+        # Commit final
         db.session.commit()
+        print("💾 COMMIT EXITOSO - Todos los cambios guardados")
+        print("✅ ===== VOTACIÓN FINALIZADA CON ÉXITO =====")
+        
         return jsonify({"mensaje": "✅ Voto registrado correctamente"}), 201
 
     except Exception as e:
         db.session.rollback()
-        print("❌ Error al registrar voto:", e)
-        return jsonify({"error": str(e)}), 400
-
+        print(f"❌ ===== ERROR EN VOTACIÓN =====")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        print(f"❌ Mensaje: {str(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Error interno del servidor"}), 500
 
 
 # 📌 Vista principal de elecciones (HTML)

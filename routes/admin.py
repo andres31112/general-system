@@ -15,7 +15,7 @@ from controllers.models import (
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, AsignacionEquipo, Equipo, Incidente, Mantenimiento, Comunicacion, 
     Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion,
-    CicloAcademico, PeriodoAcademico,EstadoPublicacion
+    CicloAcademico, PeriodoAcademico,EstadoPublicacion, Voto
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -3564,7 +3564,8 @@ def listar_candidatos():
             "categoria": c.categoria,
             "tarjeton": c.tarjeton,
             "propuesta": c.propuesta,
-            "foto": c.foto
+            "foto": c.foto,
+            "votos": c.votos  # 🔥 ESTA LÍNEA FALTABA
         })
     return jsonify(lista)
 
@@ -3572,23 +3573,72 @@ def listar_candidatos():
 @login_required
 @role_required(1)
 def crear_candidato():
-    """API para crear candidato"""
+    """API para crear candidato con manejo de errores específicos"""
     try:
-        nombre = request.form.get("nombre")
-        tarjeton = request.form.get("tarjeton")
-        propuesta = request.form.get("propuesta")
-        categoria = request.form.get("categoria")
+        nombre = request.form.get("nombre", "").strip()
+        tarjeton = request.form.get("tarjeton", "").strip()
+        propuesta = request.form.get("propuesta", "").strip()
+        categoria = request.form.get("categoria", "").strip()
         foto = request.files.get("foto")
 
-        if not nombre or not tarjeton or not propuesta or not categoria:
-            return jsonify({"ok": False, "error": "Todos los campos son obligatorios"}), 400
+        # 🔥 VALIDACIONES DETALLADAS
+        if not nombre:
+            return jsonify({"ok": False, "error": "⚠️ El nombre del candidato es obligatorio"}), 400
+        
+        if not tarjeton:
+            return jsonify({"ok": False, "error": "⚠️ El número de tarjetón es obligatorio"}), 400
+        
+        if not propuesta:
+            return jsonify({"ok": False, "error": "⚠️ La propuesta es obligatoria"}), 400
+        
+        if not categoria:
+            return jsonify({"ok": False, "error": "⚠️ La categoría es obligatoria"}), 400
 
+        # 🔥 VALIDAR TARJETÓN ÚNICO
+        candidato_existente = Candidato.query.filter_by(tarjeton=tarjeton).first()
+        if candidato_existente:
+            return jsonify({
+                "ok": False, 
+                "error": f"❌ El tarjetón {tarjeton} ya está registrado para el candidato {candidato_existente.nombre}"
+            }), 400
+
+        # 🔥 VALIDAR NOMBRE ÚNICO (opcional, pero recomendado)
+        nombre_existente = Candidato.query.filter_by(nombre=nombre).first()
+        if nombre_existente:
+            return jsonify({
+                "ok": False, 
+                "error": f"❌ Ya existe un candidato registrado con el nombre {nombre}"
+            }), 400
+
+        # 🔥 VALIDAR ARCHIVO DE FOTO
         filename = None
         if foto:
+            # Validar que sea una imagen
+            if not foto.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                return jsonify({
+                    "ok": False, 
+                    "error": "❌ Formato de imagen no válido. Use PNG, JPG, JPEG o GIF"
+                }), 400
+            
+            # Validar tamaño del archivo (max 5MB)
+            if len(foto.read()) > 5 * 1024 * 1024:
+                return jsonify({
+                    "ok": False, 
+                    "error": "❌ La imagen es demasiado grande. Máximo 5MB"
+                }), 400
+            
+            foto.seek(0)  # Volver al inicio del archivo después de leer
             filename = secure_filename(foto.filename)
+            
+            # Crear nombre único para evitar sobreescrituras
+            nombre_base = secure_filename(nombre)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"{nombre_base}_{timestamp}_{filename}"
+            
             path = os.path.join(current_app.static_folder, "images/candidatos", filename)
             foto.save(path)
 
+        # 🔥 CREAR CANDIDATO
         nuevo = Candidato(
             nombre=nombre,
             tarjeton=tarjeton,
@@ -3599,16 +3649,21 @@ def crear_candidato():
         db.session.add(nuevo)
         db.session.commit()
 
-        # devolver lista actualizada
+        # Devolver lista actualizada
         candidatos = Candidato.query.all()
         return jsonify({
             "ok": True,
+            "mensaje": f"✅ Candidato {nombre} creado exitosamente",
             "candidatos": [c.to_dict() for c in candidatos]
         })
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        print(f"❌ Error inesperado al crear candidato: {str(e)}")
+        return jsonify({
+            "ok": False, 
+            "error": f"❌ Error interno del servidor: {str(e)}"
+        }), 500
 
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["PUT", "POST"])
 @login_required
@@ -3687,21 +3742,47 @@ def editar_candidato(candidato_id):
         db.session.rollback()
         print("❌ Error al editar candidato:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
-
+    
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["DELETE"])
 @login_required
 @role_required(1)
 def eliminar_candidato(candidato_id):
-    """API para eliminar candidato"""
+    """API para eliminar candidato y permitir que estudiantes vuelvan a votar"""
     try:
         candidato = Candidato.query.get(candidato_id)
         if not candidato:
             return jsonify({"ok": False, "error": "Candidato no encontrado"}), 404
 
+        # Encontrar todos los votos asociados a este candidato
+        votos_asociados = Voto.query.filter_by(candidato_id=candidato_id).all()
+        total_votos = len(votos_asociados)
+        
+        estudiantes_liberados = 0
+        
+        if total_votos > 0:
+            # Obtener IDs únicos de los que votaron
+            usuarios_votantes_ids = list(set([voto.estudiante_id for voto in votos_asociados]))
+            
+            # Filtrar solo los estudiantes
+            estudiantes_afectados = Usuario.query.filter(
+                Usuario.id_usuario.in_(usuarios_votantes_ids),
+                Usuario.id_rol_fk == 3  # ID del rol estudiante
+            ).all()
+            
+            # Permitir que los estudiantes vuelvan a votar
+            for estudiante in estudiantes_afectados:
+                estudiante.voto_registrado = False
+                estudiantes_liberados += 1
+            
+            # Eliminar los registros de votos
+            for voto in votos_asociados:
+                db.session.delete(voto)
+
+        # Eliminar el candidato
         db.session.delete(candidato)
         db.session.commit()
 
-        # Devolver la lista actualizada de candidatos para refrescar resultados
+        # Devolver lista actualizada
         candidatos = Candidato.query.all()
         candidatos_data = [
             {
@@ -3710,17 +3791,78 @@ def eliminar_candidato(candidato_id):
                 "categoria": c.categoria,
                 "tarjeton": c.tarjeton,
                 "propuesta": c.propuesta,
-                "votos": c.votos
+                "votos": c.votos,
+                "foto": c.foto
             }
             for c in candidatos
         ]
 
-        return jsonify({"ok": True, "candidatos": candidatos_data}), 200
+        mensaje = "✅ Candidato eliminado correctamente"
+        if total_votos > 0:
+            mensaje += f". {estudiantes_liberados} estudiante(s) pueden volver a votar."
+
+        return jsonify({
+            "ok": True, 
+            "mensaje": mensaje,
+            "candidatos": candidatos_data
+        }), 200
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": f"Error al eliminar candidato: {str(e)}"}), 500
 
-# ==================== GESTIÓN DE PUBLICACIÓN DE RESULTADOS ====================
+
+
+# 📌 Ruta de prueba para verificar que todo funciona
+@admin_bp.route("/test-sistema-votos", methods=["POST"])
+@login_required
+def test_sistema_votos():
+    """Prueba completa del sistema de votos"""
+    try:
+        # 1. Verificar campo voto_registrado
+        estudiante = Usuario.query.filter_by(id_rol_fk=3).first()  # Primer estudiante
+        if not estudiante:
+            return jsonify({"error": "No hay estudiantes"}), 400
+            
+        print(f"✅ Estudiante: {estudiante.nombre}")
+        print(f"✅ voto_registrado: {estudiante.voto_registrado}")
+        
+        # 2. Verificar candidatos
+        candidatos = Candidato.query.all()
+        print(f"✅ Candidatos: {len(candidatos)}")
+        
+        for c in candidatos:
+            print(f"   - {c.nombre}: {c.votos} votos")
+        
+        # 3. Hacer una prueba de voto
+        if candidatos:
+            candidato_prueba = candidatos[0]
+            votos_antes = candidato_prueba.votos
+            
+            # Simular voto
+            candidato_prueba.votos += 1
+            estudiante.voto_registrado = True
+            db.session.commit()
+            
+            # Verificar después
+            db.session.refresh(candidato_prueba)
+            votos_despues = candidato_prueba.votos
+            
+            return jsonify({
+                "ok": True,
+                "prueba": {
+                    "candidato": candidato_prueba.nombre,
+                    "votos_antes": votos_antes,
+                    "votos_despues": votos_despues,
+                    "estudiante_voto_registrado": estudiante.voto_registrado
+                }
+            })
+        
+        return jsonify({"error": "No hay candidatos"})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 # ==================== GESTIÓN DE PUBLICACIÓN DE RESULTADOS ====================
 

@@ -1,4 +1,4 @@
-// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN - VERSIÓN COMPLETA Y MEJORADA
+// SISTEMA DE ADMINISTRACIÓN DE VOTACIÓN - VERSIÓN COMPLETA CORREGIDA
 
 // Configuración
 const API_URLS = {
@@ -23,31 +23,134 @@ let estado = {
 // Elementos DOM
 let elementos = {};
 
-// FUNCIONES DE UTILIDAD
-function mostrarNotificacion(mensaje, tipo = 'success') {
-    // Eliminar notificaciones existentes
-    document.querySelectorAll('.alert').forEach(alert => {
-        if (alert.parentNode) alert.remove();
-    });
+// FUNCIONES DE UTILIDAD - VERSIÓN CORREGIDA CON NOTIFICACIONES PUSH
+function mostrarNotificacion(mensaje, tipo = 'success', titulo = null) {
+    // Crear elemento de notificación push
+    const notificacion = document.createElement('div');
+    notificacion.className = `notificacion-push ${tipo}`;
     
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${tipo} alert-dismissible fade show`;
-    notification.innerHTML = `
-        <i class="fas fa-${tipo === 'success' ? 'check' : 'exclamation-triangle'} me-2"></i>
-        ${mensaje}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    // Icono según el tipo
+    let icono = 'check';
+    if (tipo === 'error') icono = 'exclamation-triangle';
+    if (tipo === 'warning') icono = 'exclamation-circle';
+    if (tipo === 'info') icono = 'info-circle';
+    
+    // Título por defecto según el tipo
+    if (!titulo) {
+        switch(tipo) {
+            case 'success': titulo = 'Éxito'; break;
+            case 'error': titulo = 'Error'; break;
+            case 'warning': titulo = 'Advertencia'; break;
+            case 'info': titulo = 'Información'; break;
+            default: titulo = 'Notificación';
+        }
+    }
+    
+    notificacion.innerHTML = `
+        <i class="fas fa-${icono}"></i>
+        <div class="contenido">
+            <div class="titulo">${titulo}</div>
+            <div class="mensaje">${mensaje}</div>
+        </div>
+        <button class="btn-cerrar" onclick="cerrarNotificacion(this)">
+            <i class="fas fa-times"></i>
+        </button>
     `;
     
-    const header = document.querySelector('.admin-header');
-    header.parentNode.insertBefore(notification, header.nextSibling);
-    
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
+    // Agregar al contenedor de notificaciones push
+    const contenedor = document.getElementById('notificaciones-push');
+    if (contenedor) {
+        contenedor.appendChild(notificacion);
+        
+        // Iniciar animación de entrada
+        setTimeout(() => {
+            notificacion.style.transform = 'translateX(0)';
+            notificacion.style.opacity = '1';
+        }, 10);
+        
+        // Auto-eliminar después de 8 segundos (tiempo suficiente para leer)
+        const timeoutId = setTimeout(() => {
+            cerrarNotificacionSuavemente(notificacion);
+        }, 8000);
+        
+        // Guardar el timeout ID para poder cancelarlo si el usuario cierra manualmente
+        notificacion.dataset.timeoutId = timeoutId;
+        
+    } else {
+        // Fallback: usar alerta normal
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${tipo} alert-dismissible fade show`;
+        notification.innerHTML = `
+            <i class="fas fa-${tipo === 'success' ? 'check' : 'exclamation-triangle'} me-2"></i>
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar después del header
+        const header = document.querySelector('.admin-header');
+        if (header && header.parentNode) {
+            header.parentNode.insertBefore(notification, header.nextSibling);
         }
-    }, 5000);
+        
+        // Auto-eliminar después de 8 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                const bsAlert = new bootstrap.Alert(notification);
+                bsAlert.close();
+            }
+        }, 8000);
+    }
 }
 
+// Función para cerrar notificación manualmente
+function cerrarNotificacion(boton) {
+    const notificacion = boton.closest('.notificacion-push');
+    cerrarNotificacionSuavemente(notificacion);
+}
+
+// Función para cerrar notificación con animación suave
+function cerrarNotificacionSuavemente(notificacion) {
+    if (!notificacion) return;
+    
+    // Cancelar el timeout si existe
+    if (notificacion.dataset.timeoutId) {
+        clearTimeout(parseInt(notificacion.dataset.timeoutId));
+    }
+    
+    // Animación de salida
+    notificacion.style.transform = 'translateX(400px)';
+    notificacion.style.opacity = '0';
+    
+    // Eliminar del DOM después de la animación
+    setTimeout(() => {
+        if (notificacion.parentNode) {
+            notificacion.remove();
+        }
+    }, 500);
+}
+
+// Función para mantener la notificación al hacer hover
+function configurarHoverNotificaciones() {
+    document.addEventListener('mouseover', function(e) {
+        const notificacion = e.target.closest('.notificacion-push');
+        if (notificacion && notificacion.dataset.timeoutId) {
+            // Pausar el timeout cuando el mouse está sobre la notificación
+            clearTimeout(parseInt(notificacion.dataset.timeoutId));
+            notificacion.dataset.timeoutId = '';
+        }
+    });
+    
+    document.addEventListener('mouseout', function(e) {
+        const notificacion = e.target.closest('.notificacion-push');
+        if (notificacion && !notificacion.dataset.timeoutId) {
+            // Reanudar el timeout cuando el mouse sale de la notificación
+            const timeoutId = setTimeout(() => {
+                cerrarNotificacionSuavemente(notificacion);
+            }, 3000); // 3 segundos adicionales después de que el mouse sale
+            notificacion.dataset.timeoutId = timeoutId;
+        }
+    });
+}
 async function apiRequest(url, options = {}) {
     try {
         console.log(`🔄 Haciendo petición a: ${url}`);
@@ -82,19 +185,23 @@ async function cargarHorarioActual() {
     }
 }
 
-// GESTIÓN DE CANDIDATOS - VERSIÓN MEJORADA
+// GESTIÓN DE CANDIDATOS - VERSIÓN CON DEBUG
 async function cargarCandidatos() {
     try {
         console.log('🔄 Cargando candidatos...');
         const data = await apiRequest(API_URLS.candidatos);
         
-        // Validar que data sea un array
         if (!Array.isArray(data)) {
             throw new Error('Formato de datos inválido');
         }
         
+        // 🔥 DEBUG: Mostrar votos de cada candidato
+        console.log('📊 DATOS DE CANDIDATOS RECIBIDOS:');
+        data.forEach(candidato => {
+            console.log(`   ${candidato.nombre}: ${candidato.votos} votos (Categoría: ${candidato.categoria})`);
+        });
+        
         estado.candidatos = data.map(candidato => {
-            // Asegurar que todos los campos tengan valores por defecto
             return {
                 id: candidato.id || candidato.id_candidato,
                 nombre: candidato.nombre || 'Sin nombre',
@@ -106,7 +213,7 @@ async function cargarCandidatos() {
             };
         });
         
-        console.log(`✅ Cargados ${estado.candidatos.length} candidatos:`, estado.candidatos);
+        console.log(`✅ Cargados ${estado.candidatos.length} candidatos`);
         actualizarListaCandidatos();
         actualizarResultados();
         
@@ -138,7 +245,6 @@ function actualizarListaCandidatos() {
     elementos.candidatesCount.textContent = `(${estado.candidatos.length})`;
     
     const candidatosHTML = estado.candidatos.map(candidato => {
-        // Validar que el candidato tenga ID
         if (!candidato.id) {
             console.error('Candidato sin ID:', candidato);
             return '';
@@ -184,9 +290,10 @@ function actualizarListaCandidatos() {
     console.log('✅ Lista de candidatos actualizada en el DOM');
 }
 
-// ACTUALIZACIÓN DE RESULTADOS
+// ACTUALIZACIÓN DE RESULTADOS - VERSIÓN CON DEBUG DETALLADO
 function actualizarResultados() {
     console.log('🔄 Actualizando resultados...');
+    console.log('📊 Candidatos para resultados:', estado.candidatos);
     
     if (!estado.candidatos || estado.candidatos.length === 0) {
         elementos.resultados.innerHTML = `
@@ -207,16 +314,30 @@ function actualizarResultados() {
         categorias[candidato.categoria].push(candidato);
     });
 
+    console.log('📋 Categorías encontradas:', Object.keys(categorias));
+
     let resultadosHTML = '';
     let hayResultados = false;
 
     Object.keys(categorias).forEach(categoria => {
         const candidatosCategoria = categorias[categoria];
         
+        console.log(`📊 Procesando categoría: ${categoria}`);
+        console.log(`   Candidatos en ${categoria}:`, candidatosCategoria.map(c => `${c.nombre}: ${c.votos} votos`));
+        
         // Ordenar por votos descendente
         candidatosCategoria.sort((a, b) => (b.votos || 0) - (a.votos || 0));
         const maxVotos = Math.max(...candidatosCategoria.map(c => c.votos || 0));
         
+        console.log(`   Máximo de votos en ${categoria}: ${maxVotos}`);
+        
+        // Contar cuántos candidatos tienen el máximo de votos
+        const ganadores = candidatosCategoria.filter(c => c.votos === maxVotos && maxVotos > 0);
+        const esEmpate = ganadores.length > 1;
+        
+        console.log(`   Ganadores en ${categoria}:`, ganadores.map(g => g.nombre));
+        console.log(`   ¿Es empate?: ${esEmpate}`);
+
         const totalVotosCategoria = candidatosCategoria.reduce((sum, c) => sum + (c.votos || 0), 0);
         
         if (totalVotosCategoria > 0) {
@@ -232,12 +353,23 @@ function actualizarResultados() {
                 </h4>
                 <div class="results-list">
                     ${candidatosCategoria.map(candidato => {
-                        const esGanador = (candidato.votos || 0) === maxVotos && maxVotos > 0;
+                        const esGanador = candidato.votos === maxVotos && maxVotos > 0;
                         const porcentaje = totalVotosCategoria > 0 ? 
                             Math.round((candidato.votos / totalVotosCategoria) * 100) : 0;
                         
+                        console.log(`   ${candidato.nombre}: ${candidato.votos} votos, ¿Es ganador?: ${esGanador}`);
+                        
+                        let badgeGanador = '';
+                        if (esGanador) {
+                            if (esEmpate) {
+                                badgeGanador = '<span class="winner-badge empate"><i class="fas fa-handshake"></i> Empate</span>';
+                            } else {
+                                badgeGanador = '<span class="winner-badge"><i class="fas fa-trophy"></i> Ganador</span>';
+                            }
+                        }
+                        
                         return `
-                            <div class="result-item ${esGanador ? 'winner' : ''}">
+                            <div class="result-item ${esGanador ? 'winner' : ''} ${esEmpate && esGanador ? 'empate' : ''}">
                                 <div class="candidate-info">
                                     <strong>${candidato.nombre}</strong>
                                     <div class="candidate-details">
@@ -245,7 +377,7 @@ function actualizarResultados() {
                                         <span class="votes">${candidato.votos || 0} votos (${porcentaje}%)</span>
                                     </div>
                                 </div>
-                                ${esGanador ? '<span class="winner-badge"><i class="fas fa-trophy"></i> Ganador</span>' : ''}
+                                ${badgeGanador}
                             </div>
                         `;
                     }).join('')}
@@ -292,7 +424,6 @@ async function enviarFormCandidato(form, esEdicion = false) {
         });
 
         const data = await response.json();
-        console.log('Respuesta del servidor:', data);
 
         if (!data.ok) {
             throw new Error(data.error || 'Error al procesar la solicitud');
@@ -303,7 +434,6 @@ async function enviarFormCandidato(form, esEdicion = false) {
             'success'
         );
 
-        // Recargar la lista de candidatos
         await cargarCandidatos();
         form.reset();
         
@@ -332,14 +462,12 @@ function editarCandidato(id) {
         return;
     }
 
-    // Llenar el formulario de edición
     document.getElementById('edit-id').value = candidato.id;
     document.getElementById('edit-nombre').value = candidato.nombre;
     document.getElementById('edit-tarjeton').value = candidato.tarjeton;
     document.getElementById('edit-propuesta').value = candidato.propuesta;
     document.getElementById('edit-categoria').value = candidato.categoria;
     
-    // Limpiar preview de nueva foto
     if (elementos.fotoPreviewEditar) {
         elementos.fotoPreviewEditar.style.display = 'none';
     }
@@ -349,7 +477,6 @@ function editarCandidato(id) {
         editFotoInput.value = '';
     }
 
-    // Mostrar el modal
     if (elementos.modalEditar) {
         elementos.modalEditar.show();
     }
@@ -388,7 +515,6 @@ async function publicarResultados() {
     }
 
     try {
-        // Deshabilitar botón y mostrar loading
         btnPublicar.disabled = true;
         btnPublicar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...';
         
@@ -400,16 +526,13 @@ async function publicarResultados() {
         if (data.success) {
             mostrarNotificacion(data.message || '✅ Resultados publicados correctamente', 'success');
             
-            // Actualizar la interfaz para mostrar que están publicados
             btnPublicar.innerHTML = '<i class="fas fa-eye"></i> Resultados Publicados';
             btnPublicar.classList.remove('btn-success');
             btnPublicar.classList.add('btn-secondary');
-            btnPublicar.onclick = null; // Remover el evento de publicación
+            btnPublicar.onclick = null;
             
-            // Agregar botón para ocultar resultados
             agregarBotonOcultar();
             
-            // Actualizar estado local
             estado.resultadosPublicados = true;
             
         } else {
@@ -420,12 +543,10 @@ async function publicarResultados() {
         console.error('❌ Error publicando resultados:', error);
         mostrarNotificacion(error.message, 'error');
         
-        // Restaurar botón
         btnPublicar.disabled = false;
         btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
         
     } finally {
-        // Asegurarse de que el botón se restaure en caso de error
         setTimeout(() => {
             if (btnPublicar.disabled && btnPublicar.innerHTML.includes('Publicando')) {
                 btnPublicar.disabled = false;
@@ -456,7 +577,6 @@ async function ocultarResultados() {
         if (data.success) {
             mostrarNotificacion(data.message || '✅ Resultados ocultados correctamente', 'success');
             
-            // Restaurar botón de publicación
             const btnPublicar = document.getElementById('btn-publicar-resultados');
             btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
             btnPublicar.classList.remove('btn-secondary');
@@ -464,12 +584,10 @@ async function ocultarResultados() {
             btnPublicar.onclick = publicarResultados;
             btnPublicar.disabled = false;
             
-            // Remover botón de ocultar
             if (btnOcultar) {
                 btnOcultar.remove();
             }
             
-            // Actualizar estado local
             estado.resultadosPublicados = false;
             
         } else {
@@ -479,7 +597,6 @@ async function ocultarResultados() {
         console.error('❌ Error ocultando resultados:', error);
         mostrarNotificacion(error.message, 'error');
         
-        // Restaurar botón de ocultar
         const btnOcultar = document.getElementById('btn-ocultar-resultados');
         if (btnOcultar) {
             btnOcultar.disabled = false;
@@ -488,11 +605,9 @@ async function ocultarResultados() {
     }
 }
 
-// Función para agregar botón de ocultar
 function agregarBotonOcultar() {
     const resultsActions = document.querySelector('.results-actions');
     
-    // Verificar si ya existe el botón
     if (!document.getElementById('btn-ocultar-resultados')) {
         const btnOcultar = document.createElement('button');
         btnOcultar.id = 'btn-ocultar-resultados';
@@ -504,13 +619,11 @@ function agregarBotonOcultar() {
     }
 }
 
-// Función para verificar el estado de publicación al cargar la página
 async function verificarEstadoPublicacion() {
     try {
         const data = await apiRequest(API_URLS.estadoPublicacion);
         
         if (data.success && data.estado.resultados_publicados) {
-            // Los resultados están publicados, actualizar interfaz
             const btnPublicar = document.getElementById('btn-publicar-resultados');
             if (btnPublicar) {
                 btnPublicar.innerHTML = '<i class="fas fa-eye"></i> Resultados Publicados';
@@ -519,14 +632,11 @@ async function verificarEstadoPublicacion() {
                 btnPublicar.onclick = null;
                 btnPublicar.disabled = true;
                 
-                // Agregar botón para ocultar
                 agregarBotonOcultar();
                 
-                // Actualizar estado local
                 estado.resultadosPublicados = true;
             }
         } else {
-            // Los resultados no están publicados, asegurar que el botón esté en estado normal
             const btnPublicar = document.getElementById('btn-publicar-resultados');
             if (btnPublicar) {
                 btnPublicar.innerHTML = '<i class="fas fa-bullhorn"></i> Publicar';
@@ -535,13 +645,11 @@ async function verificarEstadoPublicacion() {
                 btnPublicar.onclick = publicarResultados;
                 btnPublicar.disabled = false;
                 
-                // Remover botón de ocultar si existe
                 const btnOcultar = document.getElementById('btn-ocultar-resultados');
                 if (btnOcultar) {
                     btnOcultar.remove();
                 }
                 
-                // Actualizar estado local
                 estado.resultadosPublicados = false;
             }
         }
@@ -554,7 +662,6 @@ async function verificarEstadoPublicacion() {
 function configurarEventos() {
     console.log('🔄 Configurando eventos...');
     
-    // Inicializar elementos DOM
     elementos = {
         formHorario: document.getElementById("form-horario"),
         formCandidato: document.getElementById("form-candidato"),
@@ -570,7 +677,6 @@ function configurarEventos() {
 
     console.log('Elementos DOM encontrados:', elementos);
 
-    // Formulario de horario
     if (elementos.formHorario) {
         elementos.formHorario.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -594,7 +700,6 @@ function configurarEventos() {
         });
     }
 
-    // Formulario de candidato
     if (elementos.formCandidato) {
         elementos.formCandidato.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -602,7 +707,6 @@ function configurarEventos() {
         });
     }
 
-    // Formulario de edición
     if (elementos.formEditar) {
         elementos.formEditar.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -610,7 +714,6 @@ function configurarEventos() {
         });
     }
 
-    // Preview de imágenes
     const fotoInput = document.getElementById('foto');
     if (fotoInput && elementos.fotoPreview) {
         fotoInput.addEventListener('change', function(e) {
@@ -625,7 +728,6 @@ function configurarEventos() {
         });
     }
 
-    // Eventos delegados para la lista de candidatos
     if (elementos.listaCandidatos) {
         elementos.listaCandidatos.addEventListener('click', (e) => {
             const botonEditar = e.target.closest('.btn-editar');
@@ -647,7 +749,6 @@ function configurarEventos() {
         });
     }
 
-    // Botones de control
     const btnDashboard = document.getElementById('btn-dashboard');
     if (btnDashboard) {
         btnDashboard.addEventListener('click', () => {
@@ -663,7 +764,6 @@ function configurarEventos() {
         });
     }
 
-    // Botón de publicar resultados
     const btnPublicarResultados = document.getElementById('btn-publicar-resultados');
     if (btnPublicarResultados) {
         btnPublicarResultados.addEventListener('click', publicarResultados);
@@ -684,19 +784,19 @@ function mostrarPreviewImagen(input, previewElement) {
     }
 }
 
-// INICIALIZACIÓN MEJORADA
+// INICIALIZACIÓN
 async function inicializar() {
     console.log('🚀 Inicializando sistema de administración...');
     
     try {
         configurarEventos();
+        configurarHoverNotificaciones(); 
         await cargarHorarioActual();
         await cargarCandidatos();
-        await verificarEstadoPublicacion(); // Verificar estado de publicación
+        await verificarEstadoPublicacion();
         
         console.log('✅ Sistema inicializado correctamente');
         
-        // Actualizar automáticamente cada 30 segundos
         setInterval(() => {
             cargarCandidatos();
         }, 30000);
@@ -710,7 +810,7 @@ async function inicializar() {
 // Iniciar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', inicializar);
 
-// Utilidades globales (para acceso desde HTML)
+// Utilidades globales
 window.cargarCandidatos = cargarCandidatos;
 window.editarCandidato = editarCandidato;
 window.eliminarCandidato = eliminarCandidato;

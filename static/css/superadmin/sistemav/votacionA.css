@@ -689,6 +689,150 @@ body {
   }
 }
 
+
+/* 🔥 ESTILOS PARA NOTIFICACIONES PUSH (AGREGAR AL FINAL DEL CSS) */
+.notificaciones-push-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1050;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notificacion-push {
+  background: linear-gradient(135deg, var(--accent4), #1a5080);
+  color: var(--white);
+  padding: 15px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  border-left: 5px solid var(--accent3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(400px);
+  opacity: 0;
+  max-width: 350px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  cursor: pointer;
+}
+
+.notificacion-push:hover {
+  transform: translateX(0) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.notificacion-push::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  pointer-events: none;
+}
+
+.notificacion-push.success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  border-left-color: #d4edda;
+}
+
+.notificacion-push.error {
+  background: linear-gradient(135deg, var(--accent1), #e25563);
+  border-left-color: #f8d7da;
+}
+
+.notificacion-push.warning {
+  background: linear-gradient(135deg, var(--accent2), #f0a868);
+  border-left-color: #fff3cd;
+}
+
+.notificacion-push.info {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+  border-left-color: #d1ecf1;
+}
+
+.notificacion-push i {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.notificacion-push .contenido {
+  flex: 1;
+}
+
+.notificacion-push .titulo {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.notificacion-push .mensaje {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  line-height: 1.3;
+}
+
+.notificacion-push .btn-cerrar {
+  background: none;
+  border: none;
+  color: var(--white);
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.notificacion-push .btn-cerrar:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+/* Barra de progreso opcional para mostrar el tiempo restante */
+.notificacion-push::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scaleX(1);
+  transform-origin: left;
+  transition: transform 8s linear;
+}
+
+.notificacion-push.contando::after {
+  transform: scaleX(0);
+}
+
+/* Responsive para notificaciones push */
+@media (max-width: 768px) {
+  .notificaciones-push-container {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+  
+  .notificacion-push {
+    max-width: none;
+  }
+}
+
 @media (max-width: 480px) {
   .header-title h1 {
     font-size: 1.4rem;
