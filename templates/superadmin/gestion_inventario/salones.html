@@ -172,8 +172,7 @@
             sedesGlobal = sedes;
             
             crearPestanasSedes(sedes);
-            
-            // 🔸 Cargar solo la primera sede (sin actualizar tarjetas)
+
             if (sedes.length > 0) {
                 await cargarSalonesPorSede(sedes[0].id_sede || sedes[0].id);
             }
@@ -201,8 +200,7 @@
             tabButton.setAttribute('data-bs-toggle', 'tab');
             tabButton.setAttribute('data-bs-target', `#sede-${sede.id_sede}-pane`);
             tabButton.textContent = `${sede.nombre}`;
-            
-            // 🔸 Al cambiar de sede, ya NO se actualizan las tarjetas
+
             tabButton.onclick = () => cargarSalonesPorSede(sede.id_sede || sede.id);
             
             tabItem.appendChild(tabButton);
@@ -239,21 +237,21 @@
     }
 
     // ===============================
-    // 🔹 Cargar todos los salones (para estadísticas globales)
+    // 🔹 Cargar todos los salones
     // ===============================
     async function cargarTodosLosSalones() {
         try {
             const res = await fetch('/admin/api/salas_todas'); 
             const salones = await res.json();
             salonesGlobal = salones;
-            actualizarEstadisticas(salones); // ✅ Solo aquí se actualizan las tarjetas
+            actualizarEstadisticas(salones);
         } catch (error) {
             console.error('Error cargando salones:', error);
         }
     }
 
     // ===============================
-    // 🔹 Cargar salones por sede (sin afectar estadísticas)
+    // 🔹 Cargar salones por sede
     // ===============================
     async function cargarSalonesPorSede(sedeId) {
         try {
@@ -263,7 +261,6 @@
             const salones = await res.json();
             salonesGlobal = salones;
 
-            // ❌ Ya no se actualizan las estadísticas aquí
             mostrarSalonesDeSede(sedeId, salones);
         } catch (error) {
             console.error('Error cargando salones por sede:', error);
@@ -450,8 +447,8 @@
     // ===============================
     document.addEventListener('DOMContentLoaded', async () => {
         if (typeof bootstrap === 'undefined') console.error("Bootstrap no está cargado.");
-        await cargarTodosLosSalones(); // ✅ estadísticas solo una vez
-        await cargarSedes();            // carga pestañas y salones
+        await cargarTodosLosSalones();
+        await cargarSedes();
     });
 </script>
 <script src="{{ url_for('static', filename='js/superadmin/profesores.js') }}"></script>

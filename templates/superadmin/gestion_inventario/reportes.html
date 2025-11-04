@@ -158,7 +158,6 @@
   </ul>
 
   <div class="tab-content">
-    <!-- INCIDENTES -->
     <div class="tab-pane fade show active" id="incidentes">
       <div class="card">
         <div class="card-header text-white" style="background: var(--accent1);">
@@ -184,7 +183,6 @@
       </div>
     </div>
 
-    <!-- MANTENIMIENTO -->
     <div class="tab-pane fade" id="mantenimiento">
       <div class="card">
         <div class="card-header text-white" style="background: var(--accent2);">
@@ -305,7 +303,6 @@ function renderTabla(selector, tipo) {
       tbody.appendChild(row);
     });
 
-    // ✅ Agregar event listeners DESPUÉS de crear los botones
     document.querySelectorAll('.ver-historial').forEach(btn => {
       btn.addEventListener('click', function() {
         const equipoId = this.getAttribute('data-equipo-id');
@@ -328,7 +325,6 @@ function renderTabla(selector, tipo) {
   }
 
 async function mostrarHistorial(equipoId, tipo) {
-    // ✅ Validar que equipoId existe y no es undefined
     if (!equipoId || equipoId === 'undefined' || equipoId === 'null') {
       console.error('❌ ID de equipo inválido:', equipoId);
       alert('Error: ID de equipo no válido');
@@ -422,7 +418,6 @@ async function mostrarHistorial(equipoId, tipo) {
     }
   }
 
-  // PDF INDIVIDUAL
   document.getElementById('btnDescargarPDF').addEventListener('click', () => {
     if (historialActual.length === 0) {
       alert('No hay datos para exportar.');
@@ -435,12 +430,10 @@ async function mostrarHistorial(equipoId, tipo) {
     const margin = 14;
     let y = 20;
 
-    // Colores
     const primary = [13, 59, 102];
     const accent1 = [249, 87, 56];
     const accent2 = [238, 150, 75];
 
-    // Título
     doc.setFontSize(24);
     doc.setTextColor(...primary);
     doc.setFont('helvetica', 'bold');
@@ -459,7 +452,6 @@ async function mostrarHistorial(equipoId, tipo) {
     doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')} ${new Date().toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'})}`, margin, y);
     y += 12;
 
-    // Tabla
     const headers = tipoHistorialActual === 'incidentes'
       ? [['FECHA', 'DESCRIPCIÓN', 'REPORTADO POR', 'ESTADO']]
       : [['FECHA', 'DESCRIPCIÓN', 'TÉCNICO', 'ESTADO']];
@@ -486,7 +478,6 @@ async function mostrarHistorial(equipoId, tipo) {
       margin: { left: margin, right: margin }
     });
 
-    // Pie de página
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -500,7 +491,6 @@ async function mostrarHistorial(equipoId, tipo) {
     doc.save(filename);
   });
 
-  // INICIO
   window.addEventListener('DOMContentLoaded', cargarEquipos);
 </script>
 

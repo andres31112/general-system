@@ -536,10 +536,8 @@ async function cargarSedes() {
         crearTabsSedes(sedes);
         await cargarSalas();
         
-        // ✅ CAMBIO: Cargar TODOS los equipos al inicio
         await mostrarTodosLosEquipos();
         
-        // Mostrar las salas de la primera sede
         if (sedes.length > 0) {
             await mostrarSalasDeSede(sedes[0].id_sede);
         }
@@ -550,11 +548,9 @@ async function cargarSedes() {
     }
 }
 
-// ✅ NUEVA FUNCIÓN: Solo muestra las salas de una sede, SIN cambiar los equipos
 async function mostrarSalasDeSede(sedeId) {
     console.log('🏢 Mostrando salas de sede ID:', sedeId);
     
-    // Actualizar tab activo
     document.querySelectorAll('.salas-card .nav-link').forEach(el => el.classList.remove('active'));
     const tab = document.getElementById(`tab-sede-${sedeId}`);
     if (tab) {
@@ -588,12 +584,10 @@ async function mostrarSalasDeSede(sedeId) {
             row.className = 'sala-row';
             row.onclick = () => {
                 console.log('🚪 Click en sala:', salon.nombre, 'ID:', salon.id_salon);
-                
-                // Resaltar la sala seleccionada
+
                 document.querySelectorAll('.sala-row').forEach(r => r.classList.remove('table-active'));
                 row.classList.add('table-active');
-                
-                // ✅ AQUÍ ES DONDE SE FILTRAN LOS EQUIPOS POR SALA
+
                 mostrarEquiposDeSala(sedeId, salon.id_salon);
             };
             row.innerHTML = `
@@ -609,7 +603,6 @@ async function mostrarSalasDeSede(sedeId) {
     }
 }
 
-// ✅ MODIFICADO: mostrarSede ahora solo cambia las salas, NO los equipos
 async function mostrarSede(sedeId) {
     await mostrarSalasDeSede(sedeId);
 }
@@ -622,7 +615,6 @@ async function mostrarTodosLosEquipos() {
     equiposGlobal = [];
     paginaActual = 1;
     
-    // Limpiar resaltado de salas
     document.querySelectorAll('.sala-row').forEach(r => r.classList.remove('table-active'));
     
     try {
