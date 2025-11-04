@@ -1,20 +1,23 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Horarios - Sistema Escolar</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/Horario.css') }}">
-</head>
-<body>
-    <div class="container">
+{% extends "base.html" %}
+
+{% block title %}Gestión de Horarios - Sistema Escolar{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/Horario.css') }}">
+<style>
+/* Quitar marco/espacio lateral del contenido en esta página */
+.content-wrapper { padding: 0 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid px-0">
         <header>
             <div class="logo">
                 <i class="fas fa-clock"></i>
                 <h1>Gestión Horario General</h1>
             </div>
-            <a href="{{ url_for('admin.inicio') }}" class="btn">
+            <a href="{{ url_for('admin.gestion_academica') }}" class="btn">
                 <i class="fas fa-arrow-left"></i> Volver al Dashboard
             </a>
         </header>
@@ -34,9 +37,9 @@
             </div>
             <div class="stat-card">
                 <h2><i class="fas fa-calendar-alt"></i> Horarios de Cursos</h2>
-                <button class="small" onclick="window.location.href='{{ url_for("admin.gestion_horarios_cursos") }}'">
+                <a class="btn small enter-btn" href="{{ url_for('admin.gestion_horarios_cursos') }}">
                     <i class="fas fa-sign-in-alt"></i> Entrar
-                </button>
+                </a>
             </div>
         </div>
 
@@ -52,10 +55,7 @@
                     <div class="form-group">
                         <label>Período Académico</label>
                         <select id="schedule-period">
-                            <option value="Primer Semestre">Primer Semestre</option>
-                            <option value="Segundo Semestre">Segundo Semestre</option>
                             <option value="Anual">Anual</option>
-                            <option value="Especial">Especial</option>
                         </select>
                     </div>
                 </div>
@@ -211,6 +211,40 @@
                 <h2><i class="fas fa-tasks"></i> Asignar Horario a Cursos</h2>
                 <button class="close-modal">&times;</button>
             </div>
+            <div class="form-group" style="margin-top:0;">
+                <div class="assign-controls-top" style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start; justify-content:space-between;">
+                    <div class="assign-actions-left" style="flex:1 1 100%; display:flex; flex-direction:column; gap:10px;">
+                        <button id="confirm-assign-btn" class="primary-wide">
+                            <i class="fas fa-check"></i> Asignar Horario Seleccionado
+                        </button>
+                        <div class="assign-filters-right" style="display:flex; gap:10px; align-items:center; flex-wrap:nowrap; width:100%;">
+                            <input type="text" id="courses-search" placeholder="Buscar curso..." style="min-width:220px;">
+                            <select id="courses-sede-filter" style="min-width:160px;">
+                                <option value="">Todas las sedes</option>
+                            </select>
+                            <select id="courses-assigned-filter" style="min-width:160px;">
+                                <option value="">Todos</option>
+                                <option value="con">Con horario</option>
+                                <option value="sin">Sin horario</option>
+                            </select>
+                            <div id="assign-selection-counter" style="font-weight:700; color:#0D3B66;">
+                                0 seleccionados de 0
+                            </div>
+                        </div>
+                        <div class="assign-secondary-row" style="display:flex; gap:10px; flex-wrap:nowrap;">
+                            <button class="secondary" id="assign-all-btn">
+                                <i class="fas fa-check-double"></i> Seleccionar a Todos
+                            </button>
+                            <button class="secondary" id="assign-none-btn">
+                                <i class="fas fa-ban"></i> Seleccionar ninguno
+                            </button>
+                            <button class="secondary" id="unassign-selected-btn">
+                                <i class="fas fa-undo"></i> Desasignar seleccionados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Seleccionar Horario Guardado</label>
                 <select id="schedule-select">
@@ -224,11 +258,15 @@
                         Cargando cursos...
                     </p>
                 </div>
-            </div>
-            <div class="form-group">
-                <button id="confirm-assign-btn">
-                    <i class="fas fa-check"></i> Asignar Horario Seleccionado
-                </button>
+                <div id="courses-pagination" class="assign-pagination" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    <button class="secondary small" id="prev-page-btn" style="width:auto;">
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <div id="page-info" style="font-weight:600; color:#0D3B66;">Página 1 de 1</div>
+                    <button class="secondary small" id="next-page-btn" style="width:auto;">
+                        Siguiente <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -269,5 +307,4 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/superadmin/Horario.js') }}"></script>
-</body>
-</html>
+{% endblock %}

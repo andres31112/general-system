@@ -386,7 +386,7 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
             transform: translateX(120%);
             transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 1000;
+            z-index: 1002; /* Aumentado de 1000 a 1002 para que aparezca sobre los modales */
             display: flex;
             align-items: center;
             gap: 12px;
@@ -678,17 +678,24 @@
         }
 
         async function cargarAsignaturas() {
-    try {
-        const asignaturas = await apiRequest(API_URLS.asignaturas);
-        estado.asignaturas = asignaturas;
-        console.log("📚 Asignaturas cargadas:", asignaturas);
-        actualizarEstadisticas();
-        renderizarTablaAsignaturas();
-    } catch (error) {
-        console.error('Error cargando asignaturas:', error);
-        mostrarNotificacion('Error al cargar las asignaturas', 'error');
-    }
-}
+                try {
+                    const asignaturas = await apiRequest(API_URLS.asignaturas);
+
+                    // Normalizar la respuesta: la API devuelve `id_asignatura`.
+                    // El frontend espera `id` en algunas funciones, así que añadimos `id`.
+                    estado.asignaturas = asignaturas.map(a => ({
+                        ...a,
+                        id: a.id_asignatura
+                    }));
+
+                    console.log("📚 Asignaturas cargadas:", estado.asignaturas);
+                    actualizarEstadisticas();
+                    renderizarTablaAsignaturas();
+                } catch (error) {
+                    console.error('Error cargando asignaturas:', error);
+                    mostrarNotificacion('Error al cargar las asignaturas', 'error');
+                }
+            }
 
         async function cargarProfesores() {
     try {
@@ -703,49 +710,49 @@
 }
 
         async function guardarAsignatura(datos) {
-    const esEdicion = datos.id !== '';
-    const url = esEdicion ? 
-        `${API_URLS.actualizarAsignatura}/${datos.id}` : 
-        API_URLS.crearAsignatura;
-        
-    const method = esEdicion ? 'PUT' : 'POST';
+            const esEdicion = datos.id !== '' && datos.id != null && datos.id !== undefined;
+            const url = esEdicion ? 
+                `${API_URLS.actualizarAsignatura}/${datos.id}` : 
+                API_URLS.crearAsignatura;
 
-    // Preparar datos para enviar
-    const datosEnvio = {
-        nombre: datos.nombre,
-        descripcion: datos.descripcion,
-        estado: datos.estado,
-        profesores: estado.profesoresAsignados.map(p => p.id_usuario)
-    };
+            const method = esEdicion ? 'PUT' : 'POST';
 
-    if (esEdicion) {
-        datosEnvio.id = datos.id;
-    }
+            // Preparar datos para enviar
+            const datosEnvio = {
+                nombre: datos.nombre,
+                descripcion: datos.descripcion,
+                estado: datos.estado,
+                profesores: estado.profesoresAsignados.map(p => p.id_usuario)
+            };
 
-    console.log("📤 Enviando datos:", datosEnvio);
+            if (esEdicion) {
+                datosEnvio.id = datos.id;
+            }
 
-    try {
-        const resultado = await apiRequest(url, {
-            method: method,
-            body: JSON.stringify(datosEnvio)
-        });
+            console.log("📤 Enviando datos:", datosEnvio);
 
-        if (resultado.success) {
-            mostrarNotificacion(
-                esEdicion ? 'Asignatura actualizada correctamente' : 'Asignatura creada correctamente', 
-                'success'
-            );
-            await cargarAsignaturas();
-            cerrarModal();
-            return true;
-        } else {
-            throw new Error(resultado.error);
+            try {
+                const resultado = await apiRequest(url, {
+                    method: method,
+                    body: JSON.stringify(datosEnvio)
+                });
+
+                if (resultado.success) {
+                    mostrarNotificacion(
+                        esEdicion ? 'Asignatura actualizada correctamente' : 'Asignatura creada correctamente', 
+                        'success'
+                    );
+                    await cargarAsignaturas();
+                    cerrarModal();
+                    return true;
+                } else {
+                    throw new Error(resultado.error || 'Respuesta inválida del servidor');
+                }
+            } catch (error) {
+                mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
+                return false;
+            }
         }
-    } catch (error) {
-        mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
-        return false;
-    }
-}
 
         async function eliminarAsignatura(id) {
             try {
@@ -845,6 +852,7 @@
                 option.textContent = profesor.nombre_completo;
                 select.appendChild(option);
             });
+            syncProfesorSelectDisabled();
         }
 
         function renderizarTablaAsignaturas() {
@@ -941,29 +949,36 @@
 
         function agregarProfesor() {
             const select = document.getElementById('profesor-select');
-            const profesorId = select.value;
+            const currentValue = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex].value : '';
+            const profesorId = currentValue ? parseInt(currentValue, 10) : null;
             
             if (!profesorId) {
                 mostrarNotificacion('Seleccione un profesor', 'warning');
                 return;
             }
             
-            const profesor = estado.profesores.find(p => p.id_usuario == profesorId);
+            const profesor = estado.profesores.find(p => parseInt(p.id_usuario, 10) === profesorId);
             if (!profesor) return;
             
             // Verificar si ya está agregado
-            if (estado.profesoresAsignados.some(p => p.id_usuario == profesorId)) {
+            if (getAssignedIdSet().has(profesorId)) {
                 mostrarNotificacion('Este profesor ya está asignado', 'warning');
                 return;
             }
             
-            estado.profesoresAsignados.push(profesor);
+            estado.profesoresAsignados.push({
+                id_usuario: profesor.id_usuario,
+                nombre_completo: profesor.nombre_completo,
+                correo: profesor.correo
+            });
             actualizarListaProfesores();
             select.value = '';
+            syncProfesorSelectDisabled();
         }
 
         function eliminarProfesor(profesorId) {
-            estado.profesoresAsignados = estado.profesoresAsignados.filter(p => p.id_usuario != profesorId);
+            const idNum = parseInt(profesorId, 10);
+            estado.profesoresAsignados = estado.profesoresAsignados.filter(p => parseInt(p.id_usuario, 10) !== idNum);
             actualizarListaProfesores();
         }
 
@@ -976,7 +991,7 @@
                 return;
             }
             
-            emptyMessage.style.display = 'none';
+            if (emptyMessage) emptyMessage.style.display = 'none';
             
             const profesoresHTML = estado.profesoresAsignados.map(profesor => `
                 <div class="profesor-item">
@@ -984,7 +999,7 @@
                         <div class="profesor-nombre">${profesor.nombre_completo}</div>
                     </div>
                     <div class="profesor-actions">
-                        <button type="button" class="small danger" onclick="eliminarProfesor(${profesor.id_usuario})">
+                        <button type="button" class="small danger" data-prof-id="${parseInt(profesor.id_usuario, 10)}">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -992,6 +1007,26 @@
             `).join('');
             
             container.innerHTML = profesoresHTML;
+            syncProfesorSelectDisabled();
+        }
+
+        function syncProfesorSelectDisabled() {
+            const select = document.getElementById('profesor-select');
+            if (!select) return;
+            const asignados = getAssignedIdSet();
+            Array.from(select.options).forEach(opt => {
+                if (!opt.value) { opt.disabled = false; return; }
+                const id = parseInt(opt.value, 10);
+                opt.disabled = asignados.has(id);
+            });
+            const selId = select.value ? parseInt(select.value, 10) : null;
+            if (selId && asignados.has(selId)) {
+                select.value = '';
+            }
+        }
+
+        function getAssignedIdSet() {
+            return new Set(estado.profesoresAsignados.map(p => parseInt(p.id_usuario, 10)));
         }
 
         // =============================================
@@ -1008,6 +1043,8 @@
             document.getElementById('estado').value = 'activa';
             actualizarListaProfesores();
             document.getElementById('asignatura-modal').style.display = 'flex';
+            attachProfesoresDelegation();
+            syncProfesorSelectDisabled();
         }
 
         async function editarAsignatura(id) {
@@ -1015,7 +1052,11 @@
             if (!asignatura) return;
 
             estado.asignaturaEditando = asignatura;
-            estado.profesoresAsignados = asignatura.profesores || [];
+            estado.profesoresAsignados = (asignatura.profesores || []).map(p => ({
+                id_usuario: parseInt(p.id_usuario, 10),
+                nombre_completo: p.nombre_completo,
+                correo: p.correo
+            }));
             
             document.getElementById('modal-title').textContent = 'Editar Asignatura';
             document.getElementById('submit-text').textContent = 'Actualizar';
@@ -1090,7 +1131,22 @@
         document.addEventListener('DOMContentLoaded', function() {
             cargarAsignaturas();
             cargarProfesores();
+            attachProfesoresDelegation();
         });
+
+        function attachProfesoresDelegation() {
+            const cont = document.getElementById('profesores-container');
+            if (cont && !cont._delegatedRemove) {
+                cont.addEventListener('click', function(e) {
+                    const btn = e.target.closest('button[data-prof-id]');
+                    if (btn) {
+                        const id = parseInt(btn.getAttribute('data-prof-id'), 10);
+                        if (!isNaN(id)) eliminarProfesor(id);
+                    }
+                });
+                cont._delegatedRemove = true;
+            }
+        }
 
         // Hacer funciones globales
         window.abrirModalCrear = abrirModalCrear;

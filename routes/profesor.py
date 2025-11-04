@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Rol,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
+    HorarioGeneral, BloqueHorario, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion
 HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion, AsignacionEquipo, Equipo
 )
 from datetime import datetime, date
@@ -51,53 +52,39 @@ def obtener_cursos_del_profesor(profesor_id):
     return todos_cursos
 
 def obtener_horarios_detallados_profesor(profesor_id):
-    """Obtiene horarios compartidos con detalles completos."""
-    horarios = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
+    """Obtiene horarios detallados del profesor directamente desde HorarioCurso."""
+    # Consultar directamente HorarioCurso donde el profesor está asignado
+    horarios_curso = db.session.query(HorarioCurso, Curso, Asignatura, Salon, Sede)\
+        .join(Curso, HorarioCurso.curso_id == Curso.id_curso)\
+        .join(Asignatura, HorarioCurso.asignatura_id == Asignatura.id_asignatura)\
+        .outerjoin(Salon, HorarioCurso.id_salon_fk == Salon.id_salon)\
+        .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
+        .filter(HorarioCurso.profesor_id == profesor_id)\
+        .all()
+    
     horarios_detallados = []
 
-    for hcomp in horarios:
-        # Buscar el HorarioCurso que coincida - CORREGIDO
-        horario_curso = HorarioCurso.query.filter_by(
-            curso_id=hcomp.curso_id,
-            asignatura_id=hcomp.asignatura_id,
-            horario_general_id=hcomp.horario_general_id
-        ).first()
-
-        # Fallback: si no existe una coincidencia exacta, intentar por curso + asignatura
-        if not horario_curso:
-            horario_curso = HorarioCurso.query.filter_by(
-                curso_id=hcomp.curso_id,
-                asignatura_id=hcomp.asignatura_id
-            ).first()
-
-        curso = Curso.query.get(hcomp.curso_id)
-        asignatura = Asignatura.query.get(hcomp.asignatura_id)
-        horario_general = HorarioGeneral.query.get(hcomp.horario_general_id) if hcomp.horario_general_id else None
-
-        # Salon - CORREGIDO
-        salon = None
-        if horario_curso and getattr(horario_curso, 'id_salon_fk', None):
-            salon = Salon.query.get(horario_curso.id_salon_fk)
-
-        sede = None
-        if curso and getattr(curso, 'sedeId', None):
-            sede = Sede.query.get(curso.sedeId)
+    for hc, curso, asignatura, salon, sede in horarios_curso:
+        # Obtener sede del curso si no se obtuvo del salon
+        sede_nombre = 'N/A'
+        if sede:
+            sede_nombre = sede.nombre
+        elif hasattr(curso, 'sede') and curso.sede:
+            sede_nombre = curso.sede.nombre
+        elif hasattr(curso, 'sedeId') and curso.sedeId:
+            sede_obj = Sede.query.get(curso.sedeId)
+            if sede_obj:
+                sede_nombre = sede_obj.nombre
 
         horarios_detallados.append({
             'curso_nombre': curso.nombreCurso if curso else 'N/A',
             'asignatura_nombre': asignatura.nombre if asignatura else 'N/A',
-            'dia_semana': horario_curso.dia_semana if horario_curso and getattr(horario_curso, 'dia_semana', None) else (horario_general.nombre if horario_general else 'N/A'),
-            'hora_inicio': (
-                horario_curso.hora_inicio if horario_curso and getattr(horario_curso, 'hora_inicio', None)
-                else (horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else 'N/A')
-            ),
-            'hora_fin': (
-                horario_curso.hora_fin if horario_curso and getattr(horario_curso, 'hora_fin', None)
-                else (horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else 'N/A')
-            ),
+            'dia_semana': hc.dia_semana if hc.dia_semana else 'N/A',
+            'hora_inicio': hc.hora_inicio if hc.hora_inicio else 'N/A',
+            'hora_fin': hc.hora_fin if hc.hora_fin else 'N/A',
             'salon': salon.nombre if salon else 'N/A',
-            'sede': sede.nombre if sede else 'N/A',
-            'origen_id_horario_curso': horario_curso.id_horario_curso if horario_curso else None
+            'sede': sede_nombre,
+            'origen_id_horario_curso': hc.id_horario_curso if hc else None
         })
 
     return horarios_detallados
@@ -386,16 +373,12 @@ def obtener_proxima_clase(profesor_id):
 
 
 def generar_matriz_horario_profesor(profesor_id):
-    """Genera una matriz (dias x horas) con listas de clases para el profesor.
-    Retorna (dias, horas, matriz) donde:
-      - dias: lista ordenada de nombres de día
-      - horas: lista ordenada de horas de inicio ("HH:MM")
-      - matriz: dict dia -> hora -> [entradas]
-    Cada entrada es un dict con keys: curso_nombre, asignatura_nombre, hora_inicio, hora_fin, salon, sede, origen
+    """Genera una matriz (dias x bloques) basada en los BloquesHorario del HorarioGeneral.
+    Retorna (dias, bloques, matriz) donde:
+      - dias: lista ordenada de días que tienen bloques (clases o descansos)
+      - bloques: lista ordenada de TODOS los bloques horarios del horario general (incluye descansos)
+      - matriz: dict dia -> bloque -> {'tipo': 'clase'|'descanso', 'asignaturas': [...]}
     """
-    entradas = []
-    entradas_unicas = set()  # Para evitar duplicados
-
     def _fmt_hora(val):
         try:
             if hasattr(val, 'strftime'):
@@ -405,144 +388,156 @@ def generar_matriz_horario_profesor(profesor_id):
         except Exception:
             return None
 
-    # 1) Entradas desde HorarioCompartido / HorarioCurso (prioritario)
-    try:
-        hcomps = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
-    except Exception:
-        hcomps = []
+    def _normalizar_dia(dia_str):
+        """Normaliza el nombre del día a minúsculas y formato estándar"""
+        if not dia_str:
+            return None
+        dia = str(dia_str).strip().lower()
+        mapeo = {
+            'lunes': 'lunes',
+            'martes': 'martes',
+            'miercoles': 'miercoles',
+            'miércoles': 'miercoles',
+            'jueves': 'jueves',
+            'viernes': 'viernes',
+            'sabado': 'sabado',
+            'sábado': 'sabado',
+            'domingo': 'domingo'
+        }
+        return mapeo.get(dia, dia)
 
-    for hcomp in hcomps:
-        horario_curso = None
-        try:
-            horario_curso = HorarioCurso.query.filter_by(
-                curso_id=hcomp.curso_id,
-                asignatura_id=hcomp.asignatura_id,
-                horario_general_id=hcomp.horario_general_id
-            ).first()
-            if not horario_curso:
-                horario_curso = HorarioCurso.query.filter_by(
-                    curso_id=hcomp.curso_id,
-                    asignatura_id=hcomp.asignatura_id
-                ).first()
-        except Exception:
-            horario_curso = None
+    # 1. Obtener cursos únicos donde el profesor tiene clases
+    cursos_ids = db.session.query(HorarioCurso.curso_id)\
+        .filter(HorarioCurso.profesor_id == profesor_id)\
+        .distinct()\
+        .all()
+    cursos_ids = [c[0] for c in cursos_ids]
 
-        curso = Curso.query.get(hcomp.curso_id)
-        asignatura = Asignatura.query.get(hcomp.asignatura_id)
-        horario_general = HorarioGeneral.query.get(hcomp.horario_general_id) if hcomp.horario_general_id else None
+    if not cursos_ids:
+        return [], [], {}
 
-        dia = None
-        hora_inicio = None
-        hora_fin = None
-        salon_nombre = None
+    # 2. Obtener horarios_generales únicos de esos cursos
+    horarios_generales_ids = db.session.query(Curso.horario_general_id)\
+        .filter(Curso.id_curso.in_(cursos_ids))\
+        .filter(Curso.horario_general_id.isnot(None))\
+        .distinct()\
+        .all()
+    horarios_generales_ids = [h[0] for h in horarios_generales_ids]
 
-        if horario_curso:
-            dia = horario_curso.dia_semana
-            hora_inicio = _fmt_hora(horario_curso.hora_inicio)
-            hora_fin = _fmt_hora(horario_curso.hora_fin)
-            salon_nombre = horario_curso.salon.nombre if getattr(horario_curso, 'salon', None) else None
-        elif horario_general:
-            # Si no hay horario_curso, intentar usar el horario_general (tomar horaInicio)
-            dia = horario_general.nombre if horario_general else None
-            hora_inicio = horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else None
-            hora_fin = horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else None
+    if not horarios_generales_ids:
+        return [], [], {}
 
-        # Crear clave única para evitar duplicados
-        clave_unica = f"{hcomp.curso_id}-{hcomp.asignatura_id}-{dia}-{hora_inicio}"
-        if clave_unica not in entradas_unicas:
-            entradas_unicas.add(clave_unica)
-        entradas.append({
-            'curso_id': getattr(curso, 'id_curso', None),
+    # 3. Obtener TODOS los BloquesHorario de esos horarios generales
+    bloques_horario = BloqueHorario.query.filter(
+        BloqueHorario.horario_general_id.in_(horarios_generales_ids)
+    ).order_by(BloqueHorario.orden).all()
+
+    # 4. Obtener asignaturas asignadas del profesor (HorarioCurso)
+    asignaciones_profesor = db.session.query(
+        HorarioCurso, Curso, Asignatura, Salon
+    ).join(
+        Curso, HorarioCurso.curso_id == Curso.id_curso
+    ).join(
+        Asignatura, HorarioCurso.asignatura_id == Asignatura.id_asignatura
+    ).outerjoin(
+        Salon, HorarioCurso.id_salon_fk == Salon.id_salon
+    ).filter(
+        HorarioCurso.profesor_id == profesor_id
+    ).all()
+
+    # Crear diccionario de asignaciones por (curso_id, dia, hora_inicio)
+    asignaciones_dict = {}
+    for hc, curso, asignatura, salon in asignaciones_profesor:
+        dia = _normalizar_dia(hc.dia_semana)
+        hora_inicio = _fmt_hora(hc.hora_inicio)
+        hora_fin = _fmt_hora(hc.hora_fin)
+        
+        if not dia or not hora_inicio or not hora_fin:
+            continue
+
+        # Obtener sede del curso
+        sede_nombre = 'N/A'
+        if hasattr(curso, 'sede') and curso.sede:
+            sede_nombre = curso.sede.nombre
+        elif hasattr(curso, 'sedeId') and curso.sedeId:
+            sede_obj = Sede.query.get(curso.sedeId)
+            if sede_obj:
+                sede_nombre = sede_obj.nombre
+
+        clave = (hc.curso_id, dia, hora_inicio)
+        if clave not in asignaciones_dict:
+            asignaciones_dict[clave] = []
+        asignaciones_dict[clave].append({
+            'curso_id': hc.curso_id,
             'curso_nombre': curso.nombreCurso if curso else 'N/A',
-            'asignatura_id': getattr(asignatura, 'id_asignatura', None),
+            'asignatura_id': hc.asignatura_id,
             'asignatura_nombre': asignatura.nombre if asignatura else 'N/A',
-            'dia': dia or 'N/A',
-            'hora_inicio': hora_inicio or 'N/A',
-            'hora_fin': hora_fin or 'N/A',
-            'salon': salon_nombre or 'N/A',
-            'sede': curso.sede.nombre if getattr(curso, 'sede', None) else 'N/A',
-            'origen': 'compartido'
+            'hora_inicio': hora_inicio,
+            'hora_fin': hora_fin,
+            'salon': salon.nombre if salon else 'N/A',
+            'sede': sede_nombre
         })
 
-    # 2) Entradas desde Clase (sistema tradicional) - solo si no hay HorarioCompartido
-    try:
-        clases = Clase.query.filter_by(profesorId=profesor_id).all()
-    except Exception:
-        clases = []
-
-    for clase in clases:
-        # Verificar si ya existe una entrada de HorarioCompartido para esta combinación
-        clave_clase = f"{clase.cursoId}-{clase.asignaturaId}"
-        if any(e.get('curso_id') == clase.cursoId and e.get('asignatura_id') == clase.asignaturaId for e in entradas):
-            continue  # Saltar si ya existe en HorarioCompartido
-            
-        # Intentar localizar HorarioCurso asociado a la asignatura + curso
-        horario_curso = HorarioCurso.query.filter_by(curso_id=clase.cursoId, asignatura_id=clase.asignaturaId).first()
-        curso = Curso.query.get(clase.cursoId)
-        asignatura = Asignatura.query.get(clase.asignaturaId)
-        horario_general = HorarioGeneral.query.get(clase.horarioId) if getattr(clase, 'horarioId', None) else None
-
-        dia = horario_curso.dia_semana if horario_curso and getattr(horario_curso, 'dia_semana', None) else (horario_general.nombre if horario_general else None)
-        hora_inicio = _fmt_hora(horario_curso.hora_inicio) if horario_curso and getattr(horario_curso, 'hora_inicio', None) else (horario_general.horaInicio.strftime('%H:%M') if horario_general and horario_general.horaInicio else None)
-        hora_fin = _fmt_hora(horario_curso.hora_fin) if horario_curso and getattr(horario_curso, 'hora_fin', None) else (horario_general.horaFin.strftime('%H:%M') if horario_general and horario_general.horaFin else None)
-        salon_nombre = horario_curso.salon.nombre if horario_curso and getattr(horario_curso, 'salon', None) else None
-
-        # Crear clave única para evitar duplicados
-        clave_unica = f"{clase.cursoId}-{clase.asignaturaId}-{dia}-{hora_inicio}"
-        if clave_unica not in entradas_unicas:
-            entradas_unicas.add(clave_unica)
-        entradas.append({
-            'curso_id': getattr(curso, 'id_curso', None),
-            'curso_nombre': curso.nombreCurso if curso else 'N/A',
-            'asignatura_id': getattr(asignatura, 'id_asignatura', None),
-            'asignatura_nombre': asignatura.nombre if asignatura else 'N/A',
-            'dia': dia or 'N/A',
-            'hora_inicio': hora_inicio or 'N/A',
-            'hora_fin': hora_fin or 'N/A',
-            'salon': salon_nombre or 'N/A',
-            'sede': curso.sede.nombre if getattr(curso, 'sede', None) else 'N/A',
-            'origen': 'clase'
-        })
-
-    # Normalizar días y horas y construir matriz
+    # 5. Construir matriz con TODOS los bloques del horario general
     dias_set = set()
-    horas_set = set()
-    for e in entradas:
-        d = e.get('dia')
-        h = e.get('hora_inicio')
-        if d and d != 'N/A':
-            dias_set.add(d)
-        if h and h != 'N/A':
-            horas_set.add(h)
+    bloques_dict = {}  # bloque_key -> {'hora_inicio': str, 'hora_fin': str, 'tipo': str}
+    matriz = {}
 
-    # Ordenar días por índice si es posible (lunes->domingo)
+    for bloque in bloques_horario:
+        dia = _normalizar_dia(bloque.dia_semana)
+        hora_inicio = _fmt_hora(bloque.horaInicio)
+        hora_fin = _fmt_hora(bloque.horaFin)
+        
+        if not dia or not hora_inicio or not hora_fin:
+            continue
+
+        bloque_key = f"{hora_inicio}-{hora_fin}"
+        dias_set.add(dia)
+        bloques_dict[bloque_key] = {
+            'hora_inicio': hora_inicio,
+            'hora_fin': hora_fin,
+            'tipo': bloque.tipo,  # 'clase', 'descanso', etc.
+            'nombre': bloque.nombre or ''
+        }
+
+        # Inicializar matriz
+        if dia not in matriz:
+            matriz[dia] = {}
+        
+        # Buscar asignaciones que coincidan con este bloque
+        asignaciones_en_bloque = []
+        for (curso_id, dia_asig, hora_inicio_asig), asignaciones in asignaciones_dict.items():
+            if dia_asig == dia and hora_inicio_asig == hora_inicio:
+                asignaciones_en_bloque.extend(asignaciones)
+
+        # Normalizar tipo de bloque para identificar descansos
+        tipo_normalizado = str(bloque.tipo).lower().strip() if bloque.tipo else 'clase'
+        
+        # Guardar en matriz: tipo de bloque y asignaciones
+        matriz[dia][bloque_key] = {
+            'tipo': tipo_normalizado,  # Normalizado a minúsculas ('clase', 'break', etc.)
+            'tipo_original': bloque.tipo,  # Mantener original para referencia
+            'nombre': bloque.nombre or '',
+            'asignaturas': asignaciones_en_bloque,
+            'break_type': bloque.break_type if hasattr(bloque, 'break_type') and bloque.break_type else None,
+            'class_type': bloque.class_type if hasattr(bloque, 'class_type') and bloque.class_type else None
+        }
+
+    # Ordenar días por índice (lunes->domingo)
     dias_list = sorted(list(dias_set), key=lambda x: (_dia_semana_a_indice(x) if _dia_semana_a_indice(x) is not None else 999, x))
 
-    # Ordenar horas por minutos
-    def hora_key(h):
+    # Ordenar bloques por hora de inicio
+    def bloque_key(bloque_str):
+        """Extrae la hora de inicio del bloque para ordenar"""
         try:
-            return _hora_a_minutos(h)
+            inicio = bloque_str.split('-')[0] if '-' in bloque_str else bloque_str
+            return _hora_a_minutos(inicio)
         except Exception:
             return 24*60
 
-    horas_list = sorted(list(horas_set), key=hora_key)
+    bloques_list = sorted(list(bloques_dict.keys()), key=bloque_key)
 
-    matriz = {}
-    for d in dias_list:
-        matriz[d] = {}
-        for h in horas_list:
-            matriz[d][h] = []
-
-    for e in entradas:
-        d = e.get('dia')
-        h = e.get('hora_inicio')
-        if d in matriz and h in matriz[d]:
-            matriz[d][h].append(e)
-        else:
-            # si día o hora no está en listas (por datos raros), agregar entrada suelta en clave especial
-            matriz.setdefault(d, {}).setdefault(h or 'N/A', []).append(e)
-
-    return dias_list, horas_list, matriz
+    return dias_list, bloques_list, matriz
 
 
 @profesor_bp.context_processor
@@ -677,40 +672,44 @@ def obtener_clase_actual(profesor_id):
             return None
         
         # Usar la matriz de horarios para obtener datos más precisos
-        dias_semana, horas_semana, matriz_horario = generar_matriz_horario_profesor(profesor_id)
+        dias_semana, bloques_semana, matriz_horario = generar_matriz_horario_profesor(profesor_id)
         
         # Buscar en la matriz del día actual
         if dia_actual_es in matriz_horario:
-            for hora_inicio, entradas in matriz_horario[dia_actual_es].items():
-                if entradas:  # Si hay entradas en esta hora
-                    # Verificar si la hora actual está dentro del rango de la clase
-                    for entrada in entradas:
-                        hora_inicio_clase = entrada.get('hora_inicio', '')
-                        hora_fin_clase = entrada.get('hora_fin', '')
+            for bloque_key, bloque_data in matriz_horario[dia_actual_es].items():
+                # La nueva estructura: bloque_data es un dict con 'tipo' y 'asignaturas'
+                asignaturas = bloque_data.get('asignaturas', [])
+                if asignaturas and bloque_data.get('tipo') != 'descanso':
+                    # Verificar si la hora actual está dentro del rango del bloque
+                    bloque_parts = bloque_key.split('-')
+                    if len(bloque_parts) == 2:
+                        hora_inicio_bloque = bloque_parts[0]
+                        hora_fin_bloque = bloque_parts[1]
                         
-                        if hora_inicio_clase and hora_fin_clase:
-                            # Convertir a minutos para comparación
-                            def hora_a_minutos(hora_str):
-                                try:
-                                    h, m = map(int, hora_str.split(':'))
-                                    return h * 60 + m
-                                except:
-                                    return 0
-                            
-                            hora_actual_min = hora_a_minutos(hora_actual)
-                            hora_inicio_min = hora_a_minutos(hora_inicio_clase)
-                            hora_fin_min = hora_a_minutos(hora_fin_clase)
-                            
-                            # Verificar si estamos dentro del rango de la clase
-                            if hora_inicio_min <= hora_actual_min < hora_fin_min:
-                                return {
-                                    'asignatura_nombre': entrada.get('asignatura_nombre', 'N/A'),
-                                    'curso_nombre': entrada.get('curso_nombre', 'N/A'),
-                                    'hora_inicio': hora_inicio_clase,
-                                    'hora_fin': hora_fin_clase,
-                                    'salon': entrada.get('salon', 'N/A'),
-                                    'sede': entrada.get('sede', 'N/A')
-                                }
+                        # Convertir a minutos para comparación
+                        def hora_a_minutos(hora_str):
+                            try:
+                                h, m = map(int, hora_str.split(':'))
+                                return h * 60 + m
+                            except Exception:
+                                return 0
+
+                        hora_actual_min = hora_a_minutos(hora_actual)
+                        hora_inicio_min = hora_a_minutos(hora_inicio_bloque)
+                        hora_fin_min = hora_a_minutos(hora_fin_bloque)
+                        
+                        # Verificar si estamos dentro del rango del bloque
+                        if hora_inicio_min <= hora_actual_min < hora_fin_min:
+                            # Retornar la primera asignatura (o podrías retornar todas)
+                            entrada = asignaturas[0]
+                            return {
+                                'asignatura_nombre': entrada.get('asignatura_nombre', 'N/A'),
+                                'curso_nombre': entrada.get('curso_nombre', 'N/A'),
+                                'hora_inicio': hora_inicio_bloque,
+                                'hora_fin': hora_fin_bloque,
+                                'salon': entrada.get('salon', 'N/A'),
+                                'sede': entrada.get('sede', 'N/A')
+                            }
         
         return None
     except Exception as e:
@@ -976,14 +975,14 @@ def dashboard():
         flash(f'Error al cargar horarios: {str(e)}', 'error')
         horarios_detallados = []
 
-    # Generar matriz semanal (días x horas) solo del profesor
+    # Generar matriz semanal (días x bloques) solo del profesor
     try:
-        dias_semana, horas_semana, matriz_horario = generar_matriz_horario_profesor(current_user.id_usuario)
+        dias_semana, bloques_semana, matriz_horario = generar_matriz_horario_profesor(current_user.id_usuario)
     except Exception:
-        dias_semana, horas_semana, matriz_horario = [], [], {}
+        dias_semana, bloques_semana, matriz_horario = [], [], {}
 
     # Fallback: si no se pudo construir con la matriz (por datos parciales), derivar de horarios_detallados
-    if (not dias_semana or not horas_semana) and horarios_detallados:
+    if (not dias_semana or not bloques_semana) and horarios_detallados:
         try:
             def _norm_dia(d):
                 try:
@@ -998,7 +997,7 @@ def dashboard():
                 except Exception:
                     return h
             dias_set_fb = set()
-            horas_set_fb = set()
+            bloques_set_fb = set()
             matriz_fb = {}
             for h in horarios_detallados:
                 d = _norm_dia(h.get('dia_semana') or h.get('dia') or h.get('diaSemana'))
@@ -1006,20 +1005,31 @@ def dashboard():
                 hf = _norm_h(h.get('hora_fin') or h.get('horaFin'))
                 if d:
                     dias_set_fb.add(d)
-                if hi:
-                    horas_set_fb.add(hi)
-                if d and hi:
-                    matriz_fb.setdefault(d, {}).setdefault(hi, []).append({
+                if hi and hf:
+                    bloque_key = f"{hi}-{hf}"
+                    bloques_set_fb.add(bloque_key)
+                if d and hi and hf:
+                    bloque_key = f"{hi}-{hf}"
+                    if d not in matriz_fb:
+                        matriz_fb[d] = {}
+                    if bloque_key not in matriz_fb[d]:
+                        matriz_fb[d][bloque_key] = {
+                            'tipo': 'clase',
+                            'nombre': '',
+                            'asignaturas': []
+                        }
+                    matriz_fb[d][bloque_key]['asignaturas'].append({
                         'asignatura_nombre': h.get('asignatura_nombre') or h.get('asignatura', 'N/A'),
                         'curso_nombre': h.get('curso_nombre') or h.get('curso', 'N/A'),
                         'salon': h.get('salon') or 'N/A',
                         'hora_inicio': hi,
-                        'hora_fin': hf or ''
+                        'hora_fin': hf or '',
+                        'sede': h.get('sede', 'N/A')
                     })
             # ordenar usando utilidades existentes
             dias_semana = sorted(list(dias_set_fb), key=lambda x: (_dia_semana_a_indice(x) if _dia_semana_a_indice(x) is not None else 999, x))
-            horas_semana = sorted(list(horas_set_fb), key=lambda hh: (_hora_a_minutos(hh)))
-            matriz_horario = {d: {h: matriz_fb.get(d, {}).get(h, []) for h in horas_semana} for d in dias_semana}
+            bloques_semana = sorted(list(bloques_set_fb), key=lambda b: _hora_a_minutos(b.split('-')[0]) if '-' in b else 24*60)
+            matriz_horario = {d: {b: matriz_fb.get(d, {}).get(b, {'tipo': 'clase', 'asignaturas': []}) for b in bloques_semana} for d in dias_semana}
         except Exception:
             pass
 
@@ -1044,7 +1054,7 @@ def dashboard():
                            curso_actual=curso_actual,
                            horarios_detallados=horarios_detallados,
                            dias=dias_semana,
-                           horas=horas_semana,
+                           horas=bloques_semana,  # Pasar bloques como horas para compatibilidad con template
                            matriz=matriz_horario,
                            estadisticas_asistencia=estadisticas_asistencia,
                            estadisticas_calificaciones=estadisticas_calificaciones,
@@ -1871,6 +1881,93 @@ def api_asignaturas_curso(curso_id):
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error al obtener asignaturas: {str(e)}'}), 500
+
+@profesor_bp.route('/api/curso-detalle/<int:curso_id>')
+@login_required
+def api_curso_detalle(curso_id):
+    """Detalle del curso para mostrar inline en Mis Cursos."""
+    try:
+        if not verificar_acceso_curso_profesor(current_user.id_usuario, curso_id):
+            return jsonify({'success': False, 'message': 'No tienes acceso a este curso'}), 403
+
+        curso = Curso.query.get(curso_id)
+        if not curso:
+            return jsonify({'success': False, 'message': 'Curso no encontrado'}), 404
+
+        estudiantes = obtener_estudiantes_por_curso(curso_id)
+        periodo = None
+        if getattr(curso, 'horario_general', None):
+            periodo = curso.horario_general.periodo
+
+        # Representante del curso (tomar cualquiera definido en Clase)
+        representante_nombre = None
+        clase_rep = Clase.query.filter_by(cursoId=curso_id).filter(Clase.representanteCursoId.isnot(None)).first()
+        if clase_rep and clase_rep.representante:
+            representante_nombre = clase_rep.representante.nombre_completo
+
+        # Director de curso (no existe campo en modelo de Curso). Placeholder coherente
+        director_nombre = None
+
+        return jsonify({
+            'success': True,
+            'curso': {
+                'id': curso.id_curso,
+                'nombre': curso.nombreCurso,
+                'sede': curso.sede.nombre if getattr(curso, 'sede', None) else 'N/A',
+                'periodo': periodo or 'N/A',
+                'director': director_nombre or 'No asignado',
+                'representante': representante_nombre or 'No asignado',
+                'total_estudiantes': len(estudiantes)
+            },
+            'estudiantes': [
+                {
+                    'id': e.id_usuario,
+                    'nombre': e.nombre_completo,
+                    'correo': e.correo
+                } for e in estudiantes
+            ]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener detalle: {str(e)}'}), 500
+
+@profesor_bp.route('/api/asignatura-detalle/<int:asignatura_id>')
+@login_required
+def api_asignatura_detalle(asignatura_id):
+    """Detalle de la asignatura para mostrar inline en Mis Asignaturas."""
+    try:
+        if not validar_profesor_asignatura(current_user.id_usuario, asignatura_id):
+            return jsonify({'success': False, 'message': 'No tienes esta asignatura asignada'}), 403
+
+        # Cursos donde el profesor dicta esta asignatura
+        clases = db.session.query(Clase, Curso).join(Curso, Clase.cursoId == Curso.id_curso)\
+            .filter(Clase.profesorId == current_user.id_usuario, Clase.asignaturaId == asignatura_id).all()
+
+        cursos_info = []
+        for clase, curso in clases:
+            # Promedio de calificaciones de esta asignatura en este curso
+            califs = db.session.query(Calificacion).join(Clase, Clase.asignaturaId == Calificacion.asignaturaId)\
+                .filter(Clase.cursoId == curso.id_curso, Calificacion.asignaturaId == asignatura_id).all()
+            valores = [float(c.valor) for c in califs if c.valor is not None]
+            promedio = round(sum(valores) / len(valores), 2) if valores else 0.0
+
+            cursos_info.append({
+                'curso_id': curso.id_curso,
+                'curso_nombre': curso.nombreCurso,
+                'promedio': promedio,
+                'estudiantes': len(obtener_estudiantes_por_curso(curso.id_curso))
+            })
+
+        asign = Asignatura.query.get(asignatura_id)
+        return jsonify({
+            'success': True,
+            'asignatura': {
+                'id': asign.id_asignatura if asign else asignatura_id,
+                'nombre': asign.nombre if asign else 'Asignatura'
+            },
+            'cursos': cursos_info
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error al obtener detalle de asignatura: {str(e)}'}), 500
 
 @profesor_bp.route('/api/seleccionar-curso-asignatura', methods=['POST'])
 @login_required

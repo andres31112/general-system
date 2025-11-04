@@ -131,6 +131,57 @@
         background: var(--gradient-primary) !important;
         color: var(--white) !important;
     }
+
+    /* Estilo modal estudiantes */
+    #studentsModal .modal-header {
+        background: var(--gradient-primary);
+        color: var(--white);
+        border-bottom: none;
+    }
+    #studentsModal .modal-title {
+        font-weight: 700;
+    }
+    .students-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .count-pill {
+        background: var(--gradient-secondary);
+        color: var(--black);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-weight: 700;
+        box-shadow: var(--shadow);
+    }
+    #studentsList {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .student-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+    }
+    .student-item + .student-item { border-top: 1px solid var(--border); }
+    .student-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        color: var(--white);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        box-shadow: var(--shadow);
+        flex: 0 0 40px;
+    }
+    .student-meta strong { color: var(--accent4); }
+    .student-meta small { color: var(--gray); }
 </style>
 
 <div class="container-fluid px-4">
@@ -207,6 +258,28 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver estudiantes -->
+<div class="modal fade" id="studentsModal" tabindex="-1" aria-labelledby="studentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="studentsModalLabel">Estudiantes del Curso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="students-header">
+                    <div class="fw-semibold text-muted">Listado de estudiantes</div>
+                    <span id="studentsCount" class="count-pill">0</span>
+                </div>
+                <ul id="studentsList" class="list-group"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -305,6 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 cursos.forEach(curso => {
+                    const cursoId = curso.id_curso || curso.id;
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>
@@ -317,6 +391,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <span class="badge bg-gradient-primary">${curso.sede || 'Sin sede'}</span>
                         </td>
                         <td>
+                            <button class="btn btn-outline-primary btn-sm me-2 btn-ver-estudiantes" 
+                                    data-id="${cursoId}" 
+                                    data-nombre="${(curso.nombreCurso || curso.nombre) || ''}">
+                                <i class="fas fa-users"></i> Estudiantes
+                            </button>
                             <button class="btn btn-danger btn-sm btn-eliminar" 
                                     data-id="${curso.id}" 
                                     data-nombre="${curso.nombreCurso || curso.nombre}">
@@ -330,6 +409,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Agregar event listeners a los botones de eliminar
                 document.querySelectorAll('.btn-eliminar').forEach(btn => {
                     btn.addEventListener('click', eliminarCurso);
+                });
+
+                // Agregar event listeners a los botones de ver estudiantes
+                document.querySelectorAll('.btn-ver-estudiantes').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = btn.dataset.id;
+                        const nombre = btn.dataset.nombre;
+                        verEstudiantesCurso(id, nombre);
+                    });
                 });
             })
             .catch(error => {
@@ -494,6 +582,64 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error eliminando curso:', error);
                 mostrarMensaje('Error al eliminar el curso: ' + error.message, 'danger');
             });
+        }
+    }
+
+    // 4.1 VER ESTUDIANTES DEL CURSO
+    async function verEstudiantesCurso(cursoId, cursoNombre) {
+        try {
+            // Limpiar modal
+            const titleEl = document.getElementById('studentsModalLabel');
+            const countEl = document.getElementById('studentsCount');
+            const listEl = document.getElementById('studentsList');
+            if (titleEl) titleEl.textContent = `Estudiantes de ${cursoNombre || 'Curso'}`;
+            if (countEl) countEl.textContent = '0';
+            if (listEl) listEl.innerHTML = '<li class="list-group-item text-muted">Cargando...</li>';
+
+            const resp = await fetch(`/admin/api/estudiantes-por-curso/${cursoId}`);
+            if (!resp.ok) {
+                throw new Error(`Error ${resp.status}`);
+            }
+            const estudiantes = await resp.json();
+
+            if (countEl) countEl.textContent = Array.isArray(estudiantes) ? estudiantes.length : 0;
+            if (listEl) {
+                if (!Array.isArray(estudiantes) || estudiantes.length === 0) {
+                    listEl.innerHTML = '<li class="list-group-item text-muted">No hay estudiantes asignados</li>';
+                } else {
+                    listEl.innerHTML = estudiantes.map(e => {
+                        const nombre = e.nombre_completo || '';
+                        const iniciales = nombre
+                            .split(' ')
+                            .filter(Boolean)
+                            .slice(0,2)
+                            .map(p => p[0]?.toUpperCase() || '')
+                            .join('');
+                        return `
+                            <li class="list-group-item student-item">
+                                <div class="student-avatar">${iniciales || 'E'}</div>
+                                <div class="student-meta">
+                                    <strong>${nombre}</strong><br>
+                                    <small>ID: ${e.no_identidad || ''} • ${e.correo || ''}</small>
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+                }
+            }
+
+            const modalEl = document.getElementById('studentsModal');
+            if (modalEl && window.bootstrap && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } else if (modalEl) {
+                // Fallback básico
+                modalEl.style.display = 'block';
+                modalEl.classList.add('show');
+            }
+        } catch (err) {
+            console.error('Error obteniendo estudiantes del curso:', err);
+            mostrarMensaje('No se pudieron cargar los estudiantes del curso', 'danger');
         }
     }
 

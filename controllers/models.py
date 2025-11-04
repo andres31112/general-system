@@ -367,8 +367,8 @@ class HorarioGeneral(db.Model):
     horaInicio = db.Column(db.Time, nullable=False)
     horaFin = db.Column(db.Time, nullable=False)
     diasSemana = db.Column(db.Text, nullable=False)
-    duracion_clase = db.Column(db.Integer, default=45)
-    duracion_descanso = db.Column(db.Integer, default=15)
+    duracion_clase = db.Column(db.Integer, nullable=True)
+    duracion_descanso = db.Column(db.Integer, nullable=True)
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     

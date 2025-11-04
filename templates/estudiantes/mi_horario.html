@@ -1,0 +1,145 @@
+{% extends "/estudiantes/base.html" %}
+
+{% block title %}Mi Horario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="fw-bold text-dark mb-1">
+            <i class="fas fa-calendar-alt me-2 text-primary"></i>
+            Mi Horario
+          </h2>
+          <p class="text-muted mb-0">Consulta tu horario de clases</p>
+        </div>
+      </div>
+
+      <div class="horario-container">
+        <div class="horario-header" style="background: var(--gradient-primary); color: var(--white); padding: 1rem 1.5rem; border-radius: 12px 12px 0 0;">
+          <strong id="infoCurso">Cargando curso...</strong>
+        </div>
+        <div class="horario-content" style="background: var(--card-bg); padding: 1.5rem; border-radius: 0 0 12px 12px; box-shadow: var(--shadow);">
+          <div class="loading-spinner text-center my-3" id="loadingHorario" style="display:none;">
+            <div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div>
+            <p class="mt-2">Cargando horario...</p>
+          </div>
+          <div id="horarioContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .horario-table { width: 100%; border-collapse: collapse; }
+  .horario-table th, .horario-table td { padding: 0.75rem; text-align: center; border: 1px solid var(--border); }
+  .horario-table th { background: var(--light-gray); font-weight: 600; color: var(--accent4); }
+  .hora-cell { font-weight: 600; color: var(--accent4); }
+  .asignatura-cell { font-weight: 600; color: var(--accent4); }
+  .profesor-cell { color: var(--gray); font-size: 0.9rem; }
+  .salon-cell { color: var(--accent2); font-weight: 500; }
+  .no-data { text-align: center; padding: 2rem; color: var(--gray); }
+  .break-cell { background: var(--gradient-warning, #EE964B); color: #000; font-weight: 600; }
+</style>
+
+<script>
+(async function cargarMiHorario(){
+  const loadingEl = document.getElementById('loadingHorario');
+  const contentEl = document.getElementById('horarioContent');
+  const infoCurso = document.getElementById('infoCurso');
+  loadingEl.style.display = 'block';
+  contentEl.innerHTML = '';
+  try {
+    const r = await fetch('/estudiante/api/mi-horario');
+    const data = await r.json();
+    if (!data.success) { throw new Error(data.error || 'Error'); }
+    const horario = data.horario;
+    if (!horario) {
+      infoCurso.textContent = 'Sin curso asignado';
+      contentEl.innerHTML = '<div class="no-data">No hay horario disponible</div>';
+      return;
+    }
+    infoCurso.textContent = `Curso: ${horario.curso} • Sede: ${horario.sede || 'N/A'}`;
+
+    // Formatea HH:MM (24h) -> h:mm AM/PM
+    const to12h = (hhmm) => {
+      try {
+        const [h, m] = hhmm.split(':').map(Number);
+        if (isNaN(h) || isNaN(m)) return hhmm;
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 === 0 ? 12 : h % 12;
+        return `${h12}:${m.toString().padStart(2,'0')} ${ampm}`;
+      } catch { return hhmm; }
+    };
+
+    const normalizeDia = (d) => {
+      if (!d) return '';
+      const map = { 'miércoles':'miercoles', 'sábado':'sabado' };
+      const s = d.toString().trim().toLowerCase();
+      return map[s] || s;
+    };
+    const displayDia = (norm) => {
+      const map = { 'lunes':'Lunes','martes':'Martes','miercoles':'Miércoles','jueves':'Jueves','viernes':'Viernes','sabado':'Sábado','domingo':'Domingo' };
+      return map[norm] || norm;
+    };
+
+    const diasApi = Array.isArray(horario.dias) && horario.dias.length ? horario.dias.map(normalizeDia) : null;
+    const dias = diasApi && diasApi.length ? diasApi : ['lunes','martes','miercoles','jueves','viernes','sabado'];
+    const bloques = Array.isArray(horario.bloques) && horario.bloques.length ? horario.bloques : ['06:00-07:00','07:00-08:00','08:00-09:00','09:00-10:00','10:00-11:00','11:00-12:00'];
+    const matrizBloques = horario.matriz_bloques || {};
+    const clasesPorBloque = horario.clases_por_bloque || {};
+    const clases = horario.clases || {};
+
+    if (!bloques.length || !dias.length) {
+      contentEl.innerHTML = '<div class="no-data">No hay horario disponible</div>';
+      return;
+    }
+
+    let html = '<div class="table-responsive"><table class="horario-table">';
+    html += '<thead><tr><th>Bloque</th>' + dias.map(d=>`<th>${displayDia(d)}</th>`).join('') + '</tr></thead><tbody>';
+
+    bloques.forEach(b => {
+      const parts = b.split('-');
+      const inicio = (parts[0]||'').trim();
+      const fin = (parts[1]||'').trim();
+      html += `<tr><td class="hora-cell">${to12h(inicio)}${fin? ' - '+to12h(fin): ''}</td>`;
+      dias.forEach(d => {
+        const dnorm = normalizeDia(d);
+        const breakInfo = (matrizBloques[dnorm] && matrizBloques[dnorm][b]) || null;
+        const isBreak = breakInfo && ['break','descanso','receso'].includes((breakInfo.tipo||'').toLowerCase());
+        if (isBreak) {
+          const label = breakInfo.nombre || 'DESCANSO';
+          html += `<td class="break-cell"><small><i class="fas fa-coffee"></i> <strong>${label}</strong></small></td>`;
+        } else {
+          const claseBloque = (clasesPorBloque[dnorm] && clasesPorBloque[dnorm][b]) || null;
+          const claseHora = clases[`${dnorm}_${inicio}`] || null;
+          const clase = claseBloque || claseHora;
+          if (clase) {
+            // Mostrar SIEMPRE el rango del BLOQUE para que sea consistente con el horario general
+            const rango = `${to12h(inicio)}${fin? ' - '+to12h(fin): ''}`;
+            html += `<td>
+              <div class="asignatura-cell">${clase.asignatura || 'N/A'}</div>
+              <div class="profesor-cell">${clase.profesor || ''}</div>
+              <div class="salon-cell">${clase.salon || ''}</div>
+              <div class="small text-secondary">${rango}</div>
+            </td>`;
+          } else {
+            html += '<td class="text-muted">-</td>';
+          }
+        }
+      });
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    contentEl.innerHTML = html;
+  } catch (e) {
+    contentEl.innerHTML = '<div class="alert alert-danger">Error al cargar el horario</div>';
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+})();
+</script>
+{% endblock %}

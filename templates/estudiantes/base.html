@@ -80,6 +80,14 @@
             margin-bottom: 0;
         }
 
+        /* Espaciado compacto para reducir distancia entre grupos específicos */
+        .sidebar-group.compacto {
+            margin-bottom: 0;
+        }
+        .sidebar-group.compacto .nav-link:last-child {
+            margin-bottom: 0;
+        }
+
         .nav-link {
             display: flex;
             align-items: center;
@@ -114,9 +122,24 @@
 
         .sidebar-footer {
             background: rgba(255, 255, 255, 0.1);
-            padding: 1.5rem;
+            padding: 1rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .sidebar-footer .btn {
+            padding: 0.25rem 0.5rem;
+        }
+        .user-block-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: inherit;
+            padding: 0.25rem 0.5rem;
+            border-radius: 8px;
+            transition: background var(--transition-speed) ease;
+            cursor: pointer;
+        }
+        .user-block-link:hover { background: rgba(255,255,255,0.08); }
 
         .user-avatar {
             background: var(--accent3);
@@ -219,25 +242,19 @@
                 </a>
             </div>
 
-            <div class="sidebar-group">
-                <a href="#" class="nav-link rounded {% if 'calificaciones' in request.endpoint %}active{% endif %}">
+            <div class="sidebar-group compacto">
+                <a href="{{ url_for('estudiante.ver_calificaciones') }}" class="nav-link rounded {% if 'estudiante.ver_calificaciones' == request.endpoint %}active{% endif %}">
                     <i class="fas fa-poll"></i>Calificaciones
                 </a>
-                <a href="#" class="nav-link rounded {% if 'horario' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('estudiante.mi_horario') }}" class="nav-link rounded {% if request.endpoint == 'estudiante.mi_horario' %}active{% endif %}">
                     <i class="fas fa-calendar-alt"></i>Mi Horario
                 </a>
-            </div>
-
-            <div class="sidebar-group">
+                <a href="{{ url_for('estudiante.notificaciones') }}" class="nav-link rounded {% if request.endpoint == 'estudiante.notificaciones' %}active{% endif %}">
+                    <i class="fas fa-bell"></i>Notificaciones
+                </a>
                 <a href="#" class="nav-link rounded {% if 'historial' in request.endpoint %}active{% endif %}">
                     <i class="fas fa-history"></i>Historial Académico
                 </a>
-                <a href="#" class="nav-link rounded {% if 'inscripcion' in request.endpoint %}active{% endif %}">
-                    <i class="fas fa-plus-square"></i>Inscripción de Materias
-                </a>
-            </div>
-
-            <div class="sidebar-group">
                 <a href="{{ url_for('estudiante.comunicaciones') }}" class="nav-link rounded {% if request.endpoint == 'estudiante.comunicaciones' %}active{% endif %}">
                     <i class="fas fa-envelope"></i>Comunicaciones
                     {% if unread_messages|default(0) > 0 %}
@@ -245,37 +262,30 @@
                     {% endif %}
                 </a>
                 <a href="{{ url_for('estudiante.ver_eventos') }}" class="nav-link rounded {% if request.endpoint == 'estudiante.ver_eventos' %}active{% endif %}">
-                    <i class="fas fa-calendar-day"></i>Eventos
+                    <i class="fas fa-calendar-day"></i>Calendario
                 </a>
-            </div>
-
-            <div class="sidebar-group">
                 <a href="{{url_for('estudiante.eleccion_electoral')}}" class="nav-link rounded {% if request.endpoint == 'estudiante.eleccion_electoral' %}active{% endif %}">
                     <i class="fas fa-vote-yea"></i>Votar
-                </a>
-                <a href="#" class="nav-link rounded {% if 'cuenta' in request.endpoint %}active{% endif %}">
-                    <i class="fas fa-dollar-sign"></i>Estado de Cuenta
                 </a>
             </div>
         </nav>
 
         <div class="sidebar-footer d-flex flex-column align-items-stretch justify-content-center">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div class="d-flex align-items-center">
-                    <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-3" 
-                         style="width: 38px; height: 38px;">
+            <div class="d-flex align-items-center justify-content-start gap-2 mb-2">
+                <a href="#" class="user-block-link">
+                    <div class="user-avatar rounded-circle d-flex align-items-center justify-content-center me-2" 
+                         style="width: 32px; height: 32px;">
                         <i class="fas fa-user text-dark"></i>
                     </div>
                     <div class="user-info">
                         <p class="fw-semibold m-0 small">{{ current_user.nombre_completo }}</p>
                         <p class="small text-white-50 m-0">Estudiante</p>
                     </div>
-                </div>
-                <a href="#" class="btn btn-sm btn-light">Perfil</a>
+                </a>
             </div>
 
-            <div class="d-flex">
-                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light w-100">
+            <div class="d-flex justify-content-center">
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light">
                     <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
                 </a>
             </div>

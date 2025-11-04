@@ -1,503 +1,14 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Horarios de Cursos</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/GHC.css') }}">
-    <style>
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --success-color: #27ae60;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
-            --light-gray: #f8f9fa;
-            --dark-gray: #343a40;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logo i {
-            font-size: 2rem;
-            color: var(--primary-color);
-        }
-
-        .logo h1 {
-            color: var(--secondary-color);
-            font-size: 1.8rem;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: var(--primary-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-
-        .btn:hover {
-            background: #2980b9;
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .stat-card h2 {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: var(--secondary-color);
-            font-size: 1rem;
-        }
-
-        .stat {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-        .small {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-        }
-
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-
-        .card h2 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            color: var(--secondary-color);
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: var(--secondary-color);
-        }
-
-        select, button {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e1e5e9;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-
-        select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-        }
-
-        button {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            background: #2980b9;
-        }
-
-        .secondary {
-            background: var(--secondary-color);
-        }
-
-        .secondary:hover {
-            background: #1a252f;
-        }
-
-        .danger {
-            background: var(--danger-color);
-        }
-
-        .danger:hover {
-            background: #c0392b;
-        }
-
-        .table-container {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            overflow-x: auto;
-        }
-
-        .table-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            color: var(--secondary-color);
-        }
-
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .schedule-table th,
-        .schedule-table td {
-            padding: 12px;
-            text-align: center;
-            border: 1px solid #e1e5e9;
-        }
-
-        .schedule-table th {
-            background: var(--secondary-color);
-            color: white;
-            font-weight: 600;
-        }
-
-        .schedule-table td {
-            background: white;
-        }
-
-        .time-cell {
-            background: var(--light-gray);
-            font-weight: 600;
-            color: var(--secondary-color);
-        }
-
-        .empty-block {
-            background: #f8f9fa;
-            min-height: 80px;
-            vertical-align: top;
-        }
-
-        .break-block {
-            background: #fff3cd;
-            color: #856404;
-            font-weight: 600;
-        }
-
-        .morning-break { background: #fff3cd; }
-        .lunch-break { background: #d4edda; color: #155724; }
-        .afternoon-break { background: #d1ecf1; color: #0c5460; }
-        .custom-break { background: #f8d7da; color: #721c24; }
-
-        .subject-select, .salon-select {
-            width: 100%;
-            margin-bottom: 5px;
-            padding: 8px;
-            font-size: 0.9rem;
-        }
-
-        .course-management {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .courses-list {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #e1e5e9;
-            border-radius: 5px;
-            padding: 15px;
-        }
-
-        .course-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #e1e5e9;
-            transition: background 0.3s;
-        }
-
-        .course-item:hover {
-            background: var(--light-gray);
-        }
-
-        .course-item:last-child {
-            border-bottom: none;
-        }
-
-        .course-info {
-            flex: 1;
-        }
-
-        .course-name {
-            font-weight: 600;
-            color: var(--secondary-color);
-            margin-bottom: 5px;
-        }
-
-        .course-teacher {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .course-schedule {
-            background: var(--light-gray);
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            color: var(--secondary-color);
-        }
-
-        .profesor-badge {
-            display: inline-block;
-            background: var(--primary-color);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            margin: 2px;
-        }
-
-        .schedule-actions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 25px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-        }
-
-        .share-modal {
-            max-width: 600px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e1e5e9;
-        }
-
-        .modal-header h2 {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--secondary-color);
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #666;
-            cursor: pointer;
-            width: auto;
-            padding: 0;
-        }
-
-        .close-modal:hover {
-            color: var(--danger-color);
-            background: none;
-        }
-
-        .loading-spinner {
-            margin-bottom: 20px;
-        }
-
-        .share-modal-content p {
-            margin-bottom: 20px;
-            color: #666;
-        }
-
-        .share-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .share-option {
-            background: var(--light-gray);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-
-        .share-option:hover {
-            background: #e9ecef;
-            border-color: var(--primary-color);
-        }
-
-        .share-option.selected {
-            background: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-
-        .share-option.selected i {
-            color: white;
-        }
-
-        .share-option i {
-            color: var(--primary-color);
-            margin-bottom: 10px;
-        }
-
-        .share-option h3 {
-            margin-bottom: 10px;
-            font-size: 1.1rem;
-        }
-
-        .share-option p {
-            font-size: 0.9rem;
-            color: inherit;
-            opacity: 0.8;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            background: var(--success-color);
-            color: white;
-            border-radius: 5px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transform: translateX(400px);
-            transition: transform 0.3s ease-in-out;
-            z-index: 1001;
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .notification.error {
-            background: var(--danger-color);
-        }
-
-        .notification.warning {
-            background: var(--warning-color);
-        }
-
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-            
-            header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-            
-            .schedule-actions {
-                grid-template-columns: 1fr;
-            }
-            
-            .share-options {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/GHC.css') }}">
+<style>
+.content-wrapper { padding: 0 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid px-0">
         <header>
             <div class="logo">
                 <i class="fas fa-calendar-alt"></i>
@@ -525,11 +36,12 @@
             </div>
             
             <div class="stat-card">
-                <h2><i class="fas fa-share-alt"></i> Compartir</h2>
-                <button class="small" onclick="mostrarModalCompartir()"><i class="fas fa-share"></i> Compartir Horario</button>
+                <h2><i class="fas fa-exclamation-circle"></i> Cursos sin Horario</h2>
+                <div class="stat" id="cursos-sin-horario">0</div>
             </div>
+            
         </div>
-        
+
         <div class="card">
             <h2><i class="fas fa-calendar-alt"></i> Seleccionar Curso</h2>
             <div class="form-group">
@@ -560,67 +72,29 @@
             </div>
             
             <div class="schedule-actions">
-                <button class="secondary" onclick="saveCourseSchedule()"><i class="fas fa-save"></i> Guardar Horario</button>
+                <button class="secondary" id="save-course-schedule-btn" onclick="guardarHorarioCurso()"><i class="fas fa-save"></i> Guardar Horario</button>
                 <button class="secondary" onclick="clearCourseSchedule()"><i class="fas fa-broom"></i> Limpiar Horario</button>
                 <button class="danger" onclick="resetCourseSchedule()"><i class="fas fa-undo"></i> Restablecer Horario</button>
             </div>
         </div>
-    </div>
 
-    <!-- Modal de carga -->
-    <div class="modal" id="loading-modal">
-        <div class="modal-content">
-            <div class="loading-spinner">
-                <i class="fas fa-spinner fa-spin fa-3x"></i>
-            </div>
-            <p style="margin-top: 20px; font-size: 16px;" id="loading-message">Cargando...</p>
-        </div>
-    </div>
-
-    <!-- Modal para compartir -->
-    <div class="modal" id="share-modal">
-        <div class="modal-content share-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-share-alt"></i> Compartir Horario</h2>
-                <button class="close-modal" onclick="cerrarModalCompartir()">&times;</button>
-            </div>
-            <div class="share-modal-content">
-                <p>Seleccione con quién desea compartir el horario:</p>
-                
-                <div class="share-options">
-                    <div class="share-option" onclick="seleccionarDestinatario('estudiantes', event)">
-                        <i class="fas fa-user-graduate fa-2x"></i>
-                        <h3>Estudiantes</h3>
-                        <p>Compartir con todos los estudiantes del curso</p>
-                    </div>
-                    <div class="share-option" onclick="seleccionarDestinatario('profesores', event)">
-                        <i class="fas fa-chalkboard-teacher fa-2x"></i>
-                        <h3>Profesores</h3>
-                        <p>Compartir con los profesores asignados</p>
-                    </div>
+        <!-- Modal de carga -->
+        <div class="modal" id="loading-modal">
+            <div class="modal-content">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin fa-3x"></i>
                 </div>
-                
-                <div id="share-details" style="display: none; margin-top: 20px; padding: 15px; background: var(--light-gray); border-radius: 8px;">
-                    <h4 id="share-title">Detalles del Compartir</h4>
-                    <p id="share-description">Se compartirá el horario con los destinatarios seleccionados.</p>
-                </div>
-                
-                <button onclick="confirmarCompartir()" style="margin-top: 20px; width: 100%;">
-                    <i class="fas fa-paper-plane"></i> Compartir Horario
-                </button>
+                <p style="margin-top: 20px; font-size: 16px;" id="loading-message">Cargando...</p>
             </div>
         </div>
-    </div>
 
-    <div class="notification" id="notification">
-        <i class="fas fa-check-circle"></i>
-        <span id="notification-text">Operación realizada con éxito</span>
-    </div>
-
-    <!-- Script para funcionalidad de profesores -->
-    <script src="{{ url_for('static', filename='js/superadmin/profesores_horarios.js') }}"></script>
-    
-    <script>
+        <script src="{{ url_for('static', filename='js/superadmin/profesores_horarios.js') }}"></script>
+        <!-- Notificaciones -->
+        <div class="notification" id="notification">
+            <i class="fas fa-check-circle"></i>
+            <span id="notification-text">Operación realizada con éxito</span>
+        </div>
+        <script>
         // =============================================
 // CONFIGURACIÓN Y VARIABLES GLOBALES
 // =============================================
@@ -632,7 +106,7 @@ const API_URLS = {
     salones: '/admin/api/salones',
     horarioCurso: '/admin/api/horario_curso/cargar',
     guardarHorarioCurso: '/admin/api/horario_curso/guardar',
-    compartirHorario: '/admin/api/horario_curso/compartir',
+    validarConflicto: '/admin/api/horario_curso/validar-conflicto',
     estadisticas: '/admin/api/estadisticas/horarios-cursos'
 };
 
@@ -652,8 +126,7 @@ let estado = {
         total_materias: 0,
         total_cursos: 0,
         horarios_asignados: 0
-    },
-    destinatarioCompartir: null
+    }
 };
 
 // =============================================
@@ -734,6 +207,30 @@ async function apiRequest(url, options = {}) {
     } catch (error) {
         console.error('❌ API Error:', error);
         throw error;
+    }
+}
+
+async function validarConflictosProfesor(cursoId, profesorId, dia, horaInicio, asignaturaId = null) {
+    try {
+        const datosValidacion = {
+            curso_id: cursoId,
+            profesor_id: profesorId,
+            dia: dia,
+            hora_inicio: horaInicio,
+            asignatura_id_excluir: asignaturaId // Para excluir la asignatura actual en edición
+        };
+
+        console.log('🔍 Validando conflictos para profesor:', datosValidacion);
+
+        const resultado = await apiRequest(API_URLS.validarConflicto, {
+            method: 'POST',
+            body: datosValidacion
+        });
+
+        return resultado;
+    } catch (error) {
+        console.error('❌ Error en validación de conflictos:', error);
+        return { conflicto: true, mensaje: 'Error al validar conflictos' };
     }
 }
 
@@ -897,11 +394,14 @@ async function cargarHorarioCurso(cursoId) {
 
         // ✅ NUEVO: Procesar profesores si existen
         if (horarioData && horarioData.profesores_asignaciones) {
-            // Cargar profesores existentes usando la función del script de profesores
+            estado.profesoresAsignaciones = horarioData.profesores_asignaciones;
+            // Cargar profesores existentes usando la función de soporte si existe
             if (typeof cargarProfesoresExistentes === 'function') {
                 await cargarProfesoresExistentes(horarioData.profesores_asignaciones);
             }
             console.log('👨‍🏫 Profesores cargados:', Object.keys(horarioData.profesores_asignaciones).length);
+        } else {
+            estado.profesoresAsignaciones = {};
         }
         
         // Cargar bloques del horario
@@ -969,6 +469,9 @@ async function guardarHorarioCurso() {
         return false;
     }
 
+    // ✅ CORREGIDO: Recolectar datos ACTUALES del DOM
+    recolectarDatosActualesDelDOM();
+
     if (Object.keys(estado.asignaciones).length === 0) {
         mostrarNotificacion('No hay materias asignadas en el horario', 'error');
         return false;
@@ -976,28 +479,29 @@ async function guardarHorarioCurso() {
 
     console.log('======= 🚀 INICIANDO GUARDADO =======');
     console.log('📋 Curso ID:', cursoId);
-    console.log('📚 Asignaciones a guardar:', estado.asignaciones);
-    console.log('🏫 Salones a guardar:', estado.salonesAsignaciones);
-    console.log('🕒 Total de asignaciones:', Object.keys(estado.asignaciones).length);
+    console.log('📚 Asignaciones:', estado.asignaciones);
+    console.log('🏫 Salones:', estado.salonesAsignaciones);
+    console.log('👨‍🏫 Profesores ACTUALES:', estado.profesoresAsignaciones);
 
-    // Verificar que las asignaciones tienen valores válidos
-    const asignacionesValidas = Object.entries(estado.asignaciones).filter(([clave, valor]) => valor && valor !== '');
-    console.log('✅ Asignaciones válidas:', asignacionesValidas.length);
+    // ✅ CORREGIDO: Validar solo los profesores que están ACTUALMENTE asignados
+    const conflictos = await validarConflictosActuales(cursoId);
+    if (conflictos.length > 0) {
+        mostrarConflictos(conflictos);
+        return false;
+    }
 
+    // ✅ PASO 2: Proceder con el guardado
     mostrarLoading('Guardando horario del curso...');
     
     try {
         const horarioGeneralId = estado.horarioSeleccionado?.id || estado.cursoSeleccionado.horario_general_id;
-
-        // ✅ NUEVO: Obtener datos de profesores
-        const profesoresData = obtenerDatosProfesores ? obtenerDatosProfesores() : {};
 
         const datos = {
             curso_id: cursoId,
             horario_general_id: horarioGeneralId,
             asignaciones: estado.asignaciones,
             salones_asignaciones: estado.salonesAsignaciones,
-            profesores_asignaciones: profesoresData  // ✅ NUEVO: Incluir profesores
+            profesores_asignaciones: estado.profesoresAsignaciones || {}
         };
 
         console.log('📤 Enviando datos al servidor:', datos);
@@ -1025,15 +529,186 @@ async function guardarHorarioCurso() {
         }
     } catch (error) {
         console.error('❌ Error guardando horario:', error);
-        mostrarNotificacion(`Error al guardar: ${error.message}`, 'error');
+        const msg = error && error.message ? String(error.message) : '';
+        mostrarNotificacion(`Error al guardar: ${msg}`, 'error');
         return false;
     } finally {
         ocultarLoading();
         console.log('======= 🏁 FINALIZADO GUARDADO =======');
     }
 }
+// Función para recolectar datos actualizados del DOM
+// Función para recolectar datos ACTUALES del DOM
+function recolectarDatosActualesDelDOM() {
+    estado.asignaciones = {};
+    estado.salonesAsignaciones = {};
+    estado.profesoresAsignaciones = {};
 
-// ✅ NUEVA FUNCIÓN: PREPARAR DATOS CON HORA_FIN CALCULADA
+    // Recolectar asignaturas ACTUALES
+    document.querySelectorAll('.asignatura-selector').forEach(sel => {
+        const dia = sel.getAttribute('data-day');
+        const hora = sel.getAttribute('data-time');
+        const val = sel.value;
+        if (dia && hora && val) {
+            estado.asignaciones[`${dia}-${hora}`] = parseInt(val);
+        }
+    });
+
+    // Recolectar salones ACTUALES
+    document.querySelectorAll('.salon-select').forEach(sel => {
+        const dia = sel.getAttribute('data-day');
+        const hora = sel.getAttribute('data-time');
+        const val = sel.value;
+        if (dia && hora && val) {
+            estado.salonesAsignaciones[`${dia}-${hora}`] = parseInt(val);
+        }
+    });
+
+    // ✅ CORREGIDO: Recolectar SOLO profesores que están SELECCIONADOS ACTUALMENTE
+    document.querySelectorAll('.profesor-selector').forEach(sel => {
+        const dia = sel.getAttribute('data-day');
+        const hora = sel.getAttribute('data-time');
+        const val = sel.value;
+        // Solo agregar si el profesor está seleccionado (no vacío)
+        if (dia && hora && val && val !== '') {
+            estado.profesoresAsignaciones[`${dia}-${hora}`] = parseInt(val);
+        }
+    });
+
+    console.log('📊 Datos recolectados del DOM:');
+    console.log('   Asignaciones:', Object.keys(estado.asignaciones).length);
+    console.log('   Salones:', Object.keys(estado.salonesAsignaciones).length);
+    console.log('   Profesores SELECCIONADOS:', Object.keys(estado.profesoresAsignaciones).length);
+}
+// Función para validar solo los conflictos ACTUALES del horario que se está guardando
+// Función para validar solo los conflictos ACTUALES del horario que se está guardando
+async function validarConflictosActuales(cursoId) {
+    const conflictos = [];
+    
+    console.log('🔍 Iniciando validación de conflictos...');
+    console.log('   Profesores a validar:', Object.keys(estado.profesoresAsignaciones || {}));
+    
+    // Si no hay profesores asignados, no hay conflictos
+    if (Object.keys(estado.profesoresAsignaciones || {}).length === 0) {
+        console.log('✅ No hay profesores asignados, sin conflictos');
+        return conflictos;
+    }
+    
+    // ✅ CORREGIDO: Solo validar las combinaciones que tienen PROFESOR + ASIGNATURA en ESTE horario
+    for (const [clave, profesorId] of Object.entries(estado.profesoresAsignaciones || {})) {
+        // Verificar que también tenga asignatura en ESTA celda
+        const asignaturaId = estado.asignaciones[clave];
+        if (!asignaturaId) {
+            console.warn(`⚠️ Celda ${clave} tiene profesor pero no asignatura, omitiendo`);
+            continue;
+        }
+        
+        const [dia, horaInicio] = clave.split('-');
+        
+        console.log(`🔍 Validando celda ${clave}:`);
+        console.log(`   - Profesor: ${profesorId}`);
+        console.log(`   - Asignatura: ${asignaturaId}`);
+        console.log(`   - Día: ${dia}, Hora: ${horaInicio}`);
+        console.log(`   - Curso: ${cursoId}`);
+        
+        try {
+            const resultado = await validarConflictosProfesor(cursoId, profesorId, dia, horaInicio, asignaturaId);
+            console.log(`📋 Resultado para ${clave}:`, resultado);
+            
+            if (resultado.conflicto) {
+                console.log(`❌ CONFLICTO encontrado en ${clave}: ${resultado.mensaje}`);
+                conflictos.push({
+                    clave: clave,
+                    profesorId: profesorId,
+                    mensaje: resultado.mensaje,
+                    dia: dia,
+                    hora: horaInicio,
+                    asignaturaId: asignaturaId
+                });
+            } else {
+                console.log(`✅ Sin conflicto en ${clave}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error validando ${clave}:`, error);
+            // No agregar a conflictos por error de validación
+        }
+    }
+    
+    console.log(`📊 Validación completada: ${conflictos.length} conflictos encontrados`);
+    return conflictos;
+}
+
+// Función para mostrar conflictos al usuario
+function mostrarConflictos(conflictos) {
+    let mensaje = 'Se encontraron conflictos de horario:\n\n';
+    
+    conflictos.forEach((conflicto, index) => {
+        const asignatura = estado.asignaturas.find(a => {
+            const id = a.id_asignatura || a.id;
+            return id == estado.asignaciones[conflicto.clave];
+        });
+        
+        const nombreAsignatura = asignatura ? asignatura.nombre : 'Asignatura desconocida';
+        
+        mensaje += `${index + 1}. ${conflicto.mensaje}\n`;
+        mensaje += `   - En: ${nombreAsignatura} (${conflicto.dia} ${conflicto.hora})\n\n`;
+    });
+    
+    mensaje += 'Por favor, corrija los conflictos antes de guardar.';
+    
+    // Mostrar alerta
+    alert(mensaje);
+    
+    // Resaltar celdas con conflictos
+    conflictos.forEach(conflicto => {
+        resaltarCeldaConConflicto(conflicto.clave);
+    });
+}
+
+// Función para resaltar celdas con conflictos
+function resaltarCeldaConConflicto(clave) {
+    const [dia, hora] = clave.split('-');
+    
+    // Resaltar selectores de profesor
+    const selectoresProfesor = document.querySelectorAll(`.profesor-selector[data-day="${dia}"][data-time="${hora}"]`);
+    selectoresProfesor.forEach(selector => {
+        selector.style.border = '2px solid #dc3545';
+        selector.style.backgroundColor = '#ffe6e6';
+        
+        // Scroll a la celda problemática
+        selector.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    
+    // También resaltar la asignatura relacionada
+    const selectoresAsignatura = document.querySelectorAll(`.asignatura-selector[data-day="${dia}"][data-time="${hora}"]`);
+    selectoresAsignatura.forEach(selector => {
+        selector.style.border = '2px solid #ffc107';
+        selector.style.backgroundColor = '#fff3cd';
+    });
+}
+
+// Resalta temporalmente las celdas/selectores que coinciden con la hora dada
+function resaltarCeldasPorHora(horaStr) {
+    try {
+        const sels = document.querySelectorAll(`.asignatura-selector[data-time="${horaStr}"] , .profesor-selector[data-time="${horaStr}"] , .salon-select[data-time="${horaStr}"]`);
+        if (!sels || sels.length === 0) return;
+        sels.forEach(el => {
+            const parent = el.closest('.schedule-cell') || el;
+            const prevOutline = parent.style.outline;
+            parent.style.outline = '3px solid #dc3545';
+            parent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { parent.style.outline = prevOutline || ''; }, 2500);
+        });
+    } catch (e) { /* noop */ }
+}
+function limpiarEstilosValidacion() {
+    // Limpiar estilos de todos los selectores
+    document.querySelectorAll('.profesor-selector, .asignatura-selector').forEach(selector => {
+        selector.style.border = '';
+        selector.style.backgroundColor = '';
+    });
+}
+// PREPARAR DATOS CON HORA_FIN CALCULADA
 function prepararDatosParaGuardar(horarioGeneralId) {
     const datos = {
         curso_id: estado.cursoSeleccionado.id_curso || estado.cursoSeleccionado.id,
@@ -1124,9 +799,20 @@ async function compartirHorario() {
 // =============================================
 
 function actualizarEstadisticas() {
-    document.getElementById('total-materias').textContent = estado.estadisticas.total_materias || 0;
-    document.getElementById('total-cursos').textContent = estado.estadisticas.total_cursos || 0;
-    document.getElementById('horarios-asignados').textContent = estado.estadisticas.horarios_asignados || 0;
+    const totalMaterias = estado.estadisticas.total_materias || 0;
+    const totalCursos = estado.estadisticas.total_cursos || 0;
+    const conHorario = estado.estadisticas.horarios_asignados || 0;
+    const sinHorario = Math.max(0, totalCursos - conHorario);
+
+    const materiasEl = document.getElementById('total-materias');
+    const cursosEl = document.getElementById('total-cursos');
+    const asignadosEl = document.getElementById('horarios-asignados');
+    const sinHorarioEl = document.getElementById('cursos-sin-horario');
+
+    if (materiasEl) materiasEl.textContent = totalMaterias;
+    if (cursosEl) cursosEl.textContent = totalCursos;
+    if (asignadosEl) asignadosEl.textContent = conHorario;
+    if (sinHorarioEl) sinHorarioEl.textContent = sinHorario;
 }
 
 function actualizarSelectCursos() {
@@ -1200,7 +886,23 @@ function verificarEstadoHorario() {
     
     if (Object.keys(estado.asignaciones).length > 0) {
         const primeraClave = Object.keys(estado.asignaciones)[0];
-        console.log('✅ Primera asignación:', primeraClave, '->', estado.asignaciones[primeraClave]);
+        console.log('✅ Primera asignación:', primeraClave, estado.asignaciones[primeraClave]);
+    }
+}
+
+// Asegura que el texto del botón coincida con el estado (nuevo vs actualizar)
+function actualizarTextoBotonGuardar() {
+    try {
+        const btn = document.getElementById('save-course-schedule-btn');
+        if (!btn) return;
+        const tieneAsignaciones = estado && estado.asignaciones && Object.keys(estado.asignaciones).length > 0;
+        const tieneHorario = !!(estado && estado.cursoSeleccionado && estado.cursoSeleccionado.horario_general_id);
+        const esActualizar = !!(tieneAsignaciones || tieneHorario);
+        btn.innerHTML = esActualizar
+            ? '<i class="fas fa-sync"></i> Actualizar Horario'
+            : '<i class="fas fa-save"></i> Guardar Horario';
+    } catch (e) {
+        console.warn('No se pudo actualizar el texto del botón Guardar:', e);
     }
 }
 
@@ -1232,6 +934,7 @@ async function loadCourseSchedule() {
         
         // DEBUG: Verificar estado
         verificarEstadoHorario();
+        actualizarTextoBotonGuardar();
 
         // Verificar si el curso tiene un horario general asignado
         if (!estado.horarioSeleccionado && estado.cursoSeleccionado.horario_general_id) {
@@ -1248,12 +951,13 @@ async function loadCourseSchedule() {
 
         // Generar tabla de horario
         generarTablaHorario();
+        actualizarTextoBotonGuardar();
 
         mostrarNotificacion(`Horario cargado para ${estado.cursoSeleccionado.nombreCurso}`, 'success');
 
     } catch (error) {
         console.error('❌ Error cargando horario del curso:', error);
-        mostrarNotificacion('Error al cargar el horario del curso', 'error');
+        mostrarNotificacion('Error al cargar el horario del curso: ' + (error && error.message ? error.message : ''), 'error');
     }
 }
 
@@ -1265,9 +969,31 @@ function generarTablaHorario() {
         return;
     }
 
-    // Obtener días únicos del horario
-    const diasUnicos = [...new Set(estado.bloquesHorario.map(bloque => bloque.dia_semana || bloque.day))].sort();
-    
+    // Obtener días únicos del horario y ordenarlos según la semana
+    const ordenSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const normalizar = (s) => {
+        return String(s || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    };
+    const indexDia = (d) => {
+        const n = normalizar(d);
+        // Mapeo sin tildes
+        const mapa = {
+            'lunes': 0,
+            'martes': 1,
+            'miercoles': 2,
+            'jueves': 3,
+            'viernes': 4,
+            'sabado': 5
+        };
+        return mapa[n] ?? 999;
+    };
+
+    const diasUnicos = [...new Set(estado.bloquesHorario.map(bloque => bloque.dia_semana || bloque.day))]
+        .sort((a, b) => indexDia(a) - indexDia(b));
+
     // Agrupar bloques por día
     const bloquesPorDia = {};
     diasUnicos.forEach(dia => {
@@ -1365,10 +1091,10 @@ function generarTablaHorario() {
                                         ${estado.salones.map(salon => {
                                             const salonIdOption = salon.id_salon || salon.id;
                                             const estaSeleccionado = estado.salonesAsignaciones[asignacionKey] == salonIdOption;
-                                            
+                                            const tipoTxt = salon.tipo ? ` - ${salon.tipo}` : '';
                                             return `
                                                 <option value="${salonIdOption}" ${estaSeleccionado ? 'selected' : ''}>
-                                                    ${salon.nombre} - ${salon.tipo}
+                                                    ${salon.nombre}${tipoTxt}
                                                 </option>
                                             `;
                                         }).join('')}
@@ -1379,12 +1105,7 @@ function generarTablaHorario() {
                                             <option value="">Seleccionar profesor...</option>
                                         </select>
                                     </div>
-                                    ${asignatura && profesores.length > 0 ? 
-                                        `<div style="margin-top: 5px; font-size: 0.8rem; color: #666;">
-                                            <strong>Profesor:</strong> ${profesoresTexto}
-                                        </div>` : 
-                                        ''
-                                    }
+                                    <div class="profesor-info" style="margin-top: 5px; font-size: 0.8rem; color: #666;"></div>
                                     ${salon ? 
                                         `<div style="margin-top: 2px; font-size: 0.8rem; color: #666;">
                                             <strong>Salón:</strong> ${salon.nombre}
@@ -1402,6 +1123,112 @@ function generarTablaHorario() {
 
     tablaHTML += '</tbody></table>';
     container.innerHTML = tablaHTML;
+
+    // ===== Enlazar y poblar selectores de profesores por asignatura =====
+    const asignaturaSelects = Array.from(document.querySelectorAll('.asignatura-selector'));
+    const profesorSelects = new Map(); // key: dia-hora -> select
+    document.querySelectorAll('.profesor-selector').forEach(sel => {
+        const key = `${sel.getAttribute('data-day')}-${sel.getAttribute('data-time')}`;
+        profesorSelects.set(key, sel);
+    });
+
+    // Helper: actualizar texto de profesor seleccionado
+    function actualizarProfesorInfo(key) {
+        const [dia, hora] = key.split('-');
+        const cell = document.querySelector(`td.empty-block[data-dia="${dia}"][data-hora="${hora}"]`);
+        const selProf = profesorSelects.get(key);
+        const info = cell ? cell.querySelector('.profesor-info') : null;
+        if (info && selProf) {
+            const opt = selProf.options[selProf.selectedIndex];
+            const nombre = selProf.value ? (opt?.textContent || '') : '';
+            info.innerHTML = selProf.value ? `<strong>Profesor:</strong> ${nombre}` : '';
+        }
+    }
+
+    // Helper: cargar profesores para una asignatura y llenar el select correspondiente
+    async function cargarProfesoresParaCelda(asignaturaId, key, selectedId = null) {
+        const selProf = profesorSelects.get(key);
+        if (!selProf) return;
+        // Limpiar
+        selProf.innerHTML = '<option value="">Seleccionar profesor...</option>';
+        if (!asignaturaId) { return; }
+        try {
+            // Intentar primero con datos locales de la asignatura
+            let lista = [];
+            const asigLocal = (estado.asignaturas || []).find(a => (a.id_asignatura || a.id) == asignaturaId);
+            if (asigLocal && Array.isArray(asigLocal.profesores) && asigLocal.profesores.length > 0) {
+                lista = asigLocal.profesores;
+            } else {
+                // Fallback a la API si existe
+                const resp = await fetch(`/admin/api/profesores/asignatura/${asignaturaId}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    lista = Array.isArray(data?.profesores) ? data.profesores : (Array.isArray(data) ? data : []);
+                }
+            }
+            lista.forEach(p => {
+                const id = p.id_usuario || p.id || p.profesor_id;
+                const nombre = p.nombre_completo || p.nombre || 'Profesor';
+                if (id) {
+                    const opt = document.createElement('option');
+                    opt.value = id; opt.textContent = nombre;
+                    selProf.appendChild(opt);
+                }
+            });
+            if (selectedId) selProf.value = String(selectedId);
+            // Mostrar contenedor si hay asignatura
+            const cont = selProf.parentElement;
+            if (cont) cont.style.display = 'block';
+            actualizarProfesorInfo(key);
+        } catch (e) {
+            console.warn('No se pudieron cargar profesores para asignatura', asignaturaId, e);
+        }
+    }
+
+    // Poblar todos los selects iniciales
+    asignaturaSelects.forEach(sel => {
+        const day = sel.getAttribute('data-day');
+        const time = sel.getAttribute('data-time');
+        const key = `${day}-${time}`;
+        const asignaturaId = sel.value;
+        // Si ya hay asignatura seleccionada, cargar profesores
+        if (asignaturaId) {
+            cargarProfesoresParaCelda(asignaturaId, key);
+        }
+        // Adjuntar change para actualizar profesores al cambiar asignatura
+        sel.addEventListener('change', (e) => {
+            const nueva = e.target.value;
+            cargarProfesoresParaCelda(nueva, key);
+        });
+    });
+
+    // Escuchar cambios en selector de profesor para guardar en estado y reflejar en texto
+    profesorSelects.forEach((sel, key) => {
+        sel.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!estado.profesoresAsignaciones) estado.profesoresAsignaciones = {};
+            if (val) {
+                estado.profesoresAsignaciones[key] = parseInt(val);
+                // Limpiar estilos cuando el usuario cambia la selección
+                limpiarEstilosValidacion();
+            } else {
+                delete estado.profesoresAsignaciones[key];
+            }
+            actualizarProfesorInfo(key);
+        });
+    });
+
+    // Si el backend devolvió profesores_asignaciones, aplicarlos
+    if (estado.profesoresAsignaciones && typeof estado.profesoresAsignaciones === 'object') {
+        Object.entries(estado.profesoresAsignaciones).forEach(([key, profId]) => {
+            const selProf = profesorSelects.get(key);
+            if (selProf) {
+                // si el select aún no está poblado (porque asignatura se carga async), intentemos setear luego
+                const trySet = () => { selProf.value = String(profId); actualizarProfesorInfo(key); };
+                if (selProf.options.length > 1) trySet(); else setTimeout(trySet, 300);
+            }
+        });
+    }
 }
 
 function guardarAsignacion(select) {
@@ -1415,6 +1242,10 @@ function guardarAsignacion(select) {
         estado.asignaciones[clave] = parseInt(asignaturaId);
         console.log('💾 Asignación guardada:', clave, estado.asignaciones[clave]);
         mostrarNotificacion('Asignación guardada temporalmente', 'success');
+        // Al cambiar asignatura, limpiar profesor seleccionado en esa celda
+        if (estado.profesoresAsignaciones) {
+            delete estado.profesoresAsignaciones[clave];
+        }
     } else {
         delete estado.asignaciones[clave];
         console.log('🗑️ Asignación eliminada:', clave);
@@ -1485,60 +1316,6 @@ async function resetCourseSchedule() {
 }
 
 // =============================================
-// FUNCIONALIDAD DE COMPARTIR
-// =============================================
-
-function mostrarModalCompartir() {
-    if (!estado.cursoSeleccionado) {
-        mostrarNotificacion('Seleccione un curso primero', 'error');
-        return;
-    }
-
-    estado.destinatarioCompartir = null;
-    document.querySelectorAll('.share-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    document.getElementById('share-details').style.display = 'none';
-    document.getElementById('share-modal').style.display = 'flex';
-}
-
-function cerrarModalCompartir() {
-    document.getElementById('share-modal').style.display = 'none';
-}
-
-function seleccionarDestinatario(destinatario, event) {
-    estado.destinatarioCompartir = destinatario;
-    
-    // Actualizar UI
-    document.querySelectorAll('.share-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-    event.currentTarget.classList.add('selected');
-    
-    const details = document.getElementById('share-details');
-    const title = document.getElementById('share-title');
-    const description = document.getElementById('share-description');
-    
-    details.style.display = 'block';
-    
-    if (destinatario === 'estudiantes') {
-        title.textContent = 'Compartir con Estudiantes';
-        description.textContent = `Se compartirá el horario con todos los estudiantes del curso ${estado.cursoSeleccionado.nombreCurso}. Los estudiantes podrán ver su horario semanal con materias, profesores y salones asignados.`;
-    } else {
-        title.textContent = 'Compartir con Profesores';
-        description.textContent = `Se compartirá el horario con los profesores asignados a las materias. Cada profesor podrá ver su horario semanal con los cursos, materias, horarios y salones asignados.`;
-    }
-}
-
-function confirmarCompartir() {
-    if (!estado.destinatarioCompartir) {
-        mostrarNotificacion('Seleccione un destinatario', 'error');
-        return;
-    }
-    compartirHorario();
-}
-
-// =============================================
 // FUNCIONES AUXILIARES
 // =============================================
 
@@ -1580,10 +1357,7 @@ window.clearCourseSchedule = clearCourseSchedule;
 window.resetCourseSchedule = resetCourseSchedule;
 window.guardarAsignacion = guardarAsignacion;
 window.guardarSalon = guardarSalon;
-window.mostrarModalCompartir = mostrarModalCompartir;
-window.cerrarModalCompartir = cerrarModalCompartir;
-window.seleccionarDestinatario = seleccionarDestinatario;
-window.confirmarCompartir = confirmarCompartir;
-    </script>
-</body>
-</html>
+
+        </script>
+    </div>
+{% endblock %}
