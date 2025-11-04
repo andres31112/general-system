@@ -3,24 +3,89 @@
 {% block title %}Mis Cursos{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h2 class="mb-4">Mis Cursos</h2>
+<style>
+  :root { --prim:#0D3B66; --prim2:#1a5080; --acc:#F95738; --soft:#f6f8fb; --card:#ffffff; --border:#E3E8EF; --text:#2C3E50; }
+  .c-section{padding:16px 12px}
+  .c-title{color:var(--prim); font-weight:700; margin:8px 0 16px 0}
+  .c-list{display:grid; gap:12px}
+  .c-item{background:var(--card); border:2px solid var(--border); border-radius:14px; padding:14px}
+  .c-head{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .c-name{font-weight:700; color:var(--text)}
+  .c-meta{color:#6b7280; font-size:13px}
+  .c-btn{background:linear-gradient(135deg,var(--prim),var(--prim2)); color:#fff; border:none; border-radius:10px; padding:8px 14px; font-weight:600}
+  .c-details{margin-top:12px; border-top:2px dashed var(--border); padding-top:12px; display:none}
+  .c-grid{display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px}
+  .stat{background:var(--soft); border:1px solid var(--border); border-radius:10px; padding:10px}
+  .stat .label{font-size:12px; color:#6b7280}
+  .stat .value{font-weight:700; color:var(--text)}
+  .tbl{width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--border); border-radius:10px; overflow:hidden}
+  .tbl th,.tbl td{padding:8px 10px; border-bottom:1px solid var(--border); font-size:14px}
+  .tbl th{background:#f2f4f7; text-align:left; color:#334155}
+  .tbl tr:last-child td{border-bottom:none}
+</style>
 
-    {% if cursos and cursos|length > 0 %}
-    <div class="list-group">
-        {% for curso in cursos %}
-        <a href="{{ url_for('profesor.gestion_lc') }}" class="list-group-item list-group-item-action">
-            <div class="d-flex w-100 justify-content-between">
-                <h5 class="mb-1">{{ curso.nombreCurso or curso.nombre or 'Sin nombre' }}</h5>
-                <small>{{ curso.sede.nombre if curso.sede else 'Sin sede' }}</small>
-            </div>
-            <p class="mb-1">Estudiantes: {{ curso.total_estudiantes if curso.total_estudiantes is defined else 0 }}</p>
-            <small>ID: {{ curso.id_curso or curso.id or 'N/A' }}</small>
-        </a>
-        {% endfor %}
+<div class="container-fluid c-section">
+  <h2 class="c-title">Mis Cursos</h2>
+
+  {% if cursos and cursos|length > 0 %}
+  <div class="c-list">
+    {% for curso in cursos %}
+    <div class="c-item" data-curso-id="{{ curso.id_curso or curso.id }}">
+      <div class="c-head">
+        <div>
+          <div class="c-name">{{ curso.nombreCurso or curso.nombre or 'Sin nombre' }}</div>
+          <div class="c-meta">Sede: {{ curso.sede.nombre if curso.sede else 'Sin sede' }} • Estudiantes: {{ curso.total_estudiantes if curso.total_estudiantes is defined else 0 }}</div>
+        </div>
+        <button class="c-btn js-ver-detalle">Ver detalles</button>
+      </div>
+      <div class="c-details"></div>
     </div>
-    {% else %}
+    {% endfor %}
+  </div>
+  {% else %}
     <p class="text-muted">No tienes cursos asignados.</p>
-    {% endif %}
+  {% endif %}
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.js-ver-detalle').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const card = e.target.closest('.c-item');
+        const det = card.querySelector('.c-details');
+        const id = card.dataset.cursoId;
+        if (det.dataset.loaded === '1') { det.style.display = det.style.display==='none'?'block':'none'; return; }
+        btn.disabled = true; btn.textContent = 'Cargando...';
+        try {
+          const res = await fetch(`/profesor/api/curso-detalle/${id}`);
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.message||'Error');
+          const c = data.curso;
+          const est = data.estudiantes||[];
+          det.innerHTML = `
+            <div class="c-grid" style="margin-bottom:10px;">
+              <div class="stat"><div class="label">Periodo</div><div class="value">${c.periodo||'N/A'}</div></div>
+              <div class="stat"><div class="label">Director de Curso</div><div class="value">${c.director||'No asignado'}</div></div>
+              <div class="stat"><div class="label">Representante</div><div class="value">${c.representante||'No asignado'}</div></div>
+              <div class="stat"><div class="label">Estudiantes</div><div class="value">${c.total_estudiantes||0}</div></div>
+            </div>
+            <div style="font-weight:700; color:#334155; margin:6px 0;">Listado de estudiantes</div>
+            <table class="tbl">
+              <thead><tr><th>Nombre</th><th>Correo</th></tr></thead>
+              <tbody>
+                ${est.map(x=>`<tr><td>${x.nombre}</td><td>${x.correo||''}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          `;
+          det.dataset.loaded = '1';
+          det.style.display = 'block';
+        } catch(err) {
+          det.innerHTML = `<div style="color:#B00020;">${err.message}</div>`; det.style.display='block';
+        } finally {
+          btn.disabled = false; btn.textContent = 'Ver detalles';
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}

@@ -140,6 +140,16 @@
         color: var(--accent2);
     }
 
+    .break-cell {
+        background: var(--gradient-warning) !important;
+        padding: 0.5rem;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid rgba(238, 150, 75, 0.3);
+        color: var(--Black);
+        font-weight: 600;
+    }
+
     .loading-spinner {
         display: none;
         text-align: center;
@@ -199,7 +209,7 @@
                     <div class="row">
                         {% for hijo in hijos %}
                         <div class="col-md-4 mb-3">
-                            <div class="estudiante-card" onclick="seleccionarEstudiante({{ hijo.id_usuario }}, '{{ hijo.nombre_completo }}')">
+                            <div class="estudiante-card" data-id="{{ hijo.id_usuario }}" data-nombre="{{ hijo.nombre_completo|e }}">
                                 <div class="estudiante-info text-center">
                                     <div class="estudiante-avatar mx-auto">
                                         {{ hijo.nombre[0] }}{{ hijo.apellido[0] }}
@@ -251,14 +261,16 @@
 <script>
 let estudianteSeleccionado = null;
 
-function seleccionarEstudiante(estudianteId, nombreEstudiante) {
+function seleccionarEstudiante(estudianteId, nombreEstudiante, element) {
     // Remover selección anterior
     document.querySelectorAll('.estudiante-card').forEach(card => {
         card.classList.remove('selected');
     });
     
     // Seleccionar nuevo estudiante
-    event.currentTarget.classList.add('selected');
+    if (element) {
+        element.classList.add('selected');
+    }
     estudianteSeleccionado = estudianteId;
     
     // Mostrar horario del estudiante
@@ -301,37 +313,76 @@ function mostrarHorario(horario) {
         <p><strong>Curso:</strong> ${horario.curso || 'No disponible'}</p>
         <p><strong>Sede:</strong> ${horario.sede || 'No disponible'}</p>
     </div>`;
-    
-    // Tabla de horario
+
+    const normalizeDia = (d) => {
+        if (!d) return '';
+        const map = { 'miércoles':'miercoles', 'sábado':'sabado' };
+        const s = d.toString().trim().toLowerCase();
+        return map[s] || s;
+    };
+
+    const displayDia = (norm) => {
+        const map = {
+            'lunes':'Lunes','martes':'Martes','miercoles':'Miércoles','jueves':'Jueves','viernes':'Viernes','sabado':'Sábado'
+        };
+        return map[norm] || norm;
+    };
+
+    const diasApi = Array.isArray(horario.dias) && horario.dias.length ? horario.dias.map(d => normalizeDia(d)) : null;
+    const dias = diasApi && diasApi.length ? diasApi : ['lunes','martes','miercoles','jueves','viernes','sabado'];
+
+    const bloques = Array.isArray(horario.bloques) && horario.bloques.length ? horario.bloques : ['06:00-07:00','07:00-08:00','08:00-09:00','09:00-10:00','10:00-11:00','11:00-12:00','12:00-13:00','13:00-14:00','14:00-15:00','15:00-16:00','16:00-17:00','17:00-18:00','18:00-19:00','19:00-20:00'];
+
+    const matrizBloques = horario.matriz_bloques || {};
+    const clasesPorBloque = horario.clases_por_bloque || {};
+
+    // Tabla de horario por bloques (rango HH:MM - HH:MM)
     html += '<div class="table-responsive"><table class="horario-table">';
-    html += '<thead><tr><th>Hora</th><th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th><th>Viernes</th><th>Sábado</th></tr></thead><tbody>';
-    
-    // Días de la semana
-    const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const horas = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
-    
-    horas.forEach(hora => {
-        html += `<tr><td class="hora-cell">${hora}</td>`;
-        
+    html += '<thead><tr><th>Bloque</th>' + dias.map(d => `<th>${displayDia(d)}</th>`).join('') + '</tr></thead><tbody>';
+
+    bloques.forEach(bloque => {
+        const parts = bloque.split('-');
+        const inicio = (parts[0] || '').trim();
+        const fin = (parts[1] || '').trim();
+        html += `<tr><td class="hora-cell">${inicio}${fin ? ' - ' + fin : ''}</td>`;
+
         dias.forEach(dia => {
-            const clase = horario.clases && horario.clases[`${dia}_${hora}`];
-            if (clase) {
-                html += `<td>
-                    <div class="asignatura-cell">${clase.asignatura}</div>
-                    <div class="profesor-cell">${clase.profesor}</div>
-                    <div class="salon-cell">${clase.salon}</div>
-                </td>`;
+            const dnorm = normalizeDia(dia);
+            const breakInfo = (matrizBloques[dnorm] && matrizBloques[dnorm][bloque]) || null;
+            const isBreak = breakInfo && ['break','descanso','receso'].includes((breakInfo.tipo || '').toLowerCase());
+            if (isBreak) {
+                const label = breakInfo.nombre || 'DESCANSO';
+                html += `<td class="break-cell"><small><i class="fas fa-coffee"></i> <strong>${label}</strong></small></td>`;
             } else {
-                html += '<td class="text-muted">-</td>';
+                // Prioridad: usar clase asignada al bloque (para intervalos no alineados)
+                const claseBloque = (clasesPorBloque[dnorm] && clasesPorBloque[dnorm][bloque]) || null;
+                const clase = claseBloque || (horario.clases && horario.clases[`${dnorm}_${inicio}`]);
+                if (clase) {
+                    html += `<td>
+                        <div class="asignatura-cell">${clase.asignatura}</div>
+                        <div class="profesor-cell">${clase.profesor}</div>
+                        <div class="salon-cell">${clase.salon}</div>
+                    </td>`;
+                } else {
+                    html += '<td class="text-muted">-</td>';
+                }
             }
         });
-        
         html += '</tr>';
     });
-    
+
     html += '</tbody></table></div>';
-    
+
     contentElement.innerHTML = html;
 }
+
+// Bind events after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.estudiante-card').forEach(card => {
+        card.addEventListener('click', function() {
+            seleccionarEstudiante(this.dataset.id, this.dataset.nombre, this);
+        });
+    });
+});
 </script>
 {% endblock %}

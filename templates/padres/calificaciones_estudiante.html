@@ -465,13 +465,46 @@
     <!-- Header del Estudiante -->
     <div class="estudiante-info-card">
         <h2>{{ estudiante.nombre_completo }}</h2>
-        <p><i class="fas fa-book me-2"></i>{{ asignatura.nombre }}</p>
+        <p><i class="fas fa-book me-2"></i>{{ asignatura.nombre if asignatura else 'Sin asignatura seleccionada' }}</p>
         {% if ultima_fecha_reporte %}
         <p style="font-size: 0.95rem; margin-top: 0.5rem;">
             <i class="fas fa-calendar-check me-2"></i>
             Última actualización: {{ ultima_fecha_reporte.strftime('%d/%m/%Y a las %H:%M') }}
         </p>
+        {% else %}
+        <p style="font-size: 0.95rem; margin-top: 0.5rem; opacity:.9">
+            <i class="fas fa-info-circle me-2"></i>
+            Selecciona una consulta aceptada para ver calificaciones
+        </p>
         {% endif %}
+    </div>
+
+    <!-- Historial/Selector de Consultas Aceptadas -->
+    <div class="periodo-selector" style="margin-top:-.5rem;">
+        <div>
+            <strong>
+                <i class="fas fa-clipboard-check"></i>
+                Consultas aceptadas:
+            </strong>
+            <select id="selector-consulta" onchange="if(this.value){const url=new URL(window.location.href);url.searchParams.set('asignatura_id',this.value);window.location.href=url;}">
+                {% if aceptadas and aceptadas|length>0 %}
+                    {% for s in aceptadas %}
+                        <option value="{{ s.asignatura_id }}" {{ 'selected' if asignatura and asignatura.id_asignatura==s.asignatura_id else '' }}>
+                            {{ s.asignatura.nombre }} {% if s.fecha_respuesta %}- {{ s.fecha_respuesta.strftime('%d/%m/%Y %H:%M') }}{% endif %}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option value="">No hay consultas aceptadas</option>
+                {% endif %}
+            </select>
+        </div>
+        <div class="periodo-info">
+            {% if asignatura %}
+                <i class="fas fa-book-open me-1"></i> Mostrando: {{ asignatura.nombre }}
+            {% else %}
+                <i class="fas fa-info-circle me-1"></i> Selecciona una asignatura aceptada
+            {% endif %}
+        </div>
     </div>
 
     <!-- Selector de Periodo Académico -->

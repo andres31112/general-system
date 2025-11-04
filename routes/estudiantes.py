@@ -5,7 +5,13 @@ from controllers.decorators import role_required, permission_required
 from datetime import datetime, timedelta, time, date
 from controllers.models import (
     db, Usuario, Comunicacion, Evento, Candidato, HorarioVotacion, Voto,
-    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso
+    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso,
+    HorarioCurso, Asignatura, Salon, BloqueHorario, CategoriaCalificacion, SolicitudConsulta
+)
+from services.notification_service import (
+    obtener_todas_notificaciones,
+    marcar_notificacion_como_leida,
+    contar_notificaciones_no_leidas
 )
 # Se asume que tienes un nuevo Blueprint para las rutas de estudiante.
 # Si no, puedes añadir esta ruta al Blueprint de 'admin' o crear uno nuevo llamado 'estudiante_bp'.
@@ -29,15 +35,79 @@ def estudiante_panel():
 # --- Ejemplo de ruta para ver calificaciones ---
 @estudiante_bp.route('/calificaciones')
 @login_required
-@permission_required('ver_calificaciones')
 def ver_calificaciones():
-    """
-    Ruta para que el estudiante vea sus calificaciones.
-    """
-    # Aquí iría la lógica para obtener las calificaciones del estudiante.
-    # Por ejemplo: calificaciones = Calificacion.query.filter_by(id_estudiante=current_user.id).all()
-    # return render_template('estudiante/calificaciones.html', calificaciones=calificaciones)
-    return render_template('estudiante/calificaciones.html')
+    """Muestra calificaciones como la vista del padre, pero solo de solicitudes aceptadas."""
+    try:
+        if not current_user or not current_user.rol or current_user.rol.nombre.lower() != 'estudiante':
+            flash('Acceso no autorizado.', 'danger')
+            return redirect(url_for('auth.login'))
+
+        estudiante = current_user
+        asignatura_id = request.args.get('asignatura_id', type=int)
+
+        # Buscar solicitudes aceptadas para este estudiante
+        q_aceptadas = SolicitudConsulta.query.filter_by(estudiante_id=estudiante.id_usuario, estado='aceptada')\
+            .order_by(SolicitudConsulta.fecha_respuesta.desc())
+
+        if not asignatura_id:
+            ultima = q_aceptadas.first()
+            if ultima:
+                asignatura_id = ultima.asignatura_id
+        solicitud_sel = None
+        if asignatura_id:
+            solicitud_sel = q_aceptadas.filter_by(asignatura_id=asignatura_id).first()
+
+        if not solicitud_sel:
+            # No hay solicitud aceptada; mostrar página con mensaje y sin calificaciones
+            return render_template(
+                'estudiantes/calificaciones.html',
+                estudiante=estudiante,
+                asignatura=Asignatura.query.get(asignatura_id) if asignatura_id else None,
+                ultima_fecha_reporte=None,
+                calificaciones_por_categoria={},
+                promedios_por_categoria={},
+                promedio_general=0.0,
+                aceptadas=q_aceptadas.all()
+            )
+
+        # Cargar calificaciones del estudiante para la asignatura
+        califs = Calificacion.query.filter_by(estudianteId=estudiante.id_usuario, asignaturaId=asignatura_id).all()
+
+        # Agrupar por categoría
+        from collections import defaultdict
+        por_cat = defaultdict(lambda: {'categoria': None, 'calificaciones': []})
+        for c in califs:
+            cat = CategoriaCalificacion.query.get(c.categoriaId) if getattr(c, 'categoriaId', None) else None
+            key = c.categoriaId or 0
+            if por_cat[key]['categoria'] is None:
+                por_cat[key]['categoria'] = cat or type('obj', (), {'nombre': 'Sin categoría'})()
+            por_cat[key]['calificaciones'].append(c)
+
+        # Promedios por categoría y general
+        proms_por_cat = {}
+        valores_globales = []
+        for key, data in por_cat.items():
+            vals = [float(x.valor) for x in data['calificaciones'] if x.valor is not None]
+            proms_por_cat[key] = (sum(vals)/len(vals)) if vals else 0.0
+            valores_globales.extend(vals)
+        promedio_general = round(sum(valores_globales)/len(valores_globales), 2) if valores_globales else 0.0
+
+        asignatura = Asignatura.query.get(asignatura_id)
+        ultima_fecha = solicitud_sel.fecha_respuesta
+
+        return render_template(
+            'estudiantes/calificaciones.html',
+            estudiante=estudiante,
+            asignatura=asignatura,
+            ultima_fecha_reporte=ultima_fecha,
+            calificaciones_por_categoria=por_cat,
+            promedios_por_categoria=proms_por_cat,
+            promedio_general=promedio_general,
+            aceptadas=q_aceptadas.all()
+        )
+    except Exception as e:
+        flash(f'Error cargando calificaciones: {str(e)}', 'danger')
+        return redirect(url_for('estudiante.estudiante_panel'))
 
 # --- Ejemplo de ruta para ver horario ---
 @estudiante_bp.route('/horario')
@@ -52,6 +122,193 @@ def ver_horario():
     # return render_template('estudiante/horario.html', horario=horario)
     return render_template('estudiante/horario.html')
 
+
+# =======================
+# Mi Horario (vista y API)
+# =======================
+
+@estudiante_bp.route('/mi-horario')
+@login_required
+def mi_horario():
+    try:
+        # Obtener matrícula más reciente del estudiante
+        matricula = Matricula.query.filter_by(estudianteId=current_user.id_usuario)\
+            .order_by(Matricula.fecha_matricula.desc()).first()
+        curso = Curso.query.get(matricula.cursoId) if matricula else None
+        return render_template('estudiantes/mi_horario.html', curso=curso)
+    except Exception as e:
+        flash(f'Error cargando Mi Horario: {str(e)}', 'error')
+        return redirect(url_for('estudiante.estudiante_panel'))
+
+
+@estudiante_bp.route('/api/mi-horario', methods=['GET'])
+@login_required
+def api_mi_horario():
+    """Devuelve el horario del curso del estudiante autenticado."""
+    try:
+        # 1) Obtener matrícula actual
+        matricula = Matricula.query.filter_by(estudianteId=current_user.id_usuario)\
+            .order_by(Matricula.fecha_matricula.desc()).first()
+        if not matricula:
+            return jsonify({'success': True, 'horario': None, 'message': 'No hay matrícula activa'}), 200
+
+        curso = Curso.query.get(matricula.cursoId)
+        if not curso:
+            return jsonify({'success': True, 'horario': None, 'message': 'Curso no encontrado'}), 200
+
+        # Helpers
+        def _normalizar_dia(dia_str):
+            if not dia_str:
+                return None
+            d = str(dia_str).strip().lower()
+            mapping = {
+                'lunes': 'lunes',
+                'martes': 'martes',
+                'miercoles': 'miercoles',
+                'miércoles': 'miercoles',
+                'jueves': 'jueves',
+                'viernes': 'viernes',
+                'sabado': 'sabado',
+                'sábado': 'sabado',
+                'domingo': 'domingo'
+            }
+            return mapping.get(d, d)
+
+        def _fmt_hora(val):
+            try:
+                if hasattr(val, 'strftime'):
+                    return val.strftime('%H:%M')
+                s = str(val).strip()
+                if len(s) >= 5 and s[2] == ':':
+                    return s[:5]
+                if ':' in s:
+                    parts = s.split(':')
+                    h = int(parts[0]) if parts[0] else 0
+                    m = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+                    return f"{h:02d}:{m:02d}"
+            except Exception:
+                pass
+            return ''
+
+        # 2) Consultar asignaciones de horario para el curso
+        entradas = db.session.query(HorarioCurso, Asignatura, Usuario, Salon)\
+            .join(Asignatura, HorarioCurso.asignatura_id == Asignatura.id_asignatura)\
+            .outerjoin(Usuario, HorarioCurso.profesor_id == Usuario.id_usuario)\
+            .outerjoin(Salon, HorarioCurso.id_salon_fk == Salon.id_salon)\
+            .filter(HorarioCurso.curso_id == curso.id_curso)\
+            .all()
+
+        # Mapa por hora (compatibilidad) y expansión de rangos horarios a cada hora
+        clases = {}
+        for hc, asig, prof, salon in entradas:
+            dia_norm = _normalizar_dia(hc.dia_semana)
+            hora_ini = _fmt_hora(hc.hora_inicio)
+            hora_fin = _fmt_hora(hc.hora_fin)
+            if not dia_norm or not hora_ini:
+                continue
+            def _to_min(hhmm):
+                try:
+                    h, m = map(int, hhmm.split(':'))
+                    return h*60 + m
+                except Exception:
+                    return None
+            ini_min = _to_min(hora_ini)
+            fin_min = _to_min(hora_fin) if hora_fin else None
+            slots = []
+            if fin_min is None or fin_min <= ini_min:
+                slots = [hora_ini]
+            else:
+                start_hour = ini_min // 60
+                end_hour = (fin_min + 59) // 60
+                for h in range(start_hour, end_hour):
+                    slots.append(f"{h:02d}:00")
+            for slot in slots:
+                clave = f"{dia_norm}_{slot}"
+                if clave not in clases:
+                    clases[clave] = {
+                        'asignatura': asig.nombre if asig else 'N/A',
+                        'profesor': prof.nombre_completo if prof else 'N/A',
+                        'salon': salon.nombre if salon else 'N/A',
+                        'hora_inicio': hora_ini,
+                        'hora_fin': hora_fin or 'N/A'
+                    }
+
+        # 3) Bloques y descansos desde HorarioGeneral
+        dias_list, bloques_list, matriz_bloques, clases_por_bloque = [], [], {}, {}
+        hg = getattr(curso, 'horario_general', None)
+        if hg:
+            # Días (guardados como JSON en campo diasSemana)
+            try:
+                import json
+                dias_list = json.loads(hg.diasSemana) if hg.diasSemana else []
+            except Exception:
+                dias_list = []
+            # Bloques
+            bloques = BloqueHorario.query.filter_by(horario_general_id=hg.id_horario).order_by(BloqueHorario.orden).all()
+            for b in bloques:
+                dia_b = _normalizar_dia(b.dia_semana)
+                start = _fmt_hora(b.horaInicio)
+                end = _fmt_hora(b.horaFin)
+                if not start or not end:
+                    continue
+                bloque_key = f"{start}-{end}"
+                if bloque_key not in bloques_list:
+                    bloques_list.append(bloque_key)
+                if dia_b:
+                    matriz_bloques.setdefault(dia_b, {})[bloque_key] = {
+                        'tipo': (b.tipo or '').lower(),
+                        'nombre': b.nombre or '',
+                        'break_type': (b.break_type or ''),
+                        'class_type': (b.class_type or '')
+                    }
+                    clases_por_bloque.setdefault(dia_b, {})[bloque_key] = None
+
+        # 4) Asignar cada HorarioCurso al/los bloques que se solapen
+        def _minutos(hhmm):
+            try:
+                h, m = map(int, str(hhmm).split(':'))
+                return h*60 + m
+            except Exception:
+                return None
+
+        for hc, asig, prof, salon in entradas:
+            dia_norm = _normalizar_dia(hc.dia_semana)
+            ini = _fmt_hora(hc.hora_inicio)
+            fin = _fmt_hora(hc.hora_fin)
+            if not dia_norm or not ini or not fin:
+                continue
+            ini_m = _minutos(ini); fin_m = _minutos(fin)
+            if ini_m is None or fin_m is None:
+                continue
+            for bloque_key, meta in (matriz_bloques.get(dia_norm, {}) or {}).items():
+                b_ini, b_fin = [x.strip() for x in bloque_key.split('-')]
+                b_ini_m = _minutos(b_ini); b_fin_m = _minutos(b_fin)
+                if b_ini_m is None or b_fin_m is None:
+                    continue
+                if max(ini_m, b_ini_m) < min(fin_m, b_fin_m):
+                    if meta.get('tipo', '') in ('break','descanso','receso'):
+                        continue
+                    clases_por_bloque[dia_norm][bloque_key] = {
+                        'asignatura': asig.nombre if asig else 'N/A',
+                        'profesor': prof.nombre_completo if prof else 'N/A',
+                        'salon': salon.nombre if salon else 'N/A',
+                        'hora_inicio': ini,
+                        'hora_fin': fin
+                    }
+
+        horario_data = {
+            'curso': curso.nombreCurso,
+            'sede': curso.sede.nombre if getattr(curso, 'sede', None) else 'N/A',
+            'clases': clases,
+            'dias': dias_list,
+            'bloques': bloques_list,
+            'matriz_bloques': matriz_bloques,
+            'clases_por_bloque': clases_por_bloque
+        }
+
+        return jsonify({'success': True, 'horario': horario_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # =======================
@@ -200,6 +457,46 @@ def eleccion_electoral():
 @login_required
 def comunicaciones():
     return render_template('estudiantes/comunicaciones.html')
+
+@estudiante_bp.route('/notificaciones')
+@login_required
+def notificaciones():
+    try:
+        # Enviar conteo no leídas al template si se requiere
+        unread = contar_notificaciones_no_leidas(current_user.id_usuario)
+    except Exception:
+        unread = 0
+    return render_template('estudiantes/notificaciones.html', unread=unread)
+
+@estudiante_bp.route('/api/notificaciones', methods=['GET'])
+@login_required
+def api_listar_notificaciones():
+    try:
+        limite = request.args.get('limite', default=50, type=int)
+        notifs = obtener_todas_notificaciones(current_user.id_usuario, limite=limite)
+        data = []
+        for n in notifs:
+            data.append({
+                'id': getattr(n, 'id_notificacion', None),
+                'titulo': getattr(n, 'titulo', ''),
+                'mensaje': getattr(n, 'mensaje', ''),
+                'tipo': getattr(n, 'tipo', 'general'),
+                'link': getattr(n, 'link', None),
+                'leida': getattr(n, 'leida', False),
+                'creada_en': n.creada_en.isoformat() if getattr(n, 'creada_en', None) else None
+            })
+        return jsonify({'success': True, 'notificaciones': data, 'total': len(data)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@estudiante_bp.route('/api/notificaciones/<int:notificacion_id>/leer', methods=['PUT'])
+@login_required
+def api_marcar_notificacion_leida(notificacion_id):
+    try:
+        ok = marcar_notificacion_como_leida(notificacion_id, current_user.id_usuario)
+        return jsonify({'success': ok}) if ok else jsonify({'success': False, 'error': 'No encontrada'}), (200 if ok else 404)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @estudiante_bp.route('/api/comunicaciones')
 @login_required

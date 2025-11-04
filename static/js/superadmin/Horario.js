@@ -1,3 +1,64 @@
+// Carga los periodos académicos reales al selector, dejando 'Anual' por defecto
+async function cargarPeriodosAcademicosSelect() {
+    const sel = document.getElementById('schedule-period');
+    if (!sel) return;
+    const defaultValue = 'Anual';
+    try {
+        // Limpiar y poner opción Anual por defecto
+        sel.innerHTML = `<option value="${defaultValue}">${defaultValue}</option>`;
+        // 1) Obtener ciclo activo
+        const resCiclo = await fetch('/admin/api/ciclos/activo');
+        if (!resCiclo.ok) throw new Error(`HTTP ${resCiclo.status}`);
+        const cicloJson = await resCiclo.json();
+        const ciclo = cicloJson && cicloJson.ciclo ? cicloJson.ciclo : null;
+        if (!ciclo || !ciclo.id_ciclo) {
+            // Sin ciclo activo: dejar solo opciones por defecto
+            ['Primer Semestre','Segundo Semestre'].forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n; opt.textContent = n; sel.appendChild(opt);
+            });
+            sel.value = defaultValue;
+            return;
+        }
+        // 2) Obtener periodos del ciclo activo
+        const res = await fetch(`/admin/api/periodos?ciclo_id=${encodeURIComponent(ciclo.id_ciclo)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const periodos = Array.isArray(json?.periodos) ? json.periodos : [];
+        periodos
+            .sort((a,b) => ((a.numero_periodo||a.numero||0) - (b.numero_periodo||b.numero||0)))
+            .forEach(p => {
+                const numero = p.numero_periodo || p.numero;
+                const nombre = p.nombre || `Periodo ${numero||''}`;
+                const opt = document.createElement('option');
+                opt.value = nombre;
+                opt.textContent = nombre;
+                sel.appendChild(opt);
+            });
+        // Mantener por defecto 'Anual' si no hay horario cargado
+        if (!estado.horarioCargadoId) sel.value = defaultValue;
+    } catch (e) {
+        // Si falla, asegurar que al menos esté 'Anual' y semestres comunes
+        ['Primer Semestre','Segundo Semestre'].forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n; opt.textContent = n; sel.appendChild(opt);
+        });
+        sel.value = defaultValue;
+    }
+}
+
+// Asegura que un option exista en un select por su valor; si no, lo crea
+function ensureOptionExists(selectEl, value, label) {
+    if (!selectEl) return;
+    const exists = Array.from(selectEl.options).some(opt => opt.value === value);
+    if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label || value;
+        selectEl.appendChild(opt);
+    }
+}
+
 // =============================================
 // CONFIGURACIÓN Y VARIABLES GLOBALES
 // =============================================
@@ -11,6 +72,9 @@ const API_URLS = {
     estadisticas: '/admin/api/estadisticas/horarios'
 };
 
+// Evita que el formulario flotante se cierre inmediatamente al abrirse por el mismo click
+let evitarCierreFlotante = false;
+
 // Estado de la aplicación
 let estado = {
     horarios: [],
@@ -19,7 +83,21 @@ let estado = {
     bloques: [],
     diasActivos: new Set(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']),
     editandoBloqueId: null,
-    horarioCargadoId: null
+    horarioCargadoId: null,
+    // Filtros para Bloques Programados
+    filtroBloquesDia: 'Todos',
+    filtroBloquesLimite: 10,
+    paginaBloques: 1
+};
+
+// Estado para el modal de asignación de cursos
+let asignacionModal = {
+    page: 1,
+    pageSize: 8,
+    search: '',
+    sede: '',
+    assigned: '', // '', 'con', 'sin'
+    filteredItems: []
 };
 
 // =============================================
@@ -27,12 +105,15 @@ let estado = {
 // =============================================
 
 function mostrarLoading(mensaje = 'Cargando...') {
-    document.getElementById('loading-message').textContent = mensaje;
-    document.getElementById('loading-modal').style.display = 'flex';
+    const msgEl = document.getElementById('loading-message');
+    const modal = document.getElementById('loading-modal');
+    if (msgEl) msgEl.textContent = mensaje;
+    if (modal) modal.style.display = 'flex';
 }
 
 function ocultarLoading() {
-    document.getElementById('loading-modal').style.display = 'none';
+    const modal = document.getElementById('loading-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 function mostrarNotificacion(mensaje, tipo = 'success') {
@@ -99,46 +180,47 @@ function mostrarAlerta(titulo, mensaje, tipo = 'warning', callbackConfirm) {
 // =============================================
 
 async function apiRequest(url, options = {}) {
+    const controller = new AbortController();
+    const timeoutMs = options.timeoutMs || 20000;
+    const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
         console.log('🔗 API Request:', url, options.method || 'GET');
-        
         const config = {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            ...options
+            headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+            method: options.method || 'GET',
+            body: options.body ? JSON.stringify(options.body) : undefined,
+            signal: controller.signal
         };
-
-        if (config.body) {
-            config.body = JSON.stringify(config.body);
-            console.log('📦 Request Body:', config.body);
-        }
-
+        if (config.body) console.log('📦 Request Body:', config.body);
         const response = await fetch(url, config);
         console.log('📥 API Response Status:', response.status);
-        
         if (!response.ok) {
             let errorMessage = `Error ${response.status}: ${response.statusText}`;
-            
             try {
-                const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorMessage;
-                console.error('❌ API Error Data:', errorData);
-            } catch (e) {
-                const text = await response.text();
-                if (text) errorMessage += ` - ${text.substring(0, 200)}`;
-            }
-            
+                const t = await response.text();
+                try {
+                    const j = JSON.parse(t);
+                    errorMessage = j.error || j.message || errorMessage;
+                    console.error('❌ API Error Data:', j);
+                } catch {
+                    if (t) errorMessage += ` - ${t.substring(0, 300)}`;
+                }
+            } catch {}
             throw new Error(errorMessage);
         }
-
-        const data = await response.json();
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
         console.log('✅ API Success:', data);
         return data;
-        
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.error('❌ API Timeout');
+            throw new Error('Tiempo de espera agotado comunicando con el servidor');
+        }
         console.error('❌ API Error:', error);
         throw error;
+    } finally {
+        clearTimeout(id);
     }
 }
 
@@ -217,6 +299,57 @@ async function cargarCursos() {
     }
 }
 
+// Renderiza los cursos asignados a un horario específico en su contenedor
+async function renderCursosAsignados(horarioId, contenedor) {
+    if (!contenedor) return;
+    const hId = parseInt(horarioId);
+    const header = contenedor.parentElement && contenedor.parentElement.querySelector('.cursos-header');
+    try {
+        const resp = await fetch(`/admin/api/horarios/${hId}/cursos`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
+        const cursosAsignados = Array.isArray(json) ? json : (json.data || []);
+        if (header) header.textContent = `Cursos asignados (${cursosAsignados.length})`;
+        if (cursosAsignados.length === 0) {
+            // Fallback a cliente: filtrar estado.cursos
+            const fallback = (Array.isArray(estado.cursos) ? estado.cursos : []).filter(c => {
+                const v = c.horario_general_id ?? c.horarioId ?? c.horario_general;
+                return parseInt(v) === hId;
+            });
+            if (header) header.textContent = `Cursos asignados (${fallback.length})`;
+            if (fallback.length === 0) {
+                contenedor.innerHTML = '<div style="color:#666;">No hay cursos asignados a este horario.</div>';
+                return;
+            }
+            const ordenados = [...fallback].sort((a,b) => (a.nombreCurso||a.nombre||'').localeCompare(b.nombreCurso||b.nombre||''));
+            contenedor.innerHTML = `<div class="cursos-grid">${ordenados.map(c => `
+                <div class=\"curso-item\">
+                    <div class=\"curso-left\">
+                        <div class=\"curso-meta\">
+                            <div class=\"curso-meta-title\">${(c.nombreCurso || c.nombre || 'Curso')} – ${(c.sede || 'Sin sede')}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+            return;
+        }
+        const ordenadosApi = [...cursosAsignados].sort((a,b) => (a.nombreCurso||a.nombre||'').localeCompare(b.nombreCurso||b.nombre||''));
+        contenedor.innerHTML = `<div class="cursos-grid">${ordenadosApi.map(c => `
+            <div class=\"curso-item\">
+                <div class=\"curso-left\">
+                    <div class=\"curso-meta\">
+                        <div class=\"curso-meta-title\">${(c.nombreCurso || c.nombre || 'Curso')} – ${(c.sede || 'Sin sede')}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('')}</div>`;
+    } catch (err) {
+        console.error('Error obteniendo cursos por horario:', err);
+        if (header) header.textContent = 'Cursos asignados (0)';
+        contenedor.innerHTML = '<div style="color:#B00020;">Error cargando cursos asignados.</div>';
+    }
+}
+
 async function cargarHorario(id) {
     console.log('🔍 Cargando horario ID:', id, 'Tipo:', typeof id);
     
@@ -263,21 +396,25 @@ async function cargarHorario(id) {
         estado.bloques = [];
         estado.diasActivos.clear();
 
-        // Procesar días
-        if (horarioData.diasSemana) {
-            try {
-                if (typeof horarioData.diasSemana === 'string') {
-                    const diasArray = JSON.parse(horarioData.diasSemana);
+        // Procesar días (compatibilidad con API que puede devolver 'dias' o 'diasSemana')
+        try {
+            const diasFuente = (horarioData.dias && horarioData.dias.length !== undefined)
+                ? horarioData.dias
+                : horarioData.diasSemana;
+
+            if (diasFuente) {
+                if (typeof diasFuente === 'string') {
+                    const diasArray = JSON.parse(diasFuente);
                     if (Array.isArray(diasArray)) {
                         diasArray.forEach(dia => estado.diasActivos.add(dia));
                     }
-                } else if (Array.isArray(horarioData.diasSemana)) {
-                    horarioData.diasSemana.forEach(dia => estado.diasActivos.add(dia));
+                } else if (Array.isArray(diasFuente)) {
+                    diasFuente.forEach(dia => estado.diasActivos.add(dia));
                 }
-            } catch (e) {
-                console.warn('Error procesando días, usando días por defecto');
-                ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'].forEach(dia => estado.diasActivos.add(dia));
             }
+        } catch (e) {
+            console.warn('Error procesando días, usando días por defecto');
+            ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'].forEach(dia => estado.diasActivos.add(dia));
         }
 
         // Procesar bloques
@@ -287,11 +424,11 @@ async function cargarHorario(id) {
                 day: bloque.dia_semana || bloque.day || 'Lunes',
                 type: bloque.tipo || bloque.type || 'class',
                 start: formatTimeForInput(bloque.horaInicio || bloque.start || '07:00'),
-                end: formatTimeForInput(bloque.horaFin || bloque.end || '07:45'),
+                end: formatTimeForInput(bloque.horaFin || bloque.end || ''),
                 nombre: bloque.nombre || 'Bloque',
                 classType: bloque.class_type || bloque.classType || 'single',
                 breakType: bloque.break_type || bloque.breakType || 'morning'
-            })).filter(bloque => bloque.day && bloque.start && bloque.end);
+            })).filter(bloque => bloque.day && bloque.start); // permitir end vacío para que el usuario lo complete
         }
 
         estado.horarioCargadoId = horarioId;
@@ -302,11 +439,15 @@ async function cargarHorario(id) {
         }
         
         if (horarioData.periodo) {
-            document.getElementById('schedule-period').value = horarioData.periodo;
+            const sel = document.getElementById('schedule-period');
+            ensureOptionExists(sel, horarioData.periodo, horarioData.periodo);
+            sel.value = horarioData.periodo;
         }
 
         actualizarUI();
         document.getElementById('delete-schedule-btn').style.display = 'block';
+        const saveBtn = document.getElementById('save-schedule-btn');
+        if (saveBtn) saveBtn.innerHTML = '<i class="fas fa-sync"></i> Actualizar Horario';
         
         mostrarNotificacion('Horario cargado correctamente', 'success');
 
@@ -323,7 +464,7 @@ async function cargarHorario(id) {
 }
 
 function formatTimeForInput(timeValue) {
-    if (!timeValue) return '07:00';
+    if (!timeValue) return '';
     
     if (typeof timeValue === 'string' && timeValue.match(/^\d{1,2}:\d{2}$/)) {
         const [hours, minutes] = timeValue.split(':');
@@ -334,7 +475,7 @@ function formatTimeForInput(timeValue) {
         return `${timeValue.hours.toString().padStart(2, '0')}:${timeValue.minutes.toString().padStart(2, '0')}`;
     }
     
-    return '07:00';
+    return '';
 }
 
 async function guardarHorarioBD() {
@@ -356,35 +497,29 @@ async function guardarHorarioBD() {
         return null;
     }
 
-    // ✅ VALIDACIÓN CRÍTICA: Asegurar que todos los bloques tengan hora_fin
-    const bloquesConHoraFin = estado.bloques.map((bloque, index) => {
-        // Si no hay hora_fin, calcularla basándose en la hora_inicio
-        if (!bloque.end || bloque.end === '') {
-            const horaInicio = timeToMinutes(bloque.start);
-            const horaFin = horaInicio + 45; // 45 minutos por defecto
-            bloque.end = minutesToTime(horaFin);
-            console.warn(`⚠️ Bloque ${index} sin hora_fin, calculada automáticamente: ${bloque.end}`);
+    // ✅ VALIDACIÓN CRÍTICA: Asegurar que todos los bloques tengan hora_fin explícita y válida
+    for (let i = 0; i < estado.bloques.length; i++) {
+        const b = estado.bloques[i];
+        if (!b.end || b.end === '') {
+            mostrarNotificacion(`Bloque ${i + 1}: defina la hora de fin`, 'error');
+            return null;
         }
-        
-        // Validar que hora_fin sea posterior a hora_inicio
-        if (timeToMinutes(bloque.start) >= timeToMinutes(bloque.end)) {
-            const horaInicio = timeToMinutes(bloque.start);
-            const horaFin = horaInicio + 45; // 45 minutos por defecto
-            bloque.end = minutesToTime(horaFin);
-            console.warn(`⚠️ Bloque ${index} con hora_fin anterior a inicio, corregido: ${bloque.end}`);
+        if (timeToMinutes(b.start) >= timeToMinutes(b.end)) {
+            mostrarNotificacion(`Bloque ${i + 1}: la hora de fin debe ser posterior al inicio`, 'error');
+            return null;
         }
+    }
 
-        return {
-            dia_semana: bloque.day,
-            horaInicio: bloque.start,
-            horaFin: bloque.end, // ✅ Ahora siempre tendrá valor
-            tipo: bloque.type,
-            nombre: bloque.nombre || `Bloque ${index + 1}`,
-            orden: index,
-            class_type: bloque.classType,
-            break_type: bloque.breakType
-        };
-    });
+    const bloquesConHoraFin = estado.bloques.map((bloque, index) => ({
+        dia_semana: bloque.day,
+        horaInicio: bloque.start,
+        horaFin: bloque.end,
+        tipo: bloque.type,
+        nombre: bloque.nombre || `Bloque ${index + 1}`,
+        orden: index,
+        class_type: bloque.classType,
+        break_type: bloque.breakType
+    }));
 
     // ✅ CALCULAR HORAS DE INICIO Y FIN GLOBALES
     const horaInicio = calcularHoraInicio();
@@ -396,26 +531,41 @@ async function guardarHorarioBD() {
         dias: Array.from(estado.diasActivos),
         bloques: bloquesConHoraFin,
         horaInicio: horaInicio,
-        horaFin: horaFin,
-        duracion_clase: 45,
-        duracion_descanso: 15
+        horaFin: horaFin
     };
 
     console.log('💾 Guardando horario con validación:', datosHorario);
     mostrarLoading('Guardando horario...');
 
     try {
-        const resultado = await apiRequest(API_URLS.crearHorario, {
-            method: 'POST',
-            body: datosHorario
-        });
+        // Crear o actualizar según corresponda
+        let resultado;
+        if (estado.horarioCargadoId) {
+            // UPDATE existente
+            const url = `${API_URLS.obtenerHorario}/${estado.horarioCargadoId}`;
+            resultado = await apiRequest(url, {
+                method: 'PUT',
+                body: datosHorario
+            });
+        } else {
+            // CREATE nuevo
+            resultado = await apiRequest(API_URLS.crearHorario, {
+                method: 'POST',
+                body: datosHorario
+            });
+        }
 
         console.log('💾 Resultado guardar horario:', resultado);
 
-        if (resultado.success || resultado.id) {
+        if (resultado && (resultado.success || resultado.id || resultado.updated)) {
             mostrarNotificacion('Horario guardado correctamente', 'success');
             await cargarHorariosGuardados();
-            return resultado.horario || { id: resultado.id, nombre: datosHorario.nombre };
+            await cargarPeriodosAcademicosSelect();
+            // Mantener el id cargado al actualizar o asignarlo tras crear
+            if (!estado.horarioCargadoId) {
+                estado.horarioCargadoId = resultado.id || resultado.horario_id || resultado.horario?.id || resultado.horario?.id_horario;
+            }
+            return resultado.horario || { id: (resultado.id || estado.horarioCargadoId), nombre: datosHorario.nombre };
         } else {
             throw new Error(resultado.error || 'Error desconocido al guardar');
         }
@@ -437,10 +587,18 @@ async function eliminarHorario(id) {
     }
 
     try {
-        const resultado = await apiRequest(`${API_URLS.eliminarHorario}/${horarioId}`, {
-            method: 'DELETE'
-        });
-
+        const res = await fetch(`${API_URLS.eliminarHorario}/${horarioId}`, { method: 'DELETE' });
+        if (res.status === 409) {
+            const data = await res.json().catch(() => ({ error: 'Conflicto al eliminar' }));
+            // Mostrar modal para reasignar clases
+            mostrarModalReasignacion(horarioId, data.error || 'Existen clases asociadas a este horario.', data.classes_count || 0);
+            return;
+        }
+        if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`Error ${res.status} ${txt.substring(0,200)}`);
+        }
+        const resultado = await res.json();
         if (resultado.success) {
             mostrarNotificacion('Horario eliminado correctamente', 'success');
             if (estado.horarioCargadoId === horarioId) {
@@ -474,9 +632,9 @@ async function asignarHorarioCursos(horarioId, cursosIds) {
         } else {
             throw new Error(resultado.error || 'Error al asignar horario');
         }
-    } catch (error) {
-        console.error('❌ Error asignando horario:', error);
-        mostrarNotificacion('Error al asignar horario: ' + error.message, 'error');
+    } catch (err) {
+        console.error('❌ Error asignando horario a cursos:', err);
+        mostrarNotificacion('Error al asignar horario: ' + err.message, 'error');
         return false;
     } finally {
         ocultarLoading();
@@ -497,11 +655,11 @@ function actualizarUI() {
 function actualizarDiasUI() {
     document.querySelectorAll('.day').forEach(diaElem => {
         const dia = diaElem.dataset.day;
-        const estaActivo = estado.diasActivos.has(dia);
+        const estaActivo = Array.from(estado.diasActivos).some(d => normalizeDayName(d) === normalizeDayName(dia));
         
         diaElem.classList.toggle('selected', estaActivo);
         
-        const bloquesDia = estado.bloques.filter(b => b.day === dia);
+        const bloquesDia = estado.bloques.filter(b => normalizeDayName(b.day) === normalizeDayName(dia));
         diaElem.classList.toggle('has-blocks', bloquesDia.length > 0);
         
         if (bloquesDia.length > 0) {
@@ -518,8 +676,44 @@ function actualizarDiasUI() {
 function actualizarBloquesUI() {
     const contenedor = document.getElementById('blocks-container');
     const contador = document.getElementById('blocks-count');
+    const bloqueList = document.querySelector('.block-list');
 
-    contador.textContent = `(${estado.bloques.length})`;
+    // Utilidades para listeners y sincronización de selects
+    const attachOnce = (el, type, handler, flagKey = '_listenerAttached') => {
+        if (el && !el[flagKey]) { el.addEventListener(type, handler); el[flagKey] = true; }
+    };
+    const updateFilterAndCopyOptions = () => {
+        // Actualizar filtro de día
+        const selDia = document.getElementById('filter-day');
+        if (selDia) {
+            const current = selDia.value;
+            while (selDia.options.length > 1) selDia.remove(1);
+            Array.from(estado.diasActivos).forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d; opt.textContent = d; selDia.appendChild(opt);
+            });
+            // Mantener selección si sigue estando entre activos
+            const activos = new Set(Array.from(estado.diasActivos));
+            if (current && current !== 'Todos' && activos.has(current)) selDia.value = current;
+            else selDia.value = 'Todos';
+        }
+        // Actualizar selects de duplicación
+        const sync = (id) => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            while (sel.options.length > 1) sel.remove(1);
+            Array.from(estado.diasActivos).forEach(d => { const opt = document.createElement('option'); opt.value = d; opt.textContent = d; sel.appendChild(opt); });
+        };
+        sync('copy-from-day');
+        sync('copy-to-day');
+        // Asegurar listeners
+        const fd = document.getElementById('filter-day');
+        const fl = document.getElementById('filter-limit');
+        attachOnce(fd, 'change', (e) => { estado.filtroBloquesDia = e.target.value; estado.paginaBloques = 1; actualizarBloquesUI(); });
+        attachOnce(fl, 'change', (e) => { estado.filtroBloquesLimite = parseInt(e.target.value, 10); estado.paginaBloques = 1; actualizarBloquesUI(); });
+    };
+
+    if (contador) contador.textContent = `(${estado.bloques.length})`;
 
     if (estado.bloques.length === 0) {
         contenedor.innerHTML = `
@@ -530,29 +724,223 @@ function actualizarBloquesUI() {
         return;
     }
 
-    estado.bloques.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    // Utilidad: sincronizar selects de duplicación con días activos
+    const syncCopyDaySelects = () => {
+        const dias = Array.from(estado.diasActivos);
+        const sync = (id) => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            while (sel.options.length > 1) sel.remove(1);
+            dias.forEach(d => { const opt = document.createElement('option'); opt.value = d; opt.textContent = d; sel.appendChild(opt); });
+        };
+        sync('copy-from-day');
+        sync('copy-to-day');
+    };
 
-    contenedor.innerHTML = estado.bloques.map(bloque => `
+    // Renderizar controles de filtro si no existen
+    if (bloqueList && !document.getElementById('blocks-filters')) {
+        const filtros = document.createElement('div');
+        filtros.id = 'blocks-filters';
+        filtros.style.display = 'flex';
+        filtros.style.gap = '10px';
+        filtros.style.margin = '10px 0 12px 0';
+        filtros.innerHTML = `
+            <select id="filter-day" style="flex:1; padding:10px; border:2px solid var(--border); border-radius:10px;">
+                <option value="Todos">Todos los días</option>
+            </select>
+            <select id="filter-limit" style="width:140px; padding:10px; border:2px solid var(--border); border-radius:10px;">
+                <option value="5">Máx. 5</option>
+                <option value="10" selected>Máx. 10</option>
+                <option value="0">Sin límite</option>
+            </select>
+        `;
+        bloqueList.prepend(filtros);
+
+        // Controles para duplicar bloques de un día a otro
+        const dup = document.createElement('div');
+        dup.id = 'copy-day-controls';
+        dup.style.display = 'flex';
+        dup.style.flexDirection = 'column';
+        dup.style.gap = '10px';
+        dup.style.margin = '0 0 12px 0';
+        dup.innerHTML = `
+            <div style="flex-basis:100%; color:#0D3B66; font-weight:600; margin-bottom:4px;">
+                Duplicar bloques entre días
+            </div>
+            <div class="copy-days" style="display:flex; gap:10px; width:100%;">
+                <div class="copy-field" style="flex:1;">
+                    <select id="copy-from-day" style="width:100%; min-width:180px; padding:10px; border:2px solid var(--border); border-radius:10px;">
+                        <option value="">Desde</option>
+                    </select>
+                </div>
+                <div class="copy-field" style="flex:1;">
+                    <select id="copy-to-day" style="width:100%; min-width:180px; padding:10px; border:2px solid var(--border); border-radius:10px;">
+                        <option value="">A</option>
+                    </select>
+                </div>
+                <div style="align-self:end;">
+                    <button type="button" class="small" id="copy-day-btn" style="min-width:180px; height:42px;">
+                        <i class="fas fa-copy"></i> Duplicar bloques
+                    </button>
+                </div>
+            </div>
+        `;
+        bloqueList.insertBefore(dup, filtros.nextSibling);
+
+        // Inicializar y adjuntar listeners/ opciones
+        updateFilterAndCopyOptions();
+
+        // Poblar selects con días activos
+        const cargarOpcionesDias = () => {
+            const dias = Array.from(estado.diasActivos);
+            const fill = (selId) => {
+                const sel = document.getElementById(selId);
+                if (!sel) return;
+                // Limpiar (mantener primera opción)
+                while (sel.options.length > 1) sel.remove(1);
+                dias.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d; opt.textContent = d; sel.appendChild(opt);
+                });
+            };
+            fill('copy-from-day');
+            fill('copy-to-day');
+        };
+        cargarOpcionesDias();
+
+        // Listener duplicar
+        document.getElementById('copy-day-btn').addEventListener('click', () => {
+            const from = document.getElementById('copy-from-day').value;
+            const to = document.getElementById('copy-to-day').value;
+            if (!from || !to) { mostrarNotificacion('Seleccione día origen y destino', 'warning'); return; }
+            if (from === to) { mostrarNotificacion('El origen y destino no pueden ser el mismo día', 'warning'); return; }
+
+            const origenBloques = estado.bloques.filter(b => normalizeDayName(b.day) === normalizeDayName(from));
+            if (origenBloques.length === 0) { mostrarNotificacion('El día origen no tiene bloques para duplicar', 'warning'); return; }
+
+            const copias = origenBloques.map(b => ({
+                id: generarIdUnico(),
+                day: to,
+                start: b.start,
+                end: b.end,
+                type: b.type,
+                nombre: b.nombre,
+                classType: b.classType,
+                breakType: b.breakType
+            }));
+            estado.bloques.push(...copias);
+            mostrarNotificacion(`Se duplicaron ${copias.length} bloques de ${from} a ${to}`, 'success');
+            actualizarUI();
+        });
+        // Asegurar que los selects de duplicación estén sincronizados
+        syncCopyDaySelects();
+    } else if (bloqueList) {
+        // Siempre mantener sincronizadas las opciones y listeners
+        updateFilterAndCopyOptions();
+    }
+
+    // Aplicar filtros (comparación insensible a acentos)
+    let bloquesFiltrados = [...estado.bloques];
+    if (estado.filtroBloquesDia && estado.filtroBloquesDia !== 'Todos') {
+        const filtroNorm = normalizeDayName(estado.filtroBloquesDia);
+        bloquesFiltrados = bloquesFiltrados.filter(b => normalizeDayName(b.day) === filtroNorm);
+    } else {
+        // Si está en 'Todos', mostrar solo bloques de días activos del horario cargado
+        const activosNorm = new Set(Array.from(estado.diasActivos).map(normalizeDayName));
+        bloquesFiltrados = bloquesFiltrados.filter(b => activosNorm.has(normalizeDayName(b.day)));
+    }
+
+    // Ordenar por hora de inicio
+    bloquesFiltrados.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+    // Paginación
+    const limite = Number.isFinite(estado.filtroBloquesLimite) ? estado.filtroBloquesLimite : 10;
+    const total = bloquesFiltrados.length;
+    const totalPaginas = limite > 0 ? Math.max(1, Math.ceil(total / limite)) : 1;
+    if (estado.paginaBloques > totalPaginas) estado.paginaBloques = totalPaginas;
+    if (estado.paginaBloques < 1) estado.paginaBloques = 1;
+    const inicio = limite > 0 ? (estado.paginaBloques - 1) * limite : 0;
+    const fin = limite > 0 ? inicio + limite : total;
+    const paginaItems = bloquesFiltrados.slice(inicio, fin);
+
+    // Renderizar items de la página
+    contenedor.innerHTML = paginaItems.map(bloque => `
         <div class="block-item" data-block-id="${bloque.id}">
             <div class="block-info">
                 <strong>${bloque.nombre}</strong>
                 <div class="block-details">
                     ${bloque.day} • ${formatTime12h(bloque.start)} - ${formatTime12h(bloque.end)}
                     <span class="block-type-tag ${bloque.type}">
-                        ${bloque.type === 'class' ? '📚 Clase' : '☕ Descanso'}
+                        ${bloque.type === 'class' 
+                            ? '<i class="fas fa-book-open"></i> Clase' 
+                            : '<i class="fas fa-coffee"></i> Descanso'}
                     </span>
                 </div>
             </div>
             <div class="block-actions">
-                <button class="small secondary" onclick="editarBloque('${bloque.id}')">
+                <button type="button" class="small secondary" onclick="window.editarBloque('${bloque.id}')">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="small danger" onclick="eliminarBloque('${bloque.id}')">
+                <button type="button" class="small danger" onclick="window.eliminarBloque('${bloque.id}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
     `).join('');
+
+    // Enlazar acciones de edición y eliminación tras render
+    try {
+        contenedor.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-block-id');
+                if (id) editarBloque(id);
+            };
+        });
+        contenedor.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-block-id');
+                if (id) eliminarBloque(id);
+            };
+        });
+    } catch (e) {
+        console.warn('No fue posible vincular acciones de edición/eliminación de bloques:', e);
+    }
+
+    // Renderizar controles de paginación
+    let pagContainer = document.getElementById('blocks-pagination');
+    if (!pagContainer) {
+        pagContainer = document.createElement('div');
+        pagContainer.id = 'blocks-pagination';
+        pagContainer.style.display = 'flex';
+        pagContainer.style.justifyContent = 'space-between';
+        pagContainer.style.alignItems = 'center';
+        pagContainer.style.margin = '10px 0 0 0';
+        pagContainer.style.gap = '10px';
+        if (bloqueList) bloqueList.appendChild(pagContainer);
+    }
+
+    if (totalPaginas > 1) {
+        const mostrandoDesde = total === 0 ? 0 : inicio + 1;
+        const mostrandoHasta = Math.min(fin, total);
+        pagContainer.innerHTML = `
+            <div style="color:#555; font-size: 0.9rem;">
+                Mostrando ${mostrandoDesde}-${mostrandoHasta} de ${total}
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="small secondary" id="blocks-prev" ${estado.paginaBloques === 1 ? 'disabled' : ''}>&laquo; Anterior</button>
+                <span style="align-self:center;">Página ${estado.paginaBloques} de ${totalPaginas}</span>
+                <button type="button" class="small secondary" id="blocks-next" ${estado.paginaBloques === totalPaginas ? 'disabled' : ''}>Siguiente &raquo;</button>
+            </div>
+        `;
+        const prevBtn = document.getElementById('blocks-prev');
+        const nextBtn = document.getElementById('blocks-next');
+        if (prevBtn) prevBtn.onclick = () => { estado.paginaBloques = Math.max(1, estado.paginaBloques - 1); actualizarBloquesUI(); };
+        if (nextBtn) nextBtn.onclick = () => { estado.paginaBloques = Math.min(totalPaginas, estado.paginaBloques + 1); actualizarBloquesUI(); };
+        pagContainer.style.display = 'flex';
+    } else if (pagContainer) {
+        pagContainer.innerHTML = '';
+        pagContainer.style.display = 'none';
+    }
 }
 
 function actualizarVistaPrevia() {
@@ -620,13 +1008,19 @@ function actualizarResumen() {
     const totalClases = estado.bloques.filter(b => b.type === 'class').length;
     const totalDescansos = estado.bloques.filter(b => b.type === 'break').length;
     
-    document.getElementById('class-count').textContent = `${totalClases} clases`;
-    document.getElementById('break-count').textContent = `${totalDescansos} descansos`;
-    document.getElementById('total-blocks').textContent = `${estado.bloques.length} bloques`;
+    const classCountEl = document.getElementById('class-count');
+    const breakCountEl = document.getElementById('break-count');
+    const totalBlocksEl = document.getElementById('total-blocks');
+    if (classCountEl) classCountEl.textContent = `${totalClases} clases`;
+    if (breakCountEl) breakCountEl.textContent = `${totalDescansos} descansos`;
+    if (totalBlocksEl) totalBlocksEl.textContent = `${estado.bloques.length} bloques`;
     
     const estadoConfig = estado.bloques.length > 0 ? 'Configurado' : 'Sin configurar';
-    document.getElementById('schedule-config-status').textContent = estadoConfig;
-    document.getElementById('schedule-config-status').className = estadoConfig === 'Configurado' ? 'config-ok' : 'config-pending';
+    const configEl = document.getElementById('schedule-config-status');
+    if (configEl) {
+        configEl.textContent = estadoConfig;
+        configEl.className = estadoConfig === 'Configurado' ? 'config-ok' : 'config-pending';
+    }
 }
 
 function actualizarListaHorariosUI() {
@@ -653,7 +1047,7 @@ function actualizarListaHorariosUI() {
         const nombreSeguro = (horario.nombre || 'Sin nombre').replace(/'/g, "&#39;");
         
         if (!horarioId) {
-            console.warn('⚠️ Horario sin ID válido:', horario);
+            console.warn(' Horario sin ID válido:', horario);
             return '';
         }
         
@@ -668,10 +1062,16 @@ function actualizarListaHorariosUI() {
                     </div>
                 </div>
                 <div class="schedule-item-actions">
-                    <button class="small danger" data-horario-id="${horarioId}" data-horario-nombre="${nombreSeguro}">
+                    <button type="button" class="small danger" data-horario-id="${horarioId}" data-horario-nombre="${nombreSeguro}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
+            </div>
+            <div class="schedule-accordion" id="cursos-${horarioId}" style="display:none; border:1px solid #e9ecef; border-radius:8px; margin:8px 8px 16px 8px;">
+                <div class="cursos-header" style="padding:10px 12px; font-weight:600; color:#0D3B66; background:#f8f9fa; border-bottom:1px solid #e9ecef;">
+                    Cursos asignados
+                </div>
+                <div class="cursos-contenido" style="padding:10px 12px;"></div>
             </div>
         `;
     }).join('');
@@ -685,19 +1085,46 @@ function actualizarListaHorariosUI() {
     // Agregar event listeners después de crear el HTML
     setTimeout(() => {
         document.querySelectorAll('.schedule-item[data-horario-id]').forEach(item => {
-            item.addEventListener('click', function(e) {
-                if (e.target.closest('.schedule-item-actions')) {
-                    return;
-                }
+            item.addEventListener('click', async function(e) {
+                if (e.target.closest('.schedule-item-actions')) return;
                 const horarioId = this.getAttribute('data-horario-id');
-                console.log('🖱️ Click en horario ID:', horarioId, 'Tipo:', typeof horarioId);
-                
                 if (!horarioId || horarioId === 'null' || horarioId === 'undefined') {
                     mostrarNotificacion('ID de horario no válido', 'error');
                     return;
                 }
-                
+                // Cargar datos del horario (comportamiento existente)
                 cargarHorario(horarioId);
+
+                // Toggle acordeón de cursos bajo este horario
+                const acc = document.getElementById(`cursos-${horarioId}`);
+                if (!acc) return;
+                // Cerrar otros acordeones
+                document.querySelectorAll('.schedule-accordion').forEach(el => {
+                    if (el !== acc) el.style.display = 'none';
+                });
+                const contenido = acc.querySelector('.cursos-contenido');
+                const visible = acc.style.display !== 'none';
+                if (visible) {
+                    acc.style.display = 'none';
+                    return;
+                }
+                if (contenido) contenido.innerHTML = '<div style="color:#666;">Cargando cursos...</div>';
+                try {
+                    // Asegurar cursos en memoria por si el endpoint devuelve vacío
+                    if (!estado.cursos || estado.cursos.length === 0) {
+                        await cargarCursos();
+                    }
+                    await renderCursosAsignados(horarioId, contenido);
+                    acc.style.display = 'block';
+                    const parentList = document.getElementById('saved-schedules-list');
+                    if (parentList) {
+                        parentList.style.overflow = 'visible';
+                        parentList.style.maxHeight = 'none';
+                    }
+                } catch (err) {
+                    console.error('Error mostrando cursos en acordeón:', err);
+                    if (contenido) contenido.innerHTML = '<div style="color:#B00020;">Error cargando cursos.</div>';
+                }
             });
         });
 
@@ -706,7 +1133,7 @@ function actualizarListaHorariosUI() {
                 e.stopPropagation();
                 const horarioId = this.getAttribute('data-horario-id');
                 const horarioNombre = this.getAttribute('data-horario-nombre');
-                console.log('🗑️ Eliminar horario ID:', horarioId);
+                console.log(' Eliminar horario ID:', horarioId);
                 
                 if (!horarioId || horarioId === 'null' || horarioId === 'undefined') {
                     mostrarNotificacion('ID de horario no válido para eliminar', 'error');
@@ -716,12 +1143,10 @@ function actualizarListaHorariosUI() {
                 configurarEliminacionHorario(horarioId, horarioNombre);
             });
         });
+
+        // (Removed toggle button listeners; click en item maneja el acordeón)
     }, 100);
 }
-
-// =============================================
-// GESTIÓN DE BLOQUES
-// =============================================
 
 function agregarBloque() {
     const dia = document.getElementById('block-day').value;
@@ -773,6 +1198,14 @@ function agregarBloque() {
         }
     } else {
         estado.bloques.push(nuevoBloque);
+        // Ajustar página para mostrar el nuevo bloque (ir a la última página)
+        const limite = Number.isFinite(estado.filtroBloquesLimite) ? estado.filtroBloquesLimite : 10;
+        if (limite > 0) {
+            const total = (estado.filtroBloquesDia && estado.filtroBloquesDia !== 'Todos')
+                ? estado.bloques.filter(b => b.day === estado.filtroBloquesDia).length
+                : estado.bloques.length;
+            estado.paginaBloques = Math.max(1, Math.ceil(total / limite));
+        }
         mostrarNotificacion('Bloque agregado correctamente', 'success');
     }
 
@@ -805,6 +1238,8 @@ function editarBloque(id) {
     document.getElementById('save-block-text').textContent = 'Actualizar';
     actualizarFormularioBloque();
     
+    // Evitar cierre inmediato por listener global
+    evitarCierreFlotante = true;
     document.getElementById('floating-block-form').style.display = 'block';
     document.getElementById('floating-block-form').scrollIntoView({ behavior: 'smooth' });
 }
@@ -816,6 +1251,15 @@ function eliminarBloque(id) {
         'warning',
         () => {
             estado.bloques = estado.bloques.filter(b => b.id != id);
+            // Asegurar que la página actual sea válida tras eliminar
+            const limite = Number.isFinite(estado.filtroBloquesLimite) ? estado.filtroBloquesLimite : 10;
+            if (limite > 0) {
+                const total = (estado.filtroBloquesDia && estado.filtroBloquesDia !== 'Todos')
+                    ? estado.bloques.filter(b => b.day === estado.filtroBloquesDia).length
+                    : estado.bloques.length;
+                const totalPaginas = Math.max(1, Math.ceil(total / limite));
+                if (estado.paginaBloques > totalPaginas) estado.paginaBloques = totalPaginas;
+            }
             actualizarUI();
             mostrarNotificacion('Bloque eliminado correctamente', 'success');
         }
@@ -868,6 +1312,16 @@ function minutesToTime(minutes) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+// Normaliza nombres de días para comparaciones (quita acentos y minúsculas)
+function normalizeDayName(name) {
+    if (!name) return '';
+    return name
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // quitar diacríticos
+        .toLowerCase();
 }
 
 function formatTime12h(time24h) {
@@ -924,6 +1378,51 @@ function generarNombreBloque(tipo) {
 
 function generarIdUnico() {
     return Date.now() + Math.random().toString(36).substr(2, 9);
+}
+
+// Sugerir horas para un día dado basándose en los bloques existentes del mismo día
+function sugerirHorasParaDia(dia) {
+    try {
+        const inicioInput = document.getElementById('block-start');
+        const finInput = document.getElementById('block-end');
+        if (!inicioInput || !finInput) return;
+
+        const bloquesDia = estado.bloques
+            .filter(b => b.day === dia)
+            .sort((a, b) => timeToMinutes(a.end) - timeToMinutes(b.end));
+
+        let sugeridoInicio = '06:00';
+        if (bloquesDia.length > 0) {
+            const ultimoFinMin = timeToMinutes(bloquesDia[bloquesDia.length - 1].end);
+            sugeridoInicio = minutesToTime(ultimoFinMin);
+        }
+        const sugeridoFin = minutesToTime(timeToMinutes(sugeridoInicio) + 60); // 60 min por defecto
+
+        inicioInput.value = sugeridoInicio;
+        finInput.value = sugeridoFin;
+    } catch (e) {
+        console.warn('No fue posible sugerir horas para el día', dia, e);
+    }
+}
+
+// Ajustar duración automáticamente según el tipo de bloque/clase
+function ajustarDuracionPorTipo() {
+    const tipo = document.getElementById('block-type')?.value;
+    const classType = document.getElementById('class-type')?.value;
+    const inicioEl = document.getElementById('block-start');
+    const finEl = document.getElementById('block-end');
+    if (!inicioEl || !finEl) return;
+
+    const inicio = inicioEl.value;
+    if (!inicio) return;
+
+    if (tipo === 'class' && classType === 'double') {
+        // Clase doble: 120 minutos
+        finEl.value = minutesToTime(timeToMinutes(inicio) + 120);
+    } else if (tipo === 'class' && classType === 'single') {
+        // Clase simple: 45 minutos por consistencia con el resto del sistema
+        finEl.value = minutesToTime(timeToMinutes(inicio) + 45);
+    }
 }
 
 function generarIntervalosTiempo() {
@@ -988,11 +1487,16 @@ function nuevoHorario() {
             estado.bloques = [];
             estado.horarioCargadoId = null;
             estado.diasActivos = new Set(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']);
-            
-            document.getElementById('schedule-name').value = '';
-            document.getElementById('schedule-period').value = 'Primer Semestre';
-            document.getElementById('delete-schedule-btn').style.display = 'none';
-            
+
+            const nameEl = document.getElementById('schedule-name');
+            const periodEl = document.getElementById('schedule-period');
+            if (nameEl) nameEl.value = '';
+            if (periodEl) periodEl.value = 'Anual';
+            const delBtn = document.getElementById('delete-schedule-btn');
+            if (delBtn) delBtn.style.display = 'none';
+            const saveBtn = document.getElementById('save-schedule-btn');
+            if (saveBtn) saveBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Horario';
+
             actualizarUI();
             mostrarNotificacion('Nuevo horario listo para configurar', 'success');
         }
@@ -1039,17 +1543,76 @@ function mostrarModalAsignacion() {
     }).join('');
 
     document.getElementById('assign-schedule-modal').style.display = 'flex';
+    // Reiniciar estado del modal
+    asignacionModal.page = 1;
+
+    // Inicializar contador
+    actualizarContadorSeleccionCursos();
+    // Escuchar cambios en checkboxes
+    cursosLista.querySelectorAll('.course-checkbox').forEach(cb => {
+        cb.addEventListener('change', actualizarContadorSeleccionCursos);
+    });
+
+    // Filtro/buscador de cursos
+    const buscador = document.getElementById('courses-search');
+    if (buscador) {
+        buscador.value = '';
+        buscador.addEventListener('input', () => {
+            asignacionModal.search = buscador.value;
+            aplicarFiltrosYPaginacion();
+        });
+    }
+    // Poblar filtro de sedes y enlazar
+    const sedeSel = document.getElementById('courses-sede-filter');
+    if (sedeSel) {
+        // Construir set de sedes desde los items
+        const sedes = new Set();
+        document.querySelectorAll('#courses-list .course-item .course-details').forEach(el => {
+            const m = /Sede:\s*(.+)/i.exec(el.textContent || '');
+            if (m && m[1]) sedes.add(m[1].trim());
+        });
+        const actual = sedeSel.value;
+        // Limpiar opciones (menos 'Todas las sedes') y rellenar
+        while (sedeSel.options.length > 1) sedeSel.remove(1);
+        Array.from(sedes).sort().forEach(nombre => {
+            const opt = document.createElement('option');
+            opt.value = nombre; opt.text = nombre; sedeSel.appendChild(opt);
+        });
+        if (actual && Array.from(sedes).includes(actual)) sedeSel.value = actual; else sedeSel.value = '';
+        sedeSel.addEventListener('change', () => {
+            asignacionModal.sede = sedeSel.value || '';
+            asignacionModal.page = 1;
+            aplicarFiltrosYPaginacion();
+        });
+    }
+
+    // Filtro por estado asignado
+    const assignedSel = document.getElementById('courses-assigned-filter');
+    if (assignedSel) {
+        assignedSel.value = '';
+        assignedSel.addEventListener('change', () => {
+            asignacionModal.assigned = assignedSel.value || '';
+            asignacionModal.page = 1;
+            aplicarFiltrosYPaginacion();
+        });
+    }
+
+    // Paginación
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+    if (prevBtn) prevBtn.onclick = () => { asignacionModal.page = Math.max(1, asignacionModal.page - 1); aplicarFiltrosYPaginacion(); };
+    if (nextBtn) nextBtn.onclick = () => { asignacionModal.page += 1; aplicarFiltrosYPaginacion(); };
+
+    // Aplicar filtros inicialmente
+    aplicarFiltrosYPaginacion();
 }
 
 async function confirmarAsignacion() {
     const horarioSelect = document.getElementById('schedule-select');
     const horarioId = parseInt(horarioSelect.value);
-    const cursosSeleccionados = Array.from(document.querySelectorAll('.course-checkbox:checked'))
-        .map(cb => {
-            const cursoId = parseInt(cb.value);
-            console.log('✅ Curso seleccionado ID:', cursoId);
-            return cursoId;
-        })
+    const checkboxes = Array.from(document.querySelectorAll('.course-checkbox:checked'));
+    const cursosSeleccionados = checkboxes
+        .map(cb => parseInt(cb.value))
         .filter(id => !isNaN(id) && id > 0);
 
     console.log('🎯 Confirmando asignación - Horario ID:', horarioId, 'Cursos:', cursosSeleccionados);
@@ -1064,12 +1627,30 @@ async function confirmarAsignacion() {
         return;
     }
 
-    const exito = await asignarHorarioCursos(horarioId, cursosSeleccionados);
-    if (exito) {
-        document.getElementById('assign-schedule-modal').style.display = 'none';
-        // Recargar cursos para actualizar el estado de horarios asignados
-        await cargarCursos();
+    const conHorario = checkboxes.filter(cb => {
+        const item = cb.closest('.course-item');
+        const badge = item ? item.querySelector('.course-schedule.has-schedule') : null;
+        return !!badge;
+    });
+
+    const proceder = async () => {
+        const exito = await asignarHorarioCursos(horarioId, cursosSeleccionados);
+        if (exito) {
+            document.getElementById('assign-schedule-modal').style.display = 'none';
+            await cargarCursos();
+        }
+        // Cerrar loader por si quedó abierto por cualquier flujo
+        ocultarLoading();
+    };
+
+    if (conHorario.length > 0) {
+        const count = conHorario.length;
+        const mensaje = `Se detectó ${count} curso${count>1?'s':''} con horario asignado. Si confirmas, se reemplazará el horario actual por el seleccionado. Esto puede afectar clases ya planificadas.`;
+        mostrarAlerta('Reemplazar horario de curso', mensaje, 'warning', proceder);
+        return;
     }
+
+    await proceder();
 }
 
 // =============================================
@@ -1081,9 +1662,23 @@ function configurarEventListeners() {
     document.querySelectorAll('.day').forEach(dia => {
         dia.addEventListener('click', function() {
             const diaNombre = this.dataset.day;
-            if (estado.diasActivos.has(diaNombre)) {
+            const estabaActivo = estado.diasActivos.has(diaNombre);
+            if (estabaActivo) {
+                const tieneBloques = estado.bloques.some(b => b.day === diaNombre);
+                if (tieneBloques) {
+                    mostrarAlerta(
+                        'Desactivar día',
+                        `El día ${diaNombre} tiene bloques asignados. ¿Desea desactivarlo y eliminar esos bloques?`,
+                        'warning',
+                        () => {
+                            estado.diasActivos.delete(diaNombre);
+                            estado.bloques = estado.bloques.filter(b => b.day !== diaNombre);
+                            actualizarUI();
+                        }
+                    );
+                    return;
+                }
                 estado.diasActivos.delete(diaNombre);
-                estado.bloques = estado.bloques.filter(b => b.day !== diaNombre);
             } else {
                 estado.diasActivos.add(diaNombre);
             }
@@ -1109,16 +1704,80 @@ function configurarEventListeners() {
         document.getElementById('block-form-title').textContent = 'Nuevo Bloque';
         document.getElementById('save-block-text').textContent = 'Guardar';
         resetearFormularioBloque();
+        // Evitar cierre inmediato por listener global
+        evitarCierreFlotante = true;
         document.getElementById('floating-block-form').style.display = 'block';
+        // Prefijar horas en función del último bloque del día seleccionado
+        const diaSel = document.getElementById('block-day').value;
+        sugerirHorasParaDia(diaSel);
     });
 
-    document.getElementById('block-type').addEventListener('change', actualizarFormularioBloque);
+    // Delegación de eventos para editar/eliminar bloques
+    const blocksContainer = document.getElementById('blocks-container');
+    if (blocksContainer) {
+        blocksContainer.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.btn-edit');
+            if (editBtn) {
+                const id = editBtn.getAttribute('data-block-id');
+                if (id) editarBloque(id);
+                return;
+            }
+            const delBtn = e.target.closest('.btn-delete');
+            if (delBtn) {
+                const id = delBtn.getAttribute('data-block-id');
+                if (id) eliminarBloque(id);
+            }
+        });
+    }
+
+    // Fallback global: si por alguna razón el listener del contenedor no captura
+    document.addEventListener('click', (e) => {
+        const editBtn = e.target.closest && e.target.closest('.btn-edit');
+        if (editBtn) {
+            e.preventDefault();
+            const id = editBtn.getAttribute('data-block-id');
+            if (id) editarBloque(id);
+            return;
+        }
+        const delBtn = e.target.closest && e.target.closest('.btn-delete');
+        if (delBtn) {
+            e.preventDefault();
+            const id = delBtn.getAttribute('data-block-id');
+            if (id) eliminarBloque(id);
+        }
+    });
+
+    document.getElementById('block-type').addEventListener('change', function() {
+        actualizarFormularioBloque();
+        ajustarDuracionPorTipo();
+    });
+    // Si cambia el día mientras se crea un bloque nuevo, sugerir horas para ese día
+    document.getElementById('block-day').addEventListener('change', function() {
+        if (!estado.editandoBloqueId) {
+            sugerirHorasParaDia(this.value);
+        }
+    });
+    // Ajustar duración cuando cambia tipo de clase o la hora de inicio
+    const classTypeEl = document.getElementById('class-type');
+    if (classTypeEl) {
+        classTypeEl.addEventListener('change', ajustarDuracionPorTipo);
+    }
+    const startEl = document.getElementById('block-start');
+    if (startEl) {
+        startEl.addEventListener('change', ajustarDuracionPorTipo);
+        startEl.addEventListener('input', ajustarDuracionPorTipo);
+    }
     document.getElementById('save-block-btn').addEventListener('click', agregarBloque);
     document.getElementById('cancel-block-btn').addEventListener('click', cerrarFormularioBloque);
 
     // Cerrar formulario al hacer click fuera
     document.addEventListener('click', function(e) {
         const formulario = document.getElementById('floating-block-form');
+        // Si acabamos de abrir el formulario, ignorar el primer click global
+        if (evitarCierreFlotante) {
+            evitarCierreFlotante = false;
+            return;
+        }
         if (formulario.style.display === 'block' && 
             !formulario.contains(e.target) && 
             e.target.id !== 'add-block-btn') {
@@ -1132,13 +1791,15 @@ function configurarEventListeners() {
         const resultado = await guardarHorarioBD();
         if (resultado) {
             console.log('✅ Horario guardado exitosamente:', resultado);
-            estado.horarioCargadoId = resultado.id || resultado.horario_id;
+            // resultado puede ser el objeto horario devuelto con id_horario
+            estado.horarioCargadoId = (resultado.id_horario || resultado.id || resultado.horario_id || estado.horarioCargadoId);
             document.getElementById('delete-schedule-btn').style.display = 'block';
             
             // Recargar la lista de horarios
             await cargarHorariosGuardados();
         } else {
             console.log('❌ Error al guardar horario');
+            mostrarNotificacion('No se pudo guardar el horario. Verifique los campos y los bloques.', 'error');
         }
     });
 
@@ -1148,8 +1809,8 @@ function configurarEventListeners() {
     
     document.getElementById('delete-schedule-btn').addEventListener('click', function() {
         if (estado.horarioCargadoId) {
-            const horarioActual = estado.horarios.find(h => h.id === estado.horarioCargadoId);
-            const nombre = horarioActual ? horarioActual.nombre : 'este horario';
+            const horarioActual = estado.horarios.find(h => (h.id_horario || h.id) === estado.horarioCargadoId);
+            const nombre = horarioActual && horarioActual.nombre ? horarioActual.nombre : 'este horario';
             configurarEliminacionHorario(estado.horarioCargadoId.toString(), nombre);
         }
     });
@@ -1176,6 +1837,129 @@ function configurarEventListeners() {
 
     // Confirmar asignación
     document.getElementById('confirm-assign-btn').addEventListener('click', confirmarAsignacion);
+    const assignAllBtn = document.getElementById('assign-all-btn');
+    if (assignAllBtn) {
+        assignAllBtn.addEventListener('click', () => {
+            // Seleccionar todos los cursos FILTRADOS (todas las páginas)
+            const items = asignacionModal.filteredItems && asignacionModal.filteredItems.length
+                ? asignacionModal.filteredItems
+                : Array.from(document.querySelectorAll('#courses-list .course-item'));
+            items.forEach(item => {
+                const cb = item.querySelector('.course-checkbox');
+                if (cb) cb.checked = true;
+            });
+            actualizarContadorSeleccionCursos();
+        });
+    }
+    const assignNoneBtn = document.getElementById('assign-none-btn');
+    if (assignNoneBtn) {
+        assignNoneBtn.addEventListener('click', () => {
+            const items = asignacionModal.filteredItems && asignacionModal.filteredItems.length
+                ? asignacionModal.filteredItems
+                : Array.from(document.querySelectorAll('#courses-list .course-item'));
+            items.forEach(item => {
+                const cb = item.querySelector('.course-checkbox');
+                if (cb) cb.checked = false;
+            });
+            actualizarContadorSeleccionCursos();
+        });
+    }
+
+    // Desasignar seleccionados
+    const unassignBtn = document.getElementById('unassign-selected-btn');
+    if (unassignBtn) {
+        unassignBtn.addEventListener('click', async () => {
+            const universo = (asignacionModal.filteredItems && asignacionModal.filteredItems.length)
+                ? asignacionModal.filteredItems
+                : Array.from(document.querySelectorAll('#courses-list .course-item'));
+            const seleccionados = universo
+                .map(item => ({ item, cb: item.querySelector('.course-checkbox') }))
+                .filter(x => x.cb && x.cb.checked);
+            if (seleccionados.length === 0) { mostrarNotificacion('No hay cursos seleccionados', 'warning'); return; }
+            try {
+                mostrarLoading('Desasignando cursos...');
+                const ids = seleccionados.map(x => parseInt(x.cb.value)).filter(n => !isNaN(n) && n > 0);
+                const resp = await apiRequest('/admin/api/horarios/desasignar', { method: 'POST', body: { cursos_ids: ids } });
+                if (resp && resp.success) {
+                    // Actualizar UI de badges
+                    seleccionados.forEach(x => {
+                        const badge = x.item.querySelector('.course-schedule');
+                        if (badge) { badge.classList.remove('has-schedule'); badge.classList.add('no-schedule'); badge.textContent = '✗ Sin horario'; }
+                        x.cb.checked = false;
+                    });
+                    mostrarNotificacion(`Se desasignó el horario de ${ids.length} curso(s)`, 'success');
+                    actualizarContadorSeleccionCursos();
+                } else {
+                    throw new Error(resp?.error || 'Error al desasignar');
+                }
+            } catch (e) {
+                mostrarNotificacion('Error al desasignar: ' + e.message, 'error');
+            } finally {
+                ocultarLoading();
+            }
+        });
+    }
+}
+
+function actualizarContadorSeleccionCursos() {
+    const universo = (asignacionModal.filteredItems && asignacionModal.filteredItems.length)
+        ? asignacionModal.filteredItems
+        : Array.from(document.querySelectorAll('#courses-list .course-item'));
+    const total = universo.length;
+    const seleccionados = universo.filter(item => item.querySelector('.course-checkbox')?.checked).length;
+    const lbl = document.getElementById('assign-selection-counter');
+    if (lbl) lbl.textContent = `${seleccionados} seleccionados de ${total}`;
+}
+
+function filtrarCursosModal(termino) {
+    asignacionModal.search = (termino || '').toString();
+    aplicarFiltrosYPaginacion();
+}
+
+function aplicarFiltrosYPaginacion() {
+    const q = (asignacionModal.search || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const sedeFiltro = asignacionModal.sede || '';
+    const assigned = asignacionModal.assigned || '';
+    const items = Array.from(document.querySelectorAll('#courses-list .course-item'));
+
+    // Filtrar
+    const filtrados = items.filter(item => {
+        const texto = item.innerText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (q && !texto.includes(q)) return false;
+        if (sedeFiltro) {
+            const details = item.querySelector('.course-details');
+            const sedeTxt = details ? details.textContent : '';
+            if (!sedeTxt.includes(sedeFiltro)) return false;
+        }
+        if (assigned === 'con' && !item.querySelector('.course-schedule.has-schedule')) return false;
+        if (assigned === 'sin' && !item.querySelector('.course-schedule.no-schedule')) return false;
+        return true;
+    });
+
+    // Guardar referencia para seleccionar/deseleccionar y contador global
+    asignacionModal.filteredItems = filtrados;
+
+    // Paginación
+    const total = filtrados.length;
+    const perPage = asignacionModal.pageSize;
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    if (asignacionModal.page > totalPages) asignacionModal.page = totalPages;
+    const start = (asignacionModal.page - 1) * perPage;
+    const end = start + perPage;
+    const visibles = new Set(filtrados.slice(start, end));
+
+    // Aplicar visibilidad
+    items.forEach(item => { item.style.display = visibles.has(item) ? '' : 'none'; });
+
+    // UI de paginación
+    const pi = document.getElementById('page-info');
+    if (pi) pi.textContent = `Página ${totalPages === 0 ? 0 : asignacionModal.page} de ${totalPages}`;
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+    if (prevBtn) prevBtn.disabled = asignacionModal.page <= 1;
+    if (nextBtn) nextBtn.disabled = asignacionModal.page >= totalPages;
+
+    actualizarContadorSeleccionCursos();
 }
 
 async function inicializar() {
@@ -1189,6 +1973,13 @@ async function inicializar() {
             cargarHorariosGuardados(),
             cargarCursos()
         ]);
+
+        // Cargar periodos académicos del ciclo activo para el selector
+        try {
+            await cargarPeriodosAcademicosSelect();
+        } catch (e) {
+            console.warn('No fue posible cargar periodos académicos, se mantiene opción por defecto:', e.message);
+        }
 
         configurarEventListeners();
         actualizarUI();
@@ -1211,3 +2002,67 @@ window.cargarHorario = cargarHorario;
 window.editarBloque = editarBloque;
 window.eliminarBloque = eliminarBloque;
 window.configurarEliminacionHorario = configurarEliminacionHorario;
+
+// Modal para reasignar clases cuando no se permite eliminar
+function mostrarModalReasignacion(origenId, mensaje, count = 0) {
+    // Construir modal rápido (reutiliza custom-alert container para evitar HTML nuevo)
+    const alerta = document.getElementById('custom-alert');
+    if (!alerta) return alert(mensaje);
+    document.getElementById('alert-icon').innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+    document.getElementById('alert-title').textContent = 'Reasignar clases';
+    const body = alerta.querySelector('.custom-alert-body');
+    // Incluir todos los horarios disponibles excepto el de origen
+    const destinos = estado.horarios.filter(h => (h.id_horario || h.id) !== origenId);
+    const opciones = destinos.map(h => {
+        const periodo = h.periodo || 'Anual';
+        const hi = h.horaInicio || '??:??';
+        const hf = h.horaFin || '??:??';
+        const label = `${h.nombre} — ${periodo} — ${hi} a ${hf}`;
+        return `<option value="${h.id_horario||h.id}">${label}</option>`;
+    }).join('');
+    const sinDestinos = destinos.length === 0;
+    body.innerHTML = `
+        <div style="color:#444; margin-bottom:10px;">${mensaje}</div>
+        <div style="margin:8px 0 14px 0;">
+            <span style="background:#E6F0FA;color:#0D3B66;border-radius:999px;padding:6px 10px;font-weight:700;">${count} clases afectadas</span>
+        </div>
+        ${sinDestinos ? `
+            <div style="background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;padding:10px;border-radius:8px;margin-bottom:8px;">
+                No hay otros horarios disponibles para reasignar. Cree un horario o active otro existente.
+            </div>
+        ` : `
+            <label style="font-weight:600; color:#0D3B66;">Seleccione horario destino</label>
+            <select id="reassign-target" style="width:100%; padding:10px; border:2px solid var(--border); border-radius:10px; margin-top:6px;">${opciones}</select>
+        `}
+    `;
+    const btnOk = document.getElementById('alert-confirm');
+    const btnCancel = document.getElementById('alert-cancel');
+    const okClone = btnOk.cloneNode(true);
+    const cancelClone = btnCancel.cloneNode(true);
+    btnOk.parentNode.replaceChild(okClone, btnOk);
+    btnCancel.parentNode.replaceChild(cancelClone, btnCancel);
+    okClone.textContent = sinDestinos ? 'Cerrar' : okClone.textContent;
+    okClone.onclick = async () => {
+        if (sinDestinos) { alerta.style.display = 'none'; return; }
+        const selectEl = document.getElementById('reassign-target');
+        const target = selectEl ? selectEl.value : null;
+        if (!target) { mostrarNotificacion('Seleccione un horario destino', 'warning'); return; }
+        try {
+            const resp = await fetch(`/admin/api/horarios/${origenId}/reassign-classes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_horario_id: parseInt(target) })
+            });
+            const json = await resp.json();
+            if (!resp.ok || !json.success) throw new Error(json.error || 'Fallo al reasignar');
+            mostrarNotificacion(json.message || 'Clases reasignadas', 'success');
+            alerta.style.display = 'none';
+            // Reintentar eliminación
+            await eliminarHorario(origenId);
+        } catch (e) {
+            mostrarNotificacion('Error en la reasignación: ' + e.message, 'error');
+        }
+    };
+    cancelClone.onclick = () => { alerta.style.display = 'none'; };
+    alerta.style.display = 'flex';
+}

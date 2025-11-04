@@ -1,0 +1,145 @@
+{% extends "estudiantes/base.html" %}
+
+{% block title %}Mis Calificaciones{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root { --prim:#0D3B66; --prim2:#1a5080; --acc:#F95738; --soft:#f6f8fb; --card:#ffffff; --border:#E3E8EF; --text:#2C3E50; --accent4:#F4D35E; --gradient-primary: linear-gradient(135deg, #0D3B66, #1a5080); --gradient-secondary: linear-gradient(90deg, rgba(244,211,94,.15), rgba(255,255,255,1)); }
+  .page{padding:16px 12px}
+  .hdr{background: var(--gradient-primary); border-radius: 12px; padding: 16px; color:#fff; border:2px solid rgba(255,255,255,0.25);}
+  .hdr h2{margin:0; font-size:20px}
+  .hdr p{margin:.25rem 0 0 0;opacity:.95}
+  .card{background:#fff; border:1px solid rgba(13,59,102,.1); border-radius:12px; padding:16px}
+  .selector{background: var(--gradient-secondary); border:1px solid rgba(244,211,94,.4); border-radius:10px; padding:12px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+  .selector select{padding:8px 12px; border-radius:8px; border:1px solid var(--accent4); font-weight:600; color:#8a6d00}
+  .grid{display:grid; grid-template-columns: repeat(2,1fr); gap:12px}
+  @media (max-width: 768px){ .grid{grid-template-columns:1fr} }
+  .stat{background:#fff; border:1px solid rgba(13,59,102,.15); border-radius:8px; padding:10px}
+  .stat .name{font-weight:600; color:#8a6d00; font-size:13px}
+  .stat .val{font-weight:800; color:#8a6d00; font-size:18px}
+  .section{background: linear-gradient(to right, rgba(13,59,102,.05), rgba(255,255,255,.95)); border-left:3px solid #F4D35E; border-radius:8px; padding:12px; border:1px solid rgba(13,59,102,.1)}
+  .sec-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px}
+  .sec-name{font-weight:700; color:#0D3B66}
+  .sec-avg{background: var(--gradient-secondary); border:1px solid rgba(244,211,94,.4); border-radius:16px; padding:4px 10px; font-weight:700; color:#8a6d00; font-size:13px}
+  .item{display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid rgba(13,59,102,.1); border-radius:8px; padding:8px 10px; background:#fff; margin-bottom:8px}
+  .item-name{font-weight:600; color:#0D3B66; font-size:14px}
+  .item-name small{color:#6b7280; font-weight:400}
+  .item-val{background: var(--gradient-primary); color:#fff; border-radius:14px; padding:4px 10px; font-weight:800; min-width:52px; text-align:center; border:1px solid rgba(255,255,255,.35)}
+  .empty{background: rgba(13,59,102,.05); border-radius:6px; padding:8px; color:#6b7280; font-size:13px}
+  .two{display:grid; grid-template-columns:2fr 1fr; gap:16px}
+  @media (max-width: 900px){ .two{grid-template-columns:1fr} }
+  .avg-card{background: var(--gradient-primary); border:2px solid rgba(255,255,255,.3); color:#fff; border-radius:12px; padding:18px; text-align:center}
+  .avg-num{font-size:34px; font-weight:800}
+  .state{background:#fff; border:1px solid rgba(13,59,102,.1); border-radius:12px; padding:18px; text-align:center}
+  .state-badge{display:inline-block; padding:12px 16px; border-radius:12px; font-weight:800; color:#fff}
+  .ok{background: linear-gradient(135deg,#4CAF50,#66BB6A)}
+  .bad{background: linear-gradient(135deg,#F95738,#ff6b57)}
+  .msg{color:#6b7280}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="hdr">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h2><i class="fas fa-chart-line me-2"></i>Mis Calificaciones</h2>
+        <p><i class="fas fa-info-circle me-2"></i>Información académica detallada</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card selector mb-3">
+    <div>
+      <strong style="color:#8a6d00"><i class="fas fa-book-open me-2" style="color:#F95738"></i>Asignatura permitida</strong>
+      <select id="sel-asig" onchange="if(this.value){location.search='?asignatura_id='+this.value}">
+        {% if aceptadas and aceptadas|length>0 %}
+          {% for s in aceptadas %}
+            <option value="{{ s.asignatura_id }}" {{ 'selected' if asignatura and asignatura.id_asignatura==s.asignatura_id else '' }}>{{ s.asignatura.nombre }}</option>
+          {% endfor %}
+        {% else %}
+          <option value="">Sin solicitudes aceptadas</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="msg">
+      {% if ultima_fecha_reporte %}
+        <i class="fas fa-calendar-check me-1"></i>Última actualización: {{ ultima_fecha_reporte.strftime('%d/%m/%Y %H:%M') }}
+      {% else %}
+        <i class="fas fa-info-circle me-1"></i>Solicita a tus padres que gestionen una consulta con tu profesor.
+      {% endif %}
+    </div>
+  </div>
+
+  {% if calificaciones_por_categoria and calificaciones_por_categoria|length>0 %}
+    <div class="grid mb-3">
+      {% for cat_id, data in calificaciones_por_categoria.items() %}
+        <div class="stat">
+          <div class="name">{{ data.categoria.nombre }}</div>
+          <div class="val">
+            {% if promedios_por_categoria.get(cat_id, 0) > 0 %}
+              {{ '%.2f'|format(promedios_por_categoria.get(cat_id,0)) }}
+            {% else %}
+              Sin calificaciones
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <h4 style="color:#0D3B66; border-bottom:2px solid #E3E8EF; padding-bottom:8px; margin-bottom:12px"><i class="fas fa-list-alt me-2"></i>Calificaciones detalladas</h4>
+      <div class="grid">
+        {% for cat_id, data in calificaciones_por_categoria.items() %}
+          <div class="section">
+            <div class="sec-head">
+              <div class="sec-name">{{ data.categoria.nombre }}</div>
+              <div class="sec-avg">
+                {% if promedios_por_categoria.get(cat_id,0) > 0 %}
+                  Promedio: {{ '%.2f'|format(promedios_por_categoria.get(cat_id,0)) }}
+                {% else %}
+                  Sin calificaciones
+                {% endif %}
+              </div>
+            </div>
+            {% if data.calificaciones and data.calificaciones|length>0 %}
+              {% for c in data.calificaciones %}
+              <div class="item">
+                <div class="item-name">
+                  {{ c.nombre_calificacion or 'Sin nombre' }}
+                  {% if c.observaciones %}<br><small>{{ c.observaciones }}</small>{% endif %}
+                </div>
+                <div class="item-val">{% if c.valor %}{{ '%.2f'|format(c.valor) }}{% else %}-{% endif %}</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty"><i class="fas fa-info-circle me-1" style="color:#F95738"></i>No hay calificaciones registradas</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="two mt-3">
+      <div class="avg-card">
+        <div class="avg-num">{{ '%.2f'|format(promedio_general) }}</div>
+        <div>Promedio General</div>
+      </div>
+      <div class="state">
+        {% if promedio_general >= 3.0 %}
+          <span class="state-badge ok"><i class="fas fa-check-circle me-1"></i>Aprobado</span>
+        {% else %}
+          <span class="state-badge bad"><i class="fas fa-times-circle me-1"></i>Reprobado</span>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="empty" style="text-align:center; padding:32px;">
+        <div style="font-size:40px; margin-bottom:10px;">📄</div>
+        <div>No hay calificaciones para mostrar.</div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

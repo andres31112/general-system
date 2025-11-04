@@ -2,33 +2,88 @@
 
 {% block title %}Mis Asignaturas{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/profesor/asignaturas.css') }}">
-{% endblock %}
-
 {% block content %}
-<main>
-    <div class="container">
-        <a href="{{ url_for('profesor.cursos') }}" class="back-btn"><i class="fas fa-arrow-left"></i> Volver a la lista de cursos</a>
+<style>
+  :root { --prim:#0D3B66; --prim2:#1a5080; --acc:#F95738; --soft:#f6f8fb; --card:#ffffff; --border:#E3E8EF; --text:#2C3E50; }
+  .a-section{padding:16px 12px}
+  .a-title{color:var(--prim); font-weight:700; margin:8px 0 16px 0}
+  .a-list{display:grid; gap:12px}
+  .a-item{background:var(--card); border:2px solid var(--border); border-radius:14px; padding:14px}
+  .a-head{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .a-name{font-weight:700; color:var(--text)}
+  .a-meta{color:#6b7280; font-size:13px}
+  .a-btn{background:linear-gradient(135deg,var(--prim),var(--prim2)); color:#fff; border:none; border-radius:10px; padding:8px 14px; font-weight:600}
+  .a-details{margin-top:12px; border-top:2px dashed var(--border); padding-top:12px; display:none}
+  .a-grid{display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px}
+  .stat{background:var(--soft); border:1px solid var(--border); border-radius:10px; padding:10px}
+  .stat .label{font-size:12px; color:#6b7280}
+  .stat .value{font-weight:700; color:var(--text)}
+  .tbl{width:100%; border-collapse:separate; border-spacing:0; border:1px solid var(--border); border-radius:10px; overflow:hidden}
+  .tbl th,.tbl td{padding:8px 10px; border-bottom:1px solid var(--border); font-size:14px}
+  .tbl th{background:#f2f4f7; text-align:left; color:#334155}
+  .tbl tr:last-child td{border-bottom:none}
+</style>
 
-        <h3>Materias del Curso</h3>
-        
-        <div class="cards-container">
-            <div class="materia-card">
-                <h4>Matemáticas</h4>
-                <a href="{{ url_for('profesor.asistencia') }}" class="btn btn-primario">Ver</a>
-            </div>
+<div class="container-fluid a-section">
+  <h2 class="a-title">Mis Asignaturas</h2>
 
-            <div class="materia-card">
-                <h4>Física</h4>
-                <a href="#" class="btn btn-primario">Ver</a>
-            </div>
-
-            <div class="materia-card">
-                <h4>Geometría</h4>
-                <a href="#" class="btn btn-primario">Ver</a>
-            </div>
+  {% if asignaturas and asignaturas|length > 0 %}
+  <div class="a-list">
+    {% for asig in asignaturas %}
+    <div class="a-item" data-asig-id="{{ asig.id_asignatura or asig.id }}">
+      <div class="a-head">
+        <div>
+          <div class="a-name">{{ asig.nombre }}</div>
+          <div class="a-meta">ID: {{ asig.id_asignatura or asig.id }}</div>
         </div>
+        <button class="a-btn js-ver-asig">Ver detalles</button>
+      </div>
+      <div class="a-details"></div>
     </div>
-</main>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="text-muted">No tienes asignaturas asignadas.</p>
+  {% endif %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.js-ver-asig').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const card = e.target.closest('.a-item');
+        const det = card.querySelector('.a-details');
+        const id = card.dataset.asigId;
+        if (det.dataset.loaded === '1') { det.style.display = det.style.display==='none'?'block':'none'; return; }
+        btn.disabled = true; btn.textContent = 'Cargando...';
+        try {
+          const res = await fetch(`/profesor/api/asignatura-detalle/${id}`);
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.message||'Error');
+          const cursos = data.cursos||[];
+          const promGlobal = cursos.length ? (cursos.reduce((a,c)=>a+(c.promedio||0),0)/cursos.length).toFixed(2) : '0.00';
+          det.innerHTML = `
+            <div class="a-grid" style="margin-bottom:10px;">
+              <div class="stat"><div class="label">Cursos</div><div class="value">${cursos.length}</div></div>
+              <div class="stat"><div class="label">Promedio global</div><div class="value">${promGlobal}</div></div>
+            </div>
+            <div style="font-weight:700; color:#334155; margin:6px 0;">Cursos donde dicta esta asignatura</div>
+            <table class="tbl">
+              <thead><tr><th>Curso</th><th>Estudiantes</th><th>Promedio</th></tr></thead>
+              <tbody>
+                ${cursos.map(x=>`<tr><td>${x.curso_nombre}</td><td>${x.estudiantes}</td><td>${x.promedio}</td></tr>`).join('')}
+              </tbody>
+            </table>
+          `;
+          det.dataset.loaded = '1';
+          det.style.display = 'block';
+        } catch(err) {
+          det.innerHTML = `<div style="color:#B00020;">${err.message}</div>`; det.style.display='block';
+        } finally {
+          btn.disabled = false; btn.textContent = 'Ver detalles';
+        }
+      });
+    });
+  });
+  </script>
 {% endblock %}

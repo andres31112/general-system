@@ -16,6 +16,27 @@
             --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
         }
 
+/* Botón Entrar centrado y consistente */
+.stat-card .enter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto; /* centrar dentro de la tarjeta */
+    margin-top: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, var(--accent3), #e9c440);
+    color: var(--black);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    text-decoration: none;
+}
+
+.stat-card .enter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    filter: brightness(0.98);
+}
+
         * {
             margin: 0;
             padding: 0;
@@ -24,9 +45,9 @@
         }
 
         body {
-            background-color: var(--main-bg);
+            background-color: transparent;
             color: var(--black);
-            padding: 20px;
+            padding: 0;
             min-height: 100vh;
         }
 
@@ -550,10 +571,252 @@
             animation: modalFadeIn 0.3s ease-out;
         }
 
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+.day.has-blocks::after {
+    content: "✓";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 12px;
+    background: var(--accent2);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day.selected.has-blocks::after {
+    background: var(--accent3);
+    color: var(--black);
+}
+        
+
+        .assign-schedule-modal .modal-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent4);
+            font-weight: 800;
         }
+
+        .assign-schedule-modal .modal-header h2 i {
+            color: var(--accent4);
+            background: rgba(13, 59, 102, 0.1);
+            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .assign-schedule-modal select#schedule-select {
+            border: 2px solid var(--accent4);
+            box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.08);
+        }
+
+        .assign-schedule-modal .courses-list {
+            background: var(--light-gray);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 12px;
+            max-height: 360px;
+        }
+
+        .assign-schedule-modal .course-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 12px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent4);
+            border-radius: 10px;
+            padding: 12px 14px;
+            transition: box-shadow 0.25s, transform 0.15s, border-color 0.25s;
+        }
+
+        .assign-schedule-modal .course-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent4);
+            box-shadow: 0 8px 16px rgba(13, 59, 102, 0.15);
+        }
+
+        .assign-schedule-modal .course-checkbox {
+            accent-color: var(--accent4);
+        }
+
+        .assign-schedule-modal .course-name {
+            color: var(--accent4);
+            font-weight: 700;
+        }
+
+        .assign-schedule-modal .course-details {
+            color: var(--gray);
+        }
+
+        .assign-schedule-modal .course-schedule {
+            background: rgba(13, 59, 102, 0.08);
+            color: var(--accent4);
+            font-weight: 700;
+            border: 1px solid rgba(13, 59, 102, 0.15);
+        }
+
+        .assign-schedule-modal #confirm-assign-btn {
+            width: 100% !important;
+            display: inline-flex;
+            justify-content: center;
+            background: none !important;
+            background-color: var(--accent4) !important;
+            color: var(--white) !important;
+            border: none !important;
+            box-shadow: 0 6px 16px rgba(13, 59, 102, 0.25);
+        }
+
+.day.has-blocks::after {
+    content: "✓";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 12px;
+    background: var(--accent2);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day.selected.has-blocks::after {
+    background: var(--accent3);
+    color: var(--black);
+}
+
+.assign-schedule-modal .modal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--accent4);
+    font-weight: 800;
+}
+
+.assign-schedule-modal .modal-header h2 i {
+    color: var(--accent4);
+    background: rgba(13, 59, 102, 0.1);
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.assign-schedule-modal select#schedule-select {
+    border: 2px solid var(--accent4);
+    box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.08);
+}
+
+.assign-schedule-modal .courses-list {
+    background: var(--light-gray);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    padding: 12px;
+    max-height: 360px;
+}
+
+.assign-schedule-modal .course-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent4);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: box-shadow 0.25s, transform 0.15s, border-color 0.25s;
+}
+
+.assign-schedule-modal .course-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent4);
+    box-shadow: 0 8px 16px rgba(13, 59, 102, 0.15);
+}
+
+.assign-schedule-modal .course-checkbox {
+    accent-color: var(--accent4);
+}
+
+.assign-schedule-modal .course-name {
+    color: var(--accent4);
+    font-weight: 700;
+}
+
+.assign-schedule-modal .course-details {
+    color: var(--gray);
+}
+
+.assign-schedule-modal .course-schedule {
+    background: rgba(13, 59, 102, 0.08);
+    color: var(--accent4);
+    font-weight: 700;
+    border: 1px solid rgba(13, 59, 102, 0.15);
+}
+
+.assign-schedule-modal #assign-all-btn {
+    background: none !important;
+    background-color: var(--accent2) !important; /* naranja */
+    color: var(--black) !important;
+    border: none !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(238,150,75,0.25);
+}
+
+.assign-schedule-modal #assign-all-btn:hover { filter: brightness(0.95); }
+
+.assign-schedule-modal #assign-none-btn {
+    background: none !important;
+    background-color: var(--accent1) !important; /* rojo/naranja fuerte */
+    color: var(--white) !important;
+    border: none !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(249,87,56,0.25);
+}
+
+.assign-schedule-modal #assign-none-btn:hover { filter: brightness(0.95); }
+
+/* Layout sizing rules matching user's request */
+.assign-schedule-modal .primary-wide { width: 100% !important; }
+.assign-schedule-modal .assign-actions-left { width: 100%; }
+.assign-schedule-modal .assign-secondary-row { width: 100%; display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; justify-items: stretch; }
+.assign-schedule-modal .assign-secondary-row button { width: 100% !important; }
+
+.assign-schedule-modal .assign-filters-right { width: 100%; display: grid; grid-template-columns: 1fr 1fr auto; column-gap: 10px; align-items: center; }
+.assign-schedule-modal .assign-filters-right input#courses-search { min-width: 0; }
+.assign-schedule-modal .assign-filters-right select#courses-sede-filter { min-width: 0; }
+
+@media (max-width: 720px) {
+  .assign-schedule-modal .assign-secondary-row { flex-wrap: wrap; }
+  .assign-schedule-modal .assign-secondary-row button { flex: 1 1 100%; max-width: 100%; }
+  .assign-schedule-modal .assign-filters-right { grid-template-columns: 1fr 1fr; row-gap: 6px; }
+}
+
+/* Ensure consistent spacing and layout for top controls */
+.assign-schedule-modal .assign-controls-top { display: grid; grid-template-rows: auto auto auto; row-gap: 8px; }
+.assign-schedule-modal .assign-actions-left { width: 100%; }
+.assign-schedule-modal .assign-actions-left .primary-wide { margin: 0; }
+.assign-schedule-modal .assign-filters-right { margin: 0; }
+.assign-schedule-modal .assign-secondary-row { margin: 0; }
+.assign-schedule-modal #assign-selection-counter { white-space: nowrap; justify-self: end; }
+
+/* Tight spacing and equal widths */
+.assign-schedule-modal .assign-actions-left .primary-wide { margin-bottom: 6px; }
+.assign-schedule-modal .assign-filters-right { margin-bottom: 6px; }
+.assign-schedule-modal .assign-secondary-row { margin-bottom: 6px; }
 
         .modal-header {
             display: flex;
@@ -808,21 +1071,34 @@
             max-height: 300px;
             overflow-y: auto;
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px;
-            margin-top: 15px;
+            padding: 15px;
+            gap: 15px;
         }
 
-        .course-item {
+        .cursos-contenido {
+            padding: 8px 10px;
+            background: var(--light-gray);
+        }
+
+        .cursos-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        @media (max-width: 700px) {
+            .cursos-grid { grid-template-columns: 1fr; }
+        }
+
+        .curso-item {
             display: flex;
             align-items: center;
-            padding: 12px;
-            background-color: var(--white);
-            border-radius: 8px;
-            margin-bottom: 10px;
-            gap: 15px;
+            justify-content: space-between;
+            padding: 10px 8px;
+            background: var(--white);
             border: 1px solid var(--border);
-            transition: all 0.3s;
+            border-radius: 8px;
+            margin-bottom: 8px;
         }
 
         .course-item:hover {
@@ -968,4 +1244,28 @@
             .floating-block-form .form-row,
             .floating-block-form .time-row { grid-template-columns: 1fr; }
         }
+
+/* ===== Final scoped overrides for Assign Schedule modal ===== */
+#assign-schedule-modal .modal-content.assign-schedule-modal { padding: 18px 22px !important; }
+#assign-schedule-modal .modal-header { margin-bottom: 12px !important; padding-bottom: 8px !important; }
+#assign-schedule-modal .assign-controls-top { row-gap: 6px !important; }
+#assign-schedule-modal .modal-content.assign-schedule-modal .form-group { margin-bottom: 10px !important; }
+#assign-schedule-modal .modal-content.assign-schedule-modal input,
+#assign-schedule-modal .modal-content.assign-schedule-modal select { margin: 0 !important; }
+#assign-schedule-modal .modal-content.assign-schedule-modal button { margin-top: 0 !important; }
+#assign-schedule-modal .modal-content.assign-schedule-modal #confirm-assign-btn {
+  width: 100% !important;
+  display: inline-flex; justify-content: center; align-items: center;
+  background: none !important; background-color: var(--accent4) !important; color: var(--white) !important;
+  border: none !important;
+}
+#assign-schedule-modal .modal-content.assign-schedule-modal .assign-filters-right { 
+  display: grid !important; grid-template-columns: 1fr 1fr auto !important; column-gap: 10px !important; align-items: center; 
+}
+#assign-schedule-modal .modal-content.assign-schedule-modal .assign-secondary-row { 
+  display: grid !important; grid-template-columns: 1fr 1fr !important; column-gap: 10px !important; 
+}
+#assign-schedule-modal .modal-content.assign-schedule-modal .assign-secondary-row button { margin-top: 0 !important; }
+#assign-schedule-modal .modal-content.assign-schedule-modal #assign-all-btn { background: none !important; background-color: var(--accent2) !important; color: var(--black) !important; }
+#assign-schedule-modal .modal-content.assign-schedule-modal #assign-none-btn { background: none !important; background-color: var(--accent1) !important; color: var(--white) !important; }
     

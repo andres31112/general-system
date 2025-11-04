@@ -1,0 +1,113 @@
+{% extends "/estudiantes/base.html" %}
+
+{% block title %}Notificaciones{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <div class="panel-header d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <div class="header-icon"><i class="fas fa-bell"></i></div>
+      <div>
+        <h2 class="fw-bold m-0">Notificaciones</h2>
+        <p class="text-muted m-0 small">Todas tus alertas, anuncios y novedades</p>
+      </div>
+    </div>
+    <span class="badge badge-pill unread-pill">No leídas: {{ unread or 0 }}</span>
+  </div>
+
+  <div id="alertBox"></div>
+
+  <div class="noti-card">
+    <ul class="noti-list" id="listaNotificaciones">
+      <li class="noti-item text-center text-muted" id="loadingItem">
+        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+        Cargando notificaciones...
+      </li>
+    </ul>
+  </div>
+</div>
+
+<style>
+  .panel-header { background: var(--card-bg); padding: 1rem 1.25rem; border-radius: 12px; box-shadow: var(--shadow); }
+  .header-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--gradient-accent); display:flex; align-items:center; justify-content:center; color: var(--white); }
+  .unread-pill { background: var(--accent3); color: var(--black); padding: .35rem .75rem; border-radius: 999px; font-weight: 600; box-shadow: var(--shadow); }
+  .noti-card { background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .noti-list { list-style: none; margin: 0; padding: 0; }
+  .noti-item { display:flex; align-items:center; justify-content: space-between; gap: 12px; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); transition: background var(--transition-speed) ease; }
+  .noti-item:hover { background: var(--light-gray); }
+  .noti-left { display:flex; align-items:flex-start; gap: 12px; }
+  .dot { width:10px; height:10px; border-radius:50%; margin-top: 8px; }
+  .dot.unread { background: var(--accent1); box-shadow: 0 0 0 3px rgba(249,87,56,0.15); }
+  .dot.read { background: #cfd3d7; }
+  .noti-title { font-weight: 600; color: var(--accent4); }
+  .noti-msg { color: var(--gray); margin-bottom: 0; }
+  .noti-meta { color: var(--gray); font-size: 12px; }
+  .btn-chip { border-radius: 999px; padding: .25rem .6rem; font-size: .8rem; }
+</style>
+
+<script>
+async function cargarNotificaciones(){
+  const ul = document.getElementById('listaNotificaciones');
+  const loading = document.getElementById('loadingItem');
+  try{
+    const r = await fetch('/estudiante/api/notificaciones?limite=100');
+    const data = await r.json();
+    if(!data.success){ throw new Error(data.error||'Error cargando'); }
+    ul.innerHTML = '';
+    if(data.notificaciones.length === 0){
+      ul.innerHTML = '<li class="noti-item text-center text-muted">No tienes notificaciones</li>';
+      return;
+    }
+    data.notificaciones.forEach(n => {
+      const li = document.createElement('li');
+      li.className = 'noti-item';
+      const left = document.createElement('div');
+      left.className = 'noti-left';
+      const dot = document.createElement('div');
+      dot.className = `dot ${n.leida ? 'read':'unread'}`;
+      const content = document.createElement('div');
+      const title = document.createElement('div');
+      title.className = 'noti-title';
+      title.textContent = n.titulo || '(Sin título)';
+      const msg = document.createElement('p');
+      msg.className = 'noti-msg';
+      msg.textContent = n.mensaje || '';
+      const meta = document.createElement('div');
+      meta.className = 'noti-meta';
+      meta.textContent = n.creada_en ? new Date(n.creada_en).toLocaleString() : '';
+      content.appendChild(title); content.appendChild(msg); content.appendChild(meta);
+      left.appendChild(dot); left.appendChild(content);
+      const right = document.createElement('div');
+      right.className = 'd-flex align-items-center gap-2';
+      if(n.link){
+        const a = document.createElement('a');
+        a.href = n.link;
+        a.className = 'btn btn-sm btn-outline-primary btn-chip';
+        a.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Abrir';
+        right.appendChild(a);
+      }
+      if(!n.leida){
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-outline-secondary btn-chip';
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Marcar leída';
+        btn.onclick = async ()=>{
+          try{
+            const res = await fetch(`/estudiante/api/notificaciones/${n.id}/leer`, {method:'PUT'});
+            const ok = await res.json();
+            if(ok.success){ cargarNotificaciones(); }
+          }catch(e){ /* ignora */ }
+        };
+        right.appendChild(btn);
+      }
+      li.appendChild(left); li.appendChild(right);
+      ul.appendChild(li);
+    });
+  }catch(e){
+    document.getElementById('alertBox').innerHTML = '<div class="alert alert-danger">Error al cargar notificaciones</div>';
+    if(loading) loading.remove();
+  }
+}
+
+cargarNotificaciones();
+</script>
+{% endblock %}

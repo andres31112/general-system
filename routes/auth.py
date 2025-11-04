@@ -193,50 +193,12 @@ def restablecer_password(token):
 
 @auth_bp.route('/verify-email/<token>')
 def verify_email_with_token(token):
+    """El enlace del correo ahora muestra un formulario para verificar por correo + identificación."""
     try:
-        print(f"DEBUG: Token recibido: {token}")
-        
         s = get_serializer()
         data = s.loads(token, salt='email-verification', max_age=86400)
-        
-        print(f"DEBUG: Datos decodificados: {data}")
-        
-        user_id = data['user_id']
-        code = data['code']
-        email = data['email']
-        
-        usuario = Usuario.query.get(user_id)
-        
-        if not usuario:
-            flash('Usuario no encontrado', 'danger')
-            return redirect(url_for('auth.verify_email_page', email=email))
-        
-        if usuario.email_verified:
-            flash('El correo ya ha sido verificado anteriormente', 'success')
-            return render_template('emails/verification_success.html', email=email, usuario=usuario)
-        
-        if (usuario.verification_code == code and 
-            usuario.verification_code_expires and 
-            usuario.verification_code_expires > datetime.utcnow()):
-            
-            real_password = usuario.temp_password
-            
-            usuario.email_verified = True
-            usuario.verification_code = None
-            usuario.verification_code_expires = None
-            usuario.verification_attempts = 0
-            usuario.temp_password = None
-            db.session.commit()
-            
-            send_verification_success_email(usuario, real_password)
-            
-            flash('¡Correo verificado exitosamente! Se ha enviado un correo con tus credenciales.', 'success')
-            return render_template('emails/verification_success.html', email=email, usuario=usuario)
-        else:
-            print(f"DEBUG: Código no coincide o expiró. Código en DB: {usuario.verification_code}, Código recibido: {code}")
-            flash('El enlace de verificación ha expirado o es inválido', 'danger')
-            return redirect(url_for('auth.resend_verification', email=email))
-            
+        email = data.get('email', '')
+        return render_template('emails/verify_email.html', email=email, verified=False)
     except Exception as e:
         print(f"ERROR en verificación por token: {str(e)}")
         flash('El enlace de verificación es inválido o ha expirado', 'danger')
@@ -244,64 +206,77 @@ def verify_email_with_token(token):
 
 @auth_bp.route('/verify-email', methods=['GET', 'POST'])
 def verify_email_page():
+    """Nueva verificación: formulario con email y número de identificación."""
     if request.method == 'GET':
         email = request.args.get('email', '')
         return render_template('emails/verify_email.html', email=email, verified=False)
-    
+
     if request.method == 'POST':
-        email = request.form.get('email')
-        code = request.form.get('verification_code')
-        
-        if not email or not code:
-            flash('Email y código son requeridos', 'danger')
+        email = request.form.get('email', '').strip()
+        numero_id = request.form.get('no_identidad', '').strip()
+
+        if not email or not numero_id:
+            flash('Email y número de identificación son requeridos', 'danger')
             return render_template('emails/verify_email.html', email=email, verified=False)
-        
-        usuario = Usuario.query.filter_by(correo=email).first()
-        
-        if not usuario:
-            flash('Usuario no encontrado', 'danger')
+
+        user_by_email = Usuario.query.filter_by(correo=email).first()
+        if not user_by_email:
+            flash('No existe una cuenta con este correo electrónico.', 'danger')
             return render_template('emails/verify_email.html', email=email, verified=False)
-        
-        if usuario.email_verified:
+
+        if user_by_email.email_verified:
             flash('El correo ya ha sido verificado', 'success')
-            return render_template('emails/verify_email.html', email=email, verified=True)
-        
-        if usuario.verification_attempts >= 5:
-            flash('Has excedido el número máximo de intentos. Por favor solicita un nuevo código.', 'danger')
-            return redirect(url_for('auth.resend_verification', email=email))
-        
-        if usuario.verification_code_expires and usuario.verification_code_expires < datetime.utcnow():
-            flash('El código ha expirado. Por favor solicita uno nuevo.', 'danger')
-            return redirect(url_for('auth.resend_verification', email=email))
-        
-        if usuario.verification_code == code:
-            real_password = usuario.temp_password
-            
-            usuario.email_verified = True
-            usuario.verification_code = None
-            usuario.verification_code_expires = None
-            usuario.verification_attempts = 0
-            usuario.temp_password = None
-            db.session.commit()
-            
-            send_verification_success_email(usuario, real_password)
-            
-            flash('¡Correo verificado exitosamente! Se ha enviado un correo con tus credenciales.', 'success')
-            return render_template('emails/verification_success.html', email=email, usuario=usuario)
-        else:
-            usuario.verification_attempts += 1
-            usuario.last_verification_attempt = datetime.utcnow()
-            db.session.commit()
-            
-            intentos_restantes = 5 - usuario.verification_attempts
-            flash(f'Código de verificación incorrecto. Te quedan {intentos_restantes} intentos.', 'danger')
+            return render_template('emails/verification_success.html', email=email, usuario=user_by_email, password=None, login_url=url_for('auth.login'))
+
+        if str(user_by_email.no_identidad).strip() != numero_id:
+            flash('El número de identificación no coincide con este correo.', 'danger')
             return render_template('emails/verify_email.html', email=email, verified=False)
+
+        real_password = getattr(user_by_email, 'temp_password', None)
+        if not real_password:
+            # Si no hay contraseña temporal, generar una nueva para el usuario
+            # y establecerla como contraseña actual
+            real_password = generate_verification_code()
+            user_by_email.set_password(real_password)
+        user_by_email.email_verified = True
+        user_by_email.verification_code = None
+        user_by_email.verification_code_expires = None
+        user_by_email.verification_attempts = 0
+        user_by_email.temp_password = None
+        db.session.commit()
+
+        send_verification_success_email(user_by_email, real_password)
+
+        flash('¡Correo verificado exitosamente! Se han enviado tus credenciales al correo.', 'success')
+        return render_template('emails/verification_success.html', email=email, usuario=user_by_email, password=real_password, login_url=url_for('auth.login'))
+
+@auth_bp.route('/verify-email/check', methods=['POST'])
+def verify_email_check():
+    """Validación rápida para el formulario (AJAX)."""
+    try:
+        data = request.get_json() or {}
+        email = (data.get('email') or '').strip()
+        numero_id = (data.get('no_identidad') or '').strip()
+        if not email or not numero_id:
+            return jsonify({'ok': False, 'code': 'missing', 'message': 'Email y número de identificación son requeridos'}), 400
+
+        user_by_email = Usuario.query.filter_by(correo=email).first()
+        if not user_by_email:
+            return jsonify({'ok': False, 'code': 'email_not_found', 'message': 'Correo no encontrado'}), 404
+        if user_by_email.email_verified:
+            return jsonify({'ok': False, 'code': 'already_verified', 'message': 'Este correo ya fue verificado'}), 409
+        if str(user_by_email.no_identidad).strip() != numero_id:
+            return jsonify({'ok': False, 'code': 'id_mismatch', 'message': 'Número de identificación incorrecto'}), 422
+        return jsonify({'ok': True}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'message': str(e)}), 500
 
 @auth_bp.route('/resend-verification', methods=['GET', 'POST'])
 def resend_verification():
     if request.method == 'GET':
         email = request.args.get('email', '')
         return render_template('emails/resend_verification.html', email=email)
+
     
     if request.method == 'POST':
         email = request.form.get('email')

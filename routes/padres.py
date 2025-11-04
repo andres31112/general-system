@@ -4,8 +4,9 @@ from controllers.decorators import role_required, permission_required
 from controllers.models import (
     db, Usuario, Rol, Comunicacion, SolicitudConsulta, Asignatura,
     Calificacion, Asistencia, Clase, Matricula, Curso, HorarioCompartido, HorarioCurso, Salon, Sede,
-    CicloAcademico, PeriodoAcademico
+    CicloAcademico, PeriodoAcademico, CategoriaCalificacion
     )
+
 
 padre_bp = Blueprint('padre', __name__, url_prefix='/padre')
 
@@ -185,6 +186,83 @@ def ver_calificaciones_hijo(estudiante_id):
     else:
         # Si no hay calificaciones, mostrar mensaje
         flash('Aún no hay calificaciones registradas para este estudiante', 'info')
+        return redirect(url_for('padre.detalle_estudiante', estudiante_id=estudiante_id))
+
+@padre_bp.route('/estudiante/<int:estudiante_id>/calificaciones/detalle', endpoint='ver_calificaciones_historial')
+@login_required
+@role_required('Padre')
+def ver_calificaciones_historial(estudiante_id):
+    """Muestra calificaciones del estudiante filtradas por consultas aceptadas (historial)."""
+    try:
+        # Verificar relación padre-hijo
+        if not verificar_relacion_padre_hijo(current_user.id_usuario, estudiante_id):
+            flash('No tienes permisos para acceder a este estudiante', 'danger')
+            return redirect(url_for('padre.informacion_academica'))
+
+        estudiante = Usuario.query.get_or_404(estudiante_id)
+        asignatura_id = request.args.get('asignatura_id', type=int)
+
+        # Historial de solicitudes aceptadas
+        q_aceptadas = SolicitudConsulta.query.filter_by(padre_id=current_user.id_usuario, estudiante_id=estudiante_id, estado='aceptada')\
+            .order_by(SolicitudConsulta.fecha_respuesta.desc())
+
+        if not asignatura_id:
+            ultima = q_aceptadas.first()
+            if ultima:
+                asignatura_id = ultima.asignatura_id
+
+        solicitud_sel = None
+        if asignatura_id:
+            solicitud_sel = q_aceptadas.filter_by(asignatura_id=asignatura_id).first()
+
+        if not solicitud_sel:
+            # Sin solicitud aceptada para esa asignatura
+            return render_template(
+                'padres/calificaciones_estudiante.html',
+                estudiante=estudiante,
+                asignatura=Asignatura.query.get(asignatura_id) if asignatura_id else None,
+                ultima_fecha_reporte=None,
+                calificaciones_por_categoria={},
+                promedios_por_categoria={},
+                promedio_general=0.0,
+                aceptadas=q_aceptadas.all()
+            )
+
+        # Calificaciones del estudiante en la asignatura seleccionada
+        califs = Calificacion.query.filter_by(estudianteId=estudiante_id, asignaturaId=asignatura_id).all()
+
+        from collections import defaultdict
+        por_cat = defaultdict(lambda: {'categoria': None, 'calificaciones': []})
+        for c in califs:
+            cat = CategoriaCalificacion.query.get(getattr(c, 'categoriaId', None)) if getattr(c, 'categoriaId', None) else None
+            key = c.categoriaId or 0
+            if por_cat[key]['categoria'] is None:
+                por_cat[key]['categoria'] = cat or type('obj', (), {'nombre': 'Sin categoría'})()
+            por_cat[key]['calificaciones'].append(c)
+
+        proms_por_cat = {}
+        valores_globales = []
+        for key, data in por_cat.items():
+            vals = [float(x.valor) for x in data['calificaciones'] if x.valor is not None]
+            proms_por_cat[key] = (sum(vals) / len(vals)) if vals else 0.0
+            valores_globales.extend(vals)
+        promedio_general = round(sum(valores_globales) / len(valores_globales), 2) if valores_globales else 0.0
+
+        asignatura = Asignatura.query.get(asignatura_id)
+        ultima_fecha = solicitud_sel.fecha_respuesta
+
+        return render_template(
+            'padres/calificaciones_estudiante.html',
+            estudiante=estudiante,
+            asignatura=asignatura,
+            ultima_fecha_reporte=ultima_fecha,
+            calificaciones_por_categoria=por_cat,
+            promedios_por_categoria=proms_por_cat,
+            promedio_general=promedio_general,
+            aceptadas=q_aceptadas.all()
+        )
+    except Exception as e:
+        flash(f'Error cargando calificaciones: {str(e)}', 'danger')
         return redirect(url_for('padre.detalle_estudiante', estudiante_id=estudiante_id))
 
 # API Routes para Información Académica
@@ -513,8 +591,6 @@ def api_consultas_estudiante(estudiante_id):
     except Exception as e:
         current_app.logger.error(f"Error obteniendo consultas: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
 @padre_bp.route('/api/horario_estudiante/<int:estudiante_id>')
 @login_required
 @role_required('Padre')
@@ -531,44 +607,208 @@ def api_horario_estudiante(estudiante_id):
         matricula = Matricula.query.filter_by(estudianteId=estudiante_id).order_by(Matricula.fecha_matricula.desc()).first()
         
         if not matricula:
+            # Retornar estructura vacía para que el frontend muestre tabla vacía
+            horario_data = {
+                'curso': None,
+                'sede': 'N/A',
+                'clases': {}
+            }
             return jsonify({
                 'success': True,
-                'horario': None,
+                'horario': horario_data,
                 'message': 'El estudiante no tiene matrícula activa'
             })
         
         curso = matricula.curso
         
-        # Obtener horarios compartidos del curso
-        horarios_compartidos = db.session.query(
-            HorarioCompartido, Asignatura, Usuario, Salon, Sede
-        ).join(
-            Asignatura, HorarioCompartido.asignatura_id == Asignatura.id_asignatura
-        ).join(
-            Usuario, HorarioCompartido.profesor_id == Usuario.id_usuario
-        ).outerjoin(
-            Salon, HorarioCompartido.salon_id == Salon.id_salon
-        ).outerjoin(
-            Sede, Salon.sede_id == Sede.id_sede
-        ).filter(
-            HorarioCompartido.curso_id == curso.id_curso
-        ).all()
-        
-        clases = {}
-        for horario, asignatura, profesor, salon, sede in horarios_compartidos:
-            clave = f"{horario.dia}_{horario.hora_inicio}"
-            clases[clave] = {
-                'asignatura': asignatura.nombre,
-                'profesor': profesor.nombre_completo,
-                'salon': salon.nombre if salon else 'N/A',
-                'hora_inicio': str(horario.hora_inicio),
-                'hora_fin': str(horario.hora_fin) if horario.hora_fin else 'N/A'
+        # Helpers para normalizar día y hora al formato esperado por el frontend
+        def _normalizar_dia(dia_str):
+            if not dia_str:
+                return None
+            d = str(dia_str).strip().lower()
+            mapping = {
+                'lunes': 'lunes',
+                'martes': 'martes',
+                'miercoles': 'miercoles',
+                'miércoles': 'miercoles',
+                'jueves': 'jueves',
+                'viernes': 'viernes',
+                'sabado': 'sabado',
+                'sábado': 'sabado',
+                'domingo': 'domingo'
             }
-        
+            return mapping.get(d, d)
+
+        def _fmt_hora(val):
+            try:
+                # soporta time, datetime o string
+                if hasattr(val, 'strftime'):
+                    return val.strftime('%H:%M')
+                s = str(val).strip()
+                # Si viene como HH:MM:SS -> tomar HH:MM
+                if len(s) >= 5 and s[2] == ':':
+                    return s[:5]
+                # Si viene como H:MM -> normalizar a HH:MM
+                if ':' in s:
+                    parts = s.split(':')
+                    h = int(parts[0]) if parts[0] else 0
+                    m = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+                    return f"{h:02d}:{m:02d}"
+                # Intentar parseo directo
+                from datetime import datetime
+                try:
+                    return datetime.strptime(s, '%H:%M').strftime('%H:%M')
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            return ''
+
+        # Construir a partir de HorarioCurso (fuente con día/hora)
+        clases = {}
+
+        # Complementar con HorarioCurso (usado por profesor/estudiante)
+        horarios_curso = db.session.query(HorarioCurso, Asignatura, Usuario, Salon).join(
+            Asignatura, HorarioCurso.asignatura_id == Asignatura.id_asignatura
+        ).join(
+            Usuario, HorarioCurso.profesor_id == Usuario.id_usuario
+        ).outerjoin(
+            Salon, HorarioCurso.id_salon_fk == Salon.id_salon
+        ).filter(
+            HorarioCurso.curso_id == curso.id_curso
+        ).all()
+
+        for hc, asignatura, profesor, salon in horarios_curso:
+            dia_norm = _normalizar_dia(getattr(hc, 'dia_semana', None))
+            hora_ini = _fmt_hora(getattr(hc, 'hora_inicio', ''))
+            hora_fin = _fmt_hora(getattr(hc, 'hora_fin', ''))
+            if not dia_norm or not hora_ini:
+                continue
+            # Expandir a todos los bloques de hora completa cubiertos por el rango [inicio, fin)
+            def _to_min(hhmm):
+                try:
+                    h, m = map(int, hhmm.split(':'))
+                    return h*60 + m
+                except Exception:
+                    return None
+            ini_min = _to_min(hora_ini)
+            fin_min = _to_min(hora_fin) if hora_fin else None
+            if ini_min is None:
+                continue
+            # Si no hay hora_fin válida, sólo marcar la hora de inicio
+            slots = []
+            if fin_min is None or fin_min <= ini_min:
+                slots = [hora_ini]
+            else:
+                # tomar horas enteras desde floor(inicio a la hora) hasta fin exclusiva, paso 60
+                from math import floor
+                start_hour = ini_min // 60
+                end_hour = (fin_min + 59) // 60  # cubrir la última hora iniciada antes de fin
+                for h in range(start_hour, end_hour):
+                    slots.append(f"{h:02d}:00")
+            for slot in slots:
+                clave = f"{dia_norm}_{slot}"
+                if clave not in clases:
+                    clases[clave] = {
+                        'asignatura': asignatura.nombre,
+                        'profesor': profesor.nombre_completo,
+                        'salon': salon.nombre if salon else 'N/A',
+                        'hora_inicio': hora_ini,
+                        'hora_fin': hora_fin or 'N/A'
+                    }
+
+        # Incorporar bloques y días desde HorarioGeneral (para mostrar rangos y descansos)
+        dias_list = []
+        bloques_list = []
+        matriz_bloques = {}  # dia -> { "HH:MM-HH:MM": {tipo, nombre} }
+        clases_por_bloque = {}  # dia -> { "HH:MM-HH:MM": clase }
+        try:
+            hg = getattr(curso, 'horario_general', None)
+            if hg:
+                # Días
+                try:
+                    import json
+                    dias_list = json.loads(hg.diasSemana) if hg.diasSemana else []
+                except Exception:
+                    dias_list = []
+                # Bloques
+                from controllers.models import BloqueHorario
+                bloques = BloqueHorario.query.filter_by(horario_general_id=hg.id_horario).order_by(BloqueHorario.orden).all()
+                for b in bloques:
+                    dia_norm_b = _normalizar_dia(b.dia_semana)
+                    start = _fmt_hora(b.horaInicio)
+                    end = _fmt_hora(b.horaFin)
+                    if not start or not end:
+                        continue
+                    bloque_key = f"{start}-{end}"
+                    if bloque_key not in bloques_list:
+                        bloques_list.append(bloque_key)
+                    if dia_norm_b:
+                        matriz_bloques.setdefault(dia_norm_b, {})[bloque_key] = {
+                            'tipo': (b.tipo or '').lower(),
+                            'nombre': b.nombre or '',
+                            'break_type': (b.break_type or ''),
+                            'class_type': (b.class_type or '')
+                        }
+                        clases_por_bloque.setdefault(dia_norm_b, {})[bloque_key] = None
+        except Exception:
+            pass
+
+        # Determinar sede del curso
+        sede_nombre = 'N/A'
+        try:
+            if hasattr(curso, 'sede') and curso.sede:
+                sede_nombre = curso.sede.nombre
+            elif hasattr(curso, 'sedeId') and curso.sedeId:
+                sede_obj = Sede.query.get(curso.sedeId)
+                if sede_obj:
+                    sede_nombre = sede_obj.nombre
+        except Exception:
+            pass
+
+        # Construir clases_por_bloque: asignar cada HorarioCurso a los bloques que se solapan
+        def _minutos(hhmm):
+            try:
+                h, m = map(int, str(hhmm).split(':'))
+                return h*60 + m
+            except Exception:
+                return None
+
+        for hc, asignatura, profesor, salon in horarios_curso:
+            dia_norm = _normalizar_dia(getattr(hc, 'dia_semana', None))
+            ini = _fmt_hora(getattr(hc, 'hora_inicio', ''))
+            fin = _fmt_hora(getattr(hc, 'hora_fin', ''))
+            if not dia_norm or not ini or not fin:
+                continue
+            ini_m = _minutos(ini); fin_m = _minutos(fin)
+            if ini_m is None or fin_m is None:
+                continue
+            for bloque_key, meta in (matriz_bloques.get(dia_norm, {}) or {}).items():
+                b_ini, b_fin = [x.strip() for x in bloque_key.split('-')]
+                b_ini_m = _minutos(b_ini); b_fin_m = _minutos(b_fin)
+                if b_ini_m is None or b_fin_m is None:
+                    continue
+                # Solapamiento si max(inicio) < min(fin)
+                if max(ini_m, b_ini_m) < min(fin_m, b_fin_m):
+                    # Evitar marcar bloques de descanso como clase
+                    if meta.get('tipo', '') in ('break','descanso','receso'):
+                        continue
+                    clases_por_bloque[dia_norm][bloque_key] = {
+                        'asignatura': asignatura.nombre,
+                        'profesor': profesor.nombre_completo,
+                        'salon': salon.nombre if salon else 'N/A',
+                        'hora_inicio': ini,
+                        'hora_fin': fin
+                    }
+
         horario_data = {
-            'curso': curso.nombreCurso,
-            'sede': sede.nombre if sede else 'N/A',
-            'clases': clases
+            'curso': getattr(curso, 'nombreCurso', 'N/A'),
+            'sede': sede_nombre,
+            'clases': clases,
+            'dias': dias_list,
+            'bloques': bloques_list,
+            'matriz_bloques': matriz_bloques,
+            'clases_por_bloque': clases_por_bloque
         }
         
         return jsonify({

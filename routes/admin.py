@@ -1709,6 +1709,29 @@ def api_actualizar_asignatura(asignatura_id):
         print(f"Error actualizando asignatura: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@admin_bp.route('/api/horarios/<int:horario_id>/reassign-classes', methods=['POST'])
+@login_required
+@role_required(1)
+def api_reasignar_clases_horario(horario_id):
+    try:
+        data = request.get_json() or {}
+        target_id = data.get('target_horario_id')
+        if not target_id:
+            return jsonify({'success': False, 'error': 'target_horario_id requerido'}), 400
+        if int(target_id) == int(horario_id):
+            return jsonify({'success': False, 'error': 'El horario destino debe ser diferente'}), 400
+
+        origen = HorarioGeneral.query.get_or_404(horario_id)
+        destino = HorarioGeneral.query.get_or_404(target_id)
+
+        actualizadas = Clase.query.filter_by(horarioId=horario_id).update({'horarioId': target_id})
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': f'Clases reasignadas a "{destino.nombre}"', 'clases_actualizadas': actualizadas})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @admin_bp.route('/api/asignaturas/<int:asignatura_id>', methods=['DELETE'])
 @login_required
 @role_required(1)
@@ -1814,6 +1837,79 @@ def api_crear_horario_completo():
         print(f"Error creando horario: {str(e)}")
         return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
 
+@admin_bp.route('/api/horarios/<int:horario_id>', methods=['PUT'])
+@login_required
+@role_required(1)
+def api_actualizar_horario(horario_id):
+    """API para actualizar un horario general existente"""
+    try:
+        data = request.get_json()
+
+        horario = HorarioGeneral.query.get_or_404(horario_id)
+
+        nombre = data.get('nombre')
+        if not nombre:
+            return jsonify({'success': False, 'error': 'El nombre del horario es requerido'}), 400
+
+        dias = data.get('dias', [])
+        if not dias:
+            return jsonify({'success': False, 'error': 'Seleccione al menos un día'}), 400
+
+        bloques = data.get('bloques', [])
+        if not bloques:
+            return jsonify({'success': False, 'error': 'Agregue al menos un bloque horario'}), 400
+
+        # Actualizar cabecera
+        horario.nombre = nombre
+        horario.periodo = data.get('periodo', horario.periodo)
+        try:
+            horario.horaInicio = datetime.strptime(data.get('horaInicio', '07:00'), '%H:%M').time()
+            horario.horaFin = datetime.strptime(data.get('horaFin', '17:00'), '%H:%M').time()
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Formato de hora inválido. Use HH:MM'}), 400
+        horario.diasSemana = json.dumps(dias)
+        horario.duracion_clase = data.get('duracion_clase', horario.duracion_clase or 45)
+        horario.duracion_descanso = data.get('duracion_descanso', horario.duracion_descanso or 15)
+
+        # Reemplazar bloques
+        BloqueHorario.query.filter_by(horario_general_id=horario.id_horario).delete(synchronize_session=False)
+
+        for i, bloque_data in enumerate(bloques):
+            if not all(key in bloque_data for key in ['dia_semana', 'horaInicio', 'horaFin', 'tipo']):
+                continue
+            try:
+                nuevo_bloque = BloqueHorario(
+                    horario_general_id=horario.id_horario,
+                    dia_semana=bloque_data['dia_semana'],
+                    horaInicio=datetime.strptime(bloque_data['horaInicio'], '%H:%M').time(),
+                    horaFin=datetime.strptime(bloque_data['horaFin'], '%H:%M').time(),
+                    tipo=bloque_data['tipo'],
+                    nombre=bloque_data.get('nombre', f'Bloque {i+1}'),
+                    orden=bloque_data.get('orden', i),
+                    class_type=bloque_data.get('class_type'),
+                    break_type=bloque_data.get('break_type')
+                )
+                db.session.add(nuevo_bloque)
+            except ValueError:
+                continue
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Horario actualizado correctamente',
+            'updated': True,
+            'horario': {
+                'id_horario': horario.id_horario,
+                'nombre': horario.nombre,
+                'periodo': horario.periodo
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error actualizando horario: {str(e)}")
+        return jsonify({'success': False, 'error': f'Error del servidor: {str(e)}'}), 500
+
 @admin_bp.route('/api/horarios/<int:horario_id>', methods=['GET'])
 @login_required
 @role_required(1)
@@ -1873,6 +1969,108 @@ def api_listar_horarios():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@admin_bp.route('/api/horario_curso/validar-conflicto', methods=['POST'])
+@login_required
+@role_required(1)
+def api_validar_conflicto_slot():
+    """Valida si un profesor tiene conflicto en un slot específico."""
+    try:
+        data = request.get_json() or {}
+        print(f"🔍 DATOS RECIBIDOS EN VALIDACIÓN: {data}")
+        
+        profesor_id = data.get('profesor_id')
+        asignatura_id_excluir = data.get('asignatura_id_excluir')
+        dia = data.get('dia')
+        hora_inicio = data.get('hora_inicio')
+        curso_id = data.get('curso_id')
+
+        print(f"🔍 VALIDANDO CONFLICTO - Profesor: {profesor_id}, Día: {dia}, Hora: {hora_inicio}")
+
+        if not (profesor_id and dia and hora_inicio):
+            return jsonify({
+                'success': True,  # Cambiado a True para no bloquear
+                'conflicto': False,
+                'mensaje': 'Datos incompletos para validación'
+            }), 200
+
+        # Convertir a enteros si es necesario
+        try:
+            profesor_id = int(profesor_id)
+            if asignatura_id_excluir:
+                asignatura_id_excluir = int(asignatura_id_excluir)
+            if curso_id:
+                curso_id = int(curso_id)
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': True,
+                'conflicto': False,
+                'mensaje': 'IDs inválidos'
+            }), 200
+
+        # Calcular hora_fin base 45 min
+        from datetime import datetime, timedelta
+        try:
+            hi_dt = datetime.strptime(hora_inicio, '%H:%M')
+            hf_dt = hi_dt + timedelta(minutes=45)
+            hora_fin = hf_dt.strftime('%H:%M')
+        except Exception:
+            hora_fin = '08:00'
+
+        print(f"🔍 Validando: profesor={profesor_id}, dia={dia}, hora={hora_inicio}-{hora_fin}")
+
+        # ✅ CORREGIDO: Validar conflicto SOLO para este slot específico
+        validacion = validar_conflicto_horario_profesor(
+            profesor_id=profesor_id,
+            dia_semana=dia,
+            hora_inicio=hora_inicio,
+            hora_fin=hora_fin,
+            curso_id_excluir=curso_id,  # Excluir el curso actual
+            asignatura_id_excluir=asignatura_id_excluir,  # Excluir la asignatura actual
+            dia_semana_excluir=dia,
+            hora_inicio_excluir=hora_inicio
+        )
+
+        print(f"📋 RESULTADO VALIDACIÓN: {validacion}")
+
+        return jsonify({
+            'success': True,
+            'conflicto': bool(validacion.get('tiene_conflicto')),
+            'mensaje': validacion.get('conflicto_info', '')
+        })
+    except Exception as e:
+        print(f"❌ ERROR en validación: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': True,  # Cambiado a True para no bloquear
+            'conflicto': False,
+            'mensaje': f'Error en validación: {str(e)}'
+        }), 200
+
+# Periodos académicos para selector de horarios
+@admin_bp.route('/api/periodos/selector', methods=['GET'])
+@login_required
+@role_required(1)
+def api_listar_periodos():
+    try:
+        from services.periodo_service import obtener_ciclo_activo, obtener_periodos_ciclo
+        ciclo = obtener_ciclo_activo()
+        periodos = []
+        if ciclo:
+            periodos = obtener_periodos_ciclo(ciclo.id_ciclo)
+        # Serializar periodos
+        data = [{
+            'id_periodo': p.id_periodo,
+            'nombre': p.nombre,
+            'numero': p.numero_periodo,
+            'fecha_inicio': p.fecha_inicio.isoformat() if p.fecha_inicio else None,
+            'fecha_fin': p.fecha_fin.isoformat() if p.fecha_fin else None,
+            'estado': p.estado
+        } for p in periodos]
+        return jsonify({'data': data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @admin_bp.route('/api/horarios/<int:horario_id>', methods=['DELETE'])
 @login_required
 @role_required(1)
@@ -1880,14 +2078,38 @@ def api_eliminar_horario(horario_id):
     """API para eliminar un horario"""
     try:
         horario = HorarioGeneral.query.get_or_404(horario_id)
-        
-        BloqueHorario.query.filter_by(horario_general_id=horario_id).delete()
-        
+        # 1) Verificar si existen clases que referencien este horario (FK NOT NULL)
+        clases_asociadas = Clase.query.filter_by(horarioId=horario_id).count()
+        if clases_asociadas > 0:
+            return jsonify({
+                'success': False,
+                'error': (
+                    f'No se puede eliminar el horario porque existen {clases_asociadas} clases asociadas. '
+                    'Primero reasigne o elimine esas clases desde la gestión de clases.'
+                ),
+                'classes_count': clases_asociadas
+            }), 409
+
+        # 2) Eliminar bloques del horario
+        BloqueHorario.query.filter_by(horario_general_id=horario_id).delete(synchronize_session=False)
+
+        # 3) Eliminar horarios específicos y compartidos que dependan del horario general
+        try:
+            HorarioCurso.query.filter_by(horario_general_id=horario_id).delete(synchronize_session=False)
+        except Exception:
+            pass
+        try:
+            HorarioCompartido.query.filter_by(horario_general_id=horario_id).delete(synchronize_session=False)
+        except Exception:
+            pass
+
+        # 4) Desvincular cursos del horario
         Curso.query.filter_by(horario_general_id=horario_id).update({'horario_general_id': None})
-        
+
+        # 5) Eliminar horario
         db.session.delete(horario)
         db.session.commit()
-        
+
         return jsonify({'success': True, 'message': 'Horario eliminado correctamente'})
         
     except Exception as e:
@@ -1930,6 +2152,31 @@ def api_asignar_horario_curso():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@admin_bp.route('/api/horarios/desasignar', methods=['POST'])
+@login_required
+@role_required(1)
+def api_desasignar_horario_cursos():
+    """Quita el horario_general_id de los cursos indicados"""
+    try:
+        data = request.get_json() or {}
+        cursos_ids = data.get('cursos_ids', [])
+        if not isinstance(cursos_ids, list) or len(cursos_ids) == 0:
+            return jsonify({'success': False, 'error': 'Lista de cursos_ids requerida'}), 400
+
+        # Normalizar a enteros válidos
+        ids = [int(x) for x in cursos_ids if str(x).isdigit()]
+        if not ids:
+            return jsonify({'success': False, 'error': 'IDs de curso inválidos'}), 400
+
+        # Desasignar en bloque
+        actualizados = Curso.query.filter(Curso.id_curso.in_(ids)).update({Curso.horario_general_id: None}, synchronize_session=False)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': f'Se desasignó horario de {actualizados} curso(s)', 'cursos_actualizados': actualizados})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @admin_bp.route('/api/estadisticas/horarios')
 @login_required
 @role_required(1)
@@ -1964,74 +2211,101 @@ def gestion_horarios_cursos():
     """Gestión de horarios por curso"""
     return render_template('superadmin/Horarios/gestion_horarios_cursos.html')
 
-def validar_conflicto_horario_profesor(profesor_id, dia_semana, hora_inicio, hora_fin, curso_id_excluir=None, asignatura_id_excluir=None):
+def validar_conflicto_horario_profesor(profesor_id, dia_semana, hora_inicio, hora_fin, curso_id_excluir=None, asignatura_id_excluir=None, dia_semana_excluir=None, hora_inicio_excluir=None):
     """
     Valida si un profesor tiene conflicto de horarios en el mismo día y hora.
-    
-    Args:
-        profesor_id: ID del profesor a validar
-        dia_semana: Día de la semana (ej: 'lunes', 'martes', etc.)
-        hora_inicio: Hora de inicio en formato 'HH:MM'
-        hora_fin: Hora de fin en formato 'HH:MM'
-        curso_id_excluir: ID del curso a excluir de la validación (para ediciones)
-        asignatura_id_excluir: ID de la asignatura a excluir de la validación (para ediciones)
-    
-    Returns:
-        dict: {'tiene_conflicto': bool, 'conflicto_info': str}
+    SOLO considera asignaciones activas en otros cursos.
     """
     try:
-        from datetime import datetime, time, timedelta
+        from datetime import datetime
         
+        print(f"🔍 Validando conflicto para profesor {profesor_id}")
+        print(f"   Día: {dia_semana}, Hora: {hora_inicio}-{hora_fin}")
+        print(f"   Excluir: curso={curso_id_excluir}, asignatura={asignatura_id_excluir}")
+
         # Convertir horas a objetos time para comparación
         hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
         hora_fin_obj = datetime.strptime(hora_fin, '%H:%M').time()
-        
-        # Buscar todos los horarios compartidos del profesor
-        horarios_profesor = HorarioCompartido.query.filter_by(profesor_id=profesor_id).all()
-        
-        for horario_comp in horarios_profesor:
-            # Excluir el curso/asignatura actual si se está editando
-            if (curso_id_excluir and horario_comp.curso_id == curso_id_excluir and 
-                asignatura_id_excluir and horario_comp.asignatura_id == asignatura_id_excluir):
+
+        # ✅ CORREGIDO: Buscar SOLO en HorarioCurso (asignaciones activas)
+        asignaciones_existentes = HorarioCurso.query.filter_by(profesor_id=profesor_id).all()
+
+        print(f"   Asignaciones existentes encontradas: {len(asignaciones_existentes)}")
+
+        for asignacion in asignaciones_existentes:
+            # Información de debug
+            print(f"   Revisando asignación: ID={asignacion.id_horario_curso}")
+            print(f"     Curso: {asignacion.curso_id}, Día: {asignacion.dia_semana}")
+            print(f"     Hora: {asignacion.hora_inicio}-{asignacion.hora_fin}")
+            print(f"     Asignatura: {asignacion.asignatura_id}")
+
+            # ✅ EXCLUIR: La misma asignación que estamos editando
+            if (curso_id_excluir and asignacion.curso_id == curso_id_excluir and
+                (dia_semana_excluir or '').lower() == (asignacion.dia_semana or '').lower() and
+                (hora_inicio_excluir or '') == (asignacion.hora_inicio or '')):
+                print("     ✅ Excluyendo (mismo slot en edición)")
                 continue
-                
-            # Buscar el HorarioCurso correspondiente
-            horario_curso = HorarioCurso.query.filter_by(
-                curso_id=horario_comp.curso_id,
-                asignatura_id=horario_comp.asignatura_id
-            ).first()
             
-            if not horario_curso:
+            # ✅ EXCLUIR: Mismo curso y asignatura (para casos de reasignación)
+            if (curso_id_excluir and asignatura_id_excluir and 
+                asignacion.curso_id == curso_id_excluir and 
+                asignacion.asignatura_id == asignatura_id_excluir):
+                print("     ✅ Excluyendo (misma asignatura en mismo curso)")
                 continue
-                
-            # Verificar si es el mismo día
-            if horario_curso.dia_semana.lower() != dia_semana.lower():
+
+            # ❌ Día distinto -> no hay conflicto
+            if (asignacion.dia_semana or '').lower() != (dia_semana or '').lower():
+                print("     ✅ Día diferente, sin conflicto")
                 continue
-                
-            # Convertir horas del horario existente
+
             try:
-                hora_inicio_existente = datetime.strptime(horario_curso.hora_inicio, '%H:%M').time()
-                hora_fin_existente = datetime.strptime(horario_curso.hora_fin, '%H:%M').time()
-            except:
-                continue
+                hi_exist = asignacion.hora_inicio
+                hf_exist = asignacion.hora_fin
                 
-            # Verificar solapamiento de horarios
-            # Dos horarios se solapan si: inicio1 < fin2 Y fin1 > inicio2
-            if (hora_inicio_obj < hora_fin_existente and hora_fin_obj > hora_inicio_existente):
+                if not hi_exist or not hf_exist:
+                    print("     ⚠️ Hora inválida, omitiendo")
+                    continue
+                    
+                hi_exist_obj = datetime.strptime(hi_exist, '%H:%M').time()
+                hf_exist_obj = datetime.strptime(hf_exist, '%H:%M').time()
+            except Exception as e:
+                print(f"     ⚠️ Error parseando hora: {e}")
+                continue
+
+            # ✅ Verificar solapamiento: inicio1 < fin2 y fin1 > inicio2
+            tiene_solapamiento = (hora_inicio_obj < hf_exist_obj and hora_fin_obj > hi_exist_obj)
+            print(f"     Solapamiento: {tiene_solapamiento} ({hora_inicio_obj} < {hf_exist_obj} y {hora_fin_obj} > {hi_exist_obj})")
+
+            if tiene_solapamiento:
                 # Obtener información del conflicto
-                curso = Curso.query.get(horario_comp.curso_id)
-                asignatura = Asignatura.query.get(horario_comp.asignatura_id)
+                curso_nombre = "Curso desconocido"
+                asignatura_nombre = "Asignatura desconocida"
+                
+                curso_conflicto = Curso.query.get(asignacion.curso_id)
+                if curso_conflicto:
+                    curso_nombre = curso_conflicto.nombreCurso
+                
+                asignatura_conflicto = Asignatura.query.get(asignacion.asignatura_id)
+                if asignatura_conflicto:
+                    asignatura_nombre = asignatura_conflicto.nombre
+                
+                mensaje_conflicto = f"Conflicto con {asignatura_nombre} en {curso_nombre} ({hi_exist}-{hf_exist})"
+                print(f"     ❌ CONFLICTO: {mensaje_conflicto}")
                 
                 return {
                     'tiene_conflicto': True,
-                    'conflicto_info': f"Conflicto con {asignatura.nombre if asignatura else 'Asignatura'} en {curso.nombreCurso if curso else 'Curso'} ({horario_curso.hora_inicio}-{horario_curso.hora_fin})"
+                    'conflicto_info': mensaje_conflicto
                 }
-        
+
+        print("     ✅ Sin conflictos encontrados")
         return {'tiene_conflicto': False, 'conflicto_info': ''}
-        
+
     except Exception as e:
-        print(f"Error en validación de conflicto: {str(e)}")
+        print(f"❌ ERROR en validación de conflicto: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {'tiene_conflicto': False, 'conflicto_info': ''}
+
 
 @admin_bp.route('/api/horario_curso/guardar', methods=['POST'])
 @login_required
@@ -2050,6 +2324,7 @@ def api_guardar_horario_curso():
         
         asignaciones = data.get('asignaciones', {})
         salones_asignaciones = data.get('salones_asignaciones', {})
+        profesores_asignaciones = data.get('profesores_asignaciones', {})  # clave: "dia-hora" -> profesor_id
         
         print(f"Asignaciones recibidas: {asignaciones}")
         print(f"Salones recibidos: {salones_asignaciones}")
@@ -2127,29 +2402,78 @@ def api_guardar_horario_curso():
                 except:
                     pass
 
-                # VALIDACIÓN DE CONFLICTOS DE HORARIOS
-                # Verificar conflictos para todos los profesores de esta asignatura
-                profesores_asignatura = asignatura.profesores
-                for profesor in profesores_asignatura:
-                    # Determinar si es una edición (existe la asignación)
+                # Obtener profesor asignado (opcional) por clave ANTES de validar conflictos
+                profesor_id = None
+                try:
+                    val = profesores_asignaciones.get(clave)
+                    if val:
+                        profesor_id = int(val)
+                except Exception:
+                    profesor_id = None
+
+                # VALIDACIÓN DE CONFLICTOS DE HORARIOS SOLO PARA EL PROFESOR SELECCIONADO
+                if profesor_id:
+                    # ✅ CORREGIDO: Solo validar si este slot específico tiene profesor asignado
                     curso_id_excluir = curso_id if clave in asignaciones_existentes_dict else None
                     asignatura_id_excluir = asignatura_id if clave in asignaciones_existentes_dict else None
                     
-                    # Validar conflicto de horario
+                    # Obtener información del profesor para el mensaje
+                    profesor_obj = Usuario.query.get(profesor_id)
+                    profesor_nombre = f"Profesor ID {profesor_id}"
+                    if profesor_obj:
+                        profesor_nombre = f"{getattr(profesor_obj, 'nombre', '')} {getattr(profesor_obj, 'apellido', '')}".strip()
+                    
                     validacion = validar_conflicto_horario_profesor(
-                        profesor_id=profesor.id_usuario,
+                        profesor_id=profesor_id,
                         dia_semana=dia,
                         hora_inicio=hora_inicio,
                         hora_fin=hora_fin,
                         curso_id_excluir=curso_id_excluir,
-                        asignatura_id_excluir=asignatura_id_excluir
+                        asignatura_id_excluir=asignatura_id_excluir,
+                        dia_semana_excluir=dia,
+                        hora_inicio_excluir=hora_inicio
                     )
                     
                     if validacion['tiene_conflicto']:
-                        print(f"   CONFLICTO DETECTADO: {validacion['conflicto_info']}")
+                        print(f"   CONFLICTO DETECTADO para {profesor_nombre}: {validacion['conflicto_info']}")
+                        
+                        # Obtener profesores disponibles para la asignatura en ese bloque
+                        libres = []
+                        try:
+                            asignatura_obj = Asignatura.query.get(asignatura_id)
+                            if asignatura_obj and asignatura_obj.profesores:
+                                for prof in asignatura_obj.profesores:
+                                    # Saltar al mismo profesor
+                                    if prof.id_usuario == profesor_id:
+                                        continue
+                                    v = validar_conflicto_horario_profesor(
+                                        profesor_id=prof.id_usuario,
+                                        dia_semana=dia,
+                                        hora_inicio=hora_inicio,
+                                        hora_fin=hora_fin,
+                                        curso_id_excluir=curso_id,
+                                        asignatura_id_excluir=asignatura_id,
+                                        dia_semana_excluir=dia,
+                                        hora_inicio_excluir=hora_inicio
+                                    )
+                                    if not v['tiene_conflicto']:
+                                        nombre_prof = f"{getattr(prof, 'nombre', '')} {getattr(prof, 'apellido', '')}".strip()
+                                        if nombre_prof:
+                                            libres.append(nombre_prof)
+                        except Exception as e:
+                            print(f"Error obteniendo profesores libres: {str(e)}")
+
+                        mensaje_error = (
+                            f"Conflicto de horario detectado para el profesor seleccionado: {validacion['conflicto_info']}\n\n"
+                        )
+                        if libres:
+                            mensaje_error += "Profesores disponibles para esta asignatura:\n• " + "\n• ".join(libres)
+                        else:
+                            mensaje_error += "No hay otros profesores disponibles para esta asignatura en ese horario."
+
                         return jsonify({
-                            'success': False, 
-                            'error': f"Conflicto de horario detectado para el profesor {profesor.nombre} {profesor.apellido}: {validacion['conflicto_info']}"
+                            'success': False,
+                            'error': mensaje_error
                         }), 400
 
                 # Obtener salon
@@ -2166,12 +2490,15 @@ def api_guardar_horario_curso():
                     asignacion_existente.asignatura_id = asignatura_id
                     asignacion_existente.hora_fin = hora_fin
                     asignacion_existente.id_salon_fk = salon_id
+                    if profesor_id:
+                        asignacion_existente.profesor_id = profesor_id
                     asignaciones_actualizadas += 1
                     print(f"   ACTUALIZADA: {clave}")
                 else:
                     nueva_asignacion = HorarioCurso(
                         curso_id=curso_id,
                         asignatura_id=asignatura_id,
+                        profesor_id=profesor_id,
                         dia_semana=dia,
                         hora_inicio=hora_inicio,
                         hora_fin=hora_fin,
@@ -2195,6 +2522,32 @@ def api_guardar_horario_curso():
                 asignaciones_eliminadas += 1
                 print(f"   ELIMINADA: {clave}")
 
+        # Crear/asegurar relaciones en HorarioCompartido para profesores asignados
+        horario_general_id = data.get('horario_general_id')
+        try:
+            # Recorrer asignaciones actuales en BD para el curso
+            actuales = HorarioCurso.query.filter_by(curso_id=curso_id).all()
+            creados_hc = 0
+            for hc in actuales:
+                if hc.profesor_id and hc.asignatura_id:
+                    existe = HorarioCompartido.query.filter_by(
+                        profesor_id=hc.profesor_id,
+                        curso_id=hc.curso_id,
+                        asignatura_id=hc.asignatura_id
+                    ).first()
+                    if not existe:
+                        nuevo = HorarioCompartido(
+                            profesor_id=hc.profesor_id,
+                            curso_id=hc.curso_id,
+                            asignatura_id=hc.asignatura_id,
+                            horario_general_id=horario_general_id
+                        )
+                        db.session.add(nuevo)
+                        creados_hc += 1
+            print(f"   HorarioCompartido creados: {creados_hc}")
+        except Exception as e:
+            print(f"Advertencia creando HorarioCompartido: {str(e)}")
+
         # Hacer commit
         db.session.commit()
         
@@ -2211,8 +2564,8 @@ def api_guardar_horario_curso():
 
         return jsonify({
             'success': True,
-            'message': f'Horario guardado: {asignaciones_creadas} nuevas, {asignaciones_actualizadas} actualizadas, {asignaciones_eliminadas} eliminadas',
-            'stats': {
+            'message': 'Horario del curso guardado correctamente',
+            'resumen': {
                 'creadas': asignaciones_creadas,
                 'actualizadas': asignaciones_actualizadas,
                 'eliminadas': asignaciones_eliminadas,
@@ -2289,6 +2642,27 @@ def api_cargar_horario_curso(curso_id):
 
     except Exception as e:
         print(f"❌ Error cargando horario del curso: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/horarios/<int:horario_id>/cursos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_cursos_por_horario(horario_id):
+    """API para listar cursos asignados a un horario general específico"""
+    try:
+        cursos = db.session.query(Curso, Sede.nombre).join(Sede, Curso.sedeId == Sede.id_sede, isouter=True)\
+            .filter(Curso.horario_general_id == horario_id).all()
+
+        data = [{
+            'id_curso': c.id_curso,
+            'nombreCurso': c.nombreCurso,
+            'sede': sede_nombre,
+            'sedeId': c.sedeId,
+            'horario_general_id': c.horario_general_id
+        } for c, sede_nombre in cursos]
+
+        return jsonify({'data': data, 'count': len(data)})
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @admin_bp.route('/api/profesores/asignatura/<int:asignatura_id>')
@@ -2437,11 +2811,44 @@ def api_compartir_horario():
             })
             
         elif destinatario == 'estudiantes':
-            # Lógica para estudiantes (si es necesario)
-            return jsonify({
-                'success': True,
-                'message': 'Horario compartido con estudiantes correctamente'
-            })
+            # Compartir con todos los estudiantes matriculados en el curso
+            try:
+                # Obtener estudiantes activos del curso
+                rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+                estudiantes = db.session.query(Usuario).join(
+                    Matricula, Usuario.id_usuario == Matricula.estudianteId
+                ).filter(
+                    Usuario.id_rol_fk == rol_estudiante.id_rol if rol_estudiante else True,
+                    Matricula.cursoId == curso_id,
+                    Usuario.estado_cuenta == 'activa'
+                ).all()
+
+                # Crear notificación para cada estudiante
+                from services.notification_service import crear_notificacion
+
+                total_notificados = 0
+                for est in estudiantes:
+                    notif = crear_notificacion(
+                        usuario_id=est.id_usuario,
+                        titulo='📅 Nuevo horario disponible',
+                        mensaje=f'Se ha compartido el horario del curso {curso.nombreCurso}. Puedes consultarlo en Mi Horario.',
+                        tipo='horario',
+                        link='/estudiante/mi-horario',
+                        auto_commit=False
+                    )
+                    if notif is not None:
+                        total_notificados += 1
+
+                # Commit de notificaciones en lote
+                db.session.commit()
+
+                return jsonify({
+                    'success': True,
+                    'message': f'Horario compartido con estudiantes correctamente ({total_notificados} notificados)'
+                })
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'success': False, 'error': f'Error notificando estudiantes: {str(e)}'}), 500
         else:
             return jsonify({'success': False, 'error': 'Destinatario no válido'}), 400
 
