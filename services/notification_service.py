@@ -491,31 +491,29 @@ def notificar_nuevo_incidente(incidente):
     try:
         from controllers.models import Rol
         
-        print(f"🔔 Iniciando notificación de incidente ID: {incidente.id_incidente}")
+        print(f"Iniciando notificación de incidente ID: {incidente.id_incidente}")
         
-        # Obtener el equipo relacionado
         equipo = Equipo.query.get(incidente.equipo_id)
         if not equipo:
-            print(f"❌ Equipo {incidente.equipo_id} no encontrado")
+            print(f"Equipo {incidente.equipo_id} no encontrado")
             return 0
         
-        print(f"✅ Equipo encontrado: {equipo.nombre}")
+        print(f"Equipo encontrado: {equipo.nombre}")
         
-        # Obtener todos los superadmins (rol id=1)
         rol_superadmin = Rol.query.filter_by(id_rol=1).first()
         if not rol_superadmin:
-            print("❌ Rol superadmin no encontrado")
+            print("Rol superadmin no encontrado")
             return 0
         
         admins = Usuario.query.filter_by(id_rol_fk=rol_superadmin.id_rol).all()
-        print(f"✅ {len(admins)} administradores encontrados")
+        print(f"{len(admins)} administradores encontrados")
         
         if not admins:
-            print("⚠️ No hay administradores para notificar")
+            print("No hay administradores para notificar")
             return 0
         
         # Construir mensaje
-        titulo = "🔴 Nuevo Incidente TIC Reportado"
+        titulo = "Nuevo Incidente TIC Reportado"
         mensaje = f"Se ha reportado un incidente en el equipo '{equipo.nombre}'. " \
                   f"Prioridad: {incidente.prioridad.upper()}. " \
                   f"Descripción: {incidente.descripcion[:100]}{'...' if len(incidente.descripcion) > 100 else ''}"
@@ -527,27 +525,24 @@ def notificar_nuevo_incidente(incidente):
                     usuario_id=admin.id_usuario,
                     titulo=titulo,
                     mensaje=mensaje,
-                    tipo='incidente',  # ✅ CORREGIDO: 'incidente' en lugar de 'incicente'
-                    link='/admin/incidentes',  # ✅ URL simple sin url_for
+                    tipo='incidente',
+                    link='/admin/incidentes',
                     leida=False
-                    # creada_en se auto-genera si tienes default en el modelo
                 )
                 db.session.add(notif)
                 contador += 1
-                print(f"✅ Notificación creada para admin {admin.nombre_completo}")
+                print(f"Notificación creada para admin {admin.nombre_completo}")
             except Exception as e:
-                print(f"❌ Error creando notificación para admin {admin.id_usuario}: {str(e)}")
+                print(f"Error creando notificación para admin {admin.id_usuario}: {str(e)}")
                 continue
-        
-        # ⚠️ NO hacer commit aquí si se hace en la función que llama
-        # Solo flush para asegurar que se agregaron a la sesión
+
         db.session.flush()
         
-        print(f"✅ Total notificaciones creadas: {contador}")
+        print(f"Total notificaciones creadas: {contador}")
         return contador
         
     except Exception as e:
-        print(f"❌ Error general notificando nuevo incidente: {str(e)}")
+        print(f"Error general notificando nuevo incidente: {str(e)}")
         import traceback
         traceback.print_exc()
         return 0
@@ -892,5 +887,73 @@ def notificar_evento_eliminado(evento, admin_id=None):
         print(f"❌ Error notificando evento cancelado: {str(e)}")
         return 0
     
+# ============================================================================
+# NOTIFICACIONES PARA PROGRAMACIÓN DE MANTENIMIENTOS
+# ============================================================================
 
+def notificar_nuevo_mantenimiento(mantenimiento, admin_id=None):
+    """
+    Envía notificaciones cuando se programa un nuevo mantenimiento.
+    """
+    try:
+        from controllers.models import Rol, Usuario
+        
+        print(f"Iniciando notificaciones para mantenimiento ID: {mantenimiento.id_mantenimiento}")
+        print(f"Equipo: {mantenimiento.equipo.nombre if mantenimiento.equipo else 'N/A'}")
+        print(f"Sede: {mantenimiento.sede.nombre if mantenimiento.sede else 'N/A'}")
+        
+        contador = 0
+        
+        titulo = f"Nuevo Mantenimiento Programado: {mantenimiento.tipo.capitalize()}"
+        mensaje = f"Se ha programado un {mantenimiento.tipo} para el equipo '{mantenimiento.equipo.nombre if mantenimiento.equipo else 'N/A'}' "
+        mensaje += f"en la sede {mantenimiento.sede.nombre if mantenimiento.sede else 'N/A'}.\n\n"
+        mensaje += f"Fecha: {mantenimiento.fecha_programada.strftime('%d/%m/%Y')}\n"
+        mensaje += f"Técnico: {mantenimiento.tecnico or 'No asignado'}\n"
+        if mantenimiento.descripcion:
+            mensaje += f"Descripción: {mantenimiento.descripcion}"
+        
+        link = "/admin/mantenimiento"
 
+        if admin_id:
+            mensaje_admin = f"Mantenimiento '{mantenimiento.tipo}' programado exitosamente para el equipo '{mantenimiento.equipo.nombre if mantenimiento.equipo else 'N/A'}'."
+            notif_admin = crear_notificacion(
+                usuario_id=admin_id,
+                titulo="Mantenimiento Programado Exitosamente",
+                mensaje=mensaje_admin,
+                tipo='admin',
+                link=link,
+                auto_commit=False
+            )
+            if notif_admin:
+                contador += 1
+                print(f"Notificación de confirmación creada para admin ID: {admin_id}")
+        
+        rol_superadmin = Rol.query.filter_by(id_rol=1).first()
+        if rol_superadmin:
+            admins = Usuario.query.filter_by(id_rol_fk=rol_superadmin.id_rol).all()
+            print(f"Encontrados {len(admins)} administradores para notificar")
+            
+            for admin in admins:
+                if admin_id and admin.id_usuario == admin_id:
+                    continue
+                    
+                notif = crear_notificacion(
+                    usuario_id=admin.id_usuario,
+                    titulo=titulo,
+                    mensaje=mensaje,
+                    tipo='mantenimiento',
+                    link=link,
+                    auto_commit=False
+                )
+                if notif:
+                    contador += 1
+                    print(f"Notificación creada para admin: {admin.nombre_completo} (ID: {admin.id_usuario})")
+
+        print(f"Total notificaciones de mantenimiento creadas: {contador}")
+        return contador
+        
+    except Exception as e:
+        print(f"Error notificando nuevo mantenimiento: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return 0

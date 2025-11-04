@@ -4,258 +4,244 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asignar Equipos - Profesor</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --accent1: #F95738;
-            --accent2: #EE964B;
-            --accent3: #F4D35E;
-            --accent4: #0D3B66;
+            --primary: #0D3B66;
+            --secondary: #EE964B;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #F95738;
             --light: #FAF0CA;
+            --dark: #1a1a1a;
+            --gray: #6c757d;
+            --border-radius: 14px;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+            --shadow-md: 0 6px 20px rgba(0,0,0,0.12);
+            --transition: all 0.25s ease;
+        }
+
+        * {
+            transition: var(--transition);
         }
 
         body {
-            background: linear-gradient(135deg, var(--light) 0%, #F8F9FA 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
             min-height: 100vh;
+            padding-bottom: 3rem;
+            color: #2d3748;
         }
 
         .custom-header {
-            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            background: linear-gradient(135deg, var(--primary), #1e5a8a);
             color: white;
-            padding: 18px 25px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            padding: 1.25rem 1.5rem;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            margin-bottom: 1.75rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .custom-header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .custom-header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
         }
 
         .card {
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-radius: var(--border-radius);
             border: none;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            background: white;
         }
 
         .card:hover {
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
 
         .card-header {
-            background: linear-gradient(135deg, var(--accent4), #1a5080);
+            background: linear-gradient(135deg, var(--primary), #1e5a8a);
             color: white;
-            border-radius: 15px 15px 0 0 !important;
-            padding: 15px 20px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            padding: 0.9rem 1.3rem;
+            border: none;
         }
 
         .curso-card {
             cursor: pointer;
-            transition: all 0.3s;
-            border-left: 4px solid var(--accent2);
+            border-left: 5px solid var(--secondary);
+            background: #fff;
+            margin-bottom: 0.75rem;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            transition: var(--transition);
         }
 
         .curso-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            background: linear-gradient(to right, rgba(238, 150, 75, 0.05), transparent);
+            border-left-color: var(--danger);
+            transform: translateX(3px);
         }
 
         .curso-card.selected {
-            border-left-color: var(--accent1);
-            background: linear-gradient(to right, rgba(249, 87, 56, 0.1), transparent);
-        }
-
-        .estudiante-card {
-            border-left: 4px solid var(--accent3);
-            transition: all 0.3s;
-        }
-
-        .estudiante-card:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(to right, rgba(249, 87, 56, 0.12), rgba(249, 87, 56, 0.03));
+            border-left-color: var(--danger);
+            box-shadow: 0 3px 12px rgba(249, 87, 56, 0.2);
         }
 
         .equipo-tag {
-            background: linear-gradient(135deg, var(--accent2), #d68437);
+            background: linear-gradient(135deg, var(--secondary), #d68437);
             color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            display: inline-block;
-            margin: 3px;
-            position: relative;
+            padding: 6px 12px;
+            border-radius: 25px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 3px 2px;
+            box-shadow: 0 2px 6px rgba(238, 150, 75, 0.3);
         }
 
         .btn-devolver {
-            font-size: 0.75rem;
-            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.3);
             border: none;
-            background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 0.75rem;
             color: white;
-            cursor: pointer;
-            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            margin-left: 4px;
         }
 
         .btn-devolver:hover {
-            background: rgba(255, 255, 255, 0.4);
-            transform: scale(1.1);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent4), #1a5080);
-            border: none;
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #28a745, #218838);
-            border: none;
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, var(--accent1), #e04020);
-            border: none;
-        }
-
-        .badge {
-            padding: 8px 14px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            border-radius: 8px;
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, var(--accent4), #1a5080);
-            color: white;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        .empty-state i {
-            font-size: 60px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .stats-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s;
-        }
-
-        .stats-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .stats-card i {
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-
-        .stats-card .number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent4);
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(1.15);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
         .equipo-disponible {
             cursor: pointer;
-            transition: all 0.3s;
             border: 2px solid transparent;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            background: #fafafa;
+            transition: var(--transition);
+            position: relative;
         }
 
         .equipo-disponible:hover {
-            border-color: var(--accent2);
-            background: rgba(238, 150, 75, 0.05);
-            transform: translateX(5px);
+            border-color: var(--secondary);
+            background: rgba(238, 150, 75, 0.08);
+            transform: translateX(6px);
+            box-shadow: 0 4px 12px rgba(238, 150, 75, 0.15);
         }
 
         .equipo-disponible.selected {
-            border-color: var(--accent1);
-            background: rgba(249, 87, 56, 0.1);
-            box-shadow: 0 3px 10px rgba(249, 87, 56, 0.2);
+            border-color: var(--danger);
+            background: rgba(249, 87, 56, 0.12);
+            box-shadow: 0 4px 16px rgba(249, 87, 56, 0.25);
         }
 
-        .alert-danger {
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
-            border-radius: 10px;
+        .equipo-disponible .fa-check-circle {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 1.3rem;
+            color: var(--success);
+            opacity: 0;
+            transition: var(--transition);
         }
 
-        .alert-info {
-            background-color: #d1ecf1;
-            border-color: #bee5eb;
-            color: #0c5460;
-            border-radius: 10px;
+        .equipo-disponible.selected .fa-check-circle {
+            opacity: 1;
         }
 
-        .alert-warning {
-            background-color: #fff3cd;
-            border-color: #ffc107;
-            color: #856404;
-            border-radius: 10px;
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--gray);
         }
 
-        .form-control, .form-select {
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-            transition: all 0.3s;
+        .empty-state i {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.4;
         }
 
-        .form-control:focus, .form-select:focus {
-            border-color: var(--accent2);
-            box-shadow: 0 0 0 0.2rem rgba(238, 150, 75, 0.25);
-        }
-
-        #selector-sala {
+        .stats-card {
             background: white;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            height: 100%;
         }
 
-        .table-responsive {
+        .stats-card i {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .stats-card .number {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -1px;
+        }
+
+        .stats-card small {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .pagination .page-link {
             border-radius: 8px;
-            overflow: hidden;
+            margin: 0 3px;
+            font-weight: 600;
+            color: var(--primary);
+            border: 1px solid #dee2e6;
         }
 
-        .table {
-            margin-bottom: 0;
-        }
-
-        .table thead th {
-            background: linear-gradient(135deg, var(--accent4), #1a5080);
+        .pagination .page-item.active .page-link {
+            background: var(--primary);
+            border-color: var(--primary);
             color: white;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary), #1e5a8a);
+            color: white;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+
+        .modal-content {
+            border-radius: var(--border-radius);
             border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
-        .spinner-border-sm {
-            width: 1rem;
-            height: 1rem;
-        }
-
-        /* Animaciones */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-
-        /* Scrollbar personalizado */
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -266,674 +252,576 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: var(--accent2);
+            background: var(--secondary);
             border-radius: 10px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent1);
+            background: var(--danger);
+        }
+
+        @media (max-width: 768px) {
+            .custom-header h1 {
+                font-size: 1.2rem;
+            }
+            .stats-card .number {
+                font-size: 1.8rem;
+            }
+            .row > div {
+                margin-bottom: 1rem;
+            }
+            .btn-sm {
+                width: 100%;
+            }
+            .equipo-disponible .row > div {
+                margin-bottom: 0.5rem;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.4s ease-out;
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
+{% extends "profesores/base.html" %}
+{% block title %}Asignar Equipos{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4">
+
     <!-- Header -->
-    <header class="custom-header container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <a href="javascript:history.back()" class="btn btn-outline-light me-3">
-                    <i class="fa-solid fa-arrow-left"></i>
+    <header class="custom-header mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+                <a href="javascript:history.back()" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left"></i>
                 </a>
-                <i class="fa-solid fa-laptop-code me-3" style="font-size: 28px;"></i>
-                <h1 class="mb-0">Asignación de Equipos</h1>
+                <div>
+                    <i class="fas fa-laptop-code fa-xl"></i>
+                    <h1 class="d-inline-block ms-2">Asignación de Equipos</h1>
+                </div>
             </div>
             <div class="text-end">
-                <small class="d-block">Profesor</small>
-                <strong id="profesor-nombre">{{ current_user.nombre_completo }}</strong>
+                <small class="d-block opacity-75">Profesor</small>
+                <strong class="fs-5">{{ current_user.nombre_completo }}</strong>
             </div>
         </div>
     </header>
 
-    <div class="container-fluid px-4">
-        <!-- Alerta de errores -->
-        <div id="alert-container"></div>
+    <!-- Alerta Global -->
+    <div id="alert-container" class="mb-4"></div>
 
-        <!-- Estadísticas -->
-        <div class="row mb-4 fade-in">
-            <div class="col-md-4">
-                <div class="stats-card">
-                    <i class="fa-solid fa-chalkboard-user text-primary"></i>
-                    <div class="number" id="total-cursos">0</div>
-                    <small class="text-muted">Mis Cursos</small>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stats-card">
-                    <i class="fa-solid fa-user-graduate text-success"></i>
-                    <div class="number" id="total-estudiantes">0</div>
-                    <small class="text-muted">Estudiantes</small>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stats-card">
-                    <i class="fa-solid fa-desktop text-warning"></i>
-                    <div class="number" id="total-asignaciones">0</div>
-                    <small class="text-muted">Equipos Asignados</small>
-                </div>
+    <!-- Estadísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4">
+            <div class="stats-card fade-in-up">
+                <i class="fas fa-chalkboard-teacher text-primary"></i>
+                <div class="number" id="total-cursos">0</div>
+                <small>Cursos</small>
             </div>
         </div>
-
-        <div class="row">
-            <!-- Panel Izquierdo: Cursos y Selector de Sala -->
-            <div class="col-md-4">
-                <div class="card fade-in">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fa-solid fa-chalkboard-user me-2"></i>
-                            Seleccionar Curso
-                        </h5>
-                    </div>
-                    <div class="card-body p-2" id="cursos-container">
-                        <div class="empty-state">
-                            <i class="fa-solid fa-spinner fa-spin"></i>
-                            <p>Cargando cursos...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Selector de Sala -->
-                <div id="selector-sala" class="mt-3 fade-in" style="display:none;">
-                    <label class="form-label">
-                        <i class="fa-solid fa-door-open me-2"></i>
-                        <strong>Filtrar por Sala:</strong>
-                    </label>
-                    <select id="filtro-sala-curso" class="form-select">
-                        <option value="">Todas las salas</option>
-                    </select>
-                    <small class="text-muted mt-2 d-block">
-                        <i class="fa-solid fa-info-circle me-1"></i>
-                        Filtra estudiantes por equipos en una sala específica
-                    </small>
-                </div>
+        <div class="col-6 col-md-4">
+            <div class="stats-card fade-in-up" style="animation-delay: 0.1s;">
+                <i class="fas fa-user-graduate text-success"></i>
+                <div class="number" id="total-estudiantes">0</div>
+                <small>Estudiantes</small>
             </div>
-
-            <!-- Panel Derecho: Estudiantes -->
-            <div class="col-md-8">
-                <div class="card fade-in">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fa-solid fa-users me-2"></i>
-                            Estudiantes
-                        </h5>
-                        <button class="btn btn-light btn-sm" id="btn-ver-disponibles">
-                            <i class="fa-solid fa-laptop me-1"></i>
-                            Ver Equipos Disponibles
-                        </button>
-                    </div>
-                    <div class="card-body" id="estudiantes-container">
-                        <div class="empty-state">
-                            <i class="fa-solid fa-hand-pointer"></i>
-                            <p>Selecciona un curso para ver sus estudiantes</p>
-                        </div>
-                    </div>
-                </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stats-card fade-in-up" style="animation-delay: 0.2s;">
+                <i class="fas fa-desktop text-warning"></i>
+                <div class="number" id="total-asignaciones">0</div>
+                <small>Asignados</small>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Asignar Equipo -->
-    <div class="modal fade" id="modalAsignarEquipo" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fa-solid fa-laptop-code me-2"></i>
-                        Asignar Equipo
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fa-solid fa-info-circle me-2"></i>
-                        <strong>Estudiante seleccionado:</strong> <span id="estudiante-seleccionado-nombre">-</span>
-                    </div>
-
-                    <div class="alert alert-warning">
-                        <i class="fa-solid fa-exclamation-triangle me-2"></i>
-                        <strong>Importante:</strong> El estudiante solo puede tener <strong>UN equipo por sala</strong>.
-                    </div>
-
-                    <!-- Filtros -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fa-solid fa-door-open me-1"></i>
-                                Filtrar por Salón
-                            </label>
-                            <select class="form-select" id="filtro-salon">
-                                <option value="">Todos los salones</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">
-                                <i class="fa-solid fa-search me-1"></i>
-                                Buscar Equipo
-                            </label>
-                            <input type="text" class="form-control" id="buscar-equipo" placeholder="Nombre o ID...">
-                        </div>
-                    </div>
-
-                    <!-- Lista de Equipos -->
-                    <div id="equipos-disponibles-container" style="max-height: 400px; overflow-y: auto;">
-                        <div class="text-center py-4">
-                            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-                            <p class="mt-2">Cargando equipos disponibles...</p>
-                        </div>
-                    </div>
-
-                    <!-- Observaciones -->
-                    <div class="mt-3">
-                        <label class="form-label">
-                            <i class="fa-solid fa-comment me-1"></i>
-                            Observaciones (opcional)
-                        </label>
-                        <textarea class="form-control" id="observaciones-asignacion" rows="2" placeholder="Notas sobre esta asignación..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fa-solid fa-times me-1"></i>
-                        Cancelar
-                    </button>
-                    <button type="button" class="btn btn-success" id="btn-confirmar-asignacion" disabled>
-                        <i class="fa-solid fa-check me-1"></i>
-                        Asignar Equipo
+    <div class="row g-4">
+        <!-- Panel Cursos -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-chalkboard-user me-2"></i>Seleccionar Curso</span>
+                    <button class="btn btn-sm btn-light d-lg-none" data-bs-toggle="collapse" data-bs-target="#cursos-collapse">
+                        <i class="fas fa-chevron-down"></i>
                     </button>
                 </div>
+                <div class="collapse show" id="cursos-collapse">
+                    <div class="card-body p-3">
+                        <div id="cursos-list" style="max-height: 65vh; overflow-y: auto;">
+                            <div class="text-center py-5">
+                                <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                                <p class="mt-3 text-muted">Cargando cursos...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted" id="cursos-info">0 cursos</small>
+                            <nav>
+                                <ul class="pagination pagination-sm mb-0" id="cursos-pagination"></ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Modal: Equipos Disponibles -->
-    <div class="modal fade" id="modalEquiposDisponibles" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="fa-solid fa-desktop me-2"></i>
-                        Equipos Disponibles
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <!-- Panel Estudiantes -->
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span><i class="fas fa-users me-2"></i>Estudiantes del Curso</span>
+                    <button class="btn btn-outline-primary btn-sm" id="btn-ver-disponibles">
+                        <i class="fas fa-laptop me-1"></i>
+                        <span class="d-none d-sm-inline">Ver Disponibles</span>
+                    </button>
                 </div>
-                <div class="modal-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>ID/Ref</th>
-                                    <th>Nombre</th>
-                                    <th>Tipo</th>
-                                    <th>Salón</th>
-                                    <th>Sede</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-equipos-disponibles">
-                                <tr>
-                                    <td colspan="5" class="text-center py-4">
-                                        <i class="fa-solid fa-spinner fa-spin"></i>
-                                        Cargando...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div class="card-body p-3" id="estudiantes-container">
+                    <div class="empty-state">
+                        <i class="fas fa-hand-pointer fa-3x"></i>
+                        <p class="mt-3">Selecciona un curso para ver estudiantes</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-let cursos = [];
-let cursoSeleccionado = null;
-let estudianteSeleccionado = null;
-let equipoSeleccionado = null;
-let todosLosEquipos = [];
-let equiposDisponibles = [];
+<!-- Modal Asignar Equipo -->
+<div class="modal fade" id="modalAsignarEquipo" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-laptop-code me-2"></i>Asignar Equipo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3 p-3 rounded">
+                    <strong>Estudiante:</strong> <span id="estudiante-seleccionado-nombre" class="fw-bold">-</span>
+                </div>
+                <div class="alert alert-warning mb-4 p-3 rounded">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Importante:</strong> Solo <strong>1 equipo por salón</strong> por estudiante.
+                </div>
 
-// Inicializar al cargar la página
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fas fa-door-open me-1"></i>Filtrar por Salón</label>
+                        <select class="form-select" id="filtro-salon">
+                            <option value="">Todos los salones</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold"><i class="fas fa-search me-1"></i>Buscar Equipo</label>
+                        <input type="text" class="form-control" id="buscar-equipo" placeholder="Nombre, ID o tipo...">
+                    </div>
+                </div>
+
+                <div id="equipos-disponibles-container" style="max-height: 45vh; overflow-y: auto; padding-right: 0.5rem;">
+                    <div class="text-center py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                        <p class="mt-3 text-muted">Cargando equipos disponibles...</p>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="form-label fw-semibold"><i class="fas fa-comment-dots me-1"></i>Observaciones (opcional)</label>
+                    <textarea class="form-control" id="observaciones-asignacion" rows="2" placeholder="Notas sobre esta asignación..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-asignacion" disabled>
+                    <i class="fas fa-check me-1"></i>Asignar Equipo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Equipos Disponibles -->
+<div class="modal fade" id="modalEquiposDisponibles" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-desktop me-2"></i>Equipos Disponibles</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID/Ref</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Salón</th>
+                                <th>Sede</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-equipos-disponibles">
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                                    <p class="mt-3 text-muted">Cargando equipos...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let cursos = [], cursoSeleccionado = null, estudianteSeleccionado = null, equipoSeleccionado = null;
+let todosLosEquipos = [], paginaCursos = 1, paginaEstudiantes = 1;
+let estudiantes = [];
+const porPagina = 4;
+
+// Inicialización
 document.addEventListener('DOMContentLoaded', () => {
     cargarCursos();
-    
-    // Eventos
     document.getElementById('filtro-salon').addEventListener('change', filtrarEquipos);
     document.getElementById('buscar-equipo').addEventListener('input', filtrarEquipos);
     document.getElementById('btn-confirmar-asignacion').addEventListener('click', confirmarAsignacion);
     document.getElementById('btn-ver-disponibles').addEventListener('click', abrirModalEquiposDisponibles);
-    document.getElementById('filtro-sala-curso').addEventListener('change', filtrarEstudiantesPorSala);
 });
 
-// Cargar cursos del profesor
+// --- Cursos ---
 async function cargarCursos() {
     try {
-        const response = await fetch('/profesor/api/todos-los-cursos');
-        const data = await response.json();
-
+        const res = await fetch('/profesor/api/todos-los-cursos');
+        const data = await res.json();
         if (data.success) {
             cursos = data.cursos;
-            mostrarCursos(data.cursos);
+            mostrarCursos();
             actualizarEstadisticas();
-        } else {
-            mostrarError('Error cargando cursos');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarError('Error de conexión');
-    }
+        } else mostrarError(data.error || 'Error al cargar cursos');
+    } catch (e) { mostrarError('Error de conexión'); }
 }
 
-// Mostrar cursos
-function mostrarCursos(cursosLista) {
-    const container = document.getElementById('cursos-container');
-    
-    if (cursosLista.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fa-solid fa-exclamation-triangle"></i>
-                <p>No tienes cursos asignados</p>
-            </div>
-        `;
+function mostrarCursos() {
+    const container = document.getElementById('cursos-list');
+    if (cursos.length === 0) {
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-ban"></i><p>No tienes cursos asignados</p></div>`;
+        document.getElementById('cursos-info').textContent = '0 cursos';
+        document.getElementById('cursos-pagination').innerHTML = '';
         return;
     }
 
-    container.innerHTML = cursosLista.map(curso => `
-        <div class="card curso-card mb-2" onclick="seleccionarCurso(${curso.id_curso})" data-curso-id="${curso.id_curso}">
-            <div class="card-body py-3">
+    const inicio = (paginaCursos - 1) * porPagina;
+    const fin = inicio + porPagina;
+    const pagina = cursos.slice(inicio, fin);
+
+    container.innerHTML = pagina.map(c => `
+        <div class="card curso-card fade-in-up" onclick="seleccionarCurso(${c.id_curso})" data-curso-id="${c.id_curso}" style="animation-delay: ${0.05 * (inicio % porPagina)}s;">
+            <div class="card-body py-3 px-4">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <strong>${curso.nombreCurso}</strong>
-                        <br>
-                        <small class="text-muted">
-                            <i class="fa-solid fa-map-marker-alt me-1"></i>${curso.sede}
-                        </small>
+                        <strong class="d-block fs-6">${c.nombreCurso}</strong>
+                        <small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>${c.sede}</small>
                     </div>
-                    <span class="badge bg-primary">${curso.total_estudiantes || 0} estudiantes</span>
+                    <span class="badge bg-primary fs-6">${c.total_estudiantes || 0}</span>
                 </div>
             </div>
         </div>
     `).join('');
+
+    document.getElementById('cursos-info').textContent = `Mostrando ${inicio + 1}-${Math.min(fin, cursos.length)} de ${cursos.length}`;
+    generarPaginacion('cursos', paginaCursos, Math.ceil(cursos.length / porPagina));
 }
 
-// Seleccionar curso
-async function seleccionarCurso(cursoId) {
-    cursoSeleccionado = cursoId;
+async function seleccionarCurso(id) {
+    cursoSeleccionado = id;
     document.querySelectorAll('.curso-card').forEach(c => c.classList.remove('selected'));
-    document.querySelector(`[data-curso-id="${cursoId}"]`).classList.add('selected');
-
-    // Mostrar selector de sala
-    document.getElementById('selector-sala').style.display = 'block';
-    await cargarSalas(cursoId);
-    await cargarEstudiantes(cursoId);
+    document.querySelector(`[data-curso-id="${id}"]`).classList.add('selected');
+    paginaEstudiantes = 1;
+    await cargarEstudiantes(id);
 }
 
-async function cargarSalas(cursoId) {
-    try {
-        const res = await fetch(`/profesor/api/salas-por-curso/${cursoId}`);
-        const data = await res.json();
-        const select = document.getElementById('filtro-sala-curso');
-        select.innerHTML = '<option value="">Todas las salas</option>';
-        if (data.success) {
-            data.salas.forEach(s => {
-                select.innerHTML += `<option value="${s.id_salon}">${s.nombre} - ${s.sede}</option>`;
-            });
-        }
-    } catch (e) { 
-        console.error(e); 
-    }
-}
-
-// Filtrar estudiantes por sala
-function filtrarEstudiantesPorSala() {
-    const salaId = document.getElementById('filtro-sala-curso').value;
-    const estudiantesCards = document.querySelectorAll('.estudiante-card');
-    
-    estudiantesCards.forEach(card => {
-        if (!salaId) {
-            card.style.display = '';
-        } else {
-            const equiposAsignados = card.querySelectorAll('.equipo-tag');
-            let tieneSala = false;
-            
-            equiposAsignados.forEach(tag => {
-                const salaEquipo = tag.getAttribute('data-sala-id');
-                if (salaEquipo === salaId) {
-                    tieneSala = true;
-                }
-            });
-            
-            card.style.display = tieneSala ? '' : 'none';
-        }
-    });
-}
-
-// Cargar estudiantes de un curso
+// --- Estudiantes ---
 async function cargarEstudiantes(cursoId) {
     try {
-        const response = await fetch(`/profesor/api/estudiantes-curso/${cursoId}`);
-        const data = await response.json();
-
+        const res = await fetch(`/profesor/api/estudiantes-curso/${cursoId}`);
+        const data = await res.json();
         if (data.success) {
-            mostrarEstudiantes(data.estudiantes);
+            estudiantes = data.estudiantes;  // <-- GUARDAMOS LA LISTA COMPLETA
+            mostrarEstudiantes();  // <-- Mostramos con paginación
             actualizarEstadisticas();
-        } else {
-            mostrarError(data.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarError('Error cargando estudiantes');
-    }
+        } else mostrarError(data.error);
+    } catch (e) { mostrarError('Error al cargar estudiantes'); }
 }
 
-// Mostrar estudiantes
-function mostrarEstudiantes(estudiantes) {
+function mostrarEstudiantes() {
     const container = document.getElementById('estudiantes-container');
-    
-    if (estudiantes.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fa-solid fa-users-slash"></i>
-                <p>No hay estudiantes en este curso</p>
-            </div>
-        `;
+    if (!estudiantes || estudiantes.length === 0) {
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-users-slash"></i><p>No hay estudiantes</p></div>`;
+        document.getElementById('total-estudiantes').textContent = '0';
+        document.getElementById('total-asignaciones').textContent = '0';
         return;
     }
 
-    // Actualizar total de estudiantes
+    const inicio = (paginaEstudiantes - 1) * porPagina;
+    const fin = inicio + porPagina;
+    const pagina = estudiantes.slice(inicio, fin);
+
+    const totalAsignaciones = estudiantes.reduce((a, e) => a + e.equipos_asignados.length, 0);
     document.getElementById('total-estudiantes').textContent = estudiantes.length;
-    
-    // Calcular total de asignaciones
-    let totalAsignaciones = 0;
-    estudiantes.forEach(est => {
-        totalAsignaciones += est.equipos_asignados.length;
-    });
     document.getElementById('total-asignaciones').textContent = totalAsignaciones;
 
-    container.innerHTML = estudiantes.map(est => `
-        <div class="card estudiante-card mb-3">
+    container.innerHTML = pagina.map((est, i) => `
+        <div class="card mb-3 fade-in-up" style="animation-delay: ${0.05 * i}s;">
             <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-3">
-                        <strong>${est.nombre_completo}</strong><br>
+                <div class="row align-items-center g-3">
+                    <div class="col-12 col-md-3">
+                        <strong class="d-block">${est.nombre_completo}</strong>
                         <small class="text-muted">ID: ${est.no_identidad}</small>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6">
                         ${est.equipos_asignados.length > 0 ? est.equipos_asignados.map(eq => `
-                            <span class="equipo-tag" data-sala-id="${eq.id_salon || ''}">
-                                <i class="fa-solid fa-laptop me-1"></i>
+                            <span class="equipo-tag">
                                 ${eq.nombre}
-                                <small class="d-block" style="font-size: 0.7rem;">
-                                    <i class="fa-solid fa-door-open me-1"></i>${eq.salon || 'Sin sala'}
-                                </small>
-                                <button class="btn-devolver ms-1" onclick="devolverEquipo(${est.id_usuario}, ${eq.id_equipo})" title="Devolver equipo">
-                                    <i class="fa-solid fa-undo"></i>
+                                <small class="d-block opacity-75"><i class="fas fa-door-open me-1"></i>${eq.salon}</small>
+                                <button class="btn-devolver" onclick="devolverEquipo(${est.id_usuario}, ${eq.id_equipo})" title="Devolver">
+                                    <i class="fas fa-undo"></i>
                                 </button>
                             </span>
-                        `).join('') : '<small class="text-muted"><i class="fa-solid fa-inbox me-1"></i>Sin equipos asignados</small>'}
+                        `).join('') : '<small class="text-muted"><i class="fas fa-inbox me-1"></i>Sin equipos</small>'}
                     </div>
-                    <div class="col-md-3 text-end">
-                        <button class="btn btn-success btn-sm" 
-                                onclick="abrirModalAsignacion(${est.id_usuario}, '${est.nombre_completo}')">
-                            <i class="fa-solid fa-plus me-1"></i>
-                            Asignar Equipo
+                    <div class="col-12 col-md-3 text-md-end">
+                        <button class="btn btn-success btn-sm w-100 w-md-auto" onclick="abrirModalAsignacion(${est.id_usuario}, '${est.nombre_completo}')">
+                            <i class="fas fa-plus me-1"></i>Asignar
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    `).join('');
+    `).join('') + (estudiantes.length > porPagina ? `
+        <nav class="mt-4">
+            <ul class="pagination pagination-sm justify-content-center" id="estudiantes-pagination"></ul>
+        </nav>
+    ` : '');
+
+    if (estudiantes.length > porPagina) {
+        generarPaginacion('estudiantes', paginaEstudiantes, Math.ceil(estudiantes.length / porPagina));
+    }
 }
 
-// Abrir modal de asignación
-async function abrirModalAsignacion(estudianteId, nombreEstudiante) {
-    estudianteSeleccionado = estudianteId;
-    equipoSeleccionado = null;
-    
-    document.getElementById('estudiante-seleccionado-nombre').textContent = nombreEstudiante;
+// --- Paginación Genérica ---
+function generarPaginacion(tipo, pagina, total) {
+    const ul = document.getElementById(`${tipo}-pagination`);
+    if (total <= 1) { ul.innerHTML = ''; return; }
+
+    let html = `<li class="page-item ${pagina === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="cambiarPagina('${tipo}', ${pagina - 1}); return false;">Previous</a>
+    </li>`;
+
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || Math.abs(i - pagina) <= 1) {
+            html += `<li class="page-item ${i === pagina ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina('${tipo}', ${i}); return false;">${i}</a>
+            </li>`;
+        } else if (i === pagina - 2 || i === pagina + 2) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+
+    html += `<li class="page-item ${pagina === total ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="cambiarPagina('${tipo}', ${pagina + 1}); return false;">Next</a>
+    </li>`;
+    ul.innerHTML = html;
+}
+
+function cambiarPagina(tipo, pagina) {
+    let total = 0;
+    if (tipo === 'cursos') {
+        total = Math.ceil(cursos.length / porPagina);
+        if (pagina < 1 || pagina > total) return;
+        paginaCursos = pagina;
+        mostrarCursos();
+    } else if (tipo === 'estudiantes') {
+        if (!estudiantes || estudiantes.length === 0) return;
+        total = Math.ceil(estudiantes.length / porPagina);
+        if (pagina < 1 || pagina > total) return;
+        paginaEstudiantes = pagina;
+        mostrarEstudiantes();  // <-- Ahora usa la variable global
+    }
+}
+
+// --- Resto de funciones (sin cambios) ---
+async function abrirModalAsignacion(id, nombre) {
+    estudianteSeleccionado = id;
+    document.getElementById('estudiante-seleccionado-nombre').textContent = nombre;
     document.getElementById('observaciones-asignacion').value = '';
     document.getElementById('btn-confirmar-asignacion').disabled = true;
-    
-    // Cargar equipos disponibles
     await cargarEquiposDisponibles();
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalAsignarEquipo'));
-    modal.show();
+    new bootstrap.Modal(document.getElementById('modalAsignarEquipo')).show();
 }
 
-// Cargar equipos disponibles
 async function cargarEquiposDisponibles() {
     try {
-        const response = await fetch('/profesor/api/equipos-disponibles');
-        const data = await response.json();
-
+        const res = await fetch(`/profesor/api/equipos-disponibles?curso_id=${cursoSeleccionado}`);
+        if (!res.ok) throw new Error('HTTP error');
+        const data = await res.json();
         if (data.success) {
             todosLosEquipos = data.equipos;
-            equiposDisponibles = data.equipos;
-            
-            // Llenar filtro de salones
-            const salones = [...new Set(data.equipos.map(eq => eq.salon))].sort();
-            const filtroSalon = document.getElementById('filtro-salon');
-            filtroSalon.innerHTML = '<option value="">Todos los salones</option>' + 
-                salones.map(salon => `<option value="${salon}">${salon}</option>`).join('');
-            
+            const salones = [...new Set(data.equipos.map(e => e.salon))].sort();
+            const select = document.getElementById('filtro-salon');
+            select.innerHTML = '<option value="">Todos</option>' + salones.map(s => `<option>${s}</option>`).join('');
             mostrarEquiposDisponibles(data.equipos);
-        } else {
-            mostrarError('Error cargando equipos');
         }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarError('Error de conexión al cargar equipos');
-    }
+    } catch (e) { mostrarError('Error al cargar equipos'); }
 }
 
-// Mostrar equipos disponibles en el modal
 function mostrarEquiposDisponibles(equipos) {
     const container = document.getElementById('equipos-disponibles-container');
-
-    if (equipos.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fa-solid fa-inbox"></i>
-                <p>No hay equipos disponibles</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = equipos.map(eq => `
-        <div class="equipo-disponible" onclick="seleccionarEquipo(${eq.id_equipo}, ${eq.salon_id || 'null'})" data-equipo-id="${eq.id_equipo}" data-salon-id="${eq.salon_id || ''}">
-            <div class="row align-items-center">
-                <div class="col-md-3">
-                    <strong><i class="fa-solid fa-desktop me-2"></i>${eq.nombre}</strong><br>
+    container.innerHTML = equipos.length === 0 ? `
+        <div class="empty-state"><i class="fas fa-inbox"></i><p>No hay equipos disponibles</p></div>
+    ` : equipos.map(eq => `
+        <div class="equipo-disponible" onclick="seleccionarEquipo(${eq.id_equipo})" data-equipo-id="${eq.id_equipo}">
+            <div class="row align-items-center g-2">
+                <div class="col-12 col-md-4">
+                    <strong class="d-block">${eq.nombre}</strong>
                     <small class="text-muted">ID: ${eq.id_referencia || 'N/A'}</small>
                 </div>
-                <div class="col-md-2">
-                    <span class="badge bg-info">${eq.tipo}</span>
+                <div class="col-6 col-md-2">
+                    <span class="badge bg-info text-dark">${eq.tipo}</span>
                 </div>
-                <div class="col-md-3">
-                    <small class="text-muted">
-                        <i class="fa-solid fa-door-open me-1"></i>${eq.salon}
-                    </small>
+                <div class="col-6 col-md-3">
+                    <small><i class="fas fa-door-open me-1"></i>${eq.salon}</small>
                 </div>
-                <div class="col-md-3">
-                    <small class="text-muted">
-                        <i class="fa-solid fa-building me-1"></i>${eq.sede}
-                    </small>
+                <div class="col-6 col-md-2">
+                    <small><i class="fas fa-building me-1"></i>${eq.sede}</small>
                 </div>
-                <div class="col-md-1 text-end">
-                    <i class="fa-solid fa-check-circle text-success" style="display: none;"></i>
+                <div class="col-6 col-md-1 text-end">
+                    <i class="fas fa-check-circle"></i>
                 </div>
             </div>
         </div>
     `).join('');
 }
-// Seleccionar equipo
-function seleccionarEquipo(equipoId, salonId) {
-    equipoSeleccionado = equipoId;
-    document.querySelectorAll('.equipo-disponible').forEach(eq => {
-        eq.classList.remove('selected');
-        eq.querySelector('.fa-check-circle').style.display = 'none';
+
+function seleccionarEquipo(id) {
+    equipoSeleccionado = id;
+    document.querySelectorAll('.equipo-disponible').forEach(e => {
+        e.classList.remove('selected');
+        e.querySelector('.fa-check-circle').style.opacity = '0';
     });
-    const seleccionado = document.querySelector(`.equipo-disponible[data-equipo-id="${equipoId}"]`);
-    seleccionado.classList.add('selected');
-    seleccionado.querySelector('.fa-check-circle').style.display = 'inline-block';
-    
+    const el = document.querySelector(`[data-equipo-id="${id}"]`);
+    el.classList.add('selected');
+    el.querySelector('.fa-check-circle').style.opacity = '1';
     document.getElementById('btn-confirmar-asignacion').disabled = false;
 }
-// Filtrar equipos
+
 function filtrarEquipos() {
-    const salonFiltro = document.getElementById('filtro-salon').value.toLowerCase();
+    const salon = document.getElementById('filtro-salon').value;
     const busqueda = document.getElementById('buscar-equipo').value.toLowerCase();
-    const equiposFiltrados = todosLosEquipos.filter(eq => {
-        const coincideSalon = salonFiltro ? (eq.salon && eq.salon.toLowerCase() === salonFiltro) : true;
-        const coincideBusqueda = eq.nombre.toLowerCase().includes(busqueda) || 
-                                (eq.id_referencia && eq.id_referencia.toLowerCase().includes(busqueda));
-        return coincideSalon && coincideBusqueda;
-    });
-    mostrarEquiposDisponibles(equiposFiltrados);
+    const filtrados = todosLosEquipos.filter(eq => 
+        (!salon || eq.salon === salon) &&
+        (eq.nombre.toLowerCase().includes(busqueda) || 
+         (eq.id_referencia && eq.id_referencia.toLowerCase().includes(busqueda)) ||
+         eq.tipo.toLowerCase().includes(busqueda))
+    );
+    mostrarEquiposDisponibles(filtrados);
 }
-// Confirmar asignación
+
 async function confirmarAsignacion() {
-    if (!estudianteSeleccionado || !equipoSeleccionado) return;
-
-    const observaciones = document.getElementById('observaciones-asignacion').value;
-
+    const btn = document.getElementById('btn-confirmar-asignacion');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Asignando...';
     try {
-        const response = await fetch('/profesor/api/asignar-equipo', {
+        const res = await fetch('/profesor/api/asignar-equipo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                id_usuario: estudianteSeleccionado,
-                id_equipo: equipoSeleccionado,
-                observaciones: observaciones
+                estudiante_id: estudianteSeleccionado,
+                equipo_id: equipoSeleccionado,
+                observaciones: document.getElementById('observaciones-asignacion').value
             })
         });
-        const data = await response.json();
-
+        const data = await res.json();
         if (data.success) {
-            // Cerrar modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarEquipo'));
-            modal.hide();
-
-            // Recargar estudiantes
+            bootstrap.Modal.getInstance(document.getElementById('modalAsignarEquipo')).hide();
             await cargarEstudiantes(cursoSeleccionado);
-            mostrarExito('Equipo asignado correctamente');
-        } else {
-            mostrarError(data.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarError('Error al asignar equipo');
-    }
+            mostrarExito(data.message || 'Equipo asignado');
+        } else mostrarError(data.error);
+    } catch (e) { mostrarError('Error de conexión'); }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check me-1"></i>Asignar Equipo';
 }
-// Devolver equipo
-async function devolverEquipo(idUsuario, idEquipo) {
-    if (!confirm('¿Estás seguro de que deseas devolver este equipo?')) return;
 
+async function devolverEquipo(estId, eqId) {
+    if (!confirm('¿Devolver este equipo?')) return;
     try {
-        const response = await fetch('/profesor/api/devolver-equipo', {
+        const res = await fetch('/profesor/api/devolver-equipo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_usuario: idUsuario,
-                id_equipo: idEquipo
-            })
+            body: JSON.stringify({ estudiante_id: estId, equipo_id: eqId })
         });
-        const data = await response.json();
-
+        const data = await res.json();
         if (data.success) {
-            // Recargar estudiantes
             await cargarEstudiantes(cursoSeleccionado);
-            mostrarExito('Equipo devuelto correctamente');
-        } else {
-            mostrarError(data.error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarError('Error al devolver equipo');
-    }
+            mostrarExito(data.message || 'Equipo devuelto');
+        } else mostrarError(data.error);
+    } catch (e) { mostrarError('Error al devolver'); }
 }
-// Abrir modal de equipos disponibles
+
 async function abrirModalEquiposDisponibles() {
     const modal = new bootstrap.Modal(document.getElementById('modalEquiposDisponibles'));
     modal.show();
-    
-    // Cargar equipos disponibles para la tabla
+    const tbody = document.getElementById('tabla-equipos-disponibles');
     try {
-        const response = await fetch('/profesor/api/equipos-disponibles');
-        const data = await response.json();
-
-        const tbody = document.getElementById('tabla-equipos-disponibles');
-        if (data.success) {
-            if (data.equipos.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center py-4">
-                            <i class="fa-solid fa-inbox"></i>
-                            No hay equipos disponibles
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = data.equipos.map(eq => `
-                <tr>
-                    <td>${eq.id_referencia || 'N/A'}</td>
-                    <td>${eq.nombre}</td>
-                    <td>${eq.tipo}</td>
-                    <td>${eq.salon}</td>
-                    <td>${eq.sede}</td>
-                </tr>
-            `).join('');
-        } else {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center py-4">
-                        <i class="fa-solid fa-exclamation-triangle"></i>
-                        Error cargando equipos
-                    </td>
-                </tr>
-            `;
-        }
-    } catch (error) {
-        console.error('Error:', error);
+        const res = await fetch('/profesor/api/equipos-disponibles');
+        const data = await res.json();
+        tbody.innerHTML = data.success && data.equipos.length > 0 ? data.equipos.map(eq => `
+            <tr>
+                <td><code>${eq.id_referencia || 'N/A'}</code></td>
+                <td><strong>${eq.nombre}</strong></td>
+                <td><span class="badge bg-info text-dark">${eq.tipo}</span></td>
+                <td>${eq.salon}</td>
+                <td>${eq.sede}</td>
+            </tr>
+        `).join('') : `<tr><td colspan="5" class="text-center py-4 text-muted">No hay equipos disponibles</td></tr>`;
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error de conexión</td></tr>`;
     }
 }
-// Mostrar error
-function mostrarError(mensaje) {
-    const alertContainer = document.getElementById('alert-container');
-    alertContainer.innerHTML = `
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fa-solid fa-triangle-exclamation me-2"></i>
-            ${mensaje}
+
+function mostrarError(msg) { mostrarAlerta(msg, 'danger'); }
+function mostrarExito(msg) { mostrarAlerta(msg, 'success'); }
+function mostrarAlerta(msg, tipo) {
+    const cont = document.getElementById('alert-container');
+    cont.innerHTML = `
+        <div class="alert alert-${tipo} alert-dismissible fade show shadow-sm">
+            <i class="fas fa-circle-${tipo === 'success' ? 'check' : 'exclamation'} me-2"></i>
+            <strong>${msg}</strong>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
+        </div>`;
+    setTimeout(() => cont.querySelector('.alert')?.remove(), 6000);
 }
-// Mostrar éxito
-function mostrarExito(mensaje) {
-    const alertContainer = document.getElementById('alert-container');
-    alertContainer.innerHTML = `
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fa-solid fa-circle-check me-2"></i>
-            ${mensaje}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-}
-// Actualizar estadísticas
+
 function actualizarEstadisticas() {
     document.getElementById('total-cursos').textContent = cursos.length;
 }
 </script>
+{% endblock %}
 </body>
 </html>

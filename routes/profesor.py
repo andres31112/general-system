@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, session, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from controllers.models import (
-    db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso,
+    db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Rol,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
-HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion
+HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion, AsignacionEquipo, Equipo
 )
 from datetime import datetime, date
 import json
@@ -3759,25 +3759,39 @@ def api_profesor_estudiantes_curso(curso_id):
 def api_profesor_equipos_disponibles():
     """API para obtener equipos disponibles para asignar"""
     try:
+        # Verificar rol de profesor
+        if not current_user.es_profesor():
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
         salon_id = request.args.get('salon_id', type=int)
+        curso_id = request.args.get('curso_id', type=int)  # Agregado: filtro por curso
         
         query = Equipo.query.filter_by(estado='Disponible')
         
         if salon_id:
             query = query.filter_by(id_salon_fk=salon_id)
         
+        if curso_id:
+            # Filtrar por salas asociadas al curso (usando HorarioCurso y Salon)
+            salas_del_curso = db.session.query(Salon.id_salon).join(HorarioCurso).filter(
+                HorarioCurso.curso_id == curso_id
+            ).distinct().subquery()
+            query = query.filter(Equipo.id_salon_fk.in_(salas_del_curso))
+        
         equipos = query.all()
         
         equipos_data = []
         for equipo in equipos:
+            salon_nombre = equipo.salon.nombre if equipo.salon else 'Sin salón'  # Corregido: relación
+            sede_nombre = equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede'  # Corregido
             equipos_data.append({
                 'id_equipo': equipo.id_equipo,
                 'nombre': equipo.nombre,
                 'tipo': equipo.tipo,
                 'id_referencia': equipo.id_referencia,
-                'salon': equipo.salon.nombre if equipo.salon else 'Sin salón',
-                'salon_id': equipo.id_salon_fk,
-                'sede': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede'
+                'salon_id': equipo.id_salon_fk,  # Agregado
+                'salon': salon_nombre,  # Agregado
+                'sede': sede_nombre  # Agregado
             })
         
         return jsonify({
@@ -3786,28 +3800,38 @@ def api_profesor_equipos_disponibles():
         })
         
     except Exception as e:
-        print(f"Error obteniendo equipos: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-        
+        current_app.logger.error(f"Error obteniendo equipos: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+       
 @profesor_bp.route('/api/devolver-equipo', methods=['POST'])
 @login_required
 def api_profesor_devolver_equipo():
     try:
+        # Verificar rol de profesor
+        if not current_user.es_profesor():
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
         data = request.get_json()
-        asignacion_id = data.get('asignacion_id')
+        estudiante_id = data.get('estudiante_id')
+        equipo_id = data.get('equipo_id')
 
-        asignacion = AsignacionEquipo.query.get(asignacion_id)
+        if not estudiante_id or not equipo_id:
+            return jsonify({'success': False, 'error': 'Faltan datos'}), 400
+
+        asignacion = AsignacionEquipo.query.filter_by(
+            estudiante_id=estudiante_id,
+            equipo_id=equipo_id,
+            estado_asignacion='activa'
+        ).first()
+
         if not asignacion:
-            return jsonify({'success': False, 'error': 'No encontrada'}), 404
+            return jsonify({'success': False, 'error': 'Asignación no encontrada'}), 404
 
-        # LIBERAR EL EQUIPO
+        # Liberar el equipo
         equipo = asignacion.equipo
         equipo.estado = 'Disponible'
 
-        # BORRAR LA ASIGNACIÓN (así el índice nunca se queja)
+        # Borrar la asignación
         db.session.delete(asignacion)
         db.session.commit()
 
@@ -3818,8 +3842,9 @@ def api_profesor_devolver_equipo():
 
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"Error devolviendo equipo: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-        
+      
 @profesor_bp.route('/api/cursos', methods=['GET'])
 @login_required
 def obtener_cursos_profesor():
@@ -3888,6 +3913,10 @@ def api_estudiantes_curso(curso_id):
 @login_required
 def api_profesor_asignar_equipo():
     try:
+        # Verificar rol de profesor
+        if not current_user.es_profesor():
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
         data = request.get_json()
         estudiante_id = data.get('estudiante_id')
         equipo_id = data.get('equipo_id')
@@ -3936,16 +3965,21 @@ def api_profesor_asignar_equipo():
 
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"Error asignando equipo: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @profesor_bp.route('/api/todos-los-cursos', methods=['GET'])
 @login_required
 def api_todos_los_cursos():
     """
-    Devuelve TODOS los cursos del sistema (sin filtro por profesor)
+    Devuelve los cursos asignados al profesor logueado
     """
     try:
-        cursos = Curso.query.all()
+        # Verificar rol
+        if not current_user.es_profesor():
+            return jsonify({'success': False, 'error': 'No autorizado'}), 403
+
+        cursos = obtener_cursos_del_profesor(current_user.id_usuario)
         data = []
         for c in cursos:
             # Contamos estudiantes matriculados
@@ -3959,9 +3993,9 @@ def api_todos_los_cursos():
 
         return jsonify({"success": True, "cursos": data})
     except Exception as e:
-        current_app.logger.error(f"Error todos-los-cursos: {e}")
+        current_app.logger.error(f"Error obteniendo cursos del profesor: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
-    
+
 @profesor_bp.route('/api/salas-por-curso/<int:curso_id>')
 @login_required
 def api_salas_por_curso(curso_id):

@@ -875,27 +875,27 @@
             setTimeout(() => alerta.classList.add('d-none'), 5000);
         }
 
-        function mostrarAlertaGlobal(mensaje, tipo='success') {
+        function mostrarAlertaGlobal(mensaje, tipo = 'success', extra = '') {
             const alertaGlobal = document.getElementById('alertaGlobal');
-            alertaGlobal.innerHTML = `
+            let contenido = `
                 <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
                     ${mensaje}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    ${extra ? `<small class="d-block mt-1 text-muted">${extra}</small>` : ''}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             `;
+            alertaGlobal.innerHTML = contenido;
             alertaGlobal.classList.remove('d-none');
-            const alertElement = alertaGlobal.querySelector('.alert');
-            alertElement.addEventListener('closed.bs.alert', () => {
-                alertaGlobal.classList.add('d-none');
-            });
+
             setTimeout(() => {
+                const alertElement = alertaGlobal.querySelector('.alert');
                 if (alertElement) {
                     const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
                     bsAlert.close();
                 }
-            }, 5000);
+            }, 6000);
         }
-
+        
         // ========================================
         // GESTIÓN DE MANTENIMIENTOS
         // ========================================

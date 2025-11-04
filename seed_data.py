@@ -643,38 +643,88 @@ def seed_horarios_curso(cursos, asignaturas, salones):
 
 
 def seed_equipos(salones):
-    """Crea equipos para los salones"""
-    print('💻 Creando equipos...')
+    """Crea 50 equipos vinculados a salones existentes (usa los salones ya creados)"""
+    print('Creando equipos...')
     
-    tipos_equipo = ['Computador', 'Proyector', 'Televisor', 'Tablero Digital']
-    sistemas = ['Windows 10', 'Windows 11', 'Linux Ubuntu', None]
-    count = 0
-    
-    for salon in salones:
-        num_equipos = random.randint(2, 5)
-        
-        for i in range(num_equipos):
-            tipo = random.choice(tipos_equipo)
-            
-            equipo, _ = get_or_create(
-                Equipo,
-                id_referencia=f'{salon.nombre}-EQ{i+1:02d}',
-                nombre=f'{tipo} {salon.nombre}-{i+1}',
-                tipo=tipo,
-                id_salon_fk=salon.id_salon,
-                defaults={
-                    'sistema_operativo': random.choice(sistemas) if tipo == 'Computador' else None,
-                    'ram': f'{random.choice([4, 8, 16])}GB' if tipo == 'Computador' else None,
-                    'disco_duro': f'{random.choice([256, 512, 1024])}GB SSD' if tipo == 'Computador' else None,
-                    'fecha_adquisicion': date.today() - timedelta(days=random.randint(30, 730)),
-                    'estado': random.choice(['Disponible', 'Disponible', 'Disponible', 'Mantenimiento'])
-                }
-            )
-            count += 1
-    
-    print(f'   ✅ {count} equipos creados')
-    return Equipo.query.all()
+    TIPOS_EQUIPO = [
+        'Computadora de Escritorio',
+        'Laptop',
+        'Tablet',
+        'Proyector',
+        'Impresora',
+        'Escáner',
+        'Servidor',
+        'Otro'
+    ]
 
+    SISTEMAS = ['Windows 11', 'Windows 10', 'Linux Ubuntu', 'Linux Mint', None]
+    RAMS = ['4GB DDR3', '8GB DDR4', '16GB DDR4', '32GB DDR4']
+    DISCOS = ['256GB SSD', '512GB SSD', '1TB SSD', '500GB HDD', '1TB HDD', '2TB HDD']
+    ESTADOS = ['Disponible', 'En uso', 'Mantenimiento', 'Dañado']
+    
+    equipos_creados = 0
+    for i in range(1, 51):
+        tipo = random.choice(TIPOS_EQUIPO)
+
+        es_computadora = tipo in ['Computadora de Escritorio', 'Laptop', 'Tablet', 'Servidor']
+        so = random.choice([s for s in SISTEMAS if s is not None]) if es_computadora else None
+        ram = random.choice(RAMS) if es_computadora else None
+        disco = random.choice(DISCOS) if es_computadora else None
+
+        referencia = f'EQ-{i:03d}'
+
+        if tipo == 'Computadora de Escritorio':
+            marca = random.choice(['Dell', 'HP', 'Lenovo', 'Asus', 'Acer'])
+            proc = random.choice(['i3', 'i5', 'i7', 'Ryzen 5', 'Ryzen 7'])
+            nombre = f'{marca} {proc}'
+        elif tipo == 'Laptop':
+            marca = random.choice(['Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'MacBook'])
+            proc = random.choice(['i5', 'i7', 'Ryzen 5', 'M1', 'M2'])
+            nombre = f'{marca} {proc}'
+        elif tipo == 'Tablet':
+            marca = random.choice(['Samsung', 'Apple', 'Lenovo', 'Huawei'])
+            nombre = f'{marca} Tablet'
+        elif tipo == 'Proyector':
+            marca = random.choice(['Epson', 'BenQ', 'Sony', 'Optoma'])
+            nombre = f'{marca} Proyector'
+        elif tipo == 'Impresora':
+            marca = random.choice(['HP', 'Epson', 'Canon', 'Brother'])
+            nombre = f'{marca} Impresora'
+        elif tipo == 'Escáner':
+            marca = random.choice(['Canon', 'Epson', 'HP'])
+            nombre = f'{marca} Escáner'
+        elif tipo == 'Servidor':
+            marca = random.choice(['Dell', 'HP', 'IBM'])
+            nombre = f'{marca} Servidor'
+        else:
+            nombre = random.choice(['Tablero Digital', 'Televisor 55"', 'Cámara IP', 'Router'])
+
+        salon = random.choice(salones)
+
+        dias_atras = random.randint(30, 5 * 365)
+        fecha_adq = date.today() - timedelta(days=dias_atras)
+
+        estado = random.choice(ESTADOS)
+
+        equipo, created = get_or_create(
+            Equipo,
+            id_referencia=referencia,
+            defaults={
+                'nombre': nombre,
+                'tipo': tipo,
+                'id_salon_fk': salon.id_salon,
+                'sistema_operativo': so,
+                'ram': ram,
+                'disco_duro': disco,
+                'fecha_adquisicion': fecha_adq,
+                'estado': estado
+            }
+        )
+        if created:
+            equipos_creados += 1
+
+    print(f'   {equipos_creados} equipos creados y vinculados a salones existentes')
+    return Equipo.query.all()
 
 def seed_incidentes_y_mantenimientos(equipos, sedes):
     """Genera incidentes y mantenimientos"""

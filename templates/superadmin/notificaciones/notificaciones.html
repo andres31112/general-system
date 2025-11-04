@@ -529,35 +529,6 @@ function cambiarPerPage(perPage) {
 }
 
 // Función para mostrar mensajes
-    mostrarConfirmacion(
-        '¿Estás seguro de que quieres eliminar TODAS las notificaciones? Esta acción no se puede deshacer.',
-        () => {
-            fetch('/admin/api/notificaciones/eliminar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    eliminar_todas: true
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    cargarNotificaciones(currentPage);
-                    actualizarBadge();
-                    mostrarMensaje('Todas las notificaciones fueron eliminadas', 'success');
-                } else {
-                    mostrarError('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                mostrarError('Error de conexión');
-            });
-        }
-    );
-}
 
 function actualizarBadge() {
     // Actualizar el badge en el menú lateral

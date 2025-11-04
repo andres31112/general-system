@@ -1,29 +1,125 @@
 {% extends "base.html" %}
 
-{% block title %}Reportes de Calificaciones{% endblock %}
+{% block title %}Reportes{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0 text-gray-800">
-                    <i class="fas fa-chart-bar me-2"></i>Reportes de Calificaciones
-                </h1>
-                <div class="d-flex gap-2">
-                    <button id="refresh-btn" class="btn btn-outline-primary">
-                        <i class="fas fa-sync-alt me-1"></i>Actualizar
+<div class="container-fluid py-4">
+    <!-- HEADER PRINCIPAL -->
+    <div class="custom-header">
+        <h1>
+            <i class="fas fa-chart-line me-2"></i> Reportes del Sistema
+        </h1>
+        <div class="header-icons">
+            <button class="btn btn-light btn-sm" id="refresh-all">
+                <i class="fas fa-sync-alt me-1"></i> Actualizar Todo
+            </button>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS PRINCIPALES -->
+    <ul class="nav nav-tabs mb-4 tabla-head" id="mainTabs" role="tablist">
+        <li class="nav-item" id="pestanas-sedes" role="presentation">
+            <button class="nav-link active rounded-top px-4 py-3" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario-pane">
+                <i class="fas fa-clipboard-list me-2"></i> Reportes de Inventario
+            </button>
+        </li>
+        <li class="nav-item" id="pestanas-sedes" role="presentation">
+            <button class="nav-link rounded-top px-4 py-3" id="calificaciones-tab" data-bs-toggle="tab" data-bs-target="#calificaciones-pane">
+                <i class="fas fa-chart-bar me-2"></i> Reportes de Calificaciones
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="mainTabContent">
+        <!-- PESTAÑA INVENTARIO -->
+        <div class="tab-pane fade show active" id="inventario-pane" role="tabpanel">
+            <h1> Reportes de Inventario</h1>
+            <!-- Subpestañas Internas -->
+            <ul class="nav nav-tabs mb-4 tabla-head " id="pestanas-sedes" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="incidentes-subtab" data-bs-toggle="tab" data-bs-target="#incidentes">
+                        <i class="fa-solid fa-triangle-exclamation me-2"></i> Incidentes
                     </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pestanas-sedes" data-bs-toggle="tab" data-bs-target="#mantenimiento">
+                        <i class="fa-solid fa-wrench me-2"></i> Mantenimiento
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- INCIDENTES -->
+                <div class="tab-pane fade show active" id="incidentes">
+                    <div class="main-panel">
+                        <div class="tabla-head">
+                            <i class="fa-solid fa-triangle-exclamation me-2"></i> Historial de Incidentes por Equipo
+                        </div>
+                        <div class="tabla-body">
+                            <div class="table-responsive">
+                                <table class="table tabla-inventario table-hover mb-0" id="tablaIncidentes">
+                                    <thead>
+                                        <tr>
+                                            <th>EQUIPO</th>
+                                            <th>ESTADO</th>
+                                            <th>SALÓN</th>
+                                            <th>SEDE</th>
+                                            <th>INCIDENTES</th>
+                                            <th>ACCIÓN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MANTENIMIENTO -->
+                <div class="tab-pane fade" id="mantenimiento">
+                    <div class="main-panel">
+                        <div class="tabla-head" style="background: linear-gradient(135deg, var(--accent2), #d68542);">
+                            <i class="fa-solid fa-wrench me-2"></i> Historial de Mantenimientos por Equipo
+                        </div>
+                        <div class="tabla-body">
+                            <div class="table-responsive">
+                                <table class="table tabla-inventario table-hover mb-0" id="tablaMantenimientos">
+                                    <thead>
+                                        <tr>
+                                            <th>EQUIPO</th>
+                                            <th>ESTADO</th>
+                                            <th>SALÓN</th>
+                                            <th>SEDE</th>
+                                            <th>MANTENIMIENTOS</th>
+                                            <th>ACCIÓN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Filtros -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="row">
+        <!-- PESTAÑA CALIFICACIONES -->
+        <div class="tab-pane fade" id="calificaciones-pane" role="tabpanel">
+            <div class="main-panel">
+                <div class="tabla-head d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i> Reportes de Calificaciones
+                    </h5>
+                    <button id="refresh-btn" class="btn btn-light btn-sm">
+                        <i class="fas fa-sync-alt me-1"></i> Actualizar
+                    </button>
+                </div>
+                <div class="panel-content p-4">
+                    <!-- Filtros -->
+                    <div class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <label for="filtro-estado" class="form-label">Estado:</label>
-                            <select id="filtro-estado" class="form-select">
+                            <label class="form-label text-muted">Estado:</label>
+                            <select id="filtro-estado" class="form-select form-select-sm">
                                 <option value="">Todos los estados</option>
                                 <option value="pendiente">Pendiente</option>
                                 <option value="revisado">Revisado</option>
@@ -31,78 +127,64 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="filtro-curso" class="form-label">Curso:</label>
-                            <input type="text" id="filtro-curso" class="form-control" placeholder="Buscar por curso...">
+                            <label class="form-label text-muted">Curso:</label>
+                            <input type="text" id="filtro-curso" class="form-control form-control-sm" placeholder="Buscar por curso...">
                         </div>
                         <div class="col-md-3">
-                            <label for="filtro-profesor" class="form-label">Profesor:</label>
-                            <input type="text" id="filtro-profesor" class="form-control" placeholder="Buscar por profesor...">
+                            <label class="form-label text-muted">Profesor:</label>
+                            <input type="text" id="filtro-profesor" class="form-control form-control-sm" placeholder="Buscar por profesor...">
                         </div>
                         <div class="col-md-3 d-flex align-items-end">
-                            <button id="limpiar-filtros" class="btn btn-outline-secondary">
-                                <i class="fas fa-times me-1"></i>Limpiar
+                            <button id="limpiar-filtros" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="fas fa-times me-1"></i> Limpiar
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Tabla de reportes -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Reportes Recibidos</h5>
-                </div>
-                <div class="card-body">
+                    <!-- Estados de carga -->
                     <div id="loading" class="text-center py-4" style="display: none;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Cargando...</span>
-                        </div>
+                        <div class="spinner-border text-primary" role="status"></div>
                         <p class="mt-2">Cargando reportes...</p>
                     </div>
-                    
                     <div id="no-reports" class="text-center py-5" style="display: none;">
                         <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">No hay reportes disponibles</h5>
-                        <p class="text-muted">Los profesores aún no han enviado reportes de calificaciones.</p>
+                        <h5 class="text-muted">No hay reportes</h5>
                     </div>
 
+                    <!-- Tabla de reportes -->
                     <div class="table-responsive">
-                        <table id="reportes-table" class="table table-hover" style="display: none;">
-                            <thead class="table-light">
+                        <table id="reportes-table" class="table tabla-inventario table-hover" style="display: none;">
+                            <thead>
                                 <tr>
                                     <th>Fecha</th>
                                     <th>Profesor</th>
                                     <th>Curso</th>
                                     <th>Asignatura</th>
                                     <th>Estudiantes</th>
-                                    <th>Promedio General</th>
-                                    <th>Nota Más Alta</th>
-                                    <th>Nota Más Baja</th>
+                                    <th>Promedio</th>
+                                    <th>Nota Alta</th>
+                                    <th>Nota Baja</th>
                                     <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="reportes-tbody">
-                                <!-- Los reportes se cargarán aquí dinámicamente -->
-                            </tbody>
+                            <tbody id="reportes-tbody"></tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Paginación -->
                     <div id="pagination-container" class="d-flex justify-content-between align-items-center mt-3" style="display: none;">
                         <div class="d-flex align-items-center">
-                            <span class="text-muted me-3">Mostrando <span id="showing-start">0</span> a <span id="showing-end">0</span> de <span id="total-items">0</span> reportes</span>
+                            <span class="text-muted me-3">Mostrando <span id="showing-start">0</span> a <span id="showing-end">0</span> de <span id="total-items">0</span></span>
                             <select id="per-page-select" class="form-select form-select-sm" style="width: auto;">
-                                <option value="5">5 por página</option>
-                                <option value="10" selected>10 por página</option>
-                                <option value="20">20 por página</option>
-                                <option value="50">50 por página</option>
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
                             </select>
                         </div>
-                        <nav aria-label="Paginación de reportes">
-                            <ul id="pagination-nav" class="pagination pagination-sm mb-0">
-                                <!-- Los botones de paginación se generarán aquí -->
-                            </ul>
+                        <nav>
+                            <ul id="pagination-nav" class="pagination pagination-sm mb-0"></ul>
                         </nav>
                     </div>
                 </div>
@@ -111,22 +193,52 @@
     </div>
 </div>
 
-<!-- Modal para ver detalles del reporte -->
-<div class="modal fade" id="detalleReporteModal" tabindex="-1" aria-labelledby="detalleReporteModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- MODAL HISTORIAL INVENTARIO -->
+<div class="modal fade" id="modalHistorial" tabindex="-1">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detalleReporteModalLabel">Detalle del Reporte</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title fw-bold" id="modalTitulo">
+                    <i class="fa-solid fa-history"></i> Historial de <span id="tipoHistorial"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="detalle-contenido">
-                    <!-- El contenido del reporte se cargará aquí -->
+                <div id="loadingHistorial" class="text-center py-5">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                    <p class="mt-3 text-muted">Cargando historial...</p>
+                </div>
+                <div id="contenidoHistorial"></div>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-times me-2"></i> Cerrar
+                </button>
+                <button id="btnDescargarPDF" class="btn btn-danger px-5 shadow">
+                    <i class="fa-solid fa-file-pdf me-2"></i> Descargar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALES CALIFICACIONES -->
+<div class="modal fade" id="detalleReporteModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>Detalle del Reporte</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalle-contenido">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">Cargando detalles...</p>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="enviarComunicado()">
-                    <i class="fas fa-envelope me-1"></i>Enviar Comunicado
+                <button type="button" class="btn btn-success" onclick="abrirComunicado()">
+                    <i class="fas fa-paper-plane me-2"></i>Enviar Comunicado
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
@@ -134,243 +246,622 @@
     </div>
 </div>
 
-<!-- Modal para enviar comunicado -->
-<div class="modal fade" id="comunicadoModal" tabindex="-1" aria-labelledby="comunicadoModalLabel" aria-hidden="true">
+<div class="modal fade" id="comunicadoModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="comunicadoModalLabel">Enviar Comunicado al Profesor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                <h5 class="modal-title text-white"><i class="fas fa-envelope me-2"></i>Enviar Comunicado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="comunicadoForm">
                     <div class="mb-3">
-                        <label for="profesor-info" class="form-label">Profesor Destinatario:</label>
+                        <label class="form-label fw-bold">Profesor:</label>
                         <input type="text" id="profesor-info" class="form-control" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="reporte-info" class="form-label">Reporte:</label>
+                        <label class="form-label fw-bold">Reporte:</label>
                         <input type="text" id="reporte-info" class="form-control" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="asunto-comunicado" class="form-label">Asunto:</label>
-                        <input type="text" id="asunto-comunicado" class="form-control" placeholder="Ej: Observaciones sobre el reporte de calificaciones" required>
+                        <label class="form-label fw-bold">Asunto:</label>
+                        <input type="text" id="asunto-comunicado" class="form-control" required placeholder="Ej: Revisión de calificaciones del curso...">
                     </div>
                     <div class="mb-3">
-                        <label for="mensaje-comunicado" class="form-label">Mensaje:</label>
-                        <textarea id="mensaje-comunicado" class="form-control" rows="6" placeholder="Escribe aquí tu mensaje al profesor..." required></textarea>
+                        <label class="form-label fw-bold">Mensaje:</label>
+                        <textarea id="mensaje-comunicado" class="form-control" rows="6" required placeholder="Escriba el mensaje del comunicado..."></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="enviarComunicadoBtn">
-                    <i class="fas fa-paper-plane me-1"></i>Enviar Comunicado
+                <button type="button" class="btn btn-success" id="enviarComunicadoBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Enviar
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de confirmación -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmModalLabel">Confirmar Acción</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="confirmModalBody">
-                <!-- El mensaje de confirmación se cargará aquí -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="confirmBtn">Confirmar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
-.badge-estado {
-    font-size: 0.8em;
+:root {
+    --accent1: #F95738;
+    --accent2: #EE964B;
+    --accent3: #F4D35E;
+    --accent4: #0D3B66;
+    --light: #FAF0CA;
+    --main-bg: #F8F9FA;
+    --white: #FFFFFF;
+    --black: #333333;
+    --gray: #666666;
+    --light-gray: #F8F9FA;
+    --border: #E9ECEF;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+    --border-radius: 12px;
+    --transition: all 0.3s ease;
 }
 
-.badge-pendiente {
-    background-color: #ffc107;
-    color: #000;
+body {
+    background: linear-gradient(135deg, var(--light) 0%, var(--main-bg) 100%) !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.badge-revisado {
-    background-color: #28a745;
-    color: #fff;
-}
-
-.badge-archivado {
-    background-color: #6c757d;
-    color: #fff;
-}
-
-.estudiante-item {
-    padding: 0.5rem;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.estudiante-item:last-child {
-    border-bottom: none;
-}
-
-.estudiante-nombre {
-    font-weight: 500;
-}
-
-.estudiante-promedio {
-    font-weight: 600;
-    color: #495057;
-}
-
-.estadisticas-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Header Styles */
+.custom-header {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
     color: white;
-    border-radius: 10px;
+    padding: 18px 25px;
+    border-radius: 12px;
+    max-width: 90%;
+    margin: 0 auto 25px auto;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.estadisticas-card .card-body {
-    padding: 1.5rem;
+.custom-header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
 }
 
-.estadisticas-valor {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
+.header-icons {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
-.estadisticas-label {
+/* Tabs */
+.nav-tabs .nav-link {
+    border: none;
+    color: var(--gray);
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    transition: var(--transition);
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--accent4);
+}
+
+.nav-tabs .nav-link.active {
+    background: white;
+    color: var(--accent4);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    font-weight: 700;
+}
+
+/* Main Panel */
+.main-panel {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: white;
+}
+
+.panel-content {
+    padding: 0 !important;
+}
+
+.tabla-head {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: white;
+    padding: 15px 20px;
+    width: 100%;
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.tabla-body {
+    background-color: white;
+}
+
+/* Tables */
+.tabla-inventario {
+    margin: 0;
+    border-radius: 0 0 15px 15px;
+}
+
+.tabla-inventario thead {
+    background-color: #f8f9fa;
+}
+
+.tabla-inventario thead th {
+    background: var(--accent4);
+    color: white;
+    border: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 12px;
+}
+
+.tabla-inventario tbody tr {
+    transition: var(--transition);
+}
+
+.tabla-inventario tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.tabla-inventario tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 15px;
+}
+
+.tabla-inventario tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 15px;
+}
+
+/* Buttons */
+.btn-detalle {
+    background: var(--accent1);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
     font-size: 0.9rem;
-    opacity: 0.9;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-detalle:hover {
+    background: #e03e1f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    color: white;
+}
+
+/* Badges */
+.badge-incidente { 
+    background: var(--accent1); 
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+}
+
+.badge-mantenimiento { 
+    background: var(--accent2); 
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+}
+
+.badge-estado { 
+    font-size: 0.85em;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.badge-pendiente { 
+    background-color: #ffc107; 
+    color: #000; 
+}
+
+.badge-revisado { 
+    background-color: #28a745; 
+    color: #fff; 
+}
+
+.badge-archivado { 
+    background-color: #6c757d; 
+    color: #fff; 
+}
+
+/* Modal */
+.modal-header {
+    background: var(--gradient-primary);
+    color: white;
+}
+
+.list-group-item {
+    border-left: 5px solid var(--accent4);
+    margin-bottom: 0.8rem;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    padding: 1rem;
+    background: #f8f9fa;
+    transition: var(--transition);
+}
+
+.list-group-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+/* Student Cards */
+.student-card {
+    border-left: 4px solid var(--accent4);
+    background: #f8f9fa;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.student-card:hover {
+    background: #e9ecef;
+    transform: translateX(3px);
+}
+
+.nota-badge {
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 8px 15px;
+    border-radius: 8px;
+}
+
+.nota-alta {
+    background: #d4edda;
+    color: #155724;
+}
+
+.nota-media {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.nota-baja {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Pagination */
+.pagination .page-link {
+    color: var(--accent4);
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin: 0 3px;
+    transition: var(--transition);
+}
+
+.tabla-head{
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: white;
+    padding: 15px 20px;
+    width: 100%;
+    border-radius: 15px 15px 0 0;
+    margin: 0;
+}
+
+#pestanas-sedes .nav-link.active {
+    background-color: var(--accent3);
+    color: black !important;
+    font-weight: 600;
+}
+
+
+.pagination .page-link:hover {
+    background-color: var(--accent4);
+    color: white;
+    border-color: var(--accent4);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--accent4);
+    border-color: var(--accent4);
+}
+
+/* Summary Cards (for detail view) */
+.summary-card {
+    background: linear-gradient(135deg, white, #f8f9fa);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+    margin-bottom: 20px;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+.summary-card i {
+    font-size: 42px;
+    margin-bottom: 15px;
+}
+
+.summary-card h3 {
+    color: #666;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.summary-card .number {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent4);
 }
 </style>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let reportes = [];
-    let paginationData = {};
-    let currentPage = 1;
-    let perPage = 10;
-    let currentReporte = null; // Para almacenar el reporte actual
+    // ==================== INVENTARIO ====================
+    const equipos = [];
+    const modalHistorial = new bootstrap.Modal(document.getElementById('modalHistorial'));
+    let historialActual = [], equipoActual = '', tipoHistorialActual = '';
 
-    // Elementos del DOM
+    async function cargarEquipos() {
+        try {
+            const res = await fetch('/admin/api/equipos');
+            const data = await res.json();
+            equipos.length = 0;
+            data.forEach(e => equipos.push({
+                id: e.id || e.id_equipo,
+                nombre: e.nombre || 'Sin nombre',
+                estado: e.estado || 'Desconocido',
+                salon: e.salon_nombre || 'Sin salón',
+                sede: e.sede_nombre || 'Sin sede',
+                incidentes: e.incidentes || 0,
+                mantenimientos: e.mantenimientos || 0
+            }));
+            renderTablas();
+        } catch (err) { console.error('Error:', err); }
+    }
+
+    function renderTablas() {
+        renderTabla('#tablaIncidentes', 'incidentes');
+        renderTabla('#tablaMantenimientos', 'mantenimientos');
+    }
+
+    function renderTabla(selector, tipo) {
+        const tbody = document.querySelector(`${selector} tbody`);
+        tbody.innerHTML = '';
+        equipos.forEach(eq => {
+            const count = tipo === 'incidentes' ? eq.incidentes : eq.mantenimientos;
+            const badgeClass = tipo === 'incidentes' ? 'badge-incidente' : 'badge-mantenimiento';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${eq.nombre}</strong></td>
+                <td><span class="badge" style="background: ${getColor(eq.estado)};">${eq.estado}</span></td>
+                <td>${eq.salon}</td>
+                <td>${eq.sede}</td>
+                <td><span class="badge ${badgeClass} fw-bold">${count}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-detalle ver-historial" 
+                            data-equipo-id="${eq.id}" data-tipo="${tipo}">
+                        <i class="fa-solid fa-eye me-1"></i> Ver
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        document.querySelectorAll('.ver-historial').forEach(btn => {
+            btn.addEventListener('click', function() {
+                mostrarHistorial(this.getAttribute('data-equipo-id'), this.getAttribute('data-tipo'));
+            });
+        });
+    }
+
+    function getColor(estado) {
+        const map = {
+            'Disponible': '#28a745',
+            'Asignado': '#0078ad',
+            'Mantenimiento': '#ffc107',
+            'Incidente': '#dc3545',
+            'Revisión': '#17a2b8'
+        };
+        return map[estado] || '#6c757d';
+    }
+
+    async function mostrarHistorial(equipoId, tipo) {
+        equipoActual = equipos.find(e => e.id === parseInt(equipoId))?.nombre || 'Equipo';
+        tipoHistorialActual = tipo;
+        const titulo = document.getElementById('tipoHistorial');
+        const contenido = document.getElementById('contenidoHistorial');
+        const loading = document.getElementById('loadingHistorial');
+        titulo.textContent = tipo === 'incidentes' ? 'Incidentes' : 'Mantenimientos';
+        loading.style.display = 'block';
+        contenido.innerHTML = '';
+        modalHistorial.show();
+
+        try {
+            const endpoint = tipo === 'incidentes' 
+                ? `/admin/api/incidentes/equipo/${equipoId}`
+                : `/admin/api/mantenimientos/equipo/${equipoId}`;
+            const res = await fetch(endpoint);
+            const data = await res.json();
+            if (!data || data.length === 0) {
+                contenido.innerHTML = '<div class="text-center py-5"><p class="text-muted fs-5">No hay registros.</p></div>';
+                loading.style.display = 'none';
+                historialActual = [];
+                return;
+            }
+            historialActual = data;
+            const lista = document.createElement('div');
+            lista.className = 'list-group';
+            data.forEach(item => {
+                const fecha = tipo === 'incidentes' 
+                    ? new Date(item.fecha).toLocaleDateString('es-CO')
+                    : new Date(item.fecha_programada).toLocaleDateString('es-CO');
+                const desc = item.descripcion || 'Sin descripción';
+                const responsable = tipo === 'incidentes' 
+                    ? item.usuario_reporte || 'Anónimo'
+                    : item.tecnico || 'No asignado';
+                const estado = item.estado || 'N/A';
+                const div = document.createElement('div');
+                div.className = 'list-group-item';
+                div.innerHTML = `
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="me-3">
+                            <h6 class="mb-1 text-primary"><i class="fa-solid fa-calendar-alt me-2"></i>${fecha}</h6>
+                            <p class="mb-2 fw-medium">${desc}</p>
+                            <small class="text-muted"><i class="fa-solid fa-user me-1"></i> ${responsable}</small>
+                        </div>
+                        <span class="badge ${estado.toLowerCase().includes('resuelto') ? 'bg-success' : 'bg-warning'} px-3 py-2">${estado}</span>
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+            contenido.appendChild(lista);
+        } catch (err) {
+            contenido.innerHTML = `<div class="text-center py-5"><p class="text-danger fs-5">Error al cargar datos</p></div>`;
+        } finally {
+            loading.style.display = 'none';
+        }
+    }
+
+    document.getElementById('btnDescargarPDF').addEventListener('click', () => {
+        if (historialActual.length === 0) return alert('No hay datos para exportar');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const margin = 14;
+        let y = 20;
+        const primary = [13, 59, 102];
+        const accent = tipoHistorialActual === 'incidentes' ? [249, 87, 56] : [238, 150, 75];
+
+        doc.setFontSize(24).setTextColor(...primary).setFont('helvetica', 'bold').text('HISTORIAL DE EQUIPO', margin, y);
+        y += 10;
+        doc.setFontSize(18).setTextColor(...accent).text(equipoActual.toUpperCase(), margin, y);
+        y += 12;
+        doc.setFontSize(12).setTextColor(80,80,80).text(`Tipo: ${tipoHistorialActual.toUpperCase()}`, margin, y);
+        y += 6;
+        doc.text(`Generado: ${new Date().toLocaleString('es-CO')}`, margin, y);
+        y += 12;
+
+        const headers = tipoHistorialActual === 'incidentes'
+            ? [['FECHA', 'DESCRIPCIÓN', 'REPORTADO POR', 'ESTADO']]
+            : [['FECHA', 'DESCRIPCIÓN', 'TÉCNICO', 'ESTADO']];
+        const rows = historialActual.map(item => {
+            const fecha = tipoHistorialActual === 'incidentes'
+                ? new Date(item.fecha).toLocaleDateString('es-CO')
+                : new Date(item.fecha_programada).toLocaleDateString('es-CO');
+            const desc = (item.descripcion || '').substring(0,70) + '...';
+            const resp = tipoHistorialActual === 'incidentes' ? item.usuario_reporte : item.tecnico;
+            return [fecha, desc, resp || 'N/A', item.estado || 'N/A'];
+        });
+
+        doc.autoTable({ head: headers, body: rows, startY: y, theme: 'grid', headStyles: { fillColor: primary }, margin: { left: margin, right: margin } });
+        doc.save(`${equipoActual}_${tipoHistorialActual}_${new Date().toISOString().slice(0,10)}.pdf`);
+    });
+
+    // Cargar al abrir pestaña
+    document.getElementById('inventario-tab').addEventListener('shown.bs.tab', cargarEquipos);
+
+    // ==================== CALIFICACIONES ====================
+    let reportes = [], paginationData = {}, currentPage = 1, perPage = 10, currentReporte = null;
     const loadingEl = document.getElementById('loading');
     const noReportsEl = document.getElementById('no-reports');
     const tableEl = document.getElementById('reportes-table');
     const tbodyEl = document.getElementById('reportes-tbody');
-    const refreshBtn = document.getElementById('refresh-btn');
-    const filtroEstado = document.getElementById('filtro-estado');
-    const filtroCurso = document.getElementById('filtro-curso');
-    const filtroProfesor = document.getElementById('filtro-profesor');
-    const limpiarFiltrosBtn = document.getElementById('limpiar-filtros');
-    const paginationContainer = document.getElementById('pagination-container');
-    const perPageSelect = document.getElementById('per-page-select');
-    const paginationNav = document.getElementById('pagination-nav');
+    const modalDetalle = new bootstrap.Modal(document.getElementById('detalleReporteModal'));
+    const modalComunicado = new bootstrap.Modal(document.getElementById('comunicadoModal'));
 
-    // Cargar reportes con paginación
+    document.getElementById('calificaciones-tab').addEventListener('shown.bs.tab', () => cargarReportes(1));
+
     async function cargarReportes(page = 1) {
         try {
-            loadingEl.style.display = 'block';
-            tableEl.style.display = 'none';
+            loadingEl.style.display = 'block'; 
+            tableEl.style.display = 'none'; 
             noReportsEl.style.display = 'none';
-            paginationContainer.style.display = 'none';
-
-            // Construir URL con parámetros
-            const params = new URLSearchParams({
-                page: page,
-                per_page: perPage,
-                estado: filtroEstado.value,
-                curso: filtroCurso.value,
-                profesor: filtroProfesor.value
-            });
-
-            const response = await fetch(`/admin/api/reportes-calificaciones?${params}`);
-            const data = await response.json();
-
-            if (data.success) {
-                reportes = data.reportes;
-                paginationData = data.pagination;
-                currentPage = page;
-                renderizarReportes();
-                renderizarPaginacion();
-            } else {
-                mostrarError('Error cargando reportes: ' + data.message);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            mostrarError('Error de red al cargar reportes');
-        } finally {
-            loadingEl.style.display = 'none';
-        }
-    }
-
-    // Aplicar filtros (ahora recarga desde el servidor)
-    function aplicarFiltros() {
-        cargarReportes(1); // Volver a la primera página
-    }
-
-    // Renderizar reportes en la tabla
-    function renderizarReportes() {
-        if (reportes.length === 0) {
-            noReportsEl.style.display = 'block';
-            tableEl.style.display = 'none';
-            paginationContainer.style.display = 'none';
-            return;
-        }
-
-        noReportsEl.style.display = 'none';
-        tableEl.style.display = 'table';
-        paginationContainer.style.display = 'flex';
-        
-        tbodyEl.innerHTML = reportes.map(reporte => {
-            const fecha = new Date(reporte.fecha_generacion).toLocaleDateString('es-ES');
-            const estadoBadge = getEstadoBadge(reporte.estado);
             
-            // Manejar tanto la nueva estructura como la antigua
-            let numEstudiantes = 0;
-            if (reporte.datos_estudiantes) {
-                if (reporte.datos_estudiantes.estudiantes && Array.isArray(reporte.datos_estudiantes.estudiantes)) {
-                    // Nueva estructura
-                    numEstudiantes = reporte.datos_estudiantes.estudiantes.length;
-                } else if (Array.isArray(reporte.datos_estudiantes)) {
-                    // Estructura antigua
-                    numEstudiantes = reporte.datos_estudiantes.length;
-                }
+            const params = new URLSearchParams({ 
+                page, 
+                per_page: perPage, 
+                estado: document.getElementById('filtro-estado').value, 
+                curso: document.getElementById('filtro-curso').value, 
+                profesor: document.getElementById('filtro-profesor').value 
+            });
+            
+            const res = await fetch(`/admin/api/reportes-calificaciones?${params}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                reportes = data.reportes; 
+                paginationData = data.pagination; 
+                currentPage = page;
+                renderizarReportes(); 
+                renderizarPaginacion();
             }
+        } catch (err) { 
+            console.error(err);
+            noReportsEl.style.display = 'block';
+            noReportsEl.innerHTML = '<i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i><h5 class="text-danger">Error al cargar reportes</h5>';
+        } finally { 
+            loadingEl.style.display = 'none'; 
+        }
+    }
 
+    function renderizarReportes() {
+        if (reportes.length === 0) { 
+            noReportsEl.style.display = 'block'; 
+            return; 
+        }
+        
+        noReportsEl.style.display = 'none'; 
+        tableEl.style.display = 'table';
+        
+        tbodyEl.innerHTML = reportes.map(r => {
+            const fecha = new Date(r.fecha_generacion).toLocaleDateString('es-ES');
+            const numEst = Array.isArray(r.datos_estudiantes?.estudiantes) 
+                ? r.datos_estudiantes.estudiantes.length 
+                : (Array.isArray(r.datos_estudiantes) ? r.datos_estudiantes.length : 0);
+            
             return `
                 <tr>
                     <td>${fecha}</td>
-                    <td>${reporte.profesor_nombre}</td>
-                    <td>${reporte.curso_nombre}</td>
-                    <td>${reporte.asignatura_nombre}</td>
-                    <td>${numEstudiantes}</td>
-                    <td><strong>${reporte.promedio_general}</strong></td>
-                    <td><span class="text-success">${reporte.nota_mas_alta}</span></td>
-                    <td><span class="text-danger">${reporte.nota_mas_baja}</span></td>
-                    <td>${estadoBadge}</td>
+                    <td>${r.profesor_nombre}</td>
+                    <td>${r.curso_nombre}</td>
+                    <td>${r.asignatura_nombre}</td>
+                    <td><span class="badge bg-info">${numEst}</span></td>
+                    <td><strong>${r.promedio_general}</strong></td>
+                    <td><span class="text-success fw-bold">${r.nota_mas_alta}</span></td>
+                    <td><span class="text-danger fw-bold">${r.nota_mas_baja}</span></td>
+                    <td>${getEstadoBadge(r.estado)}</td>
                     <td>
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-primary" onclick="verDetalle(${reporte.id_reporte})" title="Ver detalles">
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="verDetalle(${r.id_reporte})" title="Ver detalle">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Cambiar estado">
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="Cambiar estado">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${reporte.id_reporte}, 'pendiente')">Marcar como Pendiente</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${reporte.id_reporte}, 'revisado')">Marcar como Revisado</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${reporte.id_reporte}, 'archivado')">Archivar</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${r.id_reporte}, 'pendiente'); return false;">
+                                        <i class="fas fa-clock text-warning me-2"></i>Pendiente
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${r.id_reporte}, 'revisado'); return false;">
+                                        <i class="fas fa-check text-success me-2"></i>Revisado
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="cambiarEstado(${r.id_reporte}, 'archivado'); return false;">
+                                        <i class="fas fa-archive text-secondary me-2"></i>Archivar
+                                    </a></li>
                                 </ul>
                             </div>
-                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarReporte(${reporte.id_reporte})" title="Eliminar">
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarReporte(${r.id_reporte})" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -380,601 +871,278 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
 
-    // Renderizar paginación
+    function getEstadoBadge(estado) {
+        const badges = { 
+            'pendiente': '<span class="badge badge-estado badge-pendiente">Pendiente</span>', 
+            'revisado': '<span class="badge badge-estado badge-revisado">Revisado</span>', 
+            'archivado': '<span class="badge badge-estado badge-archivado">Archivado</span>' 
+        };
+        return badges[estado] || '<span class="badge badge-secondary">Desconocido</span>';
+    }
+
     function renderizarPaginacion() {
-        if (!paginationData || paginationData.total === 0) {
-            paginationContainer.style.display = 'none';
-            return;
-        }
-
-        // Actualizar información de elementos mostrados
-        const start = ((paginationData.page - 1) * paginationData.per_page) + 1;
-        const end = Math.min(paginationData.page * paginationData.per_page, paginationData.total);
+        const container = document.getElementById('pagination-container');
+        const nav = document.getElementById('pagination-nav');
         
-        document.getElementById('showing-start').textContent = start;
-        document.getElementById('showing-end').textContent = end;
+        if (!paginationData.total || paginationData.total === 0) { 
+            container.style.display = 'none'; 
+            return; 
+        }
+        
+        container.style.display = 'flex';
+        document.getElementById('showing-start').textContent = (currentPage - 1) * perPage + 1;
+        document.getElementById('showing-end').textContent = Math.min(currentPage * perPage, paginationData.total);
         document.getElementById('total-items').textContent = paginationData.total;
-
-        // Generar botones de paginación
-        let paginationHtml = '';
-
+        
+        nav.innerHTML = '';
+        
         // Botón anterior
-        if (paginationData.has_prev) {
-            paginationHtml += `
-                <li class="page-item">
-                    <a class="page-link" href="#" onclick="cambiarPagina(${paginationData.prev_num})">
-                        <i class="fas fa-chevron-left"></i>
-                    </a>
-                </li>
-            `;
-        } else {
-            paginationHtml += `
-                <li class="page-item disabled">
-                    <span class="page-link">
-                        <i class="fas fa-chevron-left"></i>
-                    </span>
-                </li>
-            `;
+        if (currentPage > 1) {
+            const prevLi = document.createElement('li');
+            prevLi.className = 'page-item';
+            prevLi.innerHTML = `<a class="page-link" href="#" onclick="cargarReportes(${currentPage - 1}); return false;">«</a>`;
+            nav.appendChild(prevLi);
         }
-
-        // Números de página
-        const startPage = Math.max(1, paginationData.page - 2);
-        const endPage = Math.min(paginationData.pages, paginationData.page + 2);
-
-        if (startPage > 1) {
-            paginationHtml += `
-                <li class="page-item">
-                    <a class="page-link" href="#" onclick="cambiarPagina(1)">1</a>
-                </li>
-            `;
-            if (startPage > 2) {
-                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-            }
+        
+        // Páginas numeradas
+        for (let i = 1; i <= paginationData.pages; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" onclick="cargarReportes(${i}); return false;">${i}</a>`;
+            nav.appendChild(li);
         }
+        
+        // Botón siguiente
+        if (currentPage < paginationData.pages) {
+            const nextLi = document.createElement('li');
+            nextLi.className = 'page-item';
+            nextLi.innerHTML = `<a class="page-link" href="#" onclick="cargarReportes(${currentPage + 1}); return false;">»</a>`;
+            nav.appendChild(nextLi);
+        }
+    }
 
-        for (let i = startPage; i <= endPage; i++) {
-            if (i === paginationData.page) {
-                paginationHtml += `
-                    <li class="page-item active">
-                        <span class="page-link">${i}</span>
-                    </li>
+    // Eventos
+    document.getElementById('refresh-btn').addEventListener('click', () => cargarReportes(currentPage));
+    document.getElementById('refresh-all').addEventListener('click', () => {
+        cargarEquipos();
+        cargarReportes(currentPage);
+    });
+    
+    ['filtro-estado', 'filtro-curso', 'filtro-profesor'].forEach(id => 
+        document.getElementById(id).addEventListener('input', () => cargarReportes(1))
+    );
+    
+    document.getElementById('limpiar-filtros').addEventListener('click', () => { 
+        document.querySelectorAll('#filtro-estado, #filtro-curso, #filtro-profesor').forEach(el => el.value = ''); 
+        cargarReportes(1); 
+    });
+    
+    document.getElementById('per-page-select').addEventListener('change', function() { 
+        perPage = this.value; 
+        cargarReportes(1); 
+    });
+
+    // ==================== FUNCIONES GLOBALES - DETALLE ====================
+    window.verDetalle = async function(id) {
+        currentReporte = reportes.find(r => r.id_reporte === id);
+        if (!currentReporte) return;
+
+        const contenido = document.getElementById('detalle-contenido');
+        contenido.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Cargando detalles...</p></div>';
+        modalDetalle.show();
+
+        try {
+            const res = await fetch(`/admin/api/reportes-calificaciones/${id}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                const reporte = data.reporte;
+                const estudiantes = Array.isArray(reporte.datos_estudiantes?.estudiantes) 
+                    ? reporte.datos_estudiantes.estudiantes 
+                    : (Array.isArray(reporte.datos_estudiantes) ? reporte.datos_estudiantes : []);
+
+                contenido.innerHTML = `
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="summary-card">
+                                <i class="fas fa-users text-primary"></i>
+                                <h3>Estudiantes</h3>
+                                <div class="number">${estudiantes.length}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-card">
+                                <i class="fas fa-chart-line text-info"></i>
+                                <h3>Promedio</h3>
+                                <div class="number">${reporte.promedio_general}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-card">
+                                <i class="fas fa-arrow-up text-success"></i>
+                                <h3>Nota Más Alta</h3>
+                                <div class="number text-success">${reporte.nota_mas_alta}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="summary-card">
+                                <i class="fas fa-arrow-down text-danger"></i>
+                                <h3>Nota Más Baja</h3>
+                                <div class="number text-danger">${reporte.nota_mas_baja}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h5 class="fw-bold mb-3"><i class="fas fa-info-circle text-primary me-2"></i>Información del Reporte</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <strong>Profesor:</strong> ${reporte.profesor_nombre}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <strong>Curso:</strong> ${reporte.curso_nombre}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <strong>Asignatura:</strong> ${reporte.asignatura_nombre}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <strong>Fecha:</strong> ${new Date(reporte.fecha_generacion).toLocaleDateString('es-ES')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="fw-bold mb-3"><i class="fas fa-user-graduate text-primary me-2"></i>Calificaciones por Estudiante</h5>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${estudiantes.map((est, idx) => {
+                            const nota = parseFloat(est.nota_final || est.nota || 0);
+                            const notaClass = nota >= 4.0 ? 'nota-alta' : (nota >= 3.0 ? 'nota-media' : 'nota-baja');
+                            return `
+                                <div class="student-card">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${idx + 1}. ${est.nombre_completo || est.nombre || 'Sin nombre'}</strong>
+                                        </div>
+                                        <span class="nota-badge ${notaClass}">${nota.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
                 `;
             } else {
-                paginationHtml += `
-                    <li class="page-item">
-                        <a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a>
-                    </li>
-                `;
+                contenido.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle del reporte</div>';
             }
+        } catch (err) {
+            console.error(err);
+            contenido.innerHTML = '<div class="alert alert-danger">Error al cargar el detalle</div>';
         }
+    };
 
-        if (endPage < paginationData.pages) {
-            if (endPage < paginationData.pages - 1) {
-                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    // ==================== CAMBIAR ESTADO ====================
+    window.cambiarEstado = async function(id, nuevoEstado) {
+        if (!confirm(`¿Cambiar estado a "${nuevoEstado}"?`)) return;
+
+        try {
+            const res = await fetch(`/admin/api/reportes-calificaciones/${id}/estado`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+
+            const data = await res.json();
+            
+            if (data.success) {
+                alert('Estado actualizado correctamente');
+                cargarReportes(currentPage);
+            } else {
+                alert('Error al actualizar estado: ' + (data.message || 'Error desconocido'));
             }
-            paginationHtml += `
-                <li class="page-item">
-                    <a class="page-link" href="#" onclick="cambiarPagina(${paginationData.pages})">${paginationData.pages}</a>
-                </li>
-            `;
+        } catch (err) {
+            console.error(err);
+            alert('Error al actualizar estado');
         }
+    };
 
-        // Botón siguiente
-        if (paginationData.has_next) {
-            paginationHtml += `
-                <li class="page-item">
-                    <a class="page-link" href="#" onclick="cambiarPagina(${paginationData.next_num})">
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                </li>
-            `;
-        } else {
-            paginationHtml += `
-                <li class="page-item disabled">
-                    <span class="page-link">
-                        <i class="fas fa-chevron-right"></i>
-                    </span>
-                </li>
-            `;
+    // ==================== ELIMINAR REPORTE ====================
+    window.eliminarReporte = async function(id) {
+        if (!confirm('¿Está seguro de eliminar este reporte? Esta acción no se puede deshacer.')) return;
+
+        try {
+            const res = await fetch(`/admin/api/reportes-calificaciones/${id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await res.json();
+            
+            if (data.success) {
+                alert('Reporte eliminado correctamente');
+                cargarReportes(currentPage);
+            } else {
+                alert('Error al eliminar reporte: ' + (data.message || 'Error desconocido'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error al eliminar reporte');
         }
+    };
 
-        paginationNav.innerHTML = paginationHtml;
-    }
-
-    // Cambiar página
-    window.cambiarPagina = function(page) {
-        cargarReportes(page);
-    }
-
-    // Enviar comunicado al profesor
-    window.enviarComunicado = function() {
-        if (!currentReporte) {
-            mostrarError('No hay reporte seleccionado');
-            return;
-        }
-
-        // Llenar información del modal
+    // ==================== COMUNICADO ====================
+    window.abrirComunicado = function() {
+        if (!currentReporte) return;
+        
         document.getElementById('profesor-info').value = currentReporte.profesor_nombre;
         document.getElementById('reporte-info').value = `${currentReporte.curso_nombre} - ${currentReporte.asignatura_nombre}`;
-        
-        // Limpiar formulario
-        document.getElementById('asunto-comunicado').value = '';
+        document.getElementById('asunto-comunicado').value = `Revisión de calificaciones - ${currentReporte.curso_nombre}`;
         document.getElementById('mensaje-comunicado').value = '';
+        
+        modalDetalle.hide();
+        modalComunicado.show();
+    };
 
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('comunicadoModal'));
-        modal.show();
-    }
-
-    // Enviar el comunicado
     document.getElementById('enviarComunicadoBtn').addEventListener('click', async function() {
         const asunto = document.getElementById('asunto-comunicado').value.trim();
         const mensaje = document.getElementById('mensaje-comunicado').value.trim();
 
         if (!asunto || !mensaje) {
-            mostrarError('Por favor completa todos los campos');
+            alert('Por favor complete todos los campos');
             return;
         }
 
         if (!currentReporte) {
-            mostrarError('No hay reporte seleccionado');
+            alert('No hay reporte seleccionado');
             return;
         }
 
         try {
-            const response = await fetch('/admin/api/enviar-comunicado-profesor', {
+            const res = await fetch('/admin/api/comunicados', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    profesor_id: currentReporte.profesor_id,
-                    reporte_id: currentReporte.id_reporte,
+                    id_reporte: currentReporte.id_reporte,
+                    id_profesor: currentReporte.id_profesor,
                     asunto: asunto,
                     mensaje: mensaje
                 })
             });
 
-            const data = await response.json();
-
+            const data = await res.json();
+            
             if (data.success) {
-                mostrarExito('Comunicado enviado correctamente al profesor');
-                bootstrap.Modal.getInstance(document.getElementById('comunicadoModal')).hide();
+                alert('Comunicado enviado correctamente');
+                modalComunicado.hide();
+                document.getElementById('comunicadoForm').reset();
             } else {
-                mostrarError('Error enviando comunicado: ' + data.message);
+                alert('Error al enviar comunicado: ' + (data.message || 'Error desconocido'));
             }
-        } catch (error) {
-            console.error('Error:', error);
-            mostrarError('Error de red al enviar comunicado');
+        } catch (err) {
+            console.error(err);
+            alert('Error al enviar comunicado');
         }
     });
 
-    // Obtener badge de estado
-    function getEstadoBadge(estado) {
-        const badges = {
-            'pendiente': '<span class="badge badge-estado badge-pendiente">Pendiente</span>',
-            'revisado': '<span class="badge badge-estado badge-revisado">Revisado</span>',
-            'archivado': '<span class="badge badge-estado badge-archivado">Archivado</span>'
-        };
-        return badges[estado] || '<span class="badge badge-secondary">Desconocido</span>';
-    }
-
-    // Ver detalles del reporte
-    window.verDetalle = function(reporteId) {
-        const reporte = reportes.find(r => r.id_reporte === reporteId);
-        if (!reporte) return;
-        
-        // Almacenar el reporte actual para el comunicado
-        currentReporte = reporte;
-
-        const fecha = new Date(reporte.fecha_generacion).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        // Verificar si es la nueva estructura de datos o la antigua
-        const datos = reporte.datos_estudiantes;
-        let esNuevaEstructura = false;
-        let estudiantes = [];
-        let configuracion = {};
-        let categorias = [];
-        let estadisticas = {};
-        let metadatos = {};
-
-        if (datos && typeof datos === 'object') {
-            // Verificar si tiene la nueva estructura
-            if (datos.metadatos && datos.estudiantes && datos.configuracion_notas) {
-                esNuevaEstructura = true;
-                metadatos = datos.metadatos;
-                estudiantes = datos.estudiantes || [];
-                configuracion = datos.configuracion_notas || {};
-                categorias = datos.categorias || [];
-                estadisticas = datos.estadisticas_generales || {};
-            } else if (Array.isArray(datos)) {
-                // Estructura antigua - array de estudiantes
-                estudiantes = datos;
-            }
-        }
-
-        // Generar HTML de estudiantes con notas individuales
-        const estudiantesHtml = estudiantes.length > 0 ? estudiantes.map(est => {
-            if (esNuevaEstructura) {
-                // Generar HTML de calificaciones individuales
-                let calificacionesHtml = '';
-                if (est.calificaciones_por_asignacion && est.calificaciones_por_asignacion.length > 0) {
-                    calificacionesHtml = `
-                        <div class="mt-2">
-                            <small class="text-muted"><strong>Calificaciones individuales:</strong></small>
-                            <div class="row mt-1">
-                                ${est.calificaciones_por_asignacion.map(cal => `
-                                    <div class="col-6 mb-1">
-                                        <small>
-                                            <span class="badge bg-light text-dark me-1">${cal.categoria_nombre || 'Sin categoría'}</span>
-                                            <strong>${cal.valor || 'N/A'}</strong>
-                                            <br><em class="text-muted">${cal.nombre_calificacion || 'Sin nombre'}</em>
-                                        </small>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Generar HTML de promedios por categoría
-                let promediosCategoriaHtml = '';
-                if (est.promedios_por_categoria && Object.keys(est.promedios_por_categoria).length > 0) {
-                    promediosCategoriaHtml = `
-                        <div class="mt-2">
-                            <small class="text-muted"><strong>Promedios por categoría:</strong></small>
-                            <div class="row mt-1">
-                                ${Object.values(est.promedios_por_categoria).map(prom => `
-                                    <div class="col-6 mb-1">
-                                        <small>
-                                            <span class="badge me-1" style="background-color: ${prom.categoria_color || '#cccccc'}; width: 12px; height: 12px;"></span>
-                                            <strong>${prom.promedio || 0}</strong>
-                                            <br><em class="text-muted">${prom.categoria_nombre || 'Sin nombre'}</em>
-                                        </small>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div class="estudiante-item border rounded p-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="estudiante-nombre fw-bold">${est.nombre || 'Sin nombre'}</span>
-                                <br><small class="text-muted">${est.correo || ''}</small>
-                            </div>
-                            <div class="text-end">
-                                <span class="estudiante-promedio h5 mb-0">${est.promedio_final || 0}</span>
-                                <br><small class="badge ${est.estado === 'Aprobado' ? 'bg-success' : 'bg-danger'}">${est.estado || 'Sin estado'}</small>
-                            </div>
-                        </div>
-                        ${calificacionesHtml}
-                        ${promediosCategoriaHtml}
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="estudiante-item d-flex justify-content-between align-items-center">
-                        <span class="estudiante-nombre">${est.nombre || 'Sin nombre'}</span>
-                        <span class="estudiante-promedio">${est.promedio || 0}</span>
-                    </div>
-                `;
-            }
-        }).join('') : '<p class="text-muted">No hay datos de estudiantes disponibles.</p>';
-
-        // Generar HTML de configuración de notas
-        const configuracionHtml = esNuevaEstructura && configuracion ? `
-            <div class="row mb-3">
-                <div class="col-12">
-                    <h6><strong>Configuración de Notas</strong></h6>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="card text-center">
-                                <div class="card-body">
-                                    <h6 class="text-info">${configuracion.nota_minima || 0}</h6>
-                                    <small class="text-muted">Nota Mínima</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card text-center">
-                                <div class="card-body">
-                                    <h6 class="text-warning">${configuracion.nota_maxima || 100}</h6>
-                                    <small class="text-muted">Nota Máxima</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card text-center">
-                                <div class="card-body">
-                                    <h6 class="text-success">${configuracion.nota_aprobacion || 60}</h6>
-                                    <small class="text-muted">Nota Aprobación</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        ` : '';
-
-        // Generar HTML de categorías
-        const categoriasHtml = esNuevaEstructura && categorias.length > 0 ? `
-            <div class="row mb-3">
-                <div class="col-12">
-                    <h6><strong>Categorías de Evaluación</strong></h6>
-                    <div class="row">
-                        ${categorias.map(cat => `
-                            <div class="col-md-6 mb-2">
-                                <div class="d-flex align-items-center">
-                                    <span class="badge me-2" style="background-color: ${cat.color || '#cccccc'}; width: 20px; height: 20px;"></span>
-                                    <span>${cat.nombre || 'Sin nombre'}</span>
-                                    <span class="ms-auto text-muted">${cat.porcentaje || 0}%</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            </div>
-        ` : '';
-
-        // Generar HTML de estadísticas mejoradas
-        const estadisticasHtml = esNuevaEstructura && estadisticas ? `
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="text-success">${estadisticas.estudiantes_aprobados || 0}</h6>
-                            <small class="text-muted">Aprobados</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="text-danger">${estadisticas.estudiantes_reprobados || 0}</h6>
-                            <small class="text-muted">Reprobados</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="text-primary">${estadisticas.porcentaje_aprobacion || 0}%</h6>
-                            <small class="text-muted">% Aprobación</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="text-info">${estadisticas.total_estudiantes || 0}</h6>
-                            <small class="text-muted">Total Estudiantes</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        ` : '';
-
-        document.getElementById('detalle-contenido').innerHTML = `
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <h6><strong>Información General</strong></h6>
-                    <p><strong>Profesor:</strong> ${reporte.profesor_nombre}</p>
-                    <p><strong>Curso:</strong> ${reporte.curso_nombre}</p>
-                    <p><strong>Asignatura:</strong> ${reporte.asignatura_nombre}</p>
-                    <p><strong>Fecha:</strong> ${fecha}</p>
-                    <p><strong>Estado:</strong> ${getEstadoBadge(reporte.estado)}</p>
-                    ${esNuevaEstructura && metadatos.fecha_generacion ? `<p><strong>Generado:</strong> ${metadatos.fecha_generacion}</p>` : ''}
-                </div>
-                <div class="col-md-6">
-                    <div class="estadisticas-card">
-                        <div class="card-body text-center">
-                            <div class="estadisticas-valor">${reporte.promedio_general}</div>
-                            <div class="estadisticas-label">Promedio General</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            ${configuracionHtml}
-            ${categoriasHtml}
-            ${estadisticasHtml}
-            
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="text-success">${reporte.nota_mas_alta}</h5>
-                            <small class="text-muted">Nota Más Alta</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="text-danger">${reporte.nota_mas_baja}</h5>
-                            <small class="text-muted">Nota Más Baja</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h5 class="text-primary">${estudiantes.length}</h5>
-                            <small class="text-muted">Total Estudiantes</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <h6><strong>Calificaciones por Estudiante</strong></h6>
-            <div class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
-                ${estudiantesHtml}
-            </div>
-        `;
-
-        const modal = new bootstrap.Modal(document.getElementById('detalleReporteModal'));
-        modal.show();
-    };
-
-    // Cambiar estado del reporte
-    window.cambiarEstado = function(reporteId, nuevoEstado) {
-        const reporte = reportes.find(r => r.id_reporte === reporteId);
-        if (!reporte) return;
-
-        const estados = {
-            'pendiente': 'Pendiente',
-            'revisado': 'Revisado',
-            'archivado': 'Archivado'
-        };
-
-        document.getElementById('confirmModalBody').innerHTML = `
-            ¿Estás seguro de que deseas cambiar el estado del reporte de <strong>${reporte.curso_nombre}</strong> 
-            a <strong>${estados[nuevoEstado]}</strong>?
-        `;
-
-        const confirmBtn = document.getElementById('confirmBtn');
-        confirmBtn.onclick = async function() {
-            try {
-                const response = await fetch(`/admin/api/reportes-calificaciones/${reporteId}/estado`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ estado: nuevoEstado })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    reporte.estado = nuevoEstado;
-                    aplicarFiltros();
-                    mostrarExito('Estado actualizado correctamente');
-                } else {
-                    mostrarError('Error actualizando estado: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                mostrarError('Error de red al actualizar estado');
-            }
-
-            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-        };
-
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        modal.show();
-    };
-
-    // Eliminar reporte
-    window.eliminarReporte = function(reporteId) {
-        const reporte = reportes.find(r => r.id_reporte === reporteId);
-        if (!reporte) return;
-
-        document.getElementById('confirmModalBody').innerHTML = `
-            ¿Estás seguro de que deseas eliminar el reporte de <strong>${reporte.curso_nombre}</strong> 
-            de <strong>${reporte.profesor_nombre}</strong>?<br><br>
-            <small class="text-muted">Esta acción no se puede deshacer.</small>
-        `;
-
-        const confirmBtn = document.getElementById('confirmBtn');
-        confirmBtn.className = 'btn btn-danger';
-        confirmBtn.textContent = 'Eliminar';
-        confirmBtn.onclick = async function() {
-            try {
-                const response = await fetch(`/admin/api/reportes-calificaciones/${reporteId}`, {
-                    method: 'DELETE'
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    reportes = reportes.filter(r => r.id_reporte !== reporteId);
-                    aplicarFiltros();
-                    mostrarExito('Reporte eliminado correctamente');
-                } else {
-                    mostrarError('Error eliminando reporte: ' + data.message);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                mostrarError('Error de red al eliminar reporte');
-            }
-
-            bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
-        };
-
-        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-        modal.show();
-    };
-
-    // Mostrar mensajes
-    function mostrarExito(mensaje) {
-        // Crear toast de éxito
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-success border-0';
-        toast.setAttribute('role', 'alert');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">${mensaje}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-        
-        document.body.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-        
-        toast.addEventListener('hidden.bs.toast', () => {
-            document.body.removeChild(toast);
-        });
-    }
-
-    function mostrarError(mensaje) {
-        // Crear toast de error
-        const toast = document.createElement('div');
-        toast.className = 'toast align-items-center text-white bg-danger border-0';
-        toast.setAttribute('role', 'alert');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">${mensaje}</div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-        
-        document.body.appendChild(toast);
-        const bsToast = new bootstrap.Toast(toast);
-        bsToast.show();
-        
-        toast.addEventListener('hidden.bs.toast', () => {
-            document.body.removeChild(toast);
-        });
-    }
-
-    // Event listeners
-    refreshBtn.addEventListener('click', () => cargarReportes(currentPage));
-    filtroEstado.addEventListener('change', aplicarFiltros);
-    filtroCurso.addEventListener('input', aplicarFiltros);
-    filtroProfesor.addEventListener('input', aplicarFiltros);
-    perPageSelect.addEventListener('change', function() {
-        perPage = parseInt(this.value);
-        cargarReportes(1);
-    });
-    limpiarFiltrosBtn.addEventListener('click', function() {
-        filtroEstado.value = '';
-        filtroCurso.value = '';
-        filtroProfesor.value = '';
-        aplicarFiltros();
-    });
-
-    // Cargar reportes al inicializar
-    cargarReportes();
+    // Inicializar
+    cargarEquipos();
 });
 </script>
+
 {% endblock %}

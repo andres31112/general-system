@@ -653,14 +653,27 @@ def api_programar_mantenimiento():
             tecnico=tecnico
         )
         db.session.add(nuevo_mantenimiento)
+        db.session.flush()
             
+        try:
+            from services.notification_service import notificar_nuevo_mantenimiento
+            notificaciones_enviadas = notificar_nuevo_mantenimiento(
+                mantenimiento=nuevo_mantenimiento,
+                admin_id=current_user.id_usuario
+            )
+            print(f"✅ Notificaciones de mantenimiento enviadas: {notificaciones_enviadas}")
+        except Exception as e:
+            print(f"⚠️ Error enviando notificaciones de mantenimiento: {e}")
+            notificaciones_enviadas = 0
+        
         db.session.commit()
 
         return jsonify({
             'success': True,
             'message': f'Mantenimiento programado exitosamente para el equipo "{equipo.nombre}"',
+            'notificaciones_enviadas': notificaciones_enviadas,
             'mantenimiento': {
-                'id': nuevo_mantenimiento.id_mantenimiento,  # o el nombre del campo ID en tu modelo
+                'id': nuevo_mantenimiento.id_mantenimiento,
                 'equipo_id': nuevo_mantenimiento.equipo_id,
                 'equipo_nombre': equipo.nombre,
                 'sede': sede.nombre,
@@ -673,12 +686,14 @@ def api_programar_mantenimiento():
         
     except Exception as e:
         db.session.rollback()
-        print(f"Error al programar mantenimiento: {e}")
+        print(f"❌ Error al programar mantenimiento: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False, 
             'error': f'Error interno del servidor: {str(e)}'
         }), 500
-
+        
 @admin_bp.route('/api/equipos/con-mantenimientos', methods=['GET'])
 @login_required
 @role_required(1)
