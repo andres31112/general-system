@@ -7,6 +7,7 @@ from controllers.models import (
     Calificacion, Asistencia, Clase, Matricula, Curso, HorarioCompartido, HorarioCurso, Salon, Sede,
     CicloAcademico, PeriodoAcademico, CategoriaCalificacion, Notificacion, Evento
     )
+from routes.profesor import tareas_academicas
 
 
 padre_bp = Blueprint('padre', __name__, url_prefix='/padre')
@@ -1855,9 +1856,8 @@ def ver_detalle_tarea_hijo(hijo_id, tarea_id):
             return redirect(url_for('padre.dashboard'))
         
         hijo = Usuario.query.get_or_404(hijo_id)
-        tarea = TareaAcademica.query.get_or_404(tarea_id)
+        tarea = tareas_academicas.query.get_or_404(tarea_id)
         
-        # Verificar que el hijo esté en el curso de la tarea
         matricula = Matricula.query.filter_by(
             estudianteId=hijo_id,
             cursoId=tarea.curso_id

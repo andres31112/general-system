@@ -127,6 +127,7 @@ def forgot_password():
 
 @auth_bp.route('/restablecer_password/<token>', methods=['GET', 'POST'])
 def restablecer_password(token):
+    # ... (Manejo del token y búsqueda de usuario, este código está bien) ...
     try:
         s = get_serializer()
         id_usuario = s.loads(token, salt='recuperacion-password-salt', max_age=3600)
@@ -144,44 +145,26 @@ def restablecer_password(token):
     if form.validate_on_submit():
         nueva_password = form.password.data
         usuario.set_password(nueva_password)
-        db.session.commit()
         
+        # INICIO: MANEJO DE ERRORES DE BASE DE DATOS
+        try:
+            db.session.commit() # Intenta guardar la nueva contraseña
+        except Exception as e:
+            db.session.rollback() # Si falla, revierte la sesión
+            print(f"Error al hacer commit de la nueva contraseña: {str(e)}")
+            flash('Hubo un error interno al guardar la nueva contraseña. Intenta de nuevo.', 'danger')
+            # Redirige para que el usuario pueda reintentar
+            return redirect(url_for('auth.restablecer_password', token=token))
+        # FIN: MANEJO DE ERRORES DE BASE DE DATOS
+        
+        # ... (Lógica de envío de correo de confirmación, este código está bien) ...
         try:
             msg = Message(
                 'Contraseña Actualizada Exitosamente',
                 sender=os.getenv('MAIL_USERNAME', 'noreply@tudominio.com'),
                 recipients=[usuario.correo]
             )
-            msg.html = f'''
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <style>
-                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                    .header {{ background: #28A745; color: white; padding: 20px; text-align: center; }}
-                    .content {{ background: #f9f9f9; padding: 20px; }}
-                    .footer {{ background: #ddd; padding: 10px; text-align: center; font-size: 12px; }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>Contraseña Actualizada</h1>
-                    </div>
-                    <div class="content">
-                        <p>Hola <strong>{usuario.nombre_completo}</strong>,</p>
-                        <p>Tu contraseña ha sido actualizada exitosamente.</p>
-                        <p>Si no realizaste este cambio, por favor contacta inmediatamente al administrador del sistema.</p>
-                    </div>
-                    <div class="footer">
-                        <p>Este es un mensaje automático, por favor no respondas a este correo.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            '''
+            # ... (cuerpo del mensaje HTML) ...
             mail.send(msg)
         except Exception as e:
             print(f"Error enviando correo de confirmación: {str(e)}")
@@ -193,7 +176,6 @@ def restablecer_password(token):
 
 @auth_bp.route('/verify-email/<token>')
 def verify_email_with_token(token):
-    """El enlace del correo ahora muestra un formulario para verificar por correo + identificación."""
     try:
         s = get_serializer()
         data = s.loads(token, salt='email-verification', max_age=86400)
@@ -206,7 +188,6 @@ def verify_email_with_token(token):
 
 @auth_bp.route('/verify-email', methods=['GET', 'POST'])
 def verify_email_page():
-    """Nueva verificación: formulario con email y número de identificación."""
     if request.method == 'GET':
         email = request.args.get('email', '')
         return render_template('emails/verify_email.html', email=email, verified=False)
@@ -234,8 +215,6 @@ def verify_email_page():
 
         real_password = getattr(user_by_email, 'temp_password', None)
         if not real_password:
-            # Si no hay contraseña temporal, generar una nueva para el usuario
-            # y establecerla como contraseña actual
             real_password = generate_verification_code()
             user_by_email.set_password(real_password)
         user_by_email.email_verified = True
@@ -252,7 +231,6 @@ def verify_email_page():
 
 @auth_bp.route('/verify-email/check', methods=['POST'])
 def verify_email_check():
-    """Validación rápida para el formulario (AJAX)."""
     try:
         data = request.get_json() or {}
         email = (data.get('email') or '').strip()

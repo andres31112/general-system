@@ -1797,22 +1797,7 @@ def asignaturas():
         asignaturas = []
     return render_template('profesores/asignaturas.html', asignaturas=asignaturas)
 
-@profesor_bp.route('/perfil')
-@login_required
-def perfil():
-    """Página para gestionar la información del perfil del profesor."""
-    try:
-        total_cursos = len(obtener_cursos_del_profesor(current_user.id_usuario))
-        total_asignaturas = len(obtener_asignaturas_del_profesor(current_user.id_usuario))
-        total_horarios = len(HorarioCompartido.query.filter_by(profesor_id=current_user.id_usuario).all())
-    except Exception as e:
-        flash(f'Error al cargar datos del perfil: {str(e)}', 'error')
-        total_cursos = total_asignaturas = total_horarios = 0
 
-    return render_template('profesores/perfil.html',
-                         total_cursos=total_cursos,
-                         total_asignaturas=total_asignaturas,
-                         total_horarios=total_horarios)
 
 @profesor_bp.route('/soporte')
 @login_required

@@ -8,6 +8,7 @@ from routes.admin import admin_bp
 from routes.estudiantes import estudiante_bp
 from routes.profesor import profesor_bp
 from routes.padres import padre_bp
+from routes.perfil import perfil
 from config import Config
 from extensions import init_app 
 from flask import Flask
@@ -56,18 +57,18 @@ def create_initial_data():
                     telefono='3001234567',
                     direccion='Sede Principal',
                     id_rol_fk=super_admin_role.id_rol,
-                    email_verified=True,  # ✅ IMPORTANTE: Marcar como verificado
-                    verification_code=None,  # ✅ Sin código de verificación
-                    verification_code_expires=None,  # ✅ Sin expiración
-                    verification_attempts=0  # ✅ Intentos en 0
+                    email_verified=True,  
+                    verification_code=None,  
+                    verification_code_expires=None,  
+                    verification_attempts=0  
                 )
                 super_admin.set_password('admin123')
                 db.session.add(super_admin)
                 db.session.commit()
-                print("✅ Usuario 'Super Administrador' creado con contraseña 'admin123'.")
-                print("✅ Email marcado como VERIFICADO automáticamente.")
+                print(" Usuario 'Super Administrador' creado con contraseña 'admin123'.")
+                print(" Email marcado como VERIFICADO automáticamente.")
             else:
-                print("❌ Rol 'Super Admin' no encontrado. No se pudo crear el usuario superadmin.")
+                print(" Rol 'Super Admin' no encontrado. No se pudo crear el usuario superadmin.")
         else:
             existing_admin = Usuario.query.filter_by(no_identidad='000000000').first()
             if existing_admin and not existing_admin.email_verified:
@@ -76,7 +77,7 @@ def create_initial_data():
                 existing_admin.verification_code_expires = None
                 existing_admin.verification_attempts = 0
                 db.session.commit()
-                print("✅ Usuario Super Administrador actualizado: email marcado como VERIFICADO.")
+                print(" Usuario Super Administrador actualizado: email marcado como VERIFICADO.")
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "static", "images", "candidatos")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -88,19 +89,17 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(estudiante_bp)
 app.register_blueprint(padre_bp)
 app.register_blueprint(profesor_bp)
-
+app.register_blueprint(perfil)
 @app.context_processor
 def inject_unread_notifications():
     try:
         if current_user.is_authenticated:
-            # Lazy import to avoid circular imports
             from services.notification_service import contar_notificaciones_no_leidas
             unread = contar_notificaciones_no_leidas(current_user.id_usuario)
         else:
             unread = 0
     except Exception:
         unread = 0
-    # Mantener compatibilidad con plantillas existentes que usan unread_messages
     return {
         'unread_notifications': unread,
         'unread_messages': unread,

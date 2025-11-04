@@ -1,0 +1,550 @@
+ <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Perfil Personal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<style>
+    :root {
+        --accent1: #F95738;
+        --accent2: #EE964B;
+        --accent3: #F4D35E;
+        --accent4: #0D3B66;
+        --light: #FAF0CA;
+        --white: #FFFFFF;
+        --black: #333333;
+        --gray: #666666;
+        --light-gray: #F8F9FA;
+        --border: #E9ECEF;
+        --card-bg: #FFFFFF;
+        --header-bg: #FFFFFF;
+        --main-bg: #F8F9FA;
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+        --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+        --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+        --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+    }
+
+    /* Estilos Generales */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: var(--main-bg);
+        color: var(--black);
+        margin: 0;
+        min-height: 100vh;
+    }
+
+    /* Encabezado Principal */
+    .main-header {
+        background: var(--gradient-primary);
+        color: var(--white);
+        padding: 18px 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: var(--shadow);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .main-header h1 {
+        color: var(--white);
+        font-weight: 700;
+        font-size: 1.8rem;
+        margin: 0;
+    }
+
+    .header-icons {
+        display: flex;
+        gap: 20px;
+    }
+
+    .header-icons i {
+        font-size: 1.5rem;
+        color: var(--accent3);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .header-icons i:hover {
+        transform: scale(1.1);
+        color: var(--white);
+    }
+
+    /* Contenedor del Formulario */
+    .form-container {
+        /* Max-width y margin auto solo si no hay panel de estadísticas */
+        /* Lo reajustaremos con las columnas de Bootstrap */
+        background: var(--card-bg);
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        border-top: 4px solid var(--accent4);
+        margin-bottom: 2rem;
+        height: 100%; /* Asegura que la tarjeta se extienda */
+    }
+    
+    /* Nuevo contenedor principal para el layout de 2 columnas */
+    .main-content-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+
+    .form-container h2 {
+        color: var(--accent4);
+        font-weight: 700;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+
+    .form-subtitle {
+        color: var(--gray);
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    /* Campos del Formulario */
+    .input-container {
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        background: var(--white);
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .input-container:hover {
+        border-color: var(--accent2);
+        box-shadow: 0 4px 12px rgba(238, 150, 75, 0.1);
+    }
+
+    .input-container:focus-within {
+        border-color: var(--accent4);
+        box-shadow: 0 4px 16px rgba(13, 59, 102, 0.15);
+    }
+
+    .input-container legend {
+        font-weight: 600;
+        color: var(--accent4);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0 0.5rem;
+        margin-bottom: 0.5rem;
+        background: var(--white);
+        width: auto;
+    }
+
+    .form-control {
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: var(--white);
+    }
+    
+    /* Estilo para campos deshabilitados */
+    .form-control[disabled], .form-select[disabled] {
+        background-color: var(--light-gray);
+        opacity: 0.8;
+        cursor: not-allowed;
+    }
+
+    .form-control:focus {
+        border-color: var(--accent4);
+        box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.1);
+        background: var(--white);
+    }
+
+    .form-control::placeholder {
+        color: var(--gray);
+        opacity: 0.7;
+    }
+
+    .form-select {
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: var(--white);
+    }
+
+    .form-select:focus {
+        border-color: var(--accent4);
+        box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.1);
+    }
+    
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    input[type="email"] {
+        direction: ltr;
+    }
+
+    /* Botones */
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: var(--gradient-primary);
+        color: var(--white);
+        box-shadow: var(--shadow);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        color: var(--white);
+    }
+
+    .btn-secondary {
+        background: var(--gradient-secondary);
+        color: var(--black);
+        box-shadow: var(--shadow);
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        color: var(--black);
+    }
+
+    /* Mensajes Flash */
+    .flash-messages {
+        margin-bottom: 2rem;
+    }
+
+    .alert {
+        border-radius: 8px;
+        border: none;
+        padding: 1rem 1.5rem;
+        font-weight: 500;
+        box-shadow: var(--shadow);
+    }
+
+    .alert-success {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: var(--white);
+    }
+
+    .alert-danger {
+        background: linear-gradient(135deg, #dc3545, #e25563);
+        color: var(--white);
+    }
+
+    .alert-warning {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+        color: var(--black);
+    }
+
+    .btn-close {
+        filter: invert(1);
+    }
+
+    /* Mensajes de Error */
+    .errors {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .errors li {
+        background: linear-gradient(135deg, var(--accent1), #ff6b4a);
+        color: var(--white);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+        box-shadow: var(--shadow);
+    }
+
+    /* Layout de Campos en Grid */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    
+    /* Estilos del Panel de Estadísticas */
+    .stats-panel {
+        background: var(--card-bg);
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        border-top: 4px solid var(--accent2);
+        margin-bottom: 2rem;
+        height: 100%; /* Asegura que la tarjeta se extienda */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        border-bottom: 1px dashed var(--border);
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+    
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-item strong {
+        color: var(--accent4);
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+    .stat-item i {
+        margin-right: 10px;
+        color: var(--accent1);
+    }
+
+
+    /* Responsive */
+    @media (max-width: 992px) { /* Ajuste a 'md' para mejor visibilidad */
+          /* Deshacemos el max-width en la columna y dejamos que la clase de Bootstrap maneje el ancho */
+        .main-content-wrapper {
+            max-width: 100%;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .form-container, .stats-panel {
+            padding: 1.5rem;
+            margin: 1rem 0; /* Ajuste para móviles */
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .d-flex {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* Animaciones */
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Aplicar animación al contenedor principal */
+    .main-content-wrapper {
+        animation: slideIn 0.6s ease-out;
+    }
+</style>
+</head>
+<body>
+    {# Si estás usando un layout base, descomenta la siguiente línea #}
+    {# {% extends "base.html" %} #}
+    {# {% block content %} #}
+
+    <header class="main-header container-fluid">
+        <h1>Mi Perfil de Usuario</h1>
+        <div class="header-icons">
+            <i class="fa-solid fa-bell"></i>
+            <i class="fa-solid fa-user"></i>
+        </div>
+    </header>
+
+    <div class="main-content-wrapper">
+        
+        <div class="row g-4">
+            
+            {# Determina el ancho de la columna basado en el rol del usuario #}
+            <div class="col-lg-{% if rol_usuario == 'Profesor' %}8{% else %}12{% endif %}"> 
+                <div class="form-container">
+                    <h2><i class="fas fa-user-edit me-2"></i>Editar Mi Perfil</h2>
+                    <p class="form-subtitle">Solo puedes editar tu **Nombre**, **Apellido** y **Teléfono**. Otros datos son sensibles y de solo lectura.</p>
+
+                    {# Mensajes Flash #}
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="flash-messages">
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('perfil.editar_perfil') }}" id="perfilForm">
+                        {{ form.hidden_tag() }}
+
+                        <div class="form-grid">
+                            {# Datos de Solo Lectura #}
+                            <fieldset class="input-container">
+                                <legend>{{ form.tipo_doc.label }}</legend>
+                                {{ form.tipo_doc(class="form-select", disabled=true) }}
+                                {# Los campos deshabilitados NO se envían, por lo que no hace falta gestionar sus errores aquí #}
+                            </fieldset>
+
+                            <fieldset class="input-container">
+                                <legend>{{ form.no_identidad.label }}</legend>
+                                {{ form.no_identidad(class="form-control", placeholder="Número de Identidad", type="number", min="0", pattern="[0-9]*", inputmode="numeric", disabled=true) }}
+                            </fieldset>
+                        </div>
+
+                        <div class="form-grid">
+                            {# Campos Editables #}
+                            <fieldset class="input-container">
+                                <legend>{{ form.nombre.label }}</legend>
+                                {{ form.nombre(class="form-control", placeholder="Tu Nombre", type="text", maxlength="50") }}
+                                {% if form.nombre.errors %}
+                                    <ul class="errors">
+                                        {% for error in form.nombre.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </fieldset>
+
+                            <fieldset class="input-container">
+                                <legend>{{ form.apellido.label }}</legend>
+                                {{ form.apellido(class="form-control", placeholder="Tu Apellido", type="text", maxlength="50") }}
+                                {% if form.apellido.errors %}
+                                    <ul class="errors">
+                                        {% for error in form.apellido.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            </fieldset>
+                        </div>
+
+                        <fieldset class="input-container">
+                            <legend>{{ form.correo.label }}</legend>
+                            {{ form.correo(class="form-control", placeholder="correo@ejemplo.com", type="email", maxlength="100", disabled=true) }}
+                        </fieldset>
+
+                        <fieldset class="input-container">
+                            <legend>{{ form.telefono.label }}</legend>
+                            {{ form.telefono(class="form-control", placeholder="+1234567890", type="tel", maxlength="15") }}
+                            {% if form.telefono.errors %}
+                                <ul class="errors">
+                                    {% for error in form.telefono.errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </fieldset>
+
+                        <div class="form-grid">
+                            {# Datos de Solo Lectura #}
+                            <fieldset class="input-container">
+                                <legend>{{ form.estado_cuenta.label }}</legend>
+                                {{ form.estado_cuenta(class="form-select", disabled=true) }}
+                            </fieldset>
+
+                            <fieldset class="input-container">
+                                <legend>{{ form.rol.label }}</legend>
+                                {{ form.rol(class="form-select", disabled=true) }}
+                            </fieldset>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a href="{{ url_for('perfil.ver_perfil') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancelar
+                            </a>
+                            <button type="button" class="btn btn-primary" onclick="confirmarEdicion()">
+                                <i class="fas fa-save me-2"></i>Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if rol_usuario == 'Profesor' %}
+            <div class="col-lg-4"> 
+                <div class="stats-panel">
+                    <div>
+                        <h5 class="mb-4 text-center" style="color: var(--accent4); font-weight: 700;">
+                            <i class="fas fa-graduation-cap me-2"></i>Resumen Académico
+                        </h5>
+                        <div class="stat-item">
+                            <span><i class="fas fa-chalkboard-teacher"></i>Asignaturas Dictadas</span>
+                            <strong>{{ total_asignaturas }}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span><i class="fas fa-school"></i>Cursos Únicos Asignados</span>
+                            <strong>{{ total_cursos }}</strong>
+                        </div>
+                        <div class="stat-item">
+                            <span><i class="fas fa-calendar-alt"></i>Total Horarios Compartidos</span>
+                            <strong>{{ total_horarios }}</strong>
+                        </div>
+                    </div>
+                    <p class="text-muted small mt-4 pt-3 border-top text-center" style="border-top-color: var(--border) !important;">
+                        Datos de tu actividad como {{ rol_usuario }}.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        function confirmarEdicion() {
+            // Utilizamos la función nativa 'confirm' de JavaScript para el diálogo.
+            // Si el usuario presiona OK, retorna 'true'; si presiona Cancelar, retorna 'false'.
+            const confirmacion = confirm("¿Estás seguro de que quieres aplicar estos cambios a tu perfil?");
+
+            if (confirmacion) {
+                // Si el usuario confirma, enviamos el formulario.
+                document.getElementById('perfilForm').submit();
+            } else {
+                // Si el usuario cancela, no hacemos nada y el formulario no se envía.
+                console.log("Edición de perfil cancelada por el usuario.");
+            }
+        }
+    </script>
+    {# {% endblock %} #}
+</body>
+</html>

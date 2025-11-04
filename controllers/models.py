@@ -1,5 +1,3 @@
-# controllers/models.py
-
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from extensions import db
@@ -57,14 +55,11 @@ class Usuario(db.Model, UserMixin):
         
     voto_registrado = db.Column(db.Boolean, default=False)
     def puede_votar(self):
-        """Determina si el usuario puede votar (solo estudiantes)"""
         return self.es_estudiante() and not self.voto_registrado
     
     def ha_votado(self):
-        """Verifica si el estudiante ya votó"""
         return self.es_estudiante() and self.voto_registrado
 
-    # Nuevos campos para verificación de email
     temp_password = db.Column(db.String(100), nullable=True)
     email_verified = db.Column(db.Boolean, default=False)
     verification_code = db.Column(db.String(8), nullable=True)
@@ -72,11 +67,9 @@ class Usuario(db.Model, UserMixin):
     verification_attempts = db.Column(db.Integer, default=0)
     last_verification_attempt = db.Column(db.DateTime, nullable=True)
     
-    # Relaciones
     rol = db.relationship('Rol', back_populates='usuarios')
     asignaturas = db.relationship('Asignatura', secondary=asignatura_profesor, back_populates='profesores')
     
-    # Relación estudiantes-padres
     padres = db.relationship('Usuario',
                            secondary=estudiante_padre,
                            primaryjoin='Usuario.id_usuario == estudiante_padre.c.estudiante_id',
@@ -84,26 +77,19 @@ class Usuario(db.Model, UserMixin):
                            backref=db.backref('hijos', lazy='dynamic'),
                            lazy='dynamic')
     
-    # Relación con matrículas
     matriculas = db.relationship('Matricula', back_populates='estudiante', foreign_keys='Matricula.estudianteId')
     
-    # Relación con calificaciones (como estudiante)
     calificaciones = db.relationship('Calificacion', back_populates='estudiante', foreign_keys='Calificacion.estudianteId')
     
-    # Relación con asistencias
     asistencias = db.relationship('Asistencia', back_populates='estudiante_rel')
     
-    # Relación con horarios compartidos
     horarios_compartidos = db.relationship('HorarioCompartido', back_populates='profesor')
     
-    # Relación con votos
     votos_realizados = db.relationship('Voto', back_populates='estudiante')
     
-    # Relación con comunicaciones
     mensajes_enviados = db.relationship('Comunicacion', foreign_keys='Comunicacion.remitente_id', back_populates='remitente', overlaps="comunicaciones_enviadas")
     mensajes_recibidos = db.relationship('Comunicacion', foreign_keys='Comunicacion.destinatario_id', back_populates='destinatario', overlaps="comunicaciones_recibidas")
     
-    # Relación con notificaciones
     notificaciones = db.relationship('Notificacion', back_populates='usuario', lazy='dynamic')
     @property
     def is_active(self):
@@ -160,12 +146,10 @@ class Usuario(db.Model, UserMixin):
     def __repr__(self):
         return f'<Usuario {self.nombre_completo} - {self.rol_nombre}>'
     
-    # Relación con equipos asignados
     
     equipos_asignados = db.relationship('AsignacionEquipo', back_populates='estudiante')
     
     def get_equipos_activos(self):
-        """Obtiene equipos actualmente asignados al estudiante"""
         return [asig.equipo for asig in self.equipos_asignados if asig.estado_asignacion == 'activa']
 
 # ================================
@@ -194,7 +178,6 @@ class Curso(db.Model):
     sedeId = db.Column(db.Integer, db.ForeignKey('sede.id_sede'), nullable=False)
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'))
     
-    # Relaciones
     sede = db.relationship('Sede', back_populates='cursos')
     horario_general = db.relationship('HorarioGeneral', back_populates='cursos')
     matriculas = db.relationship('Matricula', back_populates='curso')
@@ -213,7 +196,6 @@ class Matricula(db.Model):
     año = db.Column(db.Integer, nullable=False)
     fecha_matricula = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     estudiante = db.relationship('Usuario', back_populates='matriculas', foreign_keys=[estudianteId])
     curso = db.relationship('Curso', back_populates='matriculas', foreign_keys=[cursoId])
 
@@ -228,7 +210,6 @@ class Asignatura(db.Model):
     descripcion = db.Column(db.Text)
     estado = db.Column(db.String(20), default='activa')
     
-    # Relaciones
     profesores = db.relationship('Usuario', secondary=asignatura_profesor, back_populates='asignaturas')
     horarios_asignados = db.relationship('HorarioCurso', back_populates='asignatura')
     horarios_compartidos = db.relationship('HorarioCompartido', back_populates='asignatura')
@@ -262,7 +243,6 @@ class Clase(db.Model):
     horarioId = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'), nullable=False)
     representanteCursoId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'))
     
-    # Relaciones
     asignatura = db.relationship('Asignatura', back_populates='clases')
     profesor = db.relationship('Usuario', foreign_keys=[profesorId])
     curso = db.relationship('Curso', foreign_keys=[cursoId])
@@ -282,9 +262,8 @@ class Asistencia(db.Model):
     fecha = db.Column(db.Date, nullable=False)
     estado = db.Column(db.String(20), nullable=False, default='presente')
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
-    excusa = db.Column(db.Boolean, default=False)  # ✅ NUEVO CAMPO AÑADIDO
+    excusa = db.Column(db.Boolean, default=False)  
     
-    # Relaciones
     estudiante_rel = db.relationship('Usuario', back_populates='asistencias', foreign_keys=[estudianteId])
     clase = db.relationship('Clase', back_populates='asistencias', foreign_keys=[claseId])
 
@@ -298,7 +277,7 @@ class Asistencia(db.Model):
 class ConfiguracionCalificacion(db.Model):
     __tablename__ = 'configuracion_calificacion'
     id_configuracion = db.Column(db.Integer, primary_key=True)
-    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=True)  # NULL para configuración global
+    asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=True) 
     notaMinima = db.Column(db.Numeric(5,2), nullable=False)
     notaMaxima = db.Column(db.Numeric(5,2), nullable=False)
     notaMinimaAprobacion = db.Column(db.Numeric(5,2), nullable=False)
@@ -331,22 +310,18 @@ class Calificacion(db.Model):
     estudianteId = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
     asignaturaId = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
     categoriaId = db.Column(db.Integer, db.ForeignKey('categoria_calificacion.id_categoria'), nullable=False)
-    # Allow null initially (assignments may be created before grades are entered)
     valor = db.Column(db.Numeric(5,2), nullable=True)
-    # Nombre libre para identificar la calificación / asignación (por ejemplo: 'Parcial 1')
     nombre_calificacion = db.Column(db.String(200), nullable=True)
     observaciones = db.Column(db.Text)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
         
-    # Campos adicionales para tareas publicadas
-    descripcion_tarea = db.Column(db.Text, nullable=True)  # Descripción detallada de la tarea
-    archivo_url = db.Column(db.String(500), nullable=True)  # URL o path del archivo adjunto
-    archivo_nombre = db.Column(db.String(200), nullable=True)  # Nombre original del archivo
-    fecha_vencimiento = db.Column(db.DateTime, nullable=True)  # Fecha límite para entregar
-    es_tarea_publicada = db.Column(db.Boolean, default=False)  # True si es una tarea publicada visible para estudiantes/padres
-    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=True)  # Profesor que creó la tarea
+    descripcion_tarea = db.Column(db.Text, nullable=True)  
+    archivo_url = db.Column(db.String(500), nullable=True)  
+    archivo_nombre = db.Column(db.String(200), nullable=True)  
+    fecha_vencimiento = db.Column(db.DateTime, nullable=True)  
+    es_tarea_publicada = db.Column(db.Boolean, default=False)  
+    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=True)  
     
-    # Relaciones
     estudiante = db.relationship('Usuario', back_populates='calificaciones', foreign_keys=[estudianteId])
     asignatura = db.relationship('Asignatura', back_populates='calificaciones', foreign_keys=[asignaturaId])
     categoria = db.relationship('CategoriaCalificacion', back_populates='calificaciones', foreign_keys=[categoriaId])
@@ -372,7 +347,6 @@ class HorarioGeneral(db.Model):
     activo = db.Column(db.Boolean, default=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     cursos = db.relationship('Curso', back_populates='horario_general')
     bloques = db.relationship('BloqueHorario', back_populates='horario_general', cascade='all, delete-orphan')
     horarios_cursos = db.relationship('HorarioCurso', back_populates='horario_general')
@@ -418,7 +392,6 @@ class BloqueHorario(db.Model):
     class_type = db.Column(db.String(20))
     break_type = db.Column(db.String(20))
     
-    # Relaciones
     horario_general = db.relationship('HorarioGeneral', back_populates='bloques')
     
     def to_dict(self):
@@ -444,18 +417,17 @@ class HorarioCurso(db.Model):
     id_horario_curso = db.Column(db.Integer, primary_key=True)
     curso_id = db.Column(db.Integer, db.ForeignKey('curso.id_curso'), nullable=False)
     asignatura_id = db.Column(db.Integer, db.ForeignKey('asignatura.id_asignatura'), nullable=False)
-    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)  # ✅ NUEVO CAMPO
+    profesor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)  
     dia_semana = db.Column(db.String(20), nullable=False)
     hora_inicio = db.Column(db.String(5), nullable=False)
-    hora_fin = db.Column(db.String(5), nullable=False)  # ✅ YA ESTÁ DEFINIDO CORRECTAMENTE
+    hora_fin = db.Column(db.String(5), nullable=False) 
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'))
     id_salon_fk = db.Column(db.Integer, db.ForeignKey('salones.id_salon'), nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     curso = db.relationship('Curso', back_populates='horarios_especificos')
     asignatura = db.relationship('Asignatura', back_populates='horarios_asignados')
-    profesor = db.relationship('Usuario', foreign_keys=[profesor_id])  # ✅ NUEVA RELACIÓN
+    profesor = db.relationship('Usuario', foreign_keys=[profesor_id]) 
     horario_general = db.relationship('HorarioGeneral', back_populates='horarios_cursos')
     salon = db.relationship('Salon', back_populates='horarios_asignados')
     
@@ -464,11 +436,11 @@ class HorarioCurso(db.Model):
             'id_horario_curso': self.id_horario_curso,
             'curso_id': self.curso_id,
             'asignatura_id': self.asignatura_id,
-            'profesor_id': self.profesor_id,  # ✅ NUEVO CAMPO
-            'profesor_nombre': self.profesor.nombre_completo if self.profesor else None,  # ✅ NOMBRE DEL PROFESOR
+            'profesor_id': self.profesor_id,  
+            'profesor_nombre': self.profesor.nombre_completo if self.profesor else None, 
             'dia_semana': self.dia_semana,
             'hora_inicio': self.hora_inicio,
-            'hora_fin': self.hora_fin,  # ✅ INCLUIR HORA_FIN
+            'hora_fin': self.hora_fin,  
             'horario_general_id': self.horario_general_id,
             'id_salon_fk': self.id_salon_fk,
             'fecha_creacion': self.fecha_creacion.isoformat() if self.fecha_creacion else None
@@ -488,7 +460,6 @@ class HorarioCompartido(db.Model):
     horario_general_id = db.Column(db.Integer, db.ForeignKey('horario_general.id_horario'))
     fecha_compartido = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     profesor = db.relationship('Usuario', back_populates='horarios_compartidos')
     curso = db.relationship('Curso', back_populates='horarios_compartidos_profesores')
     asignatura = db.relationship('Asignatura', back_populates='horarios_compartidos')
@@ -513,7 +484,6 @@ class Salon(db.Model):
     estado = db.Column(db.String(20), default='disponible')
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     sede = db.relationship('Sede', back_populates='salones')
     equipos = db.relationship('Equipo', back_populates='salon')
     horarios_asignados = db.relationship('HorarioCurso', back_populates='salon')
@@ -553,22 +523,18 @@ class Equipo(db.Model):
     observaciones = db.Column(db.Text)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     salon = db.relationship('Salon', back_populates='equipos')
     asignaciones = db.relationship('AsignacionEquipo', back_populates='equipo', cascade='all, delete-orphan')
     incidentes = db.relationship('Incidente', back_populates='equipo')
     programaciones = db.relationship('Mantenimiento', back_populates='equipo')
     
     def get_asignaciones_activas(self):
-        """Obtiene todas las asignaciones activas del equipo"""
         return [asig for asig in self.asignaciones if asig.estado_asignacion == 'activa']
     
     def get_estudiantes_asignados(self):
-        """Obtiene lista de estudiantes con asignaciones activas"""
         return [asig.estudiante for asig in self.get_asignaciones_activas()]
     
     def get_cursos_asignados(self):
-        """Obtiene lista de cursos de los estudiantes asignados"""
         cursos = set()
         for asignacion in self.get_asignaciones_activas():
             curso = asignacion.get_curso_estudiante()
@@ -577,15 +543,14 @@ class Equipo(db.Model):
         return list(cursos)
     
     def puede_asignar_a_curso(self, curso_id):
-        """Verifica si se puede asignar a un estudiante de este curso"""
-        # Obtener cursos ya asignados
+ 
         for asignacion in self.get_asignaciones_activas():
             matricula = Matricula.query.filter_by(
                 estudianteId=asignacion.estudiante_id
             ).order_by(Matricula.año.desc()).first()
             
             if matricula and matricula.cursoId == curso_id:
-                return False  # Ya hay un estudiante de este curso
+                return False  
         
         return True
     
@@ -619,7 +584,6 @@ class Equipo(db.Model):
         return f"<Equipo {self.nombre} - {self.estado}>"
 
 class AsignacionEquipo(db.Model):
-    """Tabla intermedia para asignar equipos a múltiples estudiantes"""
     __tablename__ = 'asignaciones_equipos'
     
     id_asignacion = db.Column(db.Integer, primary_key=True)
@@ -627,14 +591,12 @@ class AsignacionEquipo(db.Model):
     estudiante_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable=False)
     fecha_asignacion = db.Column(db.DateTime, default=datetime.utcnow)
     fecha_devolucion = db.Column(db.DateTime, nullable=True)
-    estado_asignacion = db.Column(db.String(20), default='activa')  # activa, devuelto, perdido
+    estado_asignacion = db.Column(db.String(20), default='activa')  
     observaciones = db.Column(db.Text, nullable=True)
     
-    # Relaciones
     equipo = db.relationship('Equipo', back_populates='asignaciones')
     estudiante = db.relationship('Usuario', back_populates='equipos_asignados')
     
-    # Constraint única: un estudiante no puede tener el mismo equipo asignado dos veces activamente
     __table_args__ = (
         db.UniqueConstraint('equipo_id', 'estudiante_id', 'estado_asignacion', 
                           name='uq_equipo_estudiante_activo'),
@@ -655,7 +617,6 @@ class AsignacionEquipo(db.Model):
         }
     
     def get_curso_estudiante(self):
-        """Obtiene el curso actual del estudiante"""
         if not self.estudiante:
             return None
         
@@ -684,7 +645,6 @@ class Incidente(db.Model):
     solucion_propuesta = db.Column(db.Text, nullable=True)
     fecha_solucion = db.Column(db.DateTime, nullable=True)
     
-    # Relaciones
     equipo = db.relationship('Equipo', back_populates='incidentes')
 
     def to_dict(self):
@@ -719,7 +679,6 @@ class Mantenimiento(db.Model):
     tecnico = db.Column(db.String(100), nullable=True)
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     equipo = db.relationship('Equipo', back_populates='programaciones')
     sede = db.relationship('Sede', back_populates='mantenimientos')
 
@@ -742,9 +701,6 @@ class Mantenimiento(db.Model):
             "tecnico": self.tecnico or ""
         }
         
-#==========================================================================================================#
-#Eventos y votaciones
-#==========================================================================================================#
 
 # ================================
 # Modelos de Eventos y Comunicaciones
@@ -784,10 +740,9 @@ class Comunicacion(db.Model):
     asunto = db.Column(db.String(200))
     mensaje = db.Column(db.Text)
     fecha_envio = db.Column(db.DateTime, default=datetime.utcnow)
-    estado = db.Column(db.String(20), default='inbox')  # inbox, sent, draft, deleted
-    grupo_id = db.Column(db.String(100), nullable=True)  # Para agrupar comunicados como Gmail
+    estado = db.Column(db.String(20), default='inbox')  
+    grupo_id = db.Column(db.String(100), nullable=True)  
     
-    # Relaciones
     remitente = db.relationship('Usuario', foreign_keys=[remitente_id], backref='comunicaciones_enviadas')
     destinatario = db.relationship('Usuario', foreign_keys=[destinatario_id], backref='comunicaciones_recibidas')
     
@@ -821,7 +776,6 @@ class Candidato(db.Model):
     activo = db.Column(db.Boolean, default=True)
     fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     votos_registrados = db.relationship("Voto", back_populates="candidato")
 
     def to_dict(self):
@@ -848,7 +802,6 @@ class Voto(db.Model):
     fecha_voto = db.Column(db.DateTime, default=datetime.utcnow)
     ip_address = db.Column(db.String(45))
     
-    # Relaciones
     estudiante = db.relationship("Usuario", back_populates="votos_realizados")
     candidato = db.relationship("Candidato", back_populates="votos_registrados")
 
@@ -909,14 +862,13 @@ class ReporteCalificaciones(db.Model):
     asignatura_id = db.Column(db.Integer, db.ForeignKey("asignatura.id_asignatura"), nullable=False)
     nombre_curso = db.Column(db.String(100), nullable=False)
     nombre_asignatura = db.Column(db.String(100), nullable=False)
-    datos_estudiantes = db.Column(db.JSON, nullable=False)  # JSON con nombres y promedios
+    datos_estudiantes = db.Column(db.JSON, nullable=False) 
     promedio_general = db.Column(db.Float, nullable=False)
     nota_mas_alta = db.Column(db.Float, nullable=False)
     nota_mas_baja = db.Column(db.Float, nullable=False)
     fecha_generacion = db.Column(db.DateTime, default=datetime.utcnow)
-    estado = db.Column(db.String(20), default='pendiente')  # pendiente, revisado, archivado
+    estado = db.Column(db.String(20), default='pendiente')  
     
-    # Relaciones
     profesor = db.relationship("Usuario", foreign_keys=[profesor_id])
     curso = db.relationship("Curso", foreign_keys=[curso_id])
     asignatura = db.relationship("Asignatura", foreign_keys=[asignatura_id])
@@ -955,11 +907,10 @@ class SolicitudConsulta(db.Model):
     nombre_completo_hijo = db.Column(db.String(200), nullable=False)
     justificacion = db.Column(db.Text, nullable=False)
     fecha_solicitud = db.Column(db.DateTime, default=datetime.utcnow)
-    estado = db.Column(db.String(20), default='pendiente')  # pendiente, aceptada, denegada
+    estado = db.Column(db.String(20), default='pendiente') 
     respuesta_profesor = db.Column(db.Text, nullable=True)
     fecha_respuesta = db.Column(db.DateTime, nullable=True)
     
-    # Relaciones
     padre = db.relationship("Usuario", foreign_keys=[padre_id], backref='solicitudes_enviadas')
     estudiante = db.relationship("Usuario", foreign_keys=[estudiante_id], backref='solicitudes_recibidas')
     asignatura = db.relationship("Asignatura", back_populates='solicitudes_consulta')
@@ -996,12 +947,11 @@ class Notificacion(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id_usuario"), nullable=False)
     titulo = db.Column(db.String(200), nullable=False)
     mensaje = db.Column(db.Text, nullable=False)
-    tipo = db.Column(db.String(50), nullable=False)  # comunicacion, calificacion, asistencia, solicitud, etc.
+    tipo = db.Column(db.String(50), nullable=False) 
     link = db.Column(db.String(500), nullable=True)
     leida = db.Column(db.Boolean, default=False)
     creada_en = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     usuario = db.relationship("Usuario", back_populates="notificaciones")
     
     def to_dict(self):
@@ -1024,18 +974,16 @@ class Notificacion(db.Model):
 # ================================
 
 class CicloAcademico(db.Model):
-    """Representa un año o ciclo escolar completo."""
     __tablename__ = 'ciclo_academico'
     
     id_ciclo = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)  # Ej: "Año Escolar 2024-2025"
+    nombre = db.Column(db.String(100), nullable=False) 
     fecha_inicio = db.Column(db.Date, nullable=False)
     fecha_fin = db.Column(db.Date, nullable=False)
     estado = db.Column(db.Enum('planificado', 'activo', 'cerrado', name='estado_ciclo_enum'), default='planificado')
-    activo = db.Column(db.Boolean, default=False)  # Solo un ciclo puede estar activo
+    activo = db.Column(db.Boolean, default=False)  
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relaciones
     periodos = db.relationship('PeriodoAcademico', back_populates='ciclo', cascade='all, delete-orphan')
     
     def to_dict(self):
@@ -1054,13 +1002,12 @@ class CicloAcademico(db.Model):
 
 
 class PeriodoAcademico(db.Model):
-    """Representa un periodo o trimestre dentro de un ciclo académico."""
     __tablename__ = 'periodo_academico'
     
     id_periodo = db.Column(db.Integer, primary_key=True)
     ciclo_academico_id = db.Column(db.Integer, db.ForeignKey('ciclo_academico.id_ciclo'), nullable=False)
-    numero_periodo = db.Column(db.Integer, nullable=False)  # 1, 2, 3, 4
-    nombre = db.Column(db.String(100), nullable=False)  # Ej: "Primer Trimestre"
+    numero_periodo = db.Column(db.Integer, nullable=False) 
+    nombre = db.Column(db.String(100), nullable=False)  
     fecha_inicio = db.Column(db.Date, nullable=False)
     fecha_fin = db.Column(db.Date, nullable=False)
     fecha_cierre_notas = db.Column(db.Date, nullable=False)
@@ -1094,11 +1041,9 @@ class PeriodoAcademico(db.Model):
         }
     
     def esta_activo(self):
-        """Verifica si el periodo está activo."""
         return self.estado == 'activo'
     
     def puede_modificar_notas(self):
-        """Verifica si aún se pueden modificar las notas."""
         from datetime import date
         if self.estado in ['cerrado', 'en_cierre']:
             return False
@@ -1107,7 +1052,6 @@ class PeriodoAcademico(db.Model):
         return True
     
     def dias_para_cierre(self):
-        """Calcula los días restantes para el cierre de notas."""
         from datetime import date
         if self.fecha_cierre_notas:
             delta = self.fecha_cierre_notas - date.today()
