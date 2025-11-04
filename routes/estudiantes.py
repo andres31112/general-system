@@ -5,7 +5,7 @@ from controllers.decorators import role_required, permission_required
 from datetime import datetime, timedelta, time, date
 from controllers.models import (
     db, Usuario, Comunicacion, Evento, Candidato, HorarioVotacion, Voto,
-    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso
+    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso, Notificacion
 )
 # Se asume que tienes un nuevo Blueprint para las rutas de estudiante.
 # Si no, puedes añadir esta ruta al Blueprint de 'admin' o crear uno nuevo llamado 'estudiante_bp'.
@@ -556,6 +556,131 @@ def api_eventos_estudiante():
 
         return jsonify(resultado), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+   # 📌 RUTAS COMPLETAS PARA NOTIFICACIONES
+@estudiante_bp.route("/notificaciones")
+@login_required
+def ver_notificaciones():
+    """Página principal de notificaciones"""
+    try:
+        # Obtener todas las notificaciones del usuario
+        notificaciones = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario
+        ).order_by(Notificacion.creada_en.desc()).all()
+        
+        # Contar no leídas
+        no_leidas = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        return render_template(
+            "estudiantes/notificaciones.html", 
+            notificaciones=notificaciones,
+            notificaciones_no_leidas=no_leidas
+        )
+        
+    except Exception as e:
+        flash(f"Error al cargar notificaciones: {str(e)}", "error")
+        return redirect(url_for('estudiante.estudiante_panel'))  # ✅ CORREGIDO: Indentación
+
+@estudiante_bp.route("/api/notificaciones")
+@login_required
+def obtener_notificaciones():
+    """API para obtener notificaciones del estudiante"""
+    try:
+        # Obtener notificaciones del usuario actual
+        notificaciones = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario
+        ).order_by(Notificacion.creada_en.desc()).limit(10).all()
+        
+        notificaciones_data = []
+        for notif in notificaciones:
+            notificaciones_data.append({
+                "id": notif.id_notificacion,
+                "titulo": notif.titulo,
+                "mensaje": notif.mensaje,
+                "tipo": notif.tipo,
+                "leida": notif.leida,
+                "link": notif.link,
+                "fecha_creacion": notif.creada_en.strftime('%d/%m/%Y %H:%M') if notif.creada_en else 'Reciente'
+            })
+        
+        # Contar notificaciones no leídas
+        no_leidas = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        return jsonify({
+            "notificaciones": notificaciones_data,
+            "no_leidas": no_leidas
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/<int:notificacion_id>/marcar-leida", methods=["POST"])
+@login_required
+def marcar_notificacion_leida(notificacion_id):
+    """Marcar una notificación como leída"""
+    try:
+        notificacion = Notificacion.query.filter_by(
+            id_notificacion=notificacion_id,
+            usuario_id=current_user.id_usuario
+        ).first()
+        
+        if not notificacion:
+            return jsonify({"error": "Notificación no encontrada"}), 404
+        
+        notificacion.leida = True
+        db.session.commit()
+        
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/marcar-todas-leidas", methods=["POST"])
+@login_required
+def marcar_todas_leidas():
+    """Marcar todas las notificaciones como leídas"""
+    try:
+        Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).update({"leida": True})
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/<int:notificacion_id>/eliminar", methods=["DELETE"])
+@login_required
+def eliminar_notificacion(notificacion_id):
+    """Eliminar una notificación"""
+    try:
+        notificacion = Notificacion.query.filter_by(
+            id_notificacion=notificacion_id,
+            usuario_id=current_user.id_usuario
+        ).first()
+        
+        if not notificacion:
+            return jsonify({"error": "Notificación no encontrada"}), 404
+        
+        db.session.delete(notificacion)
+        db.session.commit()
+        
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
 

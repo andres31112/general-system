@@ -38,27 +38,53 @@
                 </button>
             </div>
             <div class="form-content" id="formContent">
-                <div class="input-group">
-                    <input type="text" id="title" placeholder="Título del evento" required>
-                    <div class="input-focus-line"></div>
+                <div class="required-fields-notice">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Todos los campos marcados con <span class="required-asterisk">*</span> son obligatorios</span>
                 </div>
+                
                 <div class="input-group">
-                    <textarea id="description" placeholder="Descripción del evento" rows="3" required></textarea>
+                    <label for="title" class="input-label">
+                        Título del evento <span class="required-asterisk">*</span>
+                    </label>
+                    <input type="text" id="title" placeholder="Ingresa el título del evento" required>
                     <div class="input-focus-line"></div>
+                    <div class="input-hint">Mínimo 5 caracteres</div>
                 </div>
+                
+                <div class="input-group">
+                    <label for="description" class="input-label">
+                        Descripción del evento <span class="required-asterisk">*</span>
+                    </label>
+                    <textarea id="description" placeholder="Describe el evento detalladamente..." rows="3" required></textarea>
+                    <div class="input-focus-line"></div>
+                    <div class="input-hint">Proporciona una descripción clara del evento</div>
+                </div>
+                
                 <div class="date-time-group">
                     <div class="input-group">
+                        <label for="date" class="input-label">
+                            Fecha <span class="required-asterisk">*</span>
+                        </label>
                         <input type="date" id="date" required>
                         <div class="input-focus-line"></div>
+                        <div class="input-hint">Selecciona una fecha futura</div>
                     </div>
                     <div class="input-group">
+                        <label for="time" class="input-label">
+                            Hora <span class="required-asterisk">*</span>
+                        </label>
                         <input type="time" id="time" required>
                         <div class="input-focus-line"></div>
+                        <div class="input-hint">Hora del evento</div>
                     </div>
                 </div>
                 
                 <!-- Selector de Roles Mejorado -->
                 <div class="input-group role-selector-container">
+                    <label class="input-label">
+                        Destinatarios <span class="required-asterisk">*</span>
+                    </label>
                     <p class="select-instruction">
                         <i class="fas fa-mouse-pointer"></i> Selecciona los destinatarios (haz clic para seleccionar múltiples):
                     </p>
@@ -94,14 +120,15 @@
                         <input type="hidden" id="roleSelect" name="roles">
                     </div>
                     <div class="selected-roles-display">
-                        <span class="selected-label">Seleccionados:</span>
+                        <span class="selected-label">Roles seleccionados:</span>
                         <div class="selected-roles-tags" id="selectedRolesTags"></div>
                     </div>
+                    <div class="input-hint">Debe seleccionar al menos un destinatario</div>
                 </div>
 
                 <button class="submit-btn" onclick="addEvent()">
                     <span class="btn-shine"></span>
-                    <i class="fas fa-plus-circle"></i> Agregar Evento
+                    <i class="fas fa-plus-circle"></i> Crear Evento
                 </button>
             </div>
         </div>
@@ -210,7 +237,7 @@
         </div>
     </div>
 
-    <!-- Modal de Edición del Evento (Más Compacto) -->
+    <!-- Modal de Edición del Evento -->
     <div id="editEvent" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -218,20 +245,37 @@
                 <span class="close" onclick="closeEditModal()">&times;</span>
             </div>
             <div class="modal-body">
+                <div class="required-fields-notice">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Todos los campos marcados con <span class="required-asterisk">*</span> son obligatorios</span>
+                </div>
+                
                 <div class="input-group">
+                    <label for="editTitle" class="input-label">
+                        Título del evento <span class="required-asterisk">*</span>
+                    </label>
                     <input type="text" id="editTitle" placeholder="Título del evento" required>
                     <div class="input-focus-line"></div>
                 </div>
                 <div class="input-group">
+                    <label for="editDescription" class="input-label">
+                        Descripción del evento <span class="required-asterisk">*</span>
+                    </label>
                     <textarea id="editDescription" placeholder="Descripción del evento" rows="2" required></textarea>
                     <div class="input-focus-line"></div>
                 </div>
                 <div class="date-time-group">
                     <div class="input-group">
+                        <label for="editDate" class="input-label">
+                            Fecha <span class="required-asterisk">*</span>
+                        </label>
                         <input type="date" id="editDate" required>
                         <div class="input-focus-line"></div>
                     </div>
                     <div class="input-group">
+                        <label for="editTime" class="input-label">
+                            Hora <span class="required-asterisk">*</span>
+                        </label>
                         <input type="time" id="editTime" required>
                         <div class="input-focus-line"></div>
                     </div>
@@ -239,6 +283,9 @@
                 
                 <!-- Selector de Roles Compacto -->
                 <div class="input-group role-selector-container">
+                    <label class="input-label">
+                        Destinatarios <span class="required-asterisk">*</span>
+                    </label>
                     <p class="select-instruction">
                         <i class="fas fa-mouse-pointer"></i> Destinatarios:
                     </p>
@@ -280,7 +327,7 @@
             </div>
             <div class="modal-footer">
                 <button id="saveEditBtn" class="submit-btn">
-                    <i class="fas fa-save"></i> Guardar
+                    <i class="fas fa-save"></i> Guardar Cambios
                 </button>
             </div>
         </div>

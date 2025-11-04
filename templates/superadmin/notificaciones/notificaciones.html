@@ -106,10 +106,10 @@
                     <p class="text-muted mb-0">Gestiona tus notificaciones del sistema</p>
                 </div>
                 <div>
-                    <button class="btn btn-outline-primary me-2" onclick="marcarTodasComoLeidas()">
+                    <button class="btn btn-outline-primary me-2" id="btnMarcarTodas">
                         <i class="fas fa-check-double me-1"></i>Marcar todas como leídas
                     </button>
-                    <button class="btn btn-danger" onclick="eliminarTodas()">
+                    <button class="btn btn-danger" id="btnEliminarTodas">
                         <i class="fas fa-trash me-1"></i>Eliminar todas
                     </button>
                 </div>
@@ -121,13 +121,13 @@
                     <div class="col-md-6">
                         <h6 class="mb-2">Filtrar por estado:</h6>
                         <div>
-                            <button class="btn btn-filter active" data-filtro="todas" onclick="cambiarFiltro('todas')">
+                            <button class="btn btn-filter active" data-filtro="todas" id="btnTodas">
                                 Todas
                             </button>
-                            <button class="btn btn-filter" data-filtro="pendientes" onclick="cambiarFiltro('pendientes')">
+                            <button class="btn btn-filter" data-filtro="pendientes" id="btnPendientes">
                                 Pendientes
                             </button>
-                            <button class="btn btn-filter" data-filtro="leidas" onclick="cambiarFiltro('leidas')">
+                            <button class="btn btn-filter" data-filtro="leidas" id="btnLeidas">
                                 Leídas
                             </button>
                         </div>
@@ -135,7 +135,7 @@
                     <div class="col-md-6 text-end">
                         <div class="d-flex align-items-center justify-content-end">
                             <span class="me-2">Notificaciones por página:</span>
-                            <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarPerPage(this.value)">
+                            <select class="form-select form-select-sm" style="width: auto;" id="selectPerPage">
                                 <option value="10">10</option>
                                 <option value="20" selected>20</option>
                                 <option value="50">50</option>
@@ -181,58 +181,78 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- SCRIPT INLINE - Esto SÍ funciona -->
 <script>
+// =============================================
+// SISTEMA DE NOTIFICACIONES - SCRIPT INLINE
+// =============================================
+
+console.log('🎯 SCRIPT INLINE CARGADO - Iniciando sistema de notificaciones');
+
+// Variables globales
 let currentPage = 1;
 let currentFilter = 'todas';
 let currentPerPage = 20;
 
-// Cargar notificaciones al iniciar
-document.addEventListener('DOMContentLoaded', function() {
-    cargarNotificaciones();
+// Función para cargar notificaciones
+function cargarNotificaciones() {
+    console.log('🔄 Cargando notificaciones...');
     
-    // Polling cada 30 segundos para actualizar el badge
-    setInterval(actualizarBadge, 30000);
-});
-
-function cargarNotificaciones(page = 1) {
-    currentPage = page;
+    const container = document.getElementById('notifications-container');
+    const url = `/admin/api/notificaciones?page=${currentPage}&per_page=${currentPerPage}&filtro=${currentFilter}`;
     
-    const url = `/admin/api/notificaciones?page=${page}&per_page=${currentPerPage}&filtro=${currentFilter}`;
+    console.log('📡 URL:', url);
     
+    // Mostrar loading
+    container.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando notificaciones...</p>
+        </div>
+    `;
+    
+    // Hacer petición
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
+            console.log('📦 Datos recibidos:', data);
+            
+            if (data.success && data.data) {
                 mostrarNotificaciones(data.data);
             } else {
-                mostrarError('Error cargando notificaciones: ' + data.message);
+                throw new Error(data.message || 'Error en los datos');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            mostrarError('Error de conexión');
+            console.error('💥 Error:', error);
+            mostrarError('Error al cargar notificaciones: ' + error.message);
         });
 }
 
+// Función para mostrar notificaciones
 function mostrarNotificaciones(data) {
+    console.log('🎨 Mostrando notificaciones...');
+    
     const container = document.getElementById('notifications-container');
     
-    if (data.notificaciones.length === 0) {
+    if (!data.notificaciones || data.notificaciones.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-bell-slash"></i>
                 <h4>No hay notificaciones</h4>
-                <p>No se encontraron notificaciones con los filtros seleccionados.</p>
+                <p>No se encontraron notificaciones en el sistema.</p>
             </div>
         `;
-        document.getElementById('pagination-container').style.display = 'none';
         return;
     }
     
+    console.log(`📝 Mostrando ${data.notificaciones.length} notificaciones`);
+    
     let html = '';
+    
     data.notificaciones.forEach(notif => {
         const fecha = new Date(notif.creada_en).toLocaleDateString('es-ES', {
             year: 'numeric',
@@ -242,17 +262,19 @@ function mostrarNotificaciones(data) {
             minute: '2-digit'
         });
         
+        const esLeida = notif.leida === true;
+        
         html += `
-            <div class="card notification-card mb-3 ${notif.leida ? 'read' : 'unread'}" data-id="${notif.id_notificacion}">
+            <div class="card notification-card mb-3 ${esLeida ? 'read' : 'unread'}" data-id="${notif.id_notificacion}">
                 <div class="card-body">
                     <div class="row align-items-start">
                         <div class="col-md-8">
                             <div class="d-flex align-items-start">
                                 <div class="flex-grow-1">
-                                    <h6 class="mb-1 ${notif.leida ? '' : 'fw-bold'}">
+                                    <h6 class="mb-1 ${esLeida ? '' : 'fw-bold'}">
                                         ${notif.titulo}
                                         <span class="notification-type-badge type-${notif.tipo} ms-2">
-                                            ${getTipoText(notif.tipo)}
+                                            ${getTipoTexto(notif.tipo)}
                                         </span>
                                     </h6>
                                     <p class="text-muted mb-2">${notif.mensaje}</p>
@@ -264,7 +286,7 @@ function mostrarNotificaciones(data) {
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="notification-actions">
-                                ${notif.leida ? '' : `
+                                ${esLeida ? '' : `
                                     <button class="btn btn-sm btn-outline-primary me-1" onclick="marcarComoLeida(${notif.id_notificacion})">
                                         <i class="fas fa-check"></i>
                                     </button>
@@ -281,199 +303,25 @@ function mostrarNotificaciones(data) {
     });
     
     container.innerHTML = html;
-    mostrarPaginacion(data);
+    console.log('✅ Notificaciones mostradas correctamente');
 }
 
-function mostrarPaginacion(data) {
-    const container = document.getElementById('pagination-container');
-    
-    if (data.pages <= 1) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    container.style.display = 'flex';
-    
-    let html = '<nav><ul class="pagination">';
-    
-    // Botón anterior
-    if (data.has_prev) {
-        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page - 1})">Anterior</a></li>`;
-    }
-    
-    // Páginas
-    for (let i = Math.max(1, data.current_page - 2); i <= Math.min(data.pages, data.current_page + 2); i++) {
-        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
-                    <a class="page-link" href="#" onclick="cargarNotificaciones(${i})">${i}</a>
-                 </li>`;
-    }
-    
-    // Botón siguiente
-    if (data.has_next) {
-        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page + 1})">Siguiente</a></li>`;
-    }
-    
-    html += '</ul></nav>';
-    container.innerHTML = html;
+// Función para mostrar errores
+function mostrarError(mensaje) {
+    const container = document.getElementById('notifications-container');
+    container.innerHTML = `
+        <div class="alert alert-danger">
+            <h4><i class="fas fa-exclamation-triangle"></i> Error</h4>
+            <p>${mensaje}</p>
+            <button class="btn btn-warning btn-sm" onclick="cargarNotificaciones()">
+                Reintentar
+            </button>
+        </div>
+    `;
 }
 
-function cambiarFiltro(filtro) {
-    currentFilter = filtro;
-    currentPage = 1;
-    
-    // Actualizar botones
-    document.querySelectorAll('.btn-filter').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelector(`[data-filtro="${filtro}"]`).classList.add('active');
-    
-    cargarNotificaciones();
-}
-
-function cambiarPerPage(perPage) {
-    currentPerPage = parseInt(perPage);
-    currentPage = 1;
-    cargarNotificaciones();
-}
-
-function marcarComoLeida(notificacionId) {
-    fetch('/admin/api/notificaciones/marcar-leidas', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            notificacion_ids: [notificacionId]
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            cargarNotificaciones(currentPage);
-            actualizarBadge();
-        } else {
-            mostrarError('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        mostrarError('Error de conexión');
-    });
-}
-
-function marcarTodasComoLeidas() {
-    mostrarConfirmacion(
-        '¿Estás seguro de que quieres marcar todas las notificaciones como leídas?',
-        () => {
-            fetch('/admin/api/notificaciones/marcar-leidas', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    cargarNotificaciones(currentPage);
-                    actualizarBadge();
-                    mostrarMensaje('Todas las notificaciones fueron marcadas como leídas', 'success');
-                } else {
-                    mostrarError('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                mostrarError('Error de conexión');
-            });
-        }
-    );
-}
-
-function eliminarNotificacion(notificacionId) {
-    mostrarConfirmacion(
-        '¿Estás seguro de que quieres eliminar esta notificación?',
-        () => {
-            fetch('/admin/api/notificaciones/eliminar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    notificacion_ids: [notificacionId]
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    cargarNotificaciones(currentPage);
-                    actualizarBadge();
-                    mostrarMensaje('Notificación eliminada', 'success');
-                } else {
-                    mostrarError('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                mostrarError('Error de conexión');
-            });
-        }
-    );
-}
-
-function eliminarTodas() {
-    mostrarConfirmacion(
-        '¿Estás seguro de que quieres eliminar TODAS las notificaciones? Esta acción no se puede deshacer.',
-        () => {
-            fetch('/admin/api/notificaciones/eliminar', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    eliminar_todas: true
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    cargarNotificaciones(currentPage);
-                    actualizarBadge();
-                    mostrarMensaje('Todas las notificaciones fueron eliminadas', 'success');
-                } else {
-                    mostrarError('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                mostrarError('Error de conexión');
-            });
-        }
-    );
-}
-
-function actualizarBadge() {
-    // Actualizar el badge en el menú lateral
-    fetch('/admin/api/notificaciones?page=1&per_page=1&filtro=pendientes')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const badge = document.querySelector('.badge-notification');
-                if (badge) {
-                    const count = data.data.total;
-                    if (count > 0) {
-                        badge.textContent = count;
-                        badge.style.display = 'flex';
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                }
-            }
-        })
-        .catch(error => console.error('Error actualizando badge:', error));
-}
-
-function getTipoText(tipo) {
+// Función para obtener texto del tipo
+function getTipoTexto(tipo) {
     const tipos = {
         'comunicacion': 'Comunicación',
         'calificacion': 'Calificación',
@@ -481,46 +329,248 @@ function getTipoText(tipo) {
         'solicitud': 'Solicitud',
         'evento': 'Evento',
         'votacion': 'Votación',
-        'admin': 'Administración'
+        'admin': 'Administración',
+        'general': 'General',
+        'sistema': 'Sistema'
     };
     return tipos[tipo] || tipo;
 }
 
-function mostrarConfirmacion(mensaje, callback) {
-    document.getElementById('confirmMessage').textContent = mensaje;
-    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-    modal.show();
+// =============================================
+// FUNCIONES PARA LOS BOTONES
+// =============================================
+
+// Función para marcar como leída
+function marcarComoLeida(id) {
+    console.log('✅ Marcando como leída:', id);
     
-    document.getElementById('confirmButton').onclick = () => {
-        modal.hide();
-        callback();
-    };
+    fetch('/admin/api/notificaciones/marcar-leidas', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            notificacion_ids: [id]
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Actualizar UI
+            const card = document.querySelector(`[data-id="${id}"]`);
+            if (card) {
+                card.classList.remove('unread');
+                card.classList.add('read');
+                card.querySelector('h6').classList.remove('fw-bold');
+                
+                // Ocultar botón de marcar como leída
+                const actions = card.querySelector('.notification-actions');
+                actions.innerHTML = `
+                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarNotificacion(${id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            }
+            mostrarMensaje('Notificación marcada como leída', 'success');
+        } else {
+            mostrarMensaje('Error: ' + data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarMensaje('Error de conexión', 'danger');
+    });
 }
 
+// Función para eliminar notificación
+function eliminarNotificacion(id) {
+    if (confirm('¿Estás seguro de eliminar esta notificación?')) {
+        console.log('🗑️ Eliminando:', id);
+        
+        fetch('/admin/api/notificaciones/eliminar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                notificacion_ids: [id]
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.querySelector(`[data-id="${id}"]`);
+                if (card) {
+                    card.style.opacity = '0';
+                    setTimeout(() => {
+                        card.remove();
+                        
+                        // Si no quedan notificaciones, mostrar estado vacío
+                        if (document.querySelectorAll('.notification-card').length === 0) {
+                            document.getElementById('notifications-container').innerHTML = `
+                                <div class="empty-state">
+                                    <i class="fas fa-bell-slash"></i>
+                                    <h4>No hay notificaciones</h4>
+                                    <p>Todas las notificaciones han sido eliminadas.</p>
+                                </div>
+                            `;
+                        }
+                    }, 300);
+                }
+                mostrarMensaje('Notificación eliminada', 'success');
+            } else {
+                mostrarMensaje('Error: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarMensaje('Error de conexión', 'danger');
+        });
+    }
+}
+
+// Función para marcar todas como leídas
+function marcarTodasComoLeidas() {
+    if (confirm('¿Marcar todas las notificaciones como leídas?')) {
+        fetch('/admin/api/notificaciones/marcar-leidas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Actualizar todas las notificaciones en la UI
+                document.querySelectorAll('.notification-card.unread').forEach(card => {
+                    card.classList.remove('unread');
+                    card.classList.add('read');
+                    card.querySelector('h6').classList.remove('fw-bold');
+                });
+                mostrarMensaje('Todas las notificaciones marcadas como leídas', 'success');
+            } else {
+                mostrarMensaje('Error: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarMensaje('Error de conexión', 'danger');
+        });
+    }
+}
+
+// Función para eliminar todas
+function eliminarTodas() {
+    if (confirm('¿Estás seguro de eliminar TODAS las notificaciones? Esta acción no se puede deshacer.')) {
+        fetch('/admin/api/notificaciones/eliminar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                eliminar_todas: true
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('notifications-container').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <h4>No hay notificaciones</h4>
+                        <p>Todas las notificaciones han sido eliminadas.</p>
+                    </div>
+                `;
+                mostrarMensaje('Todas las notificaciones eliminadas', 'success');
+            } else {
+                mostrarMensaje('Error: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarMensaje('Error de conexión', 'danger');
+        });
+    }
+}
+
+// Función para cambiar filtro
+function cambiarFiltro(filtro) {
+    console.log('🎛️ Cambiando filtro a:', filtro);
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.btn-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-filtro="${filtro}"]`).classList.add('active');
+    
+    // Actualizar filtro y recargar
+    currentFilter = filtro;
+    currentPage = 1;
+    cargarNotificaciones();
+}
+
+// Función para cambiar número por página
+function cambiarPerPage(perPage) {
+    console.log('📄 Cambiando a:', perPage, 'por página');
+    currentPerPage = parseInt(perPage);
+    currentPage = 1;
+    cargarNotificaciones();
+}
+
+// Función para mostrar mensajes
 function mostrarMensaje(mensaje, tipo = 'info') {
-    const alertClass = tipo === 'success' ? 'alert-success' : 'alert-info';
+    // Remover mensajes existentes
+    const alertas = document.querySelectorAll('.alert-temporal');
+    alertas.forEach(alerta => alerta.remove());
+    
+    const alertClass = tipo === 'success' ? 'alert-success' : 
+                      tipo === 'danger' ? 'alert-danger' : 'alert-info';
+    
     const html = `
-        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+        <div class="alert ${alertClass} alert-temporal alert-dismissible fade show" 
+             style="position: fixed; top: 20px; right: 20px; z-index: 1050; min-width: 300px;">
             ${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     `;
     
-    // Insertar al inicio del contenido
-    const container = document.querySelector('.container-fluid');
-    container.insertAdjacentHTML('afterbegin', html);
+    document.body.insertAdjacentHTML('beforeend', html);
     
-    // Auto-remover después de 3 segundos
+    // Auto-remover después de 4 segundos
     setTimeout(() => {
-        const alert = container.querySelector('.alert');
-        if (alert) {
-            alert.remove();
-        }
-    }, 3000);
+        const alert = document.querySelector('.alert-temporal');
+        if (alert) alert.remove();
+    }, 4000);
 }
 
-function mostrarError(mensaje) {
-    mostrarMensaje(mensaje, 'danger');
-}
+// =============================================
+// CONFIGURACIÓN DE EVENT LISTENERS
+// =============================================
+
+// Esperar a que el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 DOM cargado - Configurando eventos');
+    
+    // Configurar event listeners para los botones
+    document.getElementById('btnMarcarTodas').addEventListener('click', marcarTodasComoLeidas);
+    document.getElementById('btnEliminarTodas').addEventListener('click', eliminarTodas);
+    document.getElementById('btnTodas').addEventListener('click', () => cambiarFiltro('todas'));
+    document.getElementById('btnPendientes').addEventListener('click', () => cambiarFiltro('pendientes'));
+    document.getElementById('btnLeidas').addEventListener('click', () => cambiarFiltro('leidas'));
+    document.getElementById('selectPerPage').addEventListener('change', function() {
+        cambiarPerPage(this.value);
+    });
+    
+    // Iniciar carga de notificaciones
+    console.log('🚀 Iniciando carga de notificaciones...');
+    cargarNotificaciones();
+});
+
+console.log('✅ Script inline cargado - Esperando DOM...');
 </script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Este bloque está vacío porque el script está inline -->
 {% endblock %}

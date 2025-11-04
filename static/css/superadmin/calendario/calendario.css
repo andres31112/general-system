@@ -18,6 +18,81 @@
   --shadow-large: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
+/* --- Indicaciones de campos obligatorios --- */
+.required-fields-notice {
+    background: linear-gradient(135deg, var(--warning-color), #ffd666);
+    color: var(--black);
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-left: 4px solid var(--warning-color);
+    animation: pulseLight 2s infinite;
+}
+
+.required-asterisk {
+    color: var(--error-color);
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+.input-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--accent4);
+    font-size: 0.95rem;
+}
+
+.input-hint {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Validación de campos */
+.input-group input:invalid,
+.input-group textarea:invalid,
+.input-group select:invalid {
+    border-color: var(--error-color);
+    background: linear-gradient(135deg, #fff, #ffe6e6);
+}
+
+.input-group input:valid,
+.input-group textarea:valid,
+.input-group select:valid {
+    border-color: var(--success-color);
+    background: linear-gradient(135deg, #fff, #f0fff4);
+}
+
+.input-group:focus-within .input-label {
+    color: var(--accent2);
+}
+
+/* Estados de validación */
+.validation-error {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: shake 0.5s ease;
+}
+
+.validation-success {
+    color: var(--success-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+} 
 /* --- Animaciones clave --- */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
@@ -1736,7 +1811,98 @@ body::before {
 #editEvent .modal-body::-webkit-scrollbar-thumb:hover {
     background: var(--accent1);
 }
+/* Estilos para validación de caracteres especiales */
+.character-error {
+    border-color: var(--error-color) !important;
+    background: linear-gradient(135deg, #fff, #ffe6e6) !important;
+    animation: shake 0.5s ease;
+}
 
+.character-validation-error {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: fadeIn 0.3s ease;
+}
+
+.character-validation-error i {
+    font-size: 0.9rem;
+}
+
+/* Efecto de shake para campos con error */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Mensaje informativo sobre caracteres permitidos */
+.character-hint {
+    background: linear-gradient(135deg, var(--light), var(--accent3));
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 0.85rem;
+    color: var(--accent4);
+    border-left: 4px solid var(--accent2);
+}
+
+.character-hint strong {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.character-hint .allowed-chars {
+    font-family: monospace;
+    background: rgba(255,255,255,0.7);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 0 2px;
+}
+
+.character-hint .prohibited-chars {
+    color: var(--error-color);
+    font-weight: 600;
+}
+/* Animación para campos con error */
+@keyframes fieldError {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.field-error {
+    animation: fieldError 0.5s ease;
+    border-color: var(--error-color) !important;
+}
+
+/* Responsive para las indicaciones */
+@media (max-width: 768px) {
+    .required-fields-notice {
+        font-size: 0.85rem;
+        padding: 10px 12px;
+    }
+    
+    .input-label {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .required-fields-notice {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .input-label {
+        font-size: 0.85rem;
+    }
+} 
 /* Responsive para el modal de edición */
 @media (max-width: 768px) {
     #editEvent .modal-content {
