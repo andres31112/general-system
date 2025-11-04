@@ -18,6 +18,81 @@
   --shadow-large: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
+/* --- Indicaciones de campos obligatorios --- */
+.required-fields-notice {
+    background: linear-gradient(135deg, var(--warning-color), #ffd666);
+    color: var(--black);
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-left: 4px solid var(--warning-color);
+    animation: pulseLight 2s infinite;
+}
+
+.required-asterisk {
+    color: var(--error-color);
+    font-weight: bold;
+    margin-left: 2px;
+}
+
+.input-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--accent4);
+    font-size: 0.95rem;
+}
+
+.input-hint {
+    font-size: 0.8rem;
+    color: var(--gray);
+    margin-top: 5px;
+    font-style: italic;
+}
+
+/* Validación de campos */
+.input-group input:invalid,
+.input-group textarea:invalid,
+.input-group select:invalid {
+    border-color: var(--error-color);
+    background: linear-gradient(135deg, #fff, #ffe6e6);
+}
+
+.input-group input:valid,
+.input-group textarea:valid,
+.input-group select:valid {
+    border-color: var(--success-color);
+    background: linear-gradient(135deg, #fff, #f0fff4);
+}
+
+.input-group:focus-within .input-label {
+    color: var(--accent2);
+}
+
+/* Estados de validación */
+.validation-error {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: shake 0.5s ease;
+}
+
+.validation-success {
+    color: var(--success-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+} 
 /* --- Animaciones clave --- */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
@@ -857,6 +932,27 @@ h1::after {
   border-top: 1px solid var(--border);
 }
 
+/* Botón de edición */
+.edit-btn {
+  background: linear-gradient(135deg, var(--accent2), var(--accent3));
+  color: var(--black);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, var(--accent3), var(--accent2));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
 .delete-btn {
   background: linear-gradient(135deg, var(--accent1), #e25563);
   color: var(--white);
@@ -1081,116 +1177,6 @@ body::before {
   animation: float 8s ease-in-out infinite;
 }
 
-/* --- Responsive --- */
-@media (max-width: 768px) {
-  body {
-    padding: 15px;
-  }
-  
-  h1 {
-    font-size: 2rem;
-  }
-  
-  .calendar-controls {
-    padding: 15px;
-  }
-  
-  .month-display {
-    font-size: 1.3rem;
-    padding: 0 10px;
-  }
-  
-  .month-nav-btn {
-    width: 50px;
-    height: 50px;
-    font-size: 1rem;
-  }
-  
-  .form-content {
-    padding: 20px;
-  }
-  
-  .date-time-group {
-    grid-template-columns: 1fr;
-  }
-  
-  .color-guide {
-    padding: 20px;
-  }
-  
-  .color-item {
-    flex-direction: column;
-    text-align: center;
-    gap: 10px;
-  }
-  
-  .dashboard-btn {
-    position: relative;
-    top: auto;
-    left: auto;
-    margin-bottom: 20px;
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .modal-footer {
-    flex-direction: column;
-  }
-  
-  .delete-btn, .close-btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .btn-tooltip {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .weekdays-header {
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-  }
-  
-  .weekday {
-    padding: 8px 4px;
-    font-size: 0.8rem;
-  }
-  
-  #calendar {
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-  }
-  
-  .day {
-    height: 120px;
-    padding: 8px;
-  }
-  
-  .modal-content {
-    margin: 20px;
-    width: calc(100% - 40px);
-  }
-  
-  .event {
-    font-size: 10px;
-    padding: 6px 8px;
-  }
-  
-  .calendar-controls {
-    flex-direction: column;
-    gap: 15px;
-  }
-  
-  .month-nav-btn {
-    order: 2;
-  }
-  
-  .month-display {
-    order: 1;
-  }
-}
 /* === SELECTOR DE ROLES MEJORADO === */
 
 .role-selector-container {
@@ -1567,454 +1553,436 @@ body::before {
     }
 }
 
-/* Estados de vacío */
-.role-selector-wrapper.empty::before {
-    background: linear-gradient(90deg, var(--accent1), #ff7a5a);
-    opacity: 1;
-    animation: rainbow 2s linear infinite;
+/* --- Modal de Edición Más Pequeño --- */
+#editEvent .modal-content {
+    background: linear-gradient(135deg, var(--card-bg), var(--light-gray));
+    border-radius: 16px;
+    box-shadow: var(--shadow-large);
+    width: 90%;
+    max-width: 450px; /* Reducido de 500px */
+    padding: 0;
+    position: relative;
+    animation: modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
 }
 
-.role-option.error {
-    border-color: var(--accent1);
-    background: linear-gradient(135deg, #fff5f5, #fed7d7);
+#editEvent .modal-header {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: var(--white);
+    padding: 20px 25px; /* Reducido padding */
+    position: relative;
+}
+
+#editEvent .modal-header h3 {
+    margin: 0;
+    padding-right: 40px;
+    font-size: 1.3rem; /* Texto ligeramente más pequeño */
+}
+
+#editEvent .modal-body {
+    padding: 20px 25px; /* Reducido padding */
+    max-height: 60vh; /* Altura máxima reducida */
+    overflow-y: auto;
+}
+
+#editEvent .input-group {
+    position: relative;
+    margin-bottom: 15px; /* Espaciado reducido */
+}
+
+#editEvent .input-group input,
+#editEvent .input-group textarea {
+    width: 100%;
+    padding: 12px 14px; /* Padding reducido */
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--black);
+    font-size: 0.95rem; /* Fuente ligeramente más pequeña */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+#editEvent .date-time-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px; /* Espaciado reducido */
+    margin-bottom: 15px;
+}
+
+/* Selector de roles más compacto en modal de edición */
+#editEvent .role-selector-container {
+    margin-bottom: 15px;
+}
+
+#editEvent .role-selector-wrapper {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 15px; /* Padding reducido */
+    box-shadow: var(--shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+#editEvent .role-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Ancho reducido */
+    gap: 10px; /* Espaciado reducido */
+    margin-bottom: 0;
+}
+
+#editEvent .role-option {
+    position: relative;
+    background: linear-gradient(135deg, var(--card-bg), var(--light-gray));
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 15px; /* Padding reducido */
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Espaciado reducido */
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+#editEvent .role-icon {
+    width: 45px; /* Icono más pequeño */
+    height: 45px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem; /* Icono más pequeño */
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+#editEvent .role-title {
+    display: block;
+    font-weight: 700;
+    font-size: 1rem; /* Texto más pequeño */
+    color: var(--accent4);
+    margin-bottom: 2px;
+    transition: color 0.3s ease;
+}
+
+#editEvent .role-description {
+    display: block;
+    font-size: 0.8rem; /* Texto más pequeño */
+    color: var(--gray);
+    transition: color 0.3s ease;
+}
+
+#editEvent .role-checkbox {
+    width: 20px; /* Checkbox más pequeño */
+    height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 2;
+    background: var(--white);
+}
+
+#editEvent .checkmark {
+    width: 10px; /* Checkmark más pequeño */
+    height: 10px;
+    background: var(--white);
+    border-radius: 1px;
+    transform: scale(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+#editEvent .selected-roles-display {
+    margin-top: 15px;
+    padding: 12px; /* Padding reducido */
+    background: linear-gradient(135deg, var(--light), var(--accent3));
+    border-radius: 10px;
+    border-left: 4px solid var(--accent2);
+    animation: fadeIn 0.5s ease;
+}
+
+#editEvent .selected-label {
+    display: block;
+    font-weight: 600;
+    color: var(--accent4);
+    margin-bottom: 8px;
+    font-size: 0.85rem; /* Texto más pequeño */
+}
+
+#editEvent .role-tag {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: var(--white);
+    padding: 6px 12px; /* Padding reducido */
+    border-radius: 16px;
+    font-size: 0.8rem; /* Texto más pequeño */
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow);
+    animation: tagAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s ease;
+}
+
+#editEvent .role-tag .tag-remove {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: var(--white);
+    width: 16px; /* Botón más pequeño */
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.6rem; /* Icono más pequeño */
+    transition: all 0.2s ease;
+}
+
+#editEvent .modal-footer {
+    padding: 15px 25px; /* Padding reducido */
+    display: flex;
+    gap: 12px; /* Espaciado reducido */
+    justify-content: flex-end;
+    border-top: 1px solid var(--border);
+}
+
+#editEvent .submit-btn {
+    background: linear-gradient(135deg, var(--accent4), #1a5080);
+    color: var(--white);
+    border: none;
+    padding: 12px 20px; /* Padding reducido */
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem; /* Texto más pequeño */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+#editEvent .close-btn {
+    background: var(--gray);
+    color: var(--white);
+    border: none;
+    padding: 12px 20px; /* Padding reducido */
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem; /* Texto más pequeño */
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Scrollbar personalizado para el modal de edición */
+#editEvent .modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+#editEvent .modal-body::-webkit-scrollbar-track {
+    background: var(--light);
+    border-radius: 3px;
+}
+
+#editEvent .modal-body::-webkit-scrollbar-thumb {
+    background: var(--accent2);
+    border-radius: 3px;
+}
+
+#editEvent .modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--accent1);
+}
+/* Estilos para validación de caracteres especiales */
+.character-error {
+    border-color: var(--error-color) !important;
+    background: linear-gradient(135deg, #fff, #ffe6e6) !important;
     animation: shake 0.5s ease;
 }
 
-/* Responsive */
+.character-validation-error {
+    color: var(--error-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: fadeIn 0.3s ease;
+}
+
+.character-validation-error i {
+    font-size: 0.9rem;
+}
+
+/* Efecto de shake para campos con error */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Mensaje informativo sobre caracteres permitidos */
+.character-hint {
+    background: linear-gradient(135deg, var(--light), var(--accent3));
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 0.85rem;
+    color: var(--accent4);
+    border-left: 4px solid var(--accent2);
+}
+
+.character-hint strong {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.character-hint .allowed-chars {
+    font-family: monospace;
+    background: rgba(255,255,255,0.7);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 0 2px;
+}
+
+.character-hint .prohibited-chars {
+    color: var(--error-color);
+    font-weight: 600;
+}
+/* Animación para campos con error */
+@keyframes fieldError {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.field-error {
+    animation: fieldError 0.5s ease;
+    border-color: var(--error-color) !important;
+}
+
+/* Responsive para las indicaciones */
 @media (max-width: 768px) {
-    .role-options-grid {
-        grid-template-columns: 1fr;
+    .required-fields-notice {
+        font-size: 0.85rem;
+        padding: 10px 12px;
     }
     
-    .role-option {
-        padding: 15px;
-    }
-    
-    .role-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 1.3rem;
-    }
-    
-    .selected-roles-display {
-        padding: 12px;
-    }
-    
-    .role-tag {
-        padding: 6px 12px;
-        font-size: 0.8rem;
+    .input-label {
+        font-size: 0.9rem;
     }
 }
 
 @media (max-width: 480px) {
-    .role-selector-wrapper {
-        padding: 15px;
-    }
-    
-    .role-option {
+    .required-fields-notice {
         flex-direction: column;
         text-align: center;
-        gap: 12px;
+        gap: 8px;
     }
     
-    .role-content {
-        text-align: center;
+    .input-label {
+        font-size: 0.85rem;
+    }
+} 
+/* Responsive para el modal de edición */
+@media (max-width: 768px) {
+    #editEvent .modal-content {
+        max-width: 95%;
+        margin: 10px;
     }
     
-    .selected-roles-tags {
+    #editEvent .modal-body {
+        padding: 15px 20px;
+        max-height: 70vh;
+    }
+    
+    #editEvent .date-time-group {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    #editEvent .role-options-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #editEvent .role-option {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    #editEvent .modal-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    #editEvent .submit-btn,
+    #editEvent .close-btn {
+        width: 100%;
         justify-content: center;
     }
 }
-/* === SELECTOR DE ROLES MEJORADO === */
 
-.role-selector-container {
-    margin-bottom: 25px;
-}
-
-.role-selector-wrapper {
-    background: var(--white);
-    border: 2px solid var(--border);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: var(--shadow);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-}
-
-.role-selector-wrapper::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent1), var(--accent2), var(--accent3), var(--accent4));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.role-selector-wrapper:focus-within {
-    border-color: var(--accent2);
-    box-shadow: 0 0 0 4px rgba(238, 150, 75, 0.15), var(--shadow-hover);
-    transform: translateY(-2px);
-}
-
-.role-selector-wrapper:focus-within::before {
-    opacity: 1;
-}
-
-.role-options-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
-    margin-bottom: 0;
-}
-
-.role-option {
-    position: relative;
-    background: linear-gradient(135deg, var(--card-bg), var(--light-gray));
-    border: 2px solid var(--border);
-    border-radius: 14px;
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    overflow: hidden;
-    box-shadow: var(--shadow);
-}
-
-.role-option::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(249, 87, 56, 0.1), rgba(238, 150, 75, 0.1));
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.role-option:hover {
-    transform: translateY(-5px) scale(1.02);
-    border-color: var(--accent3);
-    box-shadow: var(--shadow-hover);
-}
-
-.role-option:hover::before {
-    opacity: 1;
-}
-
-.role-option.selected {
-    border-color: var(--accent2);
-    background: linear-gradient(135deg, var(--light), #fef3c7);
-    box-shadow: 0 8px 25px rgba(238, 150, 75, 0.2);
-    animation: roleSelected 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.role-option.selected::before {
-    opacity: 1;
-    background: linear-gradient(135deg, rgba(249, 87, 56, 0.15), rgba(238, 150, 75, 0.15));
-}
-
-@keyframes roleSelected {
-    0% {
-        transform: scale(1);
-        box-shadow: var(--shadow);
+@media (max-width: 480px) {
+    #editEvent .modal-content {
+        max-width: 100%;
+        margin: 5px;
+        border-radius: 12px;
     }
-    50% {
-        transform: scale(1.05);
-        box-shadow: 0 12px 30px rgba(238, 150, 75, 0.3);
+    
+    #editEvent .modal-header {
+        padding: 15px 20px;
     }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 8px 25px rgba(238, 150, 75, 0.2);
+    
+    #editEvent .modal-header h3 {
+        font-size: 1.2rem;
+    }
+    
+    #editEvent .modal-body {
+        padding: 12px 15px;
+        max-height: 75vh;
+    }
+    
+    #editEvent .input-group input,
+    #editEvent .input-group textarea {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+    
+    #editEvent .role-selector-wrapper {
+        padding: 12px;
+    }
+    
+    #editEvent .role-option {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    #editEvent .role-content {
+        text-align: center;
     }
 }
 
-.role-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 2;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.role-option[data-value="Estudiante"] .role-icon {
-    background: linear-gradient(135deg, var(--accent1), #ff7a5a);
-    color: var(--white);
-}
-
-.role-option[data-value="Profesor"] .role-icon {
-    background: linear-gradient(135deg, var(--accent4), #2a5a8c);
-    color: var(--white);
-}
-
-.role-option:hover .role-icon {
-    transform: scale(1.1) rotate(5deg);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-}
-
-.role-option.selected .role-icon {
-    animation: iconBounce 0.6s ease;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-}
-
-@keyframes iconBounce {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0) scale(1.1);
-    }
-    40% {
-        transform: translateY(-8px) scale(1.15);
-    }
-    60% {
-        transform: translateY(-4px) scale(1.12);
-    }
-}
-
-.role-content {
-    flex: 1;
-    position: relative;
-    z-index: 2;
-}
-
-.role-title {
-    display: block;
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--accent4);
-    margin-bottom: 4px;
-    transition: color 0.3s ease;
-}
-
-.role-option.selected .role-title {
-    color: var(--accent1);
-}
-
-.role-description {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--gray);
-    transition: color 0.3s ease;
-}
-
-.role-option.selected .role-description {
-    color: var(--black);
-    font-weight: 500;
-}
-
-.role-checkbox {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--border);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    z-index: 2;
-    background: var(--white);
-}
-
-.role-option:hover .role-checkbox {
-    border-color: var(--accent3);
-    transform: scale(1.1);
-}
-
-.role-option.selected .role-checkbox {
-    background: linear-gradient(135deg, var(--accent2), var(--accent1));
-    border-color: var(--accent2);
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(238, 150, 75, 0.3);
-}
-
-.checkmark {
-    width: 12px;
-    height: 12px;
-    background: var(--white);
-    border-radius: 2px;
-    transform: scale(0);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-}
-
-.role-option.selected .checkmark {
-    transform: scale(1);
-    animation: checkmarkPop 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes checkmarkPop {
-    0% {
-        transform: scale(0) rotate(-45deg);
-    }
-    50% {
-        transform: scale(1.2) rotate(0deg);
-    }
-    100% {
-        transform: scale(1) rotate(0deg);
-    }
-}
-
-.role-glow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: radial-gradient(circle, rgba(244, 211, 94, 0.4) 0%, transparent 70%);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0;
-}
-
-.role-option.selected .role-glow {
-    width: 200px;
-    height: 200px;
-    opacity: 1;
-    animation: glowPulse 2s ease-in-out infinite;
-}
-
-@keyframes glowPulse {
-    0%, 100% {
-        opacity: 0.6;
-        transform: translate(-50%, -50%) scale(1);
-    }
-    50% {
-        opacity: 0.8;
-        transform: translate(-50%, -50%) scale(1.1);
-    }
-}
-
-/* Display de roles seleccionados */
-.selected-roles-display {
-    margin-top: 20px;
-    padding: 15px;
-    background: linear-gradient(135deg, var(--light), var(--accent3));
-    border-radius: 12px;
-    border-left: 4px solid var(--accent2);
-    animation: fadeIn 0.5s ease;
-}
-
-.selected-label {
-    display: block;
-    font-weight: 600;
-    color: var(--accent4);
-    margin-bottom: 10px;
-    font-size: 0.9rem;
-}
-
-.selected-roles-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.role-tag {
-    background: linear-gradient(135deg, var(--accent4), #1a5080);
-    color: var(--white);
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: var(--shadow);
-    animation: tagAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transition: all 0.3s ease;
-}
-
-@keyframes tagAppear {
-    from {
-        opacity: 0;
-        transform: scale(0.8) translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.role-tag:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: var(--shadow-hover);
-}
-
-.role-tag.estudiante {
-    background: linear-gradient(135deg, var(--accent1), #ff7a5a);
-}
-
-.role-tag.profesor {
-    background: linear-gradient(135deg, var(--accent4), #2a5a8c);
-}
-
-.role-tag .tag-remove {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: var(--white);
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.7rem;
-    transition: all 0.2s ease;
-}
-
-.role-tag .tag-remove:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
-}
-
-/* Efectos de partículas para selección */
-.role-particle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 10;
-    animation: particleFloat 1s ease-out forwards;
-}
-
-@keyframes particleFloat {
-    0% {
-        opacity: 1;
-        transform: translate(0, 0) scale(1);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(var(--tx), var(--ty)) scale(0);
-    }
-}
-
-/* Estados de vacío */
-.role-selector-wrapper.empty::before {
-    background: linear-gradient(90deg, var(--accent1), #ff7a5a);
-    opacity: 1;
-    animation: rainbow 2s linear infinite;
-}
-
-.role-option.error {
-    border-color: var(--accent1);
-    background: linear-gradient(135deg, #fff5f5, #fed7d7);
-    animation: shake 0.5s ease;
-}
-
-/* Responsive */
+/* Responsive general */
 @media (max-width: 768px) {
     .role-options-grid {
         grid-template-columns: 1fr;
@@ -2038,9 +2006,115 @@ body::before {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    
+    .modal-footer {
+        flex-direction: column;
+    }
+    
+    .edit-btn, .delete-btn, .close-btn {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 @media (max-width: 480px) {
+    body {
+        padding: 15px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .calendar-controls {
+        padding: 15px;
+    }
+    
+    .month-display {
+        font-size: 1.3rem;
+        padding: 0 10px;
+    }
+    
+    .month-nav-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
+    }
+    
+    .form-content {
+        padding: 20px;
+    }
+    
+    .date-time-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .color-guide {
+        padding: 20px;
+    }
+    
+    .color-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .dashboard-btn {
+        position: relative;
+        top: auto;
+        left: auto;
+        margin-bottom: 20px;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn-tooltip {
+        display: none;
+    }
+    
+    .weekdays-header {
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+    }
+    
+    .weekday {
+        padding: 8px 4px;
+        font-size: 0.8rem;
+    }
+    
+    #calendar {
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+    }
+    
+    .day {
+        height: 120px;
+        padding: 8px;
+    }
+    
+    .modal-content {
+        margin: 20px;
+        width: calc(100% - 40px);
+    }
+    
+    .event {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+    
+    .calendar-controls {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .month-nav-btn {
+        order: 2;
+    }
+    
+    .month-display {
+        order: 1;
+    }
+    
     .role-selector-wrapper {
         padding: 15px;
     }

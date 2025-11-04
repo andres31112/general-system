@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
+    console.log('🚀 Sistema de votación iniciado');
+    console.log('👤 Usuario ID:', usuarioId);
+
     const form = document.getElementById("votacionForm");
     const alertaEstado = document.getElementById("alertaEstado");
     const mensajeEstado = document.getElementById("mensajeEstado");
@@ -13,35 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let tiempoLimite = null;
     let intervalo = null;
 
-    function parseHorarioString(s) {
-        if (!s) return null;
-        const parts = s.split(":").map(Number);
-        const now = new Date();
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0] || 0, parts[1] || 0, parts[2] || 0);
-    }
-
-    function actualizarTiempoRestante() {
-        if (!tiempoLimite) return;
-        
-        const ahora = new Date();
-        const diferencia = tiempoLimite - ahora;
-        
-        if (diferencia <= 0) {
-            clearInterval(intervalo);
-            tiempoRestante.textContent = "00:00:00";
-            alert("⏰ El tiempo de votación ha finalizado.");
-            window.location.href = "/estudiante/dashboard";
-            return;
-        }
-        
-        const horas = Math.floor(diferencia / (1000 * 60 * 60));
-        const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
-        const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
-        
-        tiempoRestante.textContent = 
-            `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-    }
-
+    // Función para verificar estado
     async function verificarEstado() {
         try {
             mostrarAlerta("🔍 Verificando estado de la votación...", "info");
@@ -50,8 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
 
             if (data.error) {
-                mostrarAlerta("❌ Error al verificar el estado.", "error");
-                setTimeout(() => window.location.href = "/estudiante/dashboard", 2000);
+                mostrarAlerta("❌ Error: " + data.error, "error");
                 return;
             }
 
@@ -91,10 +65,38 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 2000);
 
         } catch (err) {
-            console.error(err);
+            console.error('Error en verificarEstado:', err);
             mostrarAlerta("❌ Error al verificar el estado de la votación.", "error");
-            setTimeout(() => window.location.href = "/estudiante/dashboard", 2000);
         }
+    }
+
+    function parseHorarioString(s) {
+        if (!s) return null;
+        const parts = s.split(":").map(Number);
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0] || 0, parts[1] || 0, parts[2] || 0);
+    }
+
+    function actualizarTiempoRestante() {
+        if (!tiempoLimite) return;
+        
+        const ahora = new Date();
+        const diferencia = tiempoLimite - ahora;
+        
+        if (diferencia <= 0) {
+            clearInterval(intervalo);
+            tiempoRestante.textContent = "00:00:00";
+            alert("⏰ El tiempo de votación ha finalizado.");
+            window.location.href = "/estudiante/dashboard";
+            return;
+        }
+        
+        const horas = Math.floor(diferencia / (1000 * 60 * 60));
+        const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+        const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+        
+        tiempoRestante.textContent = 
+            `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
     }
 
     function mostrarAlerta(mensaje, tipo) {
@@ -121,9 +123,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function cargarCandidatos() {
+        console.log('🔄 Cargando candidatos...');
         fetch("/estudiante/candidatos")
             .then(res => res.json())
             .then(data => {
+                console.log('✅ Candidatos cargados para:', Object.keys(data));
                 renderCandidatos("personero", data.personero || []);
                 renderCandidatos("contralor", data.contralor || []);
                 renderCandidatos("cabildante", data.cabildante || []);
@@ -286,18 +290,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             form.classList.add("loading");
-            
+            btnConfirmar.disabled = true;
+            btnConfirmar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+            const datosEnvio = {
+                estudiante_id: parseInt(usuarioId),
+                votos: votos
+            };
+
+            console.log('📤 Enviando voto:', datosEnvio);
+
             const res = await fetch("/estudiante/votar", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ estudiante_id: usuarioId, votos })
+                headers: { 
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(datosEnvio)
             });
 
             const resp = await res.json();
 
             if (resp.error) {
                 mostrarAlerta("❌ " + resp.error, "error");
-                setTimeout(() => window.location.href = "/estudiante/dashboard", 3000);
                 return;
             }
 
@@ -308,11 +322,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             mostrarAlerta("⚠️ Respuesta inesperada del servidor.", "warning");
+            
         } catch (err) {
-            console.error(err);
+            console.error('Error al enviar voto:', err);
             mostrarAlerta("❌ Error al registrar tu voto.", "error");
         } finally {
             form.classList.remove("loading");
+            btnConfirmar.disabled = false;
+            btnConfirmar.innerHTML = '<i class="fas fa-check"></i> Confirmar Voto';
             ocultarModalConfirmacion();
         }
     }

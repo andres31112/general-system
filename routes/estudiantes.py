@@ -5,7 +5,7 @@ from controllers.decorators import role_required, permission_required
 from datetime import datetime, timedelta, time, date
 from controllers.models import (
     db, Usuario, Comunicacion, Evento, Candidato, HorarioVotacion, Voto,
-    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso,
+    Calificacion, Asistencia, CicloAcademico, PeriodoAcademico, Matricula, Curso, Notificacion,
     HorarioCurso, Asignatura, Salon, BloqueHorario, CategoriaCalificacion, SolicitudConsulta
 )
 from services.notification_service import (
@@ -315,7 +315,7 @@ def api_mi_horario():
 # Sistema de votación
 # =======================
 
-# 📌 Estado de la votación
+# 📌 Estado de la votación - VERSIÓN CORREGIDA
 @estudiante_bp.route("/estado/<int:usuario_id>")
 @login_required
 def estado(usuario_id):
@@ -340,7 +340,9 @@ def estado(usuario_id):
         else:
             votacion_abierta = (inicio <= ahora <= fin)
 
-        ya_voto = Voto.query.filter_by(estudiante_id=usuario_id).first() is not None
+        # Usar el campo voto_registrado
+        estudiante = Usuario.query.get(usuario_id)
+        ya_voto = estudiante.voto_registrado if estudiante else False
 
         return jsonify({
             "votacion_abierta": votacion_abierta,
@@ -351,7 +353,6 @@ def estado(usuario_id):
 
     except Exception as e:
         return jsonify({"error": str(e), "votacion_abierta": False}), 500
-
 
 # 📌 Obtener candidatos por categoría
 # 📌 Obtener candidatos por categoría
@@ -379,66 +380,95 @@ def listar_candidatos():
 
 
 
-# 📌 Registrar voto
-# 📌 Registrar voto
+# 📌 Registrar voto - CON MÁS LOGGING
 @estudiante_bp.route("/votar", methods=["POST"])
 @login_required
 def votar():
-    data = request.get_json()
-    estudiante_id = data.get("estudiante_id")
-    votos = data.get("votos")  # dict {categoria: candidato_id}
-
-    # --- Validar horario ---
-    horario = HorarioVotacion.query.order_by(HorarioVotacion.id_horario_votacion.desc()).first()
-    if horario:
-        ahora = datetime.now().time()
-        if horario.inicio <= horario.fin:
-            if not (horario.inicio <= ahora <= horario.fin):
-                return jsonify({"error": "⏰ La votación no está abierta"}), 403
-        else:
-            if not (ahora >= horario.inicio or ahora <= horario.fin):
-                return jsonify({"error": "⏰ La votación no está abierta"}), 403
-
     try:
+        print("🎯 ===== VOTACIÓN INICIADA =====")
+        
+        # Verificar método y datos
+        print(f"📨 Método: {request.method}")
+        print(f"📦 Content-Type: {request.content_type}")
+        print(f"📊 Datos crudos: {request.get_data()}")
+        
+        data = request.get_json()
+        print(f"📋 JSON recibido: {data}")
+        
+        if not data:
+            return jsonify({"error": "No se recibieron datos"}), 400
+            
+        estudiante_id = data.get("estudiante_id")
+        votos = data.get("votos", {})
+        
+        print(f"👤 Estudiante ID: {estudiante_id}")
+        print(f"🗳️ Votos recibidos: {votos}")
+
+        # Validar estudiante
+        estudiante = Usuario.query.get(estudiante_id)
+        if not estudiante:
+            print("❌ Estudiante no encontrado en BD")
+            return jsonify({"error": "Estudiante no encontrado"}), 400
+
+        print(f"👤 Estudiante encontrado: {estudiante.nombre}")
+
+        # Verificar si ya votó
+        if estudiante.voto_registrado:
+            print("❌ ESTUDIANTE YA VOTÓ - voto_registrado=True")
+            return jsonify({"error": "Ya has votado anteriormente"}), 400
+
+        print("✅ Estudiante puede votar - voto_registrado=False")
+
+        # Procesar cada voto
+        votos_registrados = 0
         for categoria, candidato_id in votos.items():
-            if candidato_id == "blanco":
-                continue  # No se guarda nada en la tabla
+            print(f"📝 Procesando voto: {categoria} -> {candidato_id}")
+            
+            if candidato_id == "blanco" or not candidato_id:
+                print(f"⚪ Voto en blanco para {categoria}")
+                continue
 
-            # 🔍 Verificar si ya votó en esta categoría
-            voto_existente = (
-                Voto.query.join(Candidato, Voto.candidato_id == Candidato.id_candidato)
-                .filter(
-                    Voto.estudiante_id == estudiante_id,
-                    Candidato.categoria == categoria
-                )
-                .first()
-            )
+            # Verificar candidato
+            candidato = Candidato.query.get(int(candidato_id))
+            if not candidato:
+                print(f"❌ Candidato {candidato_id} no encontrado")
+                continue
 
-            if voto_existente:
-                return jsonify({"error": f"⚠️ Ya votaste en la categoría {categoria}"}), 400
-
-            # 🗳️ Registrar el nuevo voto
+            # Registrar voto
             nuevo_voto = Voto(
                 estudiante_id=estudiante_id,
                 candidato_id=int(candidato_id)
             )
             db.session.add(nuevo_voto)
 
-            # 🧮 Sumar 1 voto al candidato
-            candidato = Candidato.query.filter_by(id_candidato=int(candidato_id)).first()
-            if candidato:
-                if candidato.votos is None:
-                    candidato.votos = 0
-                candidato.votos += 1
+            # Incrementar contador
+            candidato.votos += 1
+            votos_registrados += 1
+            print(f"✅ VOTO REGISTRADO: {candidato.nombre} ahora tiene {candidato.votos} votos")
 
+        if votos_registrados == 0:
+            print("⚠️ No se registraron votos válidos")
+            return jsonify({"error": "No se seleccionaron candidatos válidos"}), 400
+
+        # Marcar estudiante
+        estudiante.voto_registrado = True
+        print(f"🎓 ESTUDIANTE MARCADO: {estudiante.nombre} -> voto_registrado=True")
+
+        # Commit final
         db.session.commit()
+        print("💾 COMMIT EXITOSO - Todos los cambios guardados")
+        print("✅ ===== VOTACIÓN FINALIZADA CON ÉXITO =====")
+        
         return jsonify({"mensaje": "✅ Voto registrado correctamente"}), 201
 
     except Exception as e:
         db.session.rollback()
-        print("❌ Error al registrar voto:", e)
-        return jsonify({"error": str(e)}), 400
-
+        print(f"❌ ===== ERROR EN VOTACIÓN =====")
+        print(f"❌ Tipo de error: {type(e).__name__}")
+        print(f"❌ Mensaje: {str(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({"error": "Error interno del servidor"}), 500
 
 
 # 📌 Vista principal de elecciones (HTML)
@@ -824,6 +854,131 @@ def api_eventos_estudiante():
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+   # 📌 RUTAS COMPLETAS PARA NOTIFICACIONES
+@estudiante_bp.route("/notificaciones")
+@login_required
+def ver_notificaciones():
+    """Página principal de notificaciones"""
+    try:
+        # Obtener todas las notificaciones del usuario
+        notificaciones = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario
+        ).order_by(Notificacion.creada_en.desc()).all()
+        
+        # Contar no leídas
+        no_leidas = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        return render_template(
+            "estudiantes/notificaciones.html", 
+            notificaciones=notificaciones,
+            notificaciones_no_leidas=no_leidas
+        )
+        
+    except Exception as e:
+        flash(f"Error al cargar notificaciones: {str(e)}", "error")
+        return redirect(url_for('estudiante.estudiante_panel'))  # ✅ CORREGIDO: Indentación
+
+@estudiante_bp.route("/api/notificaciones")
+@login_required
+def obtener_notificaciones():
+    """API para obtener notificaciones del estudiante"""
+    try:
+        # Obtener notificaciones del usuario actual
+        notificaciones = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario
+        ).order_by(Notificacion.creada_en.desc()).limit(10).all()
+        
+        notificaciones_data = []
+        for notif in notificaciones:
+            notificaciones_data.append({
+                "id": notif.id_notificacion,
+                "titulo": notif.titulo,
+                "mensaje": notif.mensaje,
+                "tipo": notif.tipo,
+                "leida": notif.leida,
+                "link": notif.link,
+                "fecha_creacion": notif.creada_en.strftime('%d/%m/%Y %H:%M') if notif.creada_en else 'Reciente'
+            })
+        
+        # Contar notificaciones no leídas
+        no_leidas = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        return jsonify({
+            "notificaciones": notificaciones_data,
+            "no_leidas": no_leidas
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/<int:notificacion_id>/marcar-leida", methods=["POST"])
+@login_required
+def marcar_notificacion_leida(notificacion_id):
+    """Marcar una notificación como leída"""
+    try:
+        notificacion = Notificacion.query.filter_by(
+            id_notificacion=notificacion_id,
+            usuario_id=current_user.id_usuario
+        ).first()
+        
+        if not notificacion:
+            return jsonify({"error": "Notificación no encontrada"}), 404
+        
+        notificacion.leida = True
+        db.session.commit()
+        
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/marcar-todas-leidas", methods=["POST"])
+@login_required
+def marcar_todas_leidas():
+    """Marcar todas las notificaciones como leídas"""
+    try:
+        Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).update({"leida": True})
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/<int:notificacion_id>/eliminar", methods=["DELETE"])
+@login_required
+def eliminar_notificacion(notificacion_id):
+    """Eliminar una notificación"""
+    try:
+        notificacion = Notificacion.query.filter_by(
+            id_notificacion=notificacion_id,
+            usuario_id=current_user.id_usuario
+        ).first()
+        
+        if not notificacion:
+            return jsonify({"error": "Notificación no encontrada"}), 404
+        
+        db.session.delete(notificacion)
+        db.session.commit()
+        
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================================
@@ -1136,15 +1291,16 @@ def mi_equipo():
     """
     return render_template('estudiantes/mi_equipo.html')
 
-
 @estudiante_bp.route('/api/mi-equipo', methods=['GET'])
 @login_required
 def api_mi_equipo():
     """
     API para obtener el equipo asignado al estudiante logueado
-    Busca en la tabla Equipo donde asignado_a coincida con el nombre del estudiante
+    Busca en la tabla AsignacionEquipo por el ID del estudiante
     """
     try:
+        from controllers.models import AsignacionEquipo, Equipo, Mantenimiento, Incidente
+        
         user_id = current_user.id_usuario
         usuario = Usuario.query.get(user_id)
         
@@ -1154,39 +1310,127 @@ def api_mi_equipo():
                 'error': 'Usuario no encontrado'
             }), 404
         
-        # Buscar equipo asignado al estudiante por nombre completo
-        nombre_completo = usuario.nombre_completo
-        equipo = Equipo.query.filter_by(asignado_a=nombre_completo).first()
+        # Buscar asignación activa del estudiante
+        asignacion = AsignacionEquipo.query.filter_by(
+            estudiante_id=user_id,
+            estado_asignacion='activa'
+        ).first()
         
-        if not equipo:
-            # También intentar buscar solo por nombre o apellido
-            equipo = Equipo.query.filter(
-                (Equipo.asignado_a.ilike(f'%{usuario.nombre}%')) |
-                (Equipo.asignado_a.ilike(f'%{usuario.apellido}%'))
-            ).first()
+        if not asignacion:
+            # El estudiante no tiene equipo asignado
+            return jsonify({
+                'success': False,
+                'message': 'No tienes equipo asignado actualmente'
+            }), 200
+        
+        # Obtener el equipo
+        equipo = asignacion.equipo
         
         if equipo:
-            # El estudiante tiene un equipo asignado
-            equipo_data = equipo.to_dict()
+            # Buscar incidentes activos del equipo
+            incidentes_activos = Incidente.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='reportado'
+            ).order_by(Incidente.fecha.desc()).all()
             
-            # Agregar información adicional si está disponible
-            equipo_data['procesador'] = equipo_data.get('sistema_operativo', 'N/A')  # Puedes ajustar esto
-            equipo_data['ultima_revision'] = None  # Conectar con tabla de mantenimiento si existe
-            equipo_data['proximo_mantenimiento'] = None  # Conectar con tabla de mantenimiento si existe
+            tiene_incidentes = len(incidentes_activos) > 0
+            
+            # Preparar información de incidentes
+            incidentes_info = []
+            for inc in incidentes_activos:
+                incidentes_info.append({
+                    'id_incidente': inc.id_incidente,
+                    'descripcion': inc.descripcion,
+                    'prioridad': inc.prioridad,
+                    'fecha': inc.fecha.strftime('%d %b %Y') if inc.fecha else None,
+                    'estado': inc.estado
+                })
+            
+            # Preparar datos del equipo
+            equipo_data = {
+                'id_equipo': equipo.id_equipo,
+                'id_referencia': equipo.id_referencia,
+                'nombre': equipo.nombre,
+                'tipo': equipo.tipo,
+                'estado': equipo.estado,
+                'sistema_operativo': equipo.sistema_operativo or 'N/A',
+                'ram': equipo.ram or 'N/A',
+                'disco_duro': equipo.disco_duro or 'N/A',
+                'procesador': equipo.sistema_operativo or 'N/A',
+                'descripcion': equipo.descripcion or '',
+                'observaciones': equipo.observaciones or '',
+                'salon': equipo.salon.nombre if equipo.salon else 'N/A',
+                'sede_nombre': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'N/A',
+                
+                # ✅ FECHA DE ASIGNACIÓN (desde la tabla AsignacionEquipo)
+                'fecha_asignacion': asignacion.fecha_asignacion.strftime('%d %b %Y') if asignacion.fecha_asignacion else 'N/A',
+                'fecha_adquisicion': asignacion.fecha_asignacion.strftime('%d %b %Y') if asignacion.fecha_asignacion else 'N/A',
+                
+                'observaciones_asignacion': asignacion.observaciones or '',
+                
+                # ✅ INFORMACIÓN DE INCIDENTES
+                'tiene_incidentes': tiene_incidentes,
+                'total_incidentes': len(incidentes_activos),
+                'incidentes': incidentes_info
+            }
+            
+            # Buscar último mantenimiento
+            ultimo_mantenimiento = Mantenimiento.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='realizado'
+            ).order_by(Mantenimiento.fecha_realizada.desc()).first()
+            
+            # Buscar próximo mantenimiento programado
+            proximo_mantenimiento = Mantenimiento.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='pendiente'
+            ).order_by(Mantenimiento.fecha_programada.asc()).first()
+            
+            equipo_data['ultima_revision'] = ultimo_mantenimiento.fecha_realizada.strftime('%d %b %Y') if ultimo_mantenimiento and ultimo_mantenimiento.fecha_realizada else None
+            equipo_data['proximo_mantenimiento'] = proximo_mantenimiento.fecha_programada.strftime('%d %b %Y') if proximo_mantenimiento and proximo_mantenimiento.fecha_programada else None
             
             return jsonify({
                 'success': True,
                 'equipo': equipo_data
             }), 200
         else:
-            # El estudiante no tiene equipo asignado
             return jsonify({
                 'success': False,
-                'message': 'No tienes equipo asignado actualmente'
-            }), 200
+                'message': 'Error al obtener información del equipo'
+            }), 500
             
     except Exception as e:
         print(f"ERROR en api_mi_equipo: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
+@estudiante_bp.route('/api/usuario-actual', methods=['GET'])
+@login_required
+def api_usuario_actual():
+    """
+    API para obtener información básica del usuario actual
+    """
+    try:
+        usuario = current_user
+        
+        return jsonify({
+            'success': True,
+            'usuario': {
+                'id_usuario': usuario.id_usuario,
+                'nombre': usuario.nombre,
+                'apellido': usuario.apellido,
+                'nombre_completo': usuario.nombre_completo,
+                'correo': usuario.correo,
+                'rol': usuario.rol_nombre if hasattr(usuario, 'rol_nombre') else None
+            }
+        }), 200
+            
+    except Exception as e:
+        print(f"ERROR en api_usuario_actual: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)

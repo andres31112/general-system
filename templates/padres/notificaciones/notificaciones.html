@@ -8,11 +8,12 @@
         border-left: 4px solid #F95738;
         transition: all 0.3s ease;
         cursor: pointer;
+        margin-bottom: 1rem;
     }
     
     .notification-card:hover {
         transform: translateX(5px);
-        box-shadow:  HEX;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         border-left-color: #F95738;
     }
     
@@ -20,6 +21,11 @@
         background: #f8f9fa;
         border-left-color: #6c757d;
         opacity: 0.8;
+    }
+    
+    .notification-card.unread {
+        background: #f0f7ff;
+        border-left-color: #F95738;
     }
     
     .notification-type-badge {
@@ -37,6 +43,7 @@
     .type-evento { background: #fce4ec; color: #c2185b; }
     .type-votacion { background: #e1f5fe; color: #0277bd; }
     .type-admin { background: #f1f8e9; color: #689f38; }
+    .type-sistema { background: #f5f5f5; color: #424242; }
     
     .filters-container {
         background: white;
@@ -52,10 +59,13 @@
         margin: 0 5px;
         font-weight: 500;
         transition: all 0.3s ease;
+        border: 2px solid #0D3B66;
+        color: #0D3B66;
+        background: white;
     }
     
     .btn-filter.active {
-        background: var(--gradient-primary);
+        background: #0D3B66;
         color: white;
         transform: translateY(-2px);
         box-shadow: 0 4px 15px rgba(13, 59, 102, 0.3);
@@ -87,32 +97,83 @@
         margin-bottom: 1rem;
         color: #dee2e6;
     }
+
+    .notification-link {
+        color: #0D3B66;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+
+    .notification-link:hover {
+        color: #F95738;
+        text-decoration: underline;
+    }
+
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .icon-evento { background: #fce4ec; color: #c2185b; }
+    .icon-calificacion { background: #f3e5f5; color: #7b1fa2; }
+    .icon-solicitud { background: #fff3e0; color: #f57c00; }
+    .icon-comunicacion { background: #e3f2fd; color: #1976d2; }
+    .icon-asistencia { background: #e8f5e8; color: #388e3c; }
+    .icon-sistema { background: #f5f5f5; color: #424242; }
+
+    .stats-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        margin: 0 0.5rem;
+    }
+
+    .welcome-card {
+        background: linear-gradient(135deg, var(--accent4), var(--accent1));
+        color: white;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row">
+    <!-- Header -->
+    <div class="row mb-4">
         <div class="col-12">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="fas fa-bell text-primary me-2"></i>Notificaciones
-                    </h2>
-                    <p class="text-muted mb-0">Gestiona tus notificaciones del sistema</p>
-                </div>
-                <div>
-                    <button class="btn btn-outline-primary me-2" onclick="marcarTodasComoLeidas()">
-                        <i class="fas fa-check-double me-1"></i>Marcar todas como leídas
-                    </button>
-                    <button class="btn btn-danger" onclick="eliminarTodas()">
-                        <i class="fas fa-trash me-1"></i>Eliminar todas
-                    </button>
+            <div class="welcome-card p-4 rounded">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="mb-2"><i class="fas fa-bell me-2"></i>Mis Notificaciones</h1>
+                        <p class="mb-0">Mantente informado sobre eventos, calificaciones y actividades de tus hijos.</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="stats-badge d-inline-block">
+                            <h4 class="mb-0" id="totalNotifications">0</h4>
+                            <small>Total</small>
+                        </div>
+                        <div class="stats-badge d-inline-block">
+                            <h4 class="mb-0" id="unreadNotifications">0</h4>
+                            <small>Pendientes</small>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Filtros -->
+    <!-- Controles -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="filters-container">
                 <div class="row align-items-center">
                     <div class="col-md-6">
@@ -137,26 +198,32 @@
                                 <option value="20" selected>20</option>
                                 <option value="50">50</option>
                             </select>
+                            <button class="btn btn-success ms-3" onclick="marcarTodasComoLeidas()">
+                                <i class="fas fa-check-double me-1"></i>Marcar todas como leídas
+                            </button>
+                            <button class="btn btn-danger ms-2" onclick="eliminarTodas()">
+                                <i class="fas fa-trash me-1"></i>Eliminar todas
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Lista de notificaciones -->
-            <div id="notifications-container">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="mt-2 text-muted">Cargando notificaciones...</p>
-                </div>
-            </div>
-
-            <!-- Paginación -->
-            <div class="pagination-container" id="pagination-container" style="display: none;">
-                <!-- Se llena dinámicamente -->
-            </div>
         </div>
+    </div>
+
+    <!-- Lista de notificaciones -->
+    <div id="notifications-container">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2 text-muted">Cargando notificaciones...</p>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    <div class="pagination-container" id="pagination-container" style="display: none;">
+        <!-- Se llena dinámicamente -->
     </div>
 </div>
 
@@ -203,7 +270,8 @@ function cargarNotificaciones(page = 1) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                mostrarNotificaciones(data.data);
+                mostrarNotificaciones(data);
+                actualizarContadores(data);
             } else {
                 mostrarError('Error cargando notificaciones: ' + data.message);
             }
@@ -217,12 +285,60 @@ function cargarNotificaciones(page = 1) {
 function mostrarNotificaciones(data) {
     const container = document.getElementById('notifications-container');
     
-    if (data.notificaciones.length === 0) {
+    // ✅ CORRECCIÓN: Manejar diferentes estructuras de datos
+    console.log("🔍 DATOS DE NOTIFICACIONES RECIBIDOS:", data);
+    
+    // Obtener las notificaciones de la estructura correcta
+    let notificaciones = [];
+    let total = 0;
+    let paginationData = {};
+    
+    if (data.notificaciones) {
+        // Estructura: {success: true, notificaciones: [], total: X, ...}
+        notificaciones = data.notificaciones;
+        total = data.total || notificaciones.length;
+        paginationData = {
+            current_page: data.current_page || 1,
+            pages: data.pages || 1,
+            has_prev: data.has_prev || false,
+            has_next: data.has_next || false
+        };
+    } else if (data.data && data.data.notificaciones) {
+        // Estructura: {success: true, data: {notificaciones: [], total: X, ...}}
+        notificaciones = data.data.notificaciones;
+        total = data.data.total || notificaciones.length;
+        paginationData = {
+            current_page: data.data.current_page || 1,
+            pages: data.data.pages || 1,
+            has_prev: data.data.has_prev || false,
+            has_next: data.data.has_next || false
+        };
+    } else {
+        // Estructura desconocida
+        console.error("❌ Estructura de datos desconocida:", data);
+        notificaciones = [];
+        total = 0;
+    }
+    
+    // ✅ DIAGNÓSTICO TEMPORAL - Ver qué datos llegan
+    if (notificaciones.length > 0) {
+        console.log("📋 Notificaciones procesadas:");
+        notificaciones.forEach((notif, index) => {
+            console.log(`   ${index + 1}. ID: ${notif.id} | Tipo: "${notif.tipo}" | Título: "${notif.titulo}" | Leída: ${notif.leida}`);
+        });
+    } else {
+        console.log("📭 No hay notificaciones para mostrar");
+    }
+    
+    if (notificaciones.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-bell-slash"></i>
                 <h4>No hay notificaciones</h4>
                 <p>No se encontraron notificaciones con los filtros seleccionados.</p>
+                <a href="/padre/dashboard" class="btn btn-primary mt-3">
+                    <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+                </a>
             </div>
         `;
         document.getElementById('pagination-container').style.display = 'none';
@@ -230,8 +346,8 @@ function mostrarNotificaciones(data) {
     }
     
     let html = '';
-    data.notificaciones.forEach(notif => {
-        const fecha = new Date(notif.creada_en).toLocaleDateString('es-ES', {
+    notificaciones.forEach(notif => {
+        const fecha = new Date(notif.creada_en || notif.fecha_creacion || notif.fecha).toLocaleDateString('es-ES', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -239,35 +355,68 @@ function mostrarNotificaciones(data) {
             minute: '2-digit'
         });
         
+        // Determinar el enlace según el tipo de notificación
+        let actionLink = '';
+        if (notif.link) {
+            actionLink = `<a href="${notif.link}" class="notification-link" onclick="marcarComoLeida(${notif.id})">
+                <i class="fas fa-external-link-alt me-1"></i>Ver detalles
+            </a>`;
+        } else if (notif.tipo === 'evento') {
+            actionLink = `<a href="/padre/eventos" class="notification-link" onclick="marcarComoLeida(${notif.id})">
+                <i class="fas fa-calendar-alt me-1"></i>Ver calendario
+            </a>`;
+        } else if (notif.tipo === 'solicitud' || notif.tipo === 'solicitud_consulta') {
+            actionLink = `<a href="/padre/consultar_estudiante" class="notification-link" onclick="marcarComoLeida(${notif.id})">
+                <i class="fas fa-search me-1"></i>Ver solicitudes
+            </a>`;
+        } else if (notif.tipo === 'calificacion') {
+            actionLink = `<a href="/padre/informacion_academica" class="notification-link" onclick="marcarComoLeida(${notif.id})">
+                <i class="fas fa-chart-line me-1"></i>Ver calificaciones
+            </a>`;
+        }
+        
+        // Determinar icono según el tipo
+        const iconClass = `icon-${notif.tipo}`;
+        const icon = getIconForType(notif.tipo);
+        
         html += `
-            <div class="card notification-card mb-3 ${notif.leida ? 'read' : 'unread'}" data-id="${notif.id_notificacion}">
+            <div class="card notification-card ${notif.leida ? 'read' : 'unread'}" data-id="${notif.id}">
                 <div class="card-body">
                     <div class="row align-items-start">
-                        <div class="col-md-8">
+                        <div class="col-md-1 text-center">
+                            <div class="notification-icon ${iconClass}">
+                                <i class="fas ${icon}"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-7">
                             <div class="d-flex align-items-start">
                                 <div class="flex-grow-1">
                                     <h6 class="mb-1 ${notif.leida ? '' : 'fw-bold'}">
                                         ${notif.titulo}
-                                        <span class="notification-type-badge type-${notif.tipo} ms-2">
-                                            ${getTipoText(notif.tipo)}
-                                        </span>
+                                        ${!notif.leida ? '<span class="badge bg-primary ms-2">Nuevo</span>' : ''}
                                     </h6>
                                     <p class="text-muted mb-2">${notif.mensaje}</p>
-                                    <small class="text-muted">
-                                        <i class="fas fa-clock me-1"></i>${fecha}
-                                    </small>
+                                    <div class="d-flex align-items-center">
+                                        <small class="text-muted me-3">
+                                            <i class="fas fa-clock me-1"></i>${fecha}
+                                        </small>
+                                        <span class="notification-type-badge type-${notif.tipo}">
+                                            ${getTipoText(notif.tipo)}
+                                        </span>
+                                        ${actionLink}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="notification-actions">
                                 ${notif.leida ? '' : `
-                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="marcarComoLeida(${notif.id_notificacion})">
-                                        <i class="fas fa-check"></i>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="marcarComoLeida(${notif.id})">
+                                        <i class="fas fa-check me-1"></i>Leída
                                     </button>
                                 `}
-                                <button class="btn btn-sm btn-outline-danger" onclick="eliminarNotificacion(${notif.id_notificacion})">
-                                    <i class="fas fa-trash"></i>
+                                <button class="btn btn-sm btn-outline-danger" onclick="eliminarNotificacion(${notif.id})">
+                                    <i class="fas fa-trash me-1"></i>Eliminar
                                 </button>
                             </div>
                         </div>
@@ -278,7 +427,7 @@ function mostrarNotificaciones(data) {
     });
     
     container.innerHTML = html;
-    mostrarPaginacion(data);
+    mostrarPaginacion(paginationData);
 }
 
 function mostrarPaginacion(data) {
@@ -295,7 +444,11 @@ function mostrarPaginacion(data) {
     
     // Botón anterior
     if (data.has_prev) {
-        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page - 1})">Anterior</a></li>`;
+        html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page - 1})">
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </a>
+                 </li>`;
     }
     
     // Páginas
@@ -307,13 +460,45 @@ function mostrarPaginacion(data) {
     
     // Botón siguiente
     if (data.has_next) {
-        html += `<li class="page-item"><a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page + 1})">Siguiente</a></li>`;
+        html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="cargarNotificaciones(${data.current_page + 1})">
+                        Siguiente <i class="fas fa-chevron-right"></i>
+                    </a>
+                 </li>`;
     }
     
     html += '</ul></nav>';
     container.innerHTML = html;
 }
 
+function actualizarContadores() {
+    // Actualizar el badge en el menú lateral
+    fetch('/padre/api/notificaciones/contador')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById('notificationBadge');
+                if (badge) {
+                    const count = data.count;
+                    if (count > 0) {
+                        badge.textContent = count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error actualizando badge:', error);
+            // No mostrar error en consola para evitar spam
+        });
+}
 function cambiarFiltro(filtro) {
     currentFilter = filtro;
     currentPage = 1;
@@ -348,6 +533,7 @@ function marcarComoLeida(notificacionId) {
         if (data.success) {
             cargarNotificaciones(currentPage);
             actualizarBadge();
+            mostrarMensaje('Notificación marcada como leída', 'success');
         } else {
             mostrarError('Error: ' + data.message);
         }
@@ -451,13 +637,13 @@ function eliminarTodas() {
 
 function actualizarBadge() {
     // Actualizar el badge en el menú lateral
-    fetch('/padre/api/notificaciones?page=1&per_page=1&filtro=pendientes')
+    fetch('/padre/api/notificaciones/contador')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const badge = document.querySelector('.badge-notification');
+                const badge = document.getElementById('notificationBadge');
                 if (badge) {
-                    const count = data.data.total;
+                    const count = data.count;
                     if (count > 0) {
                         badge.textContent = count;
                         badge.style.display = 'flex';
@@ -479,9 +665,25 @@ function getTipoText(tipo) {
         'solicitud_consulta': 'Consulta de Notas',
         'evento': 'Evento',
         'votacion': 'Votación',
-        'admin': 'Administración'
+        'admin': 'Administración',
+        'sistema': 'Sistema'
     };
     return tipos[tipo] || tipo;
+}
+
+function getIconForType(tipo) {
+    const icons = {
+        'evento': 'fa-calendar-alt',
+        'calificacion': 'fa-chart-line',
+        'solicitud': 'fa-search',
+        'solicitud_consulta': 'fa-search',
+        'comunicacion': 'fa-envelope',
+        'asistencia': 'fa-user-check',
+        'votacion': 'fa-vote-yea',
+        'admin': 'fa-cog',
+        'sistema': 'fa-bell'
+    };
+    return icons[tipo] || 'fa-bell';
 }
 
 function mostrarConfirmacion(mensaje, callback) {
@@ -496,9 +698,11 @@ function mostrarConfirmacion(mensaje, callback) {
 }
 
 function mostrarMensaje(mensaje, tipo = 'info') {
-    const alertClass = tipo === 'success' ? 'alert-success' : 'alert-info';
+    const alertClass = tipo === 'success' ? 'alert-success' : 
+                      tipo === 'error' ? 'alert-danger' : 'alert-info';
     const html = `
         <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+            <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} me-2"></i>
             ${mensaje}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -518,7 +722,7 @@ function mostrarMensaje(mensaje, tipo = 'info') {
 }
 
 function mostrarError(mensaje) {
-    mostrarMensaje(mensaje, 'danger');
+    mostrarMensaje(mensaje, 'error');
 }
 </script>
 {% endblock %}

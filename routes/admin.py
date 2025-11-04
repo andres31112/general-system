@@ -8,6 +8,11 @@ import json
 from werkzeug.utils import secure_filename
 from controllers.decorators import role_required
 from extensions import db
+from services.notification_service import (
+    notificar_nuevo_evento, 
+    notificar_evento_actualizado, 
+    notificar_evento_eliminado
+)
 from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email, send_welcome_email_with_retry, get_verification_info
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
 from controllers.models import (
@@ -15,7 +20,7 @@ from controllers.models import (
     HorarioGeneral, HorarioCompartido, Matricula, BloqueHorario, 
     HorarioCurso, AsignacionEquipo, Equipo, Incidente, Mantenimiento, Comunicacion, 
     Evento, Candidato, HorarioVotacion, ReporteCalificaciones, Notificacion,
-    CicloAcademico, PeriodoAcademico
+    CicloAcademico, PeriodoAcademico,EstadoPublicacion, Voto
 )
 
 # Creamos un 'Blueprint' (un plano o borrador) para agrupar todas las rutas de la sección de admin
@@ -749,12 +754,12 @@ def api_detalle_mantenimiento(mantenimiento_id):
 def api_actualizar_mantenimiento(mantenimiento_id):
     """
     Actualiza el estado, técnico y fecha de realización de un mantenimiento.
-    También actualiza el estado del equipo asociado.
+    También actualiza el estado del equipo asociado y resuelve incidentes si se completa.
     """
     try:
         data = request.get_json()
         mantenimiento = Mantenimiento.query.get_or_404(mantenimiento_id)
-        equipo = Equipo.query.get(mantenimiento.equipo_id) # Obtener el equipo asociado
+        equipo = Equipo.query.get(mantenimiento.equipo_id)
 
         nuevo_estado = data.get('estado', mantenimiento.estado)
         tecnico = data.get('tecnico', mantenimiento.tecnico)
@@ -769,26 +774,79 @@ def api_actualizar_mantenimiento(mantenimiento_id):
         if fecha_realizada_str:
             mantenimiento.fecha_realizada = datetime.strptime(fecha_realizada_str, '%Y-%m-%d').date()
         elif nuevo_estado == 'completado' and not mantenimiento.fecha_realizada:
-            mantenimiento.fecha_realizada = date.today() # Establecer hoy si se completa y no hay fecha
+            mantenimiento.fecha_realizada = date.today()
 
-        # Lógica para actualizar el estado del equipo
+        # ✅ LÓGICA MEJORADA: Actualizar estado del equipo Y resolver incidentes
         if equipo:
             if nuevo_estado == 'completado':
-                equipo.estado = 'Disponible' # O el estado que corresponda después del mantenimiento
+                # Verificar si hay incidentes activos y resolverlos
+                incidentes_activos = Incidente.query.filter(
+                    Incidente.equipo_id == equipo.id_equipo,
+                    Incidente.estado.in_(['reportado', 'en_proceso'])
+                ).all()
+                
+                # Resolver todos los incidentes activos
+                for incidente in incidentes_activos:
+                    incidente.estado = 'resuelto'
+                    incidente.fecha_solucion = datetime.utcnow()
+                    incidente.solucion_propuesta = f"Resuelto mediante mantenimiento #{mantenimiento_id}"
+                
+                # Actualizar estado del equipo
+                # Verificar si hay otros mantenimientos pendientes
+                otros_mantenimientos = Mantenimiento.query.filter(
+                    Mantenimiento.equipo_id == equipo.id_equipo,
+                    Mantenimiento.id_mantenimiento != mantenimiento_id,
+                    Mantenimiento.estado.in_(['pendiente', 'en_progreso'])
+                ).first()
+                
+                if not otros_mantenimientos:
+                    # Verificar si quedan incidentes activos
+                    incidentes_restantes = Incidente.query.filter(
+                        Incidente.equipo_id == equipo.id_equipo,
+                        Incidente.estado.in_(['reportado', 'en_proceso'])
+                    ).first()
+                    
+                    if not incidentes_restantes:
+                        equipo.estado = 'Disponible'
+                    else:
+                        equipo.estado = 'Incidente'
+                        
             elif nuevo_estado == 'cancelado':
-                # Si se cancela, el equipo vuelve a su estado anterior o a 'Disponible'
-                # Aquí asumimos 'Disponible' si no hay un estado anterior claro
-                equipo.estado = 'Disponible'
+                # Si se cancela, verificar el estado real del equipo
+                incidentes_activos = Incidente.query.filter(
+                    Incidente.equipo_id == equipo.id_equipo,
+                    Incidente.estado.in_(['reportado', 'en_proceso'])
+                ).first()
+                
+                otros_mantenimientos = Mantenimiento.query.filter(
+                    Mantenimiento.equipo_id == equipo.id_equipo,
+                    Mantenimiento.id_mantenimiento != mantenimiento_id,
+                    Mantenimiento.estado.in_(['pendiente', 'en_progreso'])
+                ).first()
+                
+                if incidentes_activos:
+                    equipo.estado = 'Incidente'
+                elif otros_mantenimientos:
+                    equipo.estado = 'Mantenimiento'
+                else:
+                    equipo.estado = 'Disponible'
+                    
             elif nuevo_estado == 'en_progreso':
-                equipo.estado = 'Mantenimiento' # Asegurarse de que el equipo esté en mantenimiento
-            # Si es 'pendiente', el estado del equipo ya debería ser 'Mantenimiento' desde la programación
+                equipo.estado = 'Mantenimiento'
 
         db.session.commit()
+        
         return jsonify({
             'success': True,
             'message': 'Mantenimiento actualizado exitosamente.',
-            'mantenimiento_actualizado': mantenimiento.to_dict()
+            'equipo_actualizado': {
+                'id_equipo': equipo.id_equipo,
+                'estado': equipo.estado,
+                'tiene_incidentes': False if nuevo_estado == 'completado' else True,
+                'tiene_mantenimientos': False if nuevo_estado in ['completado', 'cancelado'] else True
+            }
         }), 200
+        
     except Exception as e:
         db.session.rollback()
         print(f"Error al actualizar mantenimiento: {e}")
@@ -2901,6 +2959,36 @@ def api_equipos_todos():
     equipos = Equipo.query.all()
     return jsonify([e.to_dict() for e in equipos])
 
+@admin_bp.route('/api/equipos')
+@login_required
+@role_required(1)
+def api_equipos():
+    """API para obtener la lista de equipos con conteos totales"""
+    try:
+        equipos = Equipo.query.all()
+        lista_equipos = []
+        
+        for equipo in equipos:
+            # ✅ Usar las relaciones directamente (más eficiente y correcto)
+            incidentes_count = len(equipo.incidentes)
+            mantenimientos_count = len(equipo.programaciones)
+            
+            lista_equipos.append({
+                'id': equipo.id_equipo,  # ✅ Incluir 'id' para compatibilidad
+                'id_equipo': equipo.id_equipo,
+                'nombre': equipo.nombre,
+                'estado': equipo.estado,
+                'salon_nombre': equipo.salon.nombre if equipo.salon else 'Sin salón',
+                'sede_nombre': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede',
+                'incidentes': incidentes_count,
+                'mantenimientos': mantenimientos_count
+            })
+        
+        return jsonify(lista_equipos)
+    except Exception as e:
+        current_app.logger.error(f"Error en api_equipos: {str(e)}")
+        return jsonify({'error': 'Error interno del servidor'}), 500
+    
 @admin_bp.route('/api/estudiantes-por-curso/<int:curso_id>', methods=['GET'])
 @login_required
 @role_required(1)
@@ -3032,6 +3120,51 @@ def api_equipos_con_incidentes():
     except Exception as e:
         print(f"Error: {e}")
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/api/equipos/con-incidentes-activos', methods=['GET'])
+@login_required
+@role_required(1)
+def api_equipos_con_incidentes_activos():
+    """
+    Retorna equipos que tienen incidentes activos (reportado o en_proceso)
+    para sugerirlos en el formulario de mantenimiento.
+    """
+    try:
+        equipos_db = db.session.query(
+            Equipo.id_equipo,
+            Equipo.nombre,
+            Equipo.estado,
+            Salon.nombre.label('salon_nombre'),
+            Sede.id_sede,
+            Sede.nombre.label('sede_nombre'),
+            db.func.count(Incidente.id_incidente).label('total_incidentes')
+        ).join(Incidente, Equipo.id_equipo == Incidente.equipo_id)\
+         .outerjoin(Salon, Equipo.id_salon_fk == Salon.id_salon)\
+         .outerjoin(Sede, Salon.id_sede_fk == Sede.id_sede)\
+         .filter(Incidente.estado.in_(['reportado', 'en_proceso']))\
+         .group_by(Equipo.id_equipo, Salon.nombre, Sede.id_sede, Sede.nombre)\
+         .order_by(db.func.count(Incidente.id_incidente).desc())\
+         .all()
+        
+        equipos = []
+        for eq in equipos_db:
+            equipos.append({
+                'id_equipo': eq.id_equipo,
+                'nombre': eq.nombre,
+                'estado': eq.estado,
+                'salon_nombre': eq.salon_nombre or "Sin Salón",
+                'sede_id': eq.id_sede,
+                'sede_nombre': eq.sede_nombre or "Sin Sede",
+                'total_incidentes': eq.total_incidentes,
+                'tiene_incidente_activo': True
+            })
+
+        return jsonify(equipos), 200
+
+    except Exception as e:
+        print(f"Error al listar equipos con incidentes activos: {e}")
+        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
+
 
 @admin_bp.route('/api/equipos/<int:id_equipo>', methods=['GET', 'DELETE'])
 @login_required
@@ -3335,58 +3468,72 @@ def reportes():
     """Muestra la página de reportes de inventario."""
     return render_template('superadmin/gestion_inventario/reportes.html')
 
-@admin_bp.route('/api/reportes/estado_equipos', methods=['GET'])
+@admin_bp.route('/api/incidentes/equipo/<int:equipo_id>', methods=['GET'])  # ✅ Cambié id_equipo por equipo_id
 @login_required
 @role_required(1)
-def api_reportes_estado_equipos():
+def api_incidentes_equipo(equipo_id):
+    """API para obtener el historial de incidentes de un equipo específico"""
+    try:
+        incidentes = Incidente.query.filter_by(equipo_id=equipo_id).order_by(Incidente.fecha.desc()).all()
+        return jsonify([i.to_dict() for i in incidentes])
+    except Exception as e:
+        current_app.logger.error(f"Error en api_incidentes_equipo: {str(e)}")
+        return jsonify({'error': 'Error al cargar datos'}), 500
+
+@admin_bp.route('/api/mantenimientos/equipo/<int:equipo_id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_mantenimientos_equipo(equipo_id):
+    """API para obtener el historial de mantenimientos de un equipo específico"""
+    try:
+        mantenimientos = Mantenimiento.query.filter_by(equipo_id=equipo_id).order_by(Mantenimiento.fecha_programada.desc()).all()
+        return jsonify([
+            {
+                'fecha_programada': m.fecha_programada.isoformat() if m.fecha_programada else None,
+                'descripcion': m.descripcion or 'Sin descripción',
+                'estado': m.estado,
+                'tecnico': m.tecnico or 'No asignado'
+            } for m in mantenimientos
+        ])
+    except Exception as e:
+        current_app.logger.error(f"Error en api_mantenimientos_equipo: {str(e)}")
+        return jsonify({'error': 'Error al cargar datos'}), 500
+
+@admin_bp.route('/api/equipos/<int:equipo_id>/estado-detallado', methods=['GET'])
+@login_required
+@role_required(1)
+def api_estado_detallado_equipo(equipo_id):
     """
-    Proporciona datos para el gráfico de estado de equipos y las métricas principales.
+    Retorna el estado detallado de un equipo: incidentes activos y mantenimientos pendientes.
     """
     try:
-        # 1. Total de equipos
-        total = db.session.query(Equipo).count()
+        equipo = Equipo.query.get_or_404(equipo_id)
         
-        # 2. Conteo por estado del equipo
-        estados_raw = db.session.query(Equipo.estado, db.func.count(Equipo.estado))\
-                                .group_by(Equipo.estado).all()
-        estados = {e[0]: e[1] for e in estados_raw}
+        # Contar incidentes activos
+        incidentes_activos = Incidente.query.filter(
+            Incidente.equipo_id == equipo_id,
+            Incidente.estado.in_(['reportado', 'en_proceso'])
+        ).count()
         
-        # ✅ 3. Contar equipos con incidentes activos (sin importar su estado)
-        equipos_con_incidentes = db.session.query(Incidente.equipo_id)\
-            .distinct()\
-            .count()
+        # Contar mantenimientos pendientes/en progreso
+        mantenimientos_activos = Mantenimiento.query.filter(
+            Mantenimiento.equipo_id == equipo_id,
+            Mantenimiento.estado.in_(['pendiente', 'en_progreso'])
+        ).count()
         
-        # ✅ 4. Contar equipos con mantenimientos programados
-        equipos_con_mantenimientos = db.session.query(Mantenimiento.equipo_id)\
-            .filter(Mantenimiento.estado.in_(['pendiente', 'en_progreso']))\
-            .distinct()\
-            .count()
-            
-        # ✅ 5. Contar equipos con revisiones programadas
-        #equipos_con_revisiones = db.session.query(Revision.equipo_id)\
-            # .filter(Revision.estado.in_(['pendiente', 'en_progreso']))
-        
-        data = {
-            'total_equipos': total,
-            'estados': {
-                'Disponible': estados.get('Disponible', 0),
-                'Mantenimiento': estados.get('Mantenimiento', 0),
-                'Incidente': estados.get('Incidente', 0),
-                'Asignado': estados.get('Asignado', 0),
-                'Revisión': estados.get('Revisión', 0),
-                **{k: v for k, v in estados.items() if k not in ['Disponible', 'Mantenimiento', 'Incidente', 'Asignado', 'Revisión']}
-            },
-            'equipos_con_incidentes': equipos_con_incidentes,
-            'equipos_con_mantenimientos': equipos_con_mantenimientos
-            
-        }
-        
-        return jsonify(data), 200
+        return jsonify({
+            'success': True,
+            'equipo_id': equipo_id,
+            'estado_equipo': equipo.estado,
+            'tiene_incidentes_activos': incidentes_activos > 0,
+            'total_incidentes_activos': incidentes_activos,
+            'tiene_mantenimientos_activos': mantenimientos_activos > 0,
+            'total_mantenimientos_activos': mantenimientos_activos
+        }), 200
         
     except Exception as e:
-        print(f"Error en reportes estado equipos: {e}")
-        return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
-
+        print(f"Error obteniendo estado detallado: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/api/reportes/equipos_por_sede', methods=['GET'])
 @login_required
@@ -3558,99 +3705,65 @@ def api_listar_incidentes():
 @login_required
 @role_required(1)
 def api_crear_incidente():
-    """
-    Crea un nuevo incidente.
-    """
+    """Crea un nuevo incidente y genera una notificación para administradores."""
     try:
         data = request.get_json()
         
-        # ✅ Validación de datos obligatorios
-        equipo_id = data.get('equipo_id')
-        descripcion = data.get('descripcion', '').strip()
-        prioridad = data.get('prioridad', 'media')
-        usuario_reporte = data.get('usuario_reporte', '').strip()
+        # Validaciones existentes
+        if not all(key in data for key in ['equipo_id', 'prioridad', 'usuario_reporte', 'descripcion']):
+            return jsonify({'success': False, 'error': 'Faltan campos requeridos'}), 400
         
-        print(f"DEBUG - Datos recibidos:")
-        print(f"  equipo_id: {equipo_id}")
-        print(f"  descripcion: {descripcion}")
-        print(f"  prioridad: {prioridad}")
-        print(f"  usuario_reporte: {usuario_reporte}")
-        
-        # Validaciones
-        if not equipo_id:
-            return jsonify({
-                'success': False, 
-                'error': 'El equipo es obligatorio.'
-            }), 400
-            
-        if not descripcion:
-            return jsonify({
-                'success': False, 
-                'error': 'La descripción del problema es obligatoria.'
-            }), 400
-        
-        if not usuario_reporte:
-            return jsonify({
-                'success': False, 
-                'error': 'El usuario que reporta es obligatorio.'
-            }), 400
-
-        # Verificar que el equipo existe
-        equipo = Equipo.query.get(equipo_id)
+        # Obtener el equipo para validar y obtener la sede
+        equipo = Equipo.query.get(data['equipo_id'])
         if not equipo:
-            return jsonify({
-                'success': False, 
-                'error': f'El equipo con ID {equipo_id} no existe.'
-            }), 404
-            
-        # Obtener sede del equipo
+            return jsonify({'success': False, 'error': 'Equipo no encontrado'}), 404
+        
+        # Obtener la sede del equipo
         sede_nombre = "Sin Sede"
         if equipo.salon and equipo.salon.sede:
             sede_nombre = equipo.salon.sede.nombre
-
-        # ✅ Crear el incidente con el nombre de campo correcto
-        # Verifica en tu models.py si el campo se llama 'equipo_id' o 'id_equipo'
+        
+        # Crear el incidente
         nuevo_incidente = Incidente(
-            equipo_id=equipo_id,  # Cambia a id_equipo si es necesario
-            usuario_asignado=usuario_reporte,
-            sede=sede_nombre,
-            fecha=datetime.now(),
-            descripcion=descripcion,
+            equipo_id=data['equipo_id'],
+            prioridad=data['prioridad'],
+            usuario_asignado=data['usuario_reporte'],
+            descripcion=data['descripcion'],
+            solucion_propuesta=data.get('solucion_propuesta'),
             estado='reportado',
-            prioridad=prioridad,
-            solucion_propuesta=data.get('solucion_propuesta', '')
+            fecha=datetime.utcnow(),
+            sede=sede_nombre
         )
         
         db.session.add(nuevo_incidente)
-        db.session.flush()  # Para obtener el ID antes del commit
+        db.session.flush()  # Obtener el ID sin hacer commit aún
         
-        print(f"DEBUG - Incidente creado con ID: {nuevo_incidente.id_incidente}")
+        # ✅ GENERAR NOTIFICACIÓN PARA ADMINS
+        from services.notification_service import notificar_nuevo_incidente
+        notificaciones_creadas = notificar_nuevo_incidente(nuevo_incidente)
         
+        # ✅ Actualizar estado del equipo a 'Incidente'
+        equipo.estado = 'Incidente'
+        
+        # Hacer commit de todo junto
         db.session.commit()
         
+        mensaje = 'Incidente creado exitosamente'
+        if notificaciones_creadas > 0:
+            mensaje += f' y {notificaciones_creadas} notificación(es) enviada(s)'
+        
         return jsonify({
-            'success': True, 
-            'message': 'Incidente creado exitosamente',
-            'incidente': {
-                'id': nuevo_incidente.id_incidente,
-                'equipo_nombre': equipo.nombre,
-                'usuario_reporte': usuario_reporte,
-                'fecha': nuevo_incidente.fecha.strftime('%Y-%m-%d %H:%M:%S'),
-                'estado': nuevo_incidente.estado,
-                'prioridad': nuevo_incidente.prioridad
-            }
-        }), 201
-
+            'success': True,
+            'message': mensaje,
+            'incidente': nuevo_incidente.to_dict()
+        })
+    
     except Exception as e:
         db.session.rollback()
-        print(f"❌ ERROR al crear incidente: {str(e)}")
+        print(f"❌ Error creando incidente: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'success': False, 
-            'error': f'Error interno del servidor: {str(e)}'
-        }), 500
- 
+        return jsonify({'success': False, 'error': f'Error creando incidente: {str(e)}'}), 500 
 @admin_bp.route('/api/incidentes/<int:id_incidente>/estado', methods=['PUT'])
 @login_required
 @role_required(1)
@@ -3759,31 +3872,223 @@ def api_detalle_incidente(id_incidente):
         print(f"Error al obtener detalle del incidente: {e}")
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
-# ==================== CALENDARIO Y EVENTOS ====================
 
-# 📌 Vista del calendario de eventos (HTML)
+
+
+
+
+# 📌 VISTA DEL CALENDARIO (HTML) - AGREGA ESTA RUTA
 @admin_bp.route("/eventos/calendario", methods=["GET"])
 @login_required
 def calendario_eventos():
-    return render_template("superadmin/calendario_admin/index.html")
+    return render_template("superadmin/calendario_admin/index.html") 
 
-# 📌 API: Eliminar evento
-@admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
+
+@admin_bp.route("/debug/notificaciones-eventos", methods=["GET"])
 @login_required
-def eliminar_evento(evento_id):
+def debug_notificaciones_eventos():
+    """Debug ESPECÍFICO para notificaciones de eventos"""
     try:
-        evento = Evento.query.get(evento_id)
-        if not evento:
-            return jsonify({"error": "Evento no encontrado"}), 404
+        from controllers.models import Notificacion, Usuario, Evento
+        
+        print("\n" + "="*80)
+        print("🔍 NOTIFICACIONES DE EVENTOS ESPECÍFICAMENTE")
+        print("="*80)
+        
+        # 1. Contar notificaciones por tipo
+        total_notificaciones = Notificacion.query.count()
+        notif_eventos = Notificacion.query.filter_by(tipo='evento').count()
+        notif_otros = total_notificaciones - notif_eventos
+        
+        print(f"\n📊 ESTADÍSTICAS DE NOTIFICACIONES:")
+        print(f"   - Total: {total_notificaciones}")
+        print(f"   - Tipo 'evento': {notif_eventos}")
+        print(f"   - Otros tipos: {notif_otros}")
+        
+        # 2. Mostrar todas las notificaciones de eventos
+        notificaciones_eventos = Notificacion.query.filter_by(
+            tipo='evento'
+        ).order_by(Notificacion.creada_en.desc()).limit(30).all()
+        
+        print(f"\n📅 NOTIFICACIONES DE EVENTOS ({len(notificaciones_eventos)} encontradas):")
+        
+        for i, notif in enumerate(notificaciones_eventos, 1):
+            usuario = Usuario.query.get(notif.usuario_id)
+            nombre_usuario = usuario.nombre_completo if usuario else f"ID:{notif.usuario_id}"
+            fecha_str = notif.creada_en.strftime("%m/%d %H:%M") if notif.creada_en else "Sin fecha"
+            
+            print(f"   {i}. [{fecha_str}] {nombre_usuario} (ID:{notif.usuario_id})")
+            print(f"      📝 {notif.titulo}")
+            print(f"      📄 {notif.mensaje[:60]}...")
+            print(f"      🔸 Leída: {notif.leida}")
+            print()
+        
+        # 3. Verificar distribución por usuarios (VERSIÓN CORREGIDA)
+        print(f"\n👥 DISTRIBUCIÓN POR USUARIOS:")
+        # Obtener distribución manualmente
+        distribucion = {}
+        notificaciones_todas = Notificacion.query.filter_by(tipo='evento').all()
 
-        db.session.delete(evento)
-        db.session.commit()
-        return jsonify({"mensaje": "Evento eliminado correctamente ✅"}), 200
+        for notif in notificaciones_todas:
+            if notif.usuario_id not in distribucion:
+                usuario = Usuario.query.get(notif.usuario_id)
+                nombre = usuario.nombre_completo if usuario else f"ID:{notif.usuario_id}"
+                distribucion[notif.usuario_id] = {'nombre': nombre, 'count': 0}
+            distribucion[notif.usuario_id]['count'] += 1
+
+        # Ordenar por cantidad y mostrar top 15
+        distribucion_ordenada = sorted(distribucion.values(), key=lambda x: x['count'], reverse=True)[:15]
+
+        for item in distribucion_ordenada:
+            print(f"   - {item['nombre']}: {item['count']} notificaciones")
+        
+        print("\n" + "="*80)
+        print("✅ DIAGNÓSTICO DE EVENTOS COMPLETADO")
+        print("="*80)
+        
+        return jsonify({
+            "message": "Diagnóstico de eventos completado - Revisa la consola",
+            "total_notificaciones": total_notificaciones,
+            "notificaciones_eventos": notif_eventos,
+            "distribucion_usuarios": len(distribucion)
+        })
+        
     except Exception as e:
-        db.session.rollback()
+        print(f"❌ ERROR EN DIAGNÓSTICO: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-# 📌 API: Listar todos los eventos (JSON)
+# ========== FUNCIÓN CORREGIDA PARA ADMIN ==========
+def get_sidebar_counts():
+    """Función auxiliar CORREGIDA para obtener los contadores del sidebar en ADMIN"""
+    from datetime import datetime
+    
+    try:
+        print("🔧 DEBUG ADMIN: Calculando contadores del sidebar...")
+        
+        # ✅ 1. MENSAJES NO LEÍDOS (SOLO para Comunicaciones)
+        unread_messages = Comunicacion.query.filter(
+            Comunicacion.destinatario_id == current_user.id_usuario,
+            Comunicacion.estado.in_(['no_leido', 'inbox', 'unread', 'pendiente', 'nuevo'])
+        ).count()
+        
+        print(f"📨 ADMIN - Comunicaciones no leídas: {unread_messages}")
+        
+        # ✅ 2. NOTIFICACIONES NO LEÍDAS (SOLO para Notificaciones)  
+        unread_notifications = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        print(f"🔔 ADMIN - Notificaciones no leídas: {unread_notifications}")
+        
+        # ✅ 3. EVENTOS PRÓXIMOS
+        hoy = datetime.now().date()
+        upcoming_events = Evento.query.filter(
+            Evento.fecha.isnot(None),
+            Evento.fecha >= hoy
+        ).count()
+        
+        print(f"📅 ADMIN - Eventos próximos: {upcoming_events}")
+        print(f"🎯 ADMIN RESUMEN - Mensajes: {unread_messages}, Notificaciones: {unread_notifications}, Eventos: {upcoming_events}")
+        
+        return {
+            'unread_messages': unread_messages,
+            'unread_notifications': unread_notifications,
+            'upcoming_events': upcoming_events
+        }
+        
+    except Exception as e:
+        print(f"❌ ERROR en get_sidebar_counts ADMIN: {e}")
+        return {
+            'unread_messages': 0,
+            'unread_notifications': 0,
+            'upcoming_events': 0
+        }
+# ========== FIN FUNCIÓN CORREGIDA ==========
+@admin_bp.route('/debug-contadores')
+@login_required
+@role_required('Administrador')
+def debug_contadores_admin():
+    """Ruta temporal para debug en admin"""
+    counts = get_sidebar_counts()
+    
+    # Ver datos reales en BD
+    comunicaciones = Comunicacion.query.filter_by(destinatario_id=current_user.id_usuario).all()
+    notificaciones = Notificacion.query.filter_by(usuario_id=current_user.id_usuario).all()
+    
+    debug_info = {
+        'usuario_actual': current_user.id_usuario,
+        'rol_actual': current_user.rol.nombre if current_user.rol else 'Sin rol',
+        'counts_calculados': counts,
+        'comunicaciones': [
+            {'id': c.id_comunicacion, 'estado': c.estado, 'asunto': c.asunto, 'destinatario_id': c.destinatario_id} 
+            for c in comunicaciones
+        ],
+        'notificaciones': [
+            {'id': n.id_notificacion, 'leida': n.leida, 'titulo': n.titulo, 'usuario_id': n.usuario_id} 
+            for n in notificaciones
+        ]
+    }
+    
+    return jsonify(debug_info)
+
+@admin_bp.route("/debug/notificaciones-padres", methods=["GET"])
+@login_required
+def debug_notificaciones_padres():
+    """Ruta temporal para diagnosticar notificaciones a padres"""
+    try:
+        from controllers.models import Rol, Usuario, estudiante_padre, Evento
+        
+        print("🔍 INICIANDO DIAGNÓSTICO DE NOTIFICACIONES A PADRES")
+        
+        # 1. Verificar eventos recientes
+        eventos_recientes = Evento.query.order_by(Evento.id.desc()).limit(5).all()
+        print("📅 Eventos recientes:")
+        for evento in eventos_recientes:
+            print(f"   - {evento.nombre} | Rol: {evento.rol_destino} | Fecha: {evento.fecha}")
+        
+        # 2. Verificar padres en el sistema
+        rol_padre = Rol.query.filter_by(nombre='padre').first()
+        if rol_padre:
+            padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).limit(10).all()
+            print(f"👨‍👩‍👧‍👦 Padres en sistema ({len(padres)} encontrados):")
+            for padre in padres:
+                print(f"   - {padre.nombre_completo} (ID: {padre.id_usuario})")
+        
+        # 3. Verificar relaciones padre-estudiante
+        relaciones = db.session.execute(
+            db.select(estudiante_padre).limit(10)
+        ).fetchall()
+        print("🔗 Relaciones padre-estudiante:")
+        for rel in relaciones:
+            print(f"   - Padre ID: {rel.padre_id} -> Estudiante ID: {rel.estudiante_id}")
+        
+        # 4. Verificar notificaciones existentes para padres
+        if padres:
+            notificaciones_padres = Notificacion.query.filter(
+                Notificacion.usuario_id.in_([p.id_usuario for p in padres]),
+                Notificacion.tipo == 'evento'
+            ).limit(10).all()
+            
+            print(f"📢 Notificaciones de eventos para padres ({len(notificaciones_padres)} encontradas):")
+            for notif in notificaciones_padres:
+                print(f"   - Para usuario {notif.usuario_id}: {notif.titulo}")
+        
+        return jsonify({
+            "message": "Diagnóstico completado - Revisa la consola del servidor",
+            "eventos": len(eventos_recientes),
+            "padres": len(padres) if rol_padre else 0,
+            "relaciones": len(relaciones),
+            "notificaciones_padres": len(notificaciones_padres)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en diagnóstico: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# 📌 API: OBTENER TODOS LOS EVENTOS (GET)
 @admin_bp.route("/eventos", methods=["GET"])
 @login_required
 def listar_eventos():
@@ -3792,62 +4097,168 @@ def listar_eventos():
         resultado = []
         for ev in eventos:
             resultado.append({
-                "IdEvento": ev.id,
-                "Nombre": ev.nombre,
-                "Descripcion": ev.descripcion,
-                "Fecha": ev.fecha.strftime("%Y-%m-%d"),
-                "Hora": ev.hora.strftime("%H:%M:%S"),
-                "RolDestino": ev.rol_destino
+                "id": ev.id,
+                "nombre": ev.nombre,
+                "descripcion": ev.descripcion,
+                "fecha": ev.fecha.strftime("%Y-%m-%d"),
+                "hora": ev.hora.strftime("%H:%M:%S"),
+                "rol_destino": ev.rol_destino
             })
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# 📌 API: Crear un nuevo evento
+# 📌 API: CREAR NUEVO EVENTO (POST) - ¡ESTA FALTABA!
 @admin_bp.route("/eventos", methods=["POST"])
 @login_required
 def crear_evento():
     data = request.get_json()
-    print("📥 Payload recibido:", data)  # Debug en consola
+    print("📥 Payload recibido:", data)
 
     try:
-        # Leer valores (aceptando minúsculas o mayúsculas)
+        # Leer valores
         nombre = data.get("nombre") or data.get("Nombre")
         descripcion = data.get("descripcion") or data.get("Descripcion")
         fecha_str = data.get("fecha") or data.get("Fecha")
         hora_str = data.get("hora") or data.get("Hora")
         rol_destino = data.get("rol_destino") or data.get("RolDestino")
 
-        if not fecha_str or not hora_str:
-            return jsonify({"error": "Faltan fecha u hora"}), 400
+        if not all([nombre, descripcion, fecha_str, hora_str, rol_destino]):
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
 
-        # 🕒 Normalizar hora: quitar "a. m." / "p. m." y convertir a 24h
+        # 🕒 Normalizar hora
         hora_str = hora_str.replace("a. m.", "AM").replace("p. m.", "PM").strip()
 
         try:
-            hora_dt = datetime.strptime(hora_str, "%I:%M %p")  # 12h → 24h
+            hora_dt = datetime.strptime(hora_str, "%I:%M %p")
         except ValueError:
-            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")  # fallback
+            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")
 
+        # Validar fecha
+        fecha_evento = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        if fecha_evento < datetime.now().date():
+            return jsonify({"error": "No se pueden crear eventos en fechas pasadas"}), 400
+
+        # Crear evento
         nuevo_evento = Evento(
             nombre=nombre,
             descripcion=descripcion,
-            fecha=datetime.strptime(fecha_str, "%Y-%m-%d").date(),
+            fecha=fecha_evento,
             hora=hora_dt.time(),
             rol_destino=rol_destino
         )
 
         db.session.add(nuevo_evento)
         db.session.commit()
-        return jsonify({"mensaje": "Evento creado correctamente ✅"}), 201
+
+        # ✅ IMPORTAR Y USAR LA FUNCIÓN MEJORADA CON ADMIN_ID
+        from services.notification_service import notificar_nuevo_evento
+        
+        notificaciones_enviadas = notificar_nuevo_evento(nuevo_evento, current_user.id_usuario)
+        
+        print(f"✅ Evento creado - Notificaciones enviadas: {notificaciones_enviadas}")
+
+        return jsonify({
+            "mensaje": "Evento creado correctamente ✅", 
+            "notificaciones_enviadas": notificaciones_enviadas,
+            "evento_id": nuevo_evento.id
+        }), 201
 
     except Exception as e:
         db.session.rollback()
-        print("❌ Error creando evento:", str(e))  # Debug en consola
+        print("❌ Error creando evento:", str(e))
         return jsonify({"error": str(e)}), 400
 
+# 📌 API: ACTUALIZAR EVENTO EXISTENTE (PUT)
+@admin_bp.route("/eventos/<int:evento_id>", methods=["PUT"])
+@login_required
+def actualizar_evento(evento_id):
+    data = request.get_json()
+    print("📥 Payload actualización recibido:", data)
 
+    try:
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            return jsonify({"error": "Evento no encontrado"}), 404
+
+        # Leer valores
+        nombre = data.get("nombre") or data.get("Nombre")
+        descripcion = data.get("descripcion") or data.get("Descripcion")
+        fecha_str = data.get("fecha") or data.get("Fecha")
+        hora_str = data.get("hora") or data.get("Hora")
+        rol_destino = data.get("rol_destino") or data.get("RolDestino")
+
+        if not all([nombre, descripcion, fecha_str, hora_str, rol_destino]):
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
+
+        # 🕒 Normalizar hora
+        hora_str = hora_str.replace("a. m.", "AM").replace("p. m.", "PM").strip()
+
+        try:
+            hora_dt = datetime.strptime(hora_str, "%I:%M %p")
+        except ValueError:
+            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")
+
+        # Validar fecha
+        fecha_evento = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        if fecha_evento < datetime.now().date():
+            return jsonify({"error": "No se pueden actualizar eventos a fechas pasadas"}), 400
+
+        # Actualizar campos
+        evento.nombre = nombre
+        evento.descripcion = descripcion
+        evento.fecha = fecha_evento
+        evento.hora = hora_dt.time()
+        evento.rol_destino = rol_destino
+
+        db.session.commit()
+
+        # ✅ IMPORTAR Y USAR LA FUNCIÓN MEJORADA CON ADMIN_ID
+        from services.notification_service import notificar_evento_actualizado
+        
+        notificaciones_enviadas = notificar_evento_actualizado(evento, current_user.id_usuario)
+        
+        print(f"✅ Evento actualizado - Notificaciones enviadas: {notificaciones_enviadas}")
+
+        return jsonify({
+            "mensaje": "Evento actualizado correctamente ✅",
+            "notificaciones_enviadas": notificaciones_enviadas
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print("❌ Error actualizando evento:", str(e))
+        return jsonify({"error": str(e)}), 400
+
+# 📌 API: ELIMINAR EVENTO (DELETE)
+@admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
+@login_required
+def eliminar_evento(evento_id):
+    try:
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            return jsonify({"error": "Evento no encontrado"}), 404
+
+        # ✅ IMPORTAR Y USAR LA FUNCIÓN MEJORADA CON ADMIN_ID
+        from services.notification_service import notificar_evento_eliminado
+        
+        notificaciones_enviadas = notificar_evento_eliminado(evento, current_user.id_usuario)
+        
+        print(f"✅ Evento eliminado - Notificaciones enviadas: {notificaciones_enviadas}")
+
+        # Eliminar evento
+        db.session.delete(evento)
+        db.session.commit()
+
+        return jsonify({
+            "mensaje": "Evento eliminado correctamente ✅",
+            "notificaciones_enviadas": notificaciones_enviadas
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print("❌ Error eliminando evento:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 # ==================== SISTEMA DE VOTACIÓN ====================
 
@@ -3927,7 +4338,8 @@ def listar_candidatos():
             "categoria": c.categoria,
             "tarjeton": c.tarjeton,
             "propuesta": c.propuesta,
-            "foto": c.foto
+            "foto": c.foto,
+            "votos": c.votos  # 🔥 ESTA LÍNEA FALTABA
         })
     return jsonify(lista)
 
@@ -3935,23 +4347,72 @@ def listar_candidatos():
 @login_required
 @role_required(1)
 def crear_candidato():
-    """API para crear candidato"""
+    """API para crear candidato con manejo de errores específicos"""
     try:
-        nombre = request.form.get("nombre")
-        tarjeton = request.form.get("tarjeton")
-        propuesta = request.form.get("propuesta")
-        categoria = request.form.get("categoria")
+        nombre = request.form.get("nombre", "").strip()
+        tarjeton = request.form.get("tarjeton", "").strip()
+        propuesta = request.form.get("propuesta", "").strip()
+        categoria = request.form.get("categoria", "").strip()
         foto = request.files.get("foto")
 
-        if not nombre or not tarjeton or not propuesta or not categoria:
-            return jsonify({"ok": False, "error": "Todos los campos son obligatorios"}), 400
+        # 🔥 VALIDACIONES DETALLADAS
+        if not nombre:
+            return jsonify({"ok": False, "error": "⚠️ El nombre del candidato es obligatorio"}), 400
+        
+        if not tarjeton:
+            return jsonify({"ok": False, "error": "⚠️ El número de tarjetón es obligatorio"}), 400
+        
+        if not propuesta:
+            return jsonify({"ok": False, "error": "⚠️ La propuesta es obligatoria"}), 400
+        
+        if not categoria:
+            return jsonify({"ok": False, "error": "⚠️ La categoría es obligatoria"}), 400
 
+        # 🔥 VALIDAR TARJETÓN ÚNICO
+        candidato_existente = Candidato.query.filter_by(tarjeton=tarjeton).first()
+        if candidato_existente:
+            return jsonify({
+                "ok": False, 
+                "error": f"❌ El tarjetón {tarjeton} ya está registrado para el candidato {candidato_existente.nombre}"
+            }), 400
+
+        # 🔥 VALIDAR NOMBRE ÚNICO (opcional, pero recomendado)
+        nombre_existente = Candidato.query.filter_by(nombre=nombre).first()
+        if nombre_existente:
+            return jsonify({
+                "ok": False, 
+                "error": f"❌ Ya existe un candidato registrado con el nombre {nombre}"
+            }), 400
+
+        # 🔥 VALIDAR ARCHIVO DE FOTO
         filename = None
         if foto:
+            # Validar que sea una imagen
+            if not foto.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+                return jsonify({
+                    "ok": False, 
+                    "error": "❌ Formato de imagen no válido. Use PNG, JPG, JPEG o GIF"
+                }), 400
+            
+            # Validar tamaño del archivo (max 5MB)
+            if len(foto.read()) > 5 * 1024 * 1024:
+                return jsonify({
+                    "ok": False, 
+                    "error": "❌ La imagen es demasiado grande. Máximo 5MB"
+                }), 400
+            
+            foto.seek(0)  # Volver al inicio del archivo después de leer
             filename = secure_filename(foto.filename)
+            
+            # Crear nombre único para evitar sobreescrituras
+            nombre_base = secure_filename(nombre)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"{nombre_base}_{timestamp}_{filename}"
+            
             path = os.path.join(current_app.static_folder, "images/candidatos", filename)
             foto.save(path)
 
+        # 🔥 CREAR CANDIDATO
         nuevo = Candidato(
             nombre=nombre,
             tarjeton=tarjeton,
@@ -3962,16 +4423,21 @@ def crear_candidato():
         db.session.add(nuevo)
         db.session.commit()
 
-        # devolver lista actualizada
+        # Devolver lista actualizada
         candidatos = Candidato.query.all()
         return jsonify({
             "ok": True,
+            "mensaje": f"✅ Candidato {nombre} creado exitosamente",
             "candidatos": [c.to_dict() for c in candidatos]
         })
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        print(f"❌ Error inesperado al crear candidato: {str(e)}")
+        return jsonify({
+            "ok": False, 
+            "error": f"❌ Error interno del servidor: {str(e)}"
+        }), 500
 
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["PUT", "POST"])
 @login_required
@@ -4050,21 +4516,47 @@ def editar_candidato(candidato_id):
         db.session.rollback()
         print("❌ Error al editar candidato:", e)
         return jsonify({"ok": False, "error": str(e)}), 500
-
+    
 @admin_bp.route("/candidatos/<int:candidato_id>", methods=["DELETE"])
 @login_required
 @role_required(1)
 def eliminar_candidato(candidato_id):
-    """API para eliminar candidato"""
+    """API para eliminar candidato y permitir que estudiantes vuelvan a votar"""
     try:
         candidato = Candidato.query.get(candidato_id)
         if not candidato:
             return jsonify({"ok": False, "error": "Candidato no encontrado"}), 404
 
+        # Encontrar todos los votos asociados a este candidato
+        votos_asociados = Voto.query.filter_by(candidato_id=candidato_id).all()
+        total_votos = len(votos_asociados)
+        
+        estudiantes_liberados = 0
+        
+        if total_votos > 0:
+            # Obtener IDs únicos de los que votaron
+            usuarios_votantes_ids = list(set([voto.estudiante_id for voto in votos_asociados]))
+            
+            # Filtrar solo los estudiantes
+            estudiantes_afectados = Usuario.query.filter(
+                Usuario.id_usuario.in_(usuarios_votantes_ids),
+                Usuario.id_rol_fk == 3  # ID del rol estudiante
+            ).all()
+            
+            # Permitir que los estudiantes vuelvan a votar
+            for estudiante in estudiantes_afectados:
+                estudiante.voto_registrado = False
+                estudiantes_liberados += 1
+            
+            # Eliminar los registros de votos
+            for voto in votos_asociados:
+                db.session.delete(voto)
+
+        # Eliminar el candidato
         db.session.delete(candidato)
         db.session.commit()
 
-        # Devolver la lista actualizada de candidatos para refrescar resultados
+        # Devolver lista actualizada
         candidatos = Candidato.query.all()
         candidatos_data = [
             {
@@ -4073,15 +4565,268 @@ def eliminar_candidato(candidato_id):
                 "categoria": c.categoria,
                 "tarjeton": c.tarjeton,
                 "propuesta": c.propuesta,
-                "votos": c.votos
+                "votos": c.votos,
+                "foto": c.foto
             }
             for c in candidatos
         ]
 
-        return jsonify({"ok": True, "candidatos": candidatos_data}), 200
+        mensaje = "✅ Candidato eliminado correctamente"
+        if total_votos > 0:
+            mensaje += f". {estudiantes_liberados} estudiante(s) pueden volver a votar."
+
+        return jsonify({
+            "ok": True, 
+            "mensaje": mensaje,
+            "candidatos": candidatos_data
+        }), 200
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": f"Error al eliminar candidato: {str(e)}"}), 500
+
+
+
+# 📌 Ruta de prueba para verificar que todo funciona
+@admin_bp.route("/test-sistema-votos", methods=["POST"])
+@login_required
+def test_sistema_votos():
+    """Prueba completa del sistema de votos"""
+    try:
+        # 1. Verificar campo voto_registrado
+        estudiante = Usuario.query.filter_by(id_rol_fk=3).first()  # Primer estudiante
+        if not estudiante:
+            return jsonify({"error": "No hay estudiantes"}), 400
+            
+        print(f"✅ Estudiante: {estudiante.nombre}")
+        print(f"✅ voto_registrado: {estudiante.voto_registrado}")
+        
+        # 2. Verificar candidatos
+        candidatos = Candidato.query.all()
+        print(f"✅ Candidatos: {len(candidatos)}")
+        
+        for c in candidatos:
+            print(f"   - {c.nombre}: {c.votos} votos")
+        
+        # 3. Hacer una prueba de voto
+        if candidatos:
+            candidato_prueba = candidatos[0]
+            votos_antes = candidato_prueba.votos
+            
+            # Simular voto
+            candidato_prueba.votos += 1
+            estudiante.voto_registrado = True
+            db.session.commit()
+            
+            # Verificar después
+            db.session.refresh(candidato_prueba)
+            votos_despues = candidato_prueba.votos
+            
+            return jsonify({
+                "ok": True,
+                "prueba": {
+                    "candidato": candidato_prueba.nombre,
+                    "votos_antes": votos_antes,
+                    "votos_despues": votos_despues,
+                    "estudiante_voto_registrado": estudiante.voto_registrado
+                }
+            })
+        
+        return jsonify({"error": "No hay candidatos"})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+# ==================== GESTIÓN DE PUBLICACIÓN DE RESULTADOS ====================
+
+@admin_bp.route("/estado-publicacion", methods=["GET"])
+def obtener_estado_publicacion():
+    """API para obtener el estado actual de publicación"""
+    try:
+        estado = EstadoPublicacion.query.first()
+        
+        if not estado:
+            # Crear estado por defecto si no existe
+            estado = EstadoPublicacion(
+                resultados_publicados=False,
+                usuario_publico='Sistema'
+            )
+            db.session.add(estado)
+            db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'estado': estado.to_dict()
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo estado de publicación: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener estado: {str(e)}"
+        }), 500
+
+@admin_bp.route("/publicar-resultados", methods=["POST"])
+@login_required
+@role_required(1)
+def publicar_resultados():
+    """API para publicar los resultados de la votación"""
+    try:
+        # Obtener el usuario actual - CORREGIDO
+        from flask_login import current_user
+        
+        # Usar el campo correcto 'nombre' en lugar de 'username'
+        usuario = current_user.nombre if current_user.is_authenticated else 'Administrador'
+        
+        print(f"📢 Intentando publicar resultados como: {usuario}")
+        
+        # Buscar o crear el estado de publicación
+        estado = EstadoPublicacion.query.first()
+        
+        if estado:
+            print(f"✅ Estado encontrado, actualizando...")
+            # Actualizar estado existente
+            estado.resultados_publicados = True
+            estado.fecha_publicacion = datetime.now()
+            estado.usuario_publico = usuario
+        else:
+            print(f"🆕 Creando nuevo estado de publicación...")
+            # Crear nuevo estado
+            estado = EstadoPublicacion(
+                resultados_publicados=True,
+                fecha_publicacion=datetime.now(),
+                usuario_publico=usuario
+            )
+            db.session.add(estado)
+        
+        db.session.commit()
+        
+        print(f"📢 Resultados publicados correctamente por: {usuario}")
+        
+        return jsonify({
+            "success": True, 
+            "message": "Resultados publicados correctamente. Ahora son visibles para todos los usuarios.",
+            "fecha_publicacion": estado.fecha_publicacion.isoformat(),
+            "publicado_por": usuario
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error al publicar resultados: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False, 
+            "error": f"Error al publicar resultados: {str(e)}"
+        }), 500
+
+@admin_bp.route("/ocultar-resultados", methods=["POST"])
+@login_required
+@role_required(1)
+def ocultar_resultados():
+    """API para ocultar los resultados de la votación"""
+    try:
+        from flask_login import current_user
+        
+        # Usar el campo correcto 'nombre' en lugar de 'username'
+        usuario = current_user.nombre if current_user.is_authenticated else 'Administrador'
+        
+        print(f"🔒 Intentando ocultar resultados como: {usuario}")
+        
+        estado = EstadoPublicacion.query.first()
+        
+        if estado:
+            estado.resultados_publicados = False
+            estado.usuario_publico = usuario
+        else:
+            estado = EstadoPublicacion(
+                resultados_publicados=False,
+                usuario_publico=usuario
+            )
+            db.session.add(estado)
+        
+        db.session.commit()
+        
+        print(f"🔒 Resultados ocultados correctamente por: {usuario}")
+        
+        return jsonify({
+            "success": True, 
+            "message": "Resultados ocultados correctamente.",
+            "fecha_ocultacion": datetime.now().isoformat(),
+            "ocultado_por": usuario
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error al ocultar resultados: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False, 
+            "error": f"Error al ocultar resultados: {str(e)}"
+        }), 500
+
+@admin_bp.route("/resultados-publicos", methods=["GET"])
+def resultados_publicos():
+    """API para obtener resultados públicos de la votación (solo si están publicados)"""
+    try:
+        # Verificar si los resultados están publicados
+        estado = EstadoPublicacion.query.first()
+        
+        if not estado or not estado.resultados_publicados:
+            return jsonify({
+                'success': True,
+                'resultados_publicados': False,
+                'message': 'Los resultados no están disponibles públicamente.'
+            }), 200
+        
+        # Obtener todos los candidatos con sus votos
+        candidatos = Candidato.query.all()
+        
+        # Estructurar los datos por categorías
+        resultados = {
+            'personero': [],
+            'contralor': [],
+            'cabildante': []
+        }
+        
+        for candidato in candidatos:
+            resultado_candidato = {
+                'id': candidato.id_candidato,
+                'nombre': candidato.nombre,
+                'tarjeton': candidato.tarjeton,
+                'propuesta': candidato.propuesta,
+                'foto': candidato.foto,
+                'votos': candidato.votos or 0,
+                'categoria': candidato.categoria
+            }
+            
+            if candidato.categoria in resultados:
+                resultados[candidato.categoria].append(resultado_candidato)
+        
+        # Ordenar por votos descendente en cada categoría
+        for categoria in resultados:
+            resultados[categoria].sort(key=lambda x: x['votos'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'resultados_publicados': True,
+            'resultados': resultados,
+            'total_votos': sum(c.votos or 0 for c in candidatos),
+            'fecha_publicacion': estado.fecha_publicacion.isoformat() if estado.fecha_publicacion else None,
+            'publicado_por': estado.usuario_publico,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo resultados públicos: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f"Error al obtener resultados: {str(e)}"
+        }), 500
 
 
 
@@ -5055,31 +5800,47 @@ def notificaciones():
 @login_required
 @role_required(1)
 def api_notificaciones():
-    """API para obtener notificaciones paginadas"""
+    """API para obtener notificaciones paginadas - VERSIÓN CORREGIDA"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         filtro = request.args.get('filtro', 'todas', type=str)
         
-        from services.notification_service import get_notifications_paginated
+        # USAR LAS FUNCIONES QUE YA TIENES
+        from services.notification_service import obtener_todas_notificaciones
         
-        pagination = get_notifications_paginated(
-            current_user.id_usuario, page, per_page, filtro
-        )
+        # Obtener todas las notificaciones del usuario
+        todas_notificaciones = obtener_todas_notificaciones(current_user.id_usuario, limite=1000)
+        
+        # Aplicar filtros
+        if filtro == 'pendientes':
+            notificaciones_filtradas = [n for n in todas_notificaciones if not n.leida]
+        elif filtro == 'leidas':
+            notificaciones_filtradas = [n for n in todas_notificaciones if n.leida]
+        else:
+            notificaciones_filtradas = todas_notificaciones
+        
+        # Paginación manual
+        total = len(notificaciones_filtradas)
+        pages = (total + per_page - 1) // per_page  # Cálculo de páginas
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        notificaciones_pagina = notificaciones_filtradas[start_idx:end_idx]
         
         return jsonify({
             'success': True,
             'data': {
-                'notificaciones': [notif.to_dict() for notif in pagination.items],
-                'total': pagination.total,
-                'pages': pagination.pages,
-                'current_page': pagination.page,
-                'has_next': pagination.has_next,
-                'has_prev': pagination.has_prev
+                'notificaciones': [notif.to_dict() for notif in notificaciones_pagina],
+                'total': total,
+                'pages': pages,
+                'current_page': page,
+                'has_next': page < pages,
+                'has_prev': page > 1
             }
         })
         
     except Exception as e:
+        print(f"❌ Error en API notificaciones: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
@@ -5090,25 +5851,42 @@ def api_notificaciones():
 @login_required
 @role_required(1)
 def api_marcar_leidas():
-    """API para marcar notificaciones como leídas"""
+    """API para marcar notificaciones como leídas - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
         notificacion_ids = data.get('notificacion_ids', [])
         
-        from services.notification_service import mark_read
+        from services.notification_service import marcar_notificacion_como_leida
         
         if notificacion_ids:
-            updated = mark_read(current_user.id_usuario, notificacion_ids)
+            # Marcar notificaciones específicas
+            contador = 0
+            for notif_id in notificacion_ids:
+                if marcar_notificacion_como_leida(notif_id, current_user.id_usuario):
+                    contador += 1
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se marcaron {contador} notificaciones como leídas'
+            })
         else:
-            from services.notification_service import mark_all_read
-            updated = mark_all_read(current_user.id_usuario)
-        
-        return jsonify({
-            'success': True,
-            'message': f'Se marcaron {updated} notificaciones como leídas'
-        })
+            # Marcar todas como leídas
+            from services.notification_service import obtener_notificaciones_no_leidas
+            
+            notificaciones_no_leidas = obtener_notificaciones_no_leidas(current_user.id_usuario)
+            contador = 0
+            
+            for notif in notificaciones_no_leidas:
+                if marcar_notificacion_como_leida(notif.id_notificacion, current_user.id_usuario):
+                    contador += 1
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se marcaron {contador} notificaciones como leídas'
+            })
         
     except Exception as e:
+        print(f"❌ Error marcando notificaciones como leídas: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
@@ -5119,19 +5897,26 @@ def api_marcar_leidas():
 @login_required
 @role_required(1)
 def api_eliminar_notificaciones():
-    """API para eliminar notificaciones"""
+    """API para eliminar notificaciones - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
         notificacion_ids = data.get('notificacion_ids', [])
         eliminar_todas = data.get('eliminar_todas', False)
         
-        from services.notification_service import delete_notifications, delete_all_user_notifications
+        from controllers.models import Notificacion, db
         
         if eliminar_todas:
-            deleted = delete_all_user_notifications(current_user.id_usuario)
+            # Eliminar todas las notificaciones del usuario
+            deleted = Notificacion.query.filter_by(usuario_id=current_user.id_usuario).delete()
+            db.session.commit()
             message = f'Se eliminaron {deleted} notificaciones'
         else:
-            deleted = delete_notifications(current_user.id_usuario, notificacion_ids)
+            # Eliminar notificaciones específicas
+            deleted = Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).delete(synchronize_session=False)
+            db.session.commit()
             message = f'Se eliminaron {deleted} notificaciones'
         
         return jsonify({
@@ -5140,10 +5925,13 @@ def api_eliminar_notificaciones():
         })
         
     except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error eliminando notificaciones: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+    
 
 
 # ============================================================================

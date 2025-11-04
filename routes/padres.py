@@ -1,14 +1,85 @@
 from flask import Blueprint, render_template, redirect, url_for, request, jsonify, flash, current_app
 from flask_login import login_required, current_user
+from datetime import datetime
 from controllers.decorators import role_required, permission_required
 from controllers.models import (
     db, Usuario, Rol, Comunicacion, SolicitudConsulta, Asignatura,
     Calificacion, Asistencia, Clase, Matricula, Curso, HorarioCompartido, HorarioCurso, Salon, Sede,
-    CicloAcademico, PeriodoAcademico, CategoriaCalificacion
+    CicloAcademico, PeriodoAcademico, CategoriaCalificacion, Notificacion, Evento
     )
 
 
 padre_bp = Blueprint('padre', __name__, url_prefix='/padre')
+# ========== FUNCIÓN AUXILIAR CORREGIDA ==========
+def get_sidebar_counts():
+    """Función auxiliar para obtener los contadores del sidebar"""
+    from datetime import datetime
+    
+    try:
+        # DEBUG: Ver qué valores de estado existen
+        estados = db.session.query(Comunicacion.estado).distinct().all()
+        estados_lista = [e[0] for e in estados]
+        print("🔍 VALORES DE 'estado' EN COMUNICACIONES:", estados_lista)
+    except Exception as e:
+        print("❌ Error en debug de estados:", e)
+        estados_lista = []
+    
+    # Determinar el valor correcto para mensajes no leídos
+    estado_no_leido = 'inbox'  # Valor por defecto común
+    
+    # Probar diferentes valores comunes
+    if 'no_leido' in estados_lista:
+        estado_no_leido = 'no_leido'
+    elif 'unread' in estados_lista:
+        estado_no_leido = 'unread'
+    elif 'pendiente' in estados_lista:
+        estado_no_leido = 'pendiente'
+    elif 'nuevo' in estados_lista:
+        estado_no_leido = 'nuevo'
+    
+    print(f"🎯 Usando estado: '{estado_no_leido}' para mensajes no leídos")
+    
+    # Mensajes no leídos (para comunicaciones)
+    unread_messages = Comunicacion.query.filter_by(
+        destinatario_id=current_user.id_usuario, 
+        estado=estado_no_leido
+    ).count()
+    
+    # Notificaciones no leídas (para notificaciones)
+    unread_notifications = Notificacion.query.filter_by(
+        usuario_id=current_user.id_usuario,
+        leida=False
+    ).count()
+    
+    # ✅ VERSIÓN CORREGIDA: Eventos próximos con filtro más estricto
+    hoy = datetime.now().date()
+    
+    # Obtener TODOS los eventos para debug
+    todos_eventos = Evento.query.all()
+    print(f"📋 TODOS LOS EVENTOS EN BD ({len(todos_eventos)} total):")
+    for evento in todos_eventos:
+        print(f"   - ID: {evento.id}, Nombre: '{evento.nombre}', Fecha: {evento.fecha}, Rol: {evento.rol_destino}")
+    
+    # Eventos que cumplen el filtro estricto
+    eventos_filtrados = Evento.query.filter(
+        Evento.fecha.isnot(None),  # Excluir eventos sin fecha
+        Evento.fecha >= hoy        # Solo eventos de hoy en adelante
+    ).all()
+    
+    print(f"🎯 EVENTOS FILTRADOS (fecha >= {hoy} y fecha NOT NULL): {len(eventos_filtrados)} eventos")
+    for evento in eventos_filtrados:
+        print(f"   ✅ INCLUIDO - ID: {evento.id}, Nombre: '{evento.nombre}', Fecha: {evento.fecha}")
+    
+    upcoming_events = len(eventos_filtrados)
+    
+    print(f"📊 RESUMEN CONTADORES - Mensajes: {unread_messages}, Notificaciones: {unread_notifications}, Eventos: {upcoming_events}")
+    
+    return {
+        'unread_messages': unread_messages,
+        'unread_notifications': unread_notifications,
+        'upcoming_events': upcoming_events
+    }
+# ========== FIN FUNCIÓN AUXILIAR ==========
 
 def verificar_relacion_padre_hijo(padre_id, hijo_id):
     """Verifica si existe una relación padre-hijo entre los usuarios dados usando SQL directo."""
@@ -81,6 +152,9 @@ def dashboard():
             # Obtener anuncios importantes (comunicaciones del sistema)
             anuncios_importantes = Comunicacion.query.filter_by(remitente_id=None).order_by(Comunicacion.fecha_envio.desc()).limit(3).all()
         
+        # OBTENER CONTADORES DEL SIDEBAR USANDO LA FUNCIÓN
+        counts = get_sidebar_counts()
+        
         return render_template('padres/dashboard.html',
                              total_hijos=total_hijos,
                              promedio_general=promedio_general,
@@ -88,10 +162,16 @@ def dashboard():
                              mensajes_profesores=mensajes_profesores,
                              calificaciones_recientes=calificaciones_recientes,
                              anuncios_importantes=anuncios_importantes,
-                             hijos=hijos)
+                             hijos=hijos,
+                             # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     
     except Exception as e:
         flash(f'Error cargando el dashboard: {str(e)}', 'error')
+        # OBTENER CONTADORES INCLUSO EN CASO DE ERROR
+        counts = get_sidebar_counts()
         return render_template('padres/dashboard.html',
                              total_hijos=0,
                              promedio_general=0,
@@ -99,14 +179,24 @@ def dashboard():
                              mensajes_profesores=0,
                              calificaciones_recientes=[],
                              anuncios_importantes=[],
-                             hijos=[])
+                             hijos=[],
+                             # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
 
 @padre_bp.route('/comunicaciones')
 @login_required
 @role_required('Padre')
 def comunicaciones():
     """Página para que el padre vea comunicados de la institución."""
-    return render_template('padres/comunicaciones.html')
+    # OBTENER CONTADORES DEL SIDEBAR
+    counts = get_sidebar_counts()
+    return render_template('padres/comunicaciones.html',
+                         # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @padre_bp.route('/consultar_estudiante')
 @login_required
@@ -119,16 +209,53 @@ def consultar_estudiante():
     # Obtener solicitudes previas del padre
     solicitudes = SolicitudConsulta.query.filter_by(padre_id=current_user.id_usuario).order_by(SolicitudConsulta.fecha_solicitud.desc()).all()
     
+    # OBTENER CONTADORES DEL SIDEBAR
+    counts = get_sidebar_counts()
+    
     return render_template('padres/consultar_estudiante.html', 
                          asignaturas=asignaturas, 
-                         solicitudes=solicitudes)
+                         solicitudes=solicitudes,
+                         # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @padre_bp.route('/notificaciones')
 @login_required
 @role_required('Padre')
 def notificaciones():
     """Página de notificaciones para el padre."""
-    return render_template('padres/notificaciones.html')
+    try:
+        # OBTENER CONTADORES DEL SIDEBAR
+        counts = get_sidebar_counts()
+        
+        # Obtener todas las notificaciones del usuario padre para la página
+        notificaciones_list = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario
+        ).order_by(Notificacion.creada_en.desc()).all()
+        
+        return render_template(
+            "padres/notificaciones.html", 
+            notificaciones=notificaciones_list,
+            notificaciones_no_leidas=counts['unread_notifications'],
+            # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+            unread_messages=counts['unread_messages'],
+            unread_notifications=counts['unread_notifications'],
+            upcoming_events=counts['upcoming_events']
+        )
+        
+    except Exception as e:
+        flash(f"Error al cargar notificaciones: {str(e)}", "error")
+        # OBTENER CONTADORES INCLUSO EN CASO DE ERROR
+        counts = get_sidebar_counts()
+        return render_template(
+            "padres/notificaciones.html",
+            notificaciones=[],
+            notificaciones_no_leidas=counts['unread_notifications'],
+            unread_messages=counts['unread_messages'],
+            unread_notifications=counts['unread_notifications'],
+            upcoming_events=counts['upcoming_events']
+        )
 
 @padre_bp.route('/informacion_academica')
 @login_required
@@ -138,7 +265,15 @@ def informacion_academica():
     # Obtener los hijos del padre usando la relación backref
     hijos = current_user.hijos.all()
     
-    return render_template('padres/informacion_academica.html', hijos=hijos)
+    # OBTENER CONTADORES DEL SIDEBAR
+    counts = get_sidebar_counts()
+    
+    return render_template('padres/informacion_academica.html', 
+                         hijos=hijos,
+                         # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @padre_bp.route('/horario_clases')
 @login_required
@@ -148,7 +283,15 @@ def horario_clases():
     # Obtener los hijos del padre usando la relación backref
     hijos = current_user.hijos.all()
     
-    return render_template('padres/horario_clases.html', hijos=hijos)
+    # OBTENER CONTADORES DEL SIDEBAR
+    counts = get_sidebar_counts()
+    
+    return render_template('padres/horario_clases.html', 
+                         hijos=hijos,
+                         # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @padre_bp.route('/estudiante/<int:estudiante_id>/detalle')
 @login_required
@@ -161,7 +304,16 @@ def detalle_estudiante(estudiante_id):
         return redirect(url_for('padre.informacion_academica'))
     
     estudiante = Usuario.query.get_or_404(estudiante_id)
-    return render_template('padres/detalle_estudiante.html', estudiante=estudiante)
+    
+    # OBTENER CONTADORES DEL SIDEBAR
+    counts = get_sidebar_counts()
+    
+    return render_template('padres/detalle_estudiante.html', 
+                         estudiante=estudiante,
+                         # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @padre_bp.route('/estudiante/<int:estudiante_id>/calificaciones')
 @login_required
@@ -411,6 +563,7 @@ def api_asistencia_estudiante(estudiante_id):
     except Exception as e:
         current_app.logger.error(f"Error obteniendo asistencia: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
 @padre_bp.route('/api/asistencia_mes/<int:estudiante_id>')
 @login_required
 @role_required('Padre')
@@ -1054,13 +1207,20 @@ def ver_calificaciones_estudiante(estudiante_id, asignatura_id):
     else:
         promedio_general = 0
     
+    # OBTENER CONTADORES DEL SIDEBAR
+    counts = get_sidebar_counts()
+    
     return render_template('padres/calificaciones_estudiante.html',
                          estudiante=estudiante,
                          asignatura=Asignatura.query.get(asignatura_id),
                          calificaciones_por_categoria=calificaciones_por_categoria,
                          promedios_por_categoria=promedios_por_categoria,
                          promedio_general=promedio_general,
-                         ultima_fecha_reporte=ultima_fecha_reporte)
+                         ultima_fecha_reporte=ultima_fecha_reporte,
+                         # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 # ==================== COMUNICACIONES PARA PADRES ====================
 
@@ -1668,12 +1828,20 @@ def ver_tareas_hijo(hijo_id):
         
         curso = Curso.query.get(matricula.cursoId)
         
-        return render_template('padres/tareas.html', hijo=hijo, curso=curso)
+        # OBTENER CONTADORES DEL SIDEBAR
+        counts = get_sidebar_counts()
+        
+        return render_template('padres/tareas.html', 
+                             hijo=hijo, 
+                             curso=curso,
+                             # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     
     except Exception as e:
         flash(f'Error al cargar tareas: {str(e)}', 'error')
         return redirect(url_for('padre.dashboard'))
-
 
 @padre_bp.route('/tareas/<int:hijo_id>/<int:tarea_id>')
 @login_required
@@ -1699,12 +1867,20 @@ def ver_detalle_tarea_hijo(hijo_id, tarea_id):
             flash('El estudiante no tiene acceso a esta tarea', 'error')
             return redirect(url_for('padre.ver_tareas_hijo', hijo_id=hijo_id))
         
-        return render_template('padres/detalle_tarea.html', hijo=hijo, tarea=tarea)
+        # OBTENER CONTADORES DEL SIDEBAR
+        counts = get_sidebar_counts()
+        
+        return render_template('padres/detalle_tarea.html', 
+                             hijo=hijo, 
+                             tarea=tarea,
+                             # ✅ VARIABLES CORREGIDAS PARA EL TEMPLATE BASE
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     
     except Exception as e:
         flash(f'Error al cargar tarea: {str(e)}', 'error')
         return redirect(url_for('padre.ver_tareas_hijo', hijo_id=hijo_id))
-
 
 @padre_bp.route('/api/hijo/<int:hijo_id>/tareas', methods=['GET'])
 @login_required
@@ -1758,7 +1934,6 @@ def api_tareas_hijo(hijo_id):
             'success': False,
             'message': f'Error al obtener tareas: {str(e)}'
         }), 500
-
 
 @padre_bp.route('/api/hijo/<int:hijo_id>/tareas/<int:tarea_id>', methods=['GET'])
 @login_required
@@ -1828,3 +2003,315 @@ def api_obtener_tarea_hijo(hijo_id, tarea_id):
             'success': False,
             'message': f'Error al obtener tarea: {str(e)}'
         }), 500
+
+
+  # ========== SERVICIO DE NOTIFICACIONES AUTOMÁTICAS ==========
+def crear_notificacion_evento_padres(evento):
+    """Crear notificaciones para todos los padres cuando se publica un nuevo evento"""
+    try:
+        from sqlalchemy import text
+        
+        # Buscar todos los padres usando la tabla estudiante_padre
+        padres_query = db.session.execute(text("""
+            SELECT DISTINCT padre_id 
+            FROM estudiante_padre
+        """))
+        
+        padres_ids = [row[0] for row in padres_query]
+        
+        for padre_id in padres_ids:
+            notificacion = Notificacion(
+                usuario_id=padre_id,
+                titulo=f"📅 Nuevo evento: {evento.nombre}",
+                mensaje=f"{evento.descripcion}. Fecha: {evento.fecha.strftime('%d/%m/%Y')} a las {evento.hora.strftime('%H:%M')}",
+                tipo="evento",
+                leida=False,
+                link="/padre/eventos"
+            )
+            db.session.add(notificacion)
+        
+        db.session.commit()
+        print(f"✅ Notificaciones de evento creadas para {len(padres_ids)} padres")
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error creando notificaciones: {e}")
+        return False
+
+def crear_notificacion_general(usuario_id, titulo, mensaje, tipo="sistema", link=None):
+    """Crear una notificación general para un usuario específico"""
+    try:
+        notificacion = Notificacion(
+            usuario_id=usuario_id,
+            titulo=titulo,
+            mensaje=mensaje,
+            tipo=tipo,
+            leida=False,
+            link=link
+        )
+        db.session.add(notificacion)
+        db.session.commit()
+        print(f"✅ Notificación creada para usuario {usuario_id}")
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error creando notificación: {e}")
+        return False
+# ========== FIN SERVICIO DE NOTIFICACIONES ==========
+
+# ========== RUTAS PARA PADRES ==========
+@padre_bp.route("/api/sidebar/contadores")
+@login_required
+@role_required('Padre')
+def api_sidebar_contadores():
+    """API para obtener los contadores del sidebar"""
+    try:
+        counts = get_sidebar_counts()
+        return jsonify({
+            'success': True,
+            'unread_messages': counts['unread_messages'],
+            'unread_notifications': counts['unread_notifications'],
+            'upcoming_events': counts['upcoming_events']
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': str(e),
+            'unread_messages': 0,
+            'unread_notifications': 0,
+            'upcoming_events': 0
+        })
+
+@padre_bp.route("/api/eventos/crear", methods=["POST"])
+@login_required
+@role_required('Padre')
+def crear_evento_con_notificacion():
+    """Crear un nuevo evento y notificar a los padres"""
+    try:
+        from datetime import datetime
+        data = request.get_json()
+        
+        # Crear el evento
+        nuevo_evento = Evento(
+            nombre=data['nombre'],
+            descripcion=data['descripcion'],
+            fecha=datetime.strptime(data['fecha'], '%Y-%m-%d').date(),
+            hora=datetime.strptime(data['hora'], '%H:%M').time(),
+            rol_destino="Estudiante"
+        )
+        
+        db.session.add(nuevo_evento)
+        db.session.commit()
+        
+        # Crear notificaciones para todos los padres
+        crear_notificacion_evento_padres(nuevo_evento)
+        
+        return jsonify({
+            "success": True,
+            "message": "Evento creado y notificaciones enviadas",
+            "evento_id": nuevo_evento.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@padre_bp.route("/eventos", methods=["GET"])
+@login_required
+@role_required('Padre')
+def ver_eventos():
+    """Vista del calendario de eventos para padres"""
+    counts = get_sidebar_counts()
+    return render_template("padres/calendario/index.html",
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
+
+@padre_bp.route('/api/eventos/contador')
+@login_required
+@role_required('Padre')
+def api_eventos_contador():
+    """API para obtener el contador de eventos próximos"""
+    try:
+        from datetime import datetime
+        hoy = datetime.now().date()
+        count = Evento.query.filter(
+            Evento.fecha.isnot(None),
+            Evento.fecha >= hoy
+        ).count()
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        return jsonify({'success': False, 'count': 0})
+
+@padre_bp.route("/api/eventos", methods=["GET"])
+@login_required
+@role_required('Padre')
+def api_eventos_padre():
+    """API para listar eventos del rol estudiante"""
+    try:
+        eventos = Evento.query.filter_by(rol_destino="Estudiante").all()
+        resultado = []
+        for ev in eventos:
+            resultado.append({
+                "IdEvento": ev.id,
+                "Nombre": ev.nombre,
+                "Descripcion": ev.descripcion,
+                "Fecha": ev.fecha.strftime("%Y-%m-%d"),
+                "Hora": ev.hora.strftime("%H:%M:%S"),
+                "RolDestino": ev.rol_destino
+            })
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@padre_bp.route("/api/notificaciones")
+@login_required
+@role_required('Padre')
+def api_obtener_notificaciones_padre():
+    """API para obtener notificaciones del padre con paginación"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        filtro = request.args.get('filtro', 'todas')
+        
+        query = Notificacion.query.filter_by(usuario_id=current_user.id_usuario)
+        
+        if filtro == 'pendientes':
+            query = query.filter_by(leida=False)
+        elif filtro == 'leidas':
+            query = query.filter_by(leida=True)
+        
+        pagination = query.order_by(Notificacion.creada_en.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        notificaciones_data = []
+        for notif in pagination.items:
+            notificaciones_data.append({
+                "id": notif.id_notificacion,
+                "titulo": notif.titulo,
+                "mensaje": notif.mensaje,
+                "tipo": notif.tipo,
+                "leida": notif.leida,
+                "link": notif.link,
+                "fecha_creacion": notif.creada_en.strftime('%d/%m/%Y %H:%M') if notif.creada_en else 'Reciente',
+                "creada_en": notif.creada_en.isoformat() if notif.creada_en else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "notificaciones": notificaciones_data,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": pagination.page,
+                "has_next": pagination.has_next,
+                "has_prev": pagination.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@padre_bp.route("/api/notificaciones/marcar-leidas", methods=["POST"])
+@login_required
+@role_required('Padre')
+def api_marcar_notificaciones_leidas_padre():
+    """Marcar notificaciones como leídas"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        
+        if notificacion_ids:
+            Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).update({"leida": True})
+        else:
+            Notificacion.query.filter_by(
+                usuario_id=current_user.id_usuario,
+                leida=False
+            ).update({"leida": True})
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@padre_bp.route("/api/notificaciones/eliminar", methods=["POST"])
+@login_required
+@role_required('Padre')
+def api_eliminar_notificaciones_padre():
+    """Eliminar notificaciones"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        eliminar_todas = data.get('eliminar_todas', False)
+        
+        if eliminar_todas:
+            Notificacion.query.filter_by(usuario_id=current_user.id_usuario).delete()
+        elif notificacion_ids:
+            Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).delete()
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+def get_sidebar_counts():
+    """Función auxiliar para obtener los contadores del sidebar"""
+    from datetime import datetime
+    
+    try:
+        estados = db.session.query(Comunicacion.estado).distinct().all()
+        estados_lista = [e[0] for e in estados]
+        
+        estado_no_leido = 'inbox'
+        if 'no_leido' in estados_lista:
+            estado_no_leido = 'no_leido'
+        elif 'unread' in estados_lista:
+            estado_no_leido = 'unread'
+        elif 'pendiente' in estados_lista:
+            estado_no_leido = 'pendiente'
+        elif 'nuevo' in estados_lista:
+            estado_no_leido = 'nuevo'
+        
+        # Mensajes no leídos
+        unread_messages = Comunicacion.query.filter_by(
+            destinatario_id=current_user.id_usuario, 
+            estado=estado_no_leido
+        ).count()
+        
+        # Notificaciones no leídas
+        unread_notifications = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        # Eventos próximos
+        hoy = datetime.now().date()
+        eventos_proximos = Evento.query.filter(Evento.fecha >= hoy).all()
+        upcoming_events = len(eventos_proximos)
+        
+        return {
+            'unread_messages': unread_messages,
+            'unread_notifications': unread_notifications,
+            'upcoming_events': upcoming_events
+        }
+        
+    except Exception as e:
+        print(f"❌ Error en get_sidebar_counts: {e}")
+        return {
+            'unread_messages': 0,
+            'unread_notifications': 0,
+            'upcoming_events': 0
+        }

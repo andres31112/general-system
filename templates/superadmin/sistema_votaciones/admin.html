@@ -23,7 +23,7 @@
       </div>
     </header>
 
-    <!-- 🔔 Mensajes flash -->
+    <!-- 🔔 Mensajes flash (mantener los existentes) -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -178,6 +178,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 🔥 CONTENEDOR PARA NOTIFICACIONES PUSH (EN LA PARTE INFERIOR DERECHA) -->
+  <div id="notificaciones-push" class="notificaciones-push-container">
+    <!-- Aquí se insertarán las notificaciones push dinámicas -->
   </div>
 
   <!-- Modal de Edición (Más pequeño) -->
