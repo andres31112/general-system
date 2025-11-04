@@ -4555,9 +4555,17 @@ def resultados_publicos():
                 'votos': candidato.votos or 0,
                 'categoria': candidato.categoria
             }
-            
-            if candidato.categoria in resultados:
-                resultados[candidato.categoria].append(resultado_candidato)
+            cat = (candidato.categoria or '').strip().lower()
+            if cat in ('personero', 'personero estudiantil'):
+                key = 'personero'
+            elif cat in ('contralor', 'contralor estudiantil'):
+                key = 'contralor'
+            elif cat in ('cabildante', 'cabildante estudiantil'):
+                key = 'cabildante'
+            else:
+                key = None
+            if key:
+                resultados[key].append(resultado_candidato)
         
         for categoria in resultados:
             resultados[categoria].sort(key=lambda x: x['votos'], reverse=True)

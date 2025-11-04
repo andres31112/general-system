@@ -216,6 +216,41 @@
             </ul>
         </section>
 
+        <!-- Sección Resultados de Votación -->
+        <section id="resultados" class="results-section">
+            <div class="container">
+                <div class="section-header">
+                    <h2><i class="fas fa-vote-yea"></i> Resultados de Votación Estudiantil</h2>
+                    <p>Consulta los resultados en tiempo real de las elecciones del gobierno escolar</p>
+                </div>
+                
+                <div class="results-header">
+                    <div class="results-info">
+                        <p>Participa en la democracia escolar</p>
+                    </div>
+                    <div class="results-controls">
+                        <button id="btn-refresh-results" class="btn btn-light">
+                            <i class="fas fa-sync-alt"></i> Actualizar
+                        </button>
+                        <span id="last-update" class="last-update"></span>
+                    </div>
+                </div>
+                
+                <div id="public-results-container">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Cargando resultados...</p>
+                    </div>
+                </div>
+                
+                <div id="no-results-message" class="empty-state" style="display: none;">
+                    <i class="fas fa-chart-bar"></i>
+                    <h3>Resultados no disponibles</h3>
+                    <p>Los resultados se publicarán una vez finalice el proceso electoral</p>
+                </div>
+            </div>
+        </section>
+
         <section id="contact-form" class="contact-form-section">
             <div class="container">
                 <h2>Contáctanos</h2>

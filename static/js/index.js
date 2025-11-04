@@ -239,6 +239,164 @@ function escapeHtml(s) {
         .replaceAll("'", '&#039;');
 }
 
+// ==================== SISTEMA DE RESULTADOS PÚBLICOS ====================
+
+const RESULTS_API = '/admin/resultados-publicos';
+
+async function cargarResultadosPublicos() {
+    const container = document.getElementById('public-results-container');
+    const noResults = document.getElementById('no-results-message');
+    const refreshBtn = document.getElementById('btn-refresh-results');
+    const lastUpdate = document.getElementById('last-update');
+
+    if (!container || !noResults) return;
+
+    try {
+        container.innerHTML = `
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Buscando resultados actualizados...</p>
+            </div>
+        `;
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+        }
+
+        const response = await fetch(RESULTS_API, { cache: 'no-cache' });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Error al cargar resultados');
+
+        if (lastUpdate) {
+            const now = new Date();
+            lastUpdate.textContent = `Actualizado: ${now.toLocaleTimeString('es-ES')}`;
+        }
+
+        if (!data.resultados_publicados) {
+            container.style.display = 'none';
+            noResults.style.display = 'block';
+            noResults.innerHTML = `
+                <i class="fas fa-lock"></i>
+                <h3>Resultados en Proceso</h3>
+                <p>Los resultados estarán disponibles cuando sean publicados por la administración.</p>
+            `;
+            return;
+        }
+
+        const { resultados, total_votos } = data;
+        const tieneResultados = Object.values(resultados || {}).some(categoria => categoria.length > 0);
+        if (!tieneResultados) {
+            container.style.display = 'none';
+            noResults.style.display = 'block';
+            noResults.innerHTML = `
+                <i class="fas fa-chart-bar"></i>
+                <h3>Sin datos aún</h3>
+                <p>Cuando haya votos registrados verás los resultados aquí.</p>
+            `;
+            return;
+        }
+
+        noResults.style.display = 'none';
+        container.style.display = 'block';
+        container.innerHTML = generarHTMLResultados(resultados, total_votos, data);
+    } catch (error) {
+        console.error('Error cargando resultados:', error);
+        if (container) {
+            container.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error de Conexión</h3>
+                    <p>No pudimos cargar los resultados.</p>
+                    <button onclick="cargarResultadosPublicos()" class="btn btn-light">
+                        <i class="fas fa-redo"></i> Reintentar
+                    </button>
+                </div>
+            `;
+        }
+    } finally {
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Actualizar';
+        }
+    }
+}
+
+function generarHTMLResultados(resultados, totalVotos, data) {
+    let html = '';
+    if (data && (data.fecha_publicacion || data.publicado_por)) {
+        const fechaPub = data.fecha_publicacion ? new Date(data.fecha_publicacion).toLocaleString('es-ES') : 'Fecha no disponible';
+        const publicadoPor = data.publicado_por || 'Administración';
+        html += `
+            <div class="publication-card">
+                <div class="publication-header">
+                    <i class="fas fa-calendar-check"></i>
+                    <div>
+                        <h4>Resultados Publicados</h4>
+                        <p>Publicado el ${fechaPub} por ${publicadoPor}</p>
+                    </div>
+                </div>
+                <div class="total-votes">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Total de votos: <strong>${totalVotos ?? 0}</strong></span>
+                </div>
+            </div>
+        `;
+    }
+
+    const categoriasConfig = {
+        'personero': { icon: 'user-tie', title: 'Personero Estudiantil' },
+        'contralor': { icon: 'chart-line', title: 'Contralor Estudiantil' },
+        'cabildante': { icon: 'users', title: 'Cabildante Estudiantil' }
+    };
+
+    Object.entries(resultados || {}).forEach(([categoria, candidatos]) => {
+        if (!Array.isArray(candidatos) || candidatos.length === 0) return;
+        const cfg = categoriasConfig[categoria] || { icon: 'user', title: categoria };
+        const totalVotosCat = candidatos.reduce((s, c) => s + (c.votos || 0), 0);
+        const maxVotos = Math.max(...candidatos.map(c => c.votos || 0));
+
+        html += `
+            <div class="results-category">
+                <div class="category-header">
+                    <div class="category-icon"><i class="fas fa-${cfg.icon}"></i></div>
+                    <h3 class="category-title">${cfg.title}</h3>
+                    <span class="category-votes">${totalVotosCat} votos totales</span>
+                </div>
+                <div class="results-list">
+                    ${candidatos.map(c => {
+                        const votos = c.votos || 0;
+                        const porcentaje = totalVotosCat > 0 ? ((votos / totalVotosCat) * 100).toFixed(1) : 0;
+                        const esGanador = votos === maxVotos && maxVotos > 0;
+                        return `
+                            <div class="result-item ${esGanador ? 'winner' : ''}">
+                                <div class="candidate-info">
+                                    <div class="candidate-name">${escapeHtml(c.nombre || '')}</div>
+                                    <div class="candidate-details">
+                                        <span class="tarjeton-badge">Tarjetón ${escapeHtml(c.tarjeton || '')}</span>
+                                        <span class="votes-count">${votos} votos</span>
+                                        <span class="votes-percentage">${porcentaje}%</span>
+                                    </div>
+                                </div>
+                                ${esGanador ? '<span class="winner-badge"><i class="fas fa-trophy"></i> Ganador</span>' : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    return html;
+}
+
+function inicializarResultadosPublicos() {
+    const refreshBtn = document.getElementById('btn-refresh-results');
+    if (!refreshBtn) return;
+    refreshBtn.addEventListener('click', cargarResultadosPublicos);
+    cargarResultadosPublicos();
+    setInterval(cargarResultadosPublicos, 30000);
+}
+
 // Inicializar el carrusel y otras funciones cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     initCarousel('mi-carrusel-1');
@@ -248,4 +406,5 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPublicResumen();
     loadPublicCursos();
     loadPublicEventos();
+    inicializarResultadosPublicos();
 });
