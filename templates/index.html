@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Colegio Naciones Unidas - Formando líderes del mañana con educación de calidad">
-    <meta name="keywords" content="colegio, educación, estudiantes, votaciones, resultados">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-ie2d02b+a9zGgYgYq/6T2l2s9zH2h6bB6Q+sC3FfFfFfP3E4p4Zl4+x4j2l2s9zH2h6bB6Q+" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
-    <title>Colegio Naciones Unidas - Inicio</title>
+    <title>AcentraX - Inicio</title>
 </head>
 <body>
     
@@ -19,352 +17,232 @@
         </ul>
 
         <nav class="navbar navbar-expand-lg fixed-top" aria-label="Navegación principal">
-            <div class="container">
-                <a class="navbar-brand logo-center" href="{{ url_for('main.index') }}">
-                    <div class="logo-wrapper">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
+            <div class="container-fluid">
+                <a class="navbar-brand logo-center" href="{{ url_for('main.index') }}" aria-label="Volver a la página de inicio">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-circle-fill" viewBox="0 0 16 16">
+                        <circle cx="8" cy="8" r="8"/>
+                    </svg>
                 </a>
                 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-links">
-                        <li class="nav-item"><a class="nav-link active" href="#inicio">Inicio</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#nosotros">Nosotros</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#programas">Programas</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#resultados">Resultados</a></li>
-                        <li class="nav-item"><a class="nav-link" href="#contacto">Contacto</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#">Inicio</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#">Quienes Somos</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#">Comunidad</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#contact-form">Contactos</a></li>
                     </ul>
                     <div class="d-flex align-items-center gap-3">
-                        <a href="{{ url_for('auth.login') }}" class="icon-profile btn" title="Iniciar Sesión">
-                            <i class="fas fa-user"></i>
+                        <a href="{{ url_for('auth.login') }}" class="icon-profile btn" aria-label="Iniciar Sesión">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
+                                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+                            </svg>
                         </a>
-                        <a href="{{ url_for('auth.login') }}" class="btn-login-nav">
-                            <i class="fas fa-sign-in-alt"></i> Acceder
-                        </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn-login-nav">Iniciar Sesión</a>
                     </div>
                 </div>
             </div>
         </nav>
-
-        <!-- Hero Section -->
-        <section id="inicio" class="hero-section">
-            <div class="container">
-                <div class="hero-content">
-                    <h1 class="hero-title">
-                        Formando <span class="highlight">Líderes</span> del Mañana
-                    </h1>
-                    <p class="hero-subtitle">
-                        Educación de calidad, valores y excelencia académica para un futuro brillante
-                    </p>
-                    <div class="hero-actions">
-                        <a href="#nosotros" class="btn btn-primary">
-                            <i class="fas fa-book-open"></i> Conoce Más
-                        </a>
-                        <a href="#contacto" class="btn btn-outline">
-                            <i class="fas fa-map-marker-alt"></i> Visítanos
-                        </a>
-                    </div>
-                </div>
-                <div class="hero-stats">
-                    <div class="stat-card">
-                        <i class="fas fa-users"></i>
-                        <div class="stat-content">
-                            <h3>1000+</h3>
-                            <p>Estudiantes</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                        <div class="stat-content">
-                            <h3>50+</h3>
-                            <p>Docentes</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <i class="fas fa-trophy"></i>
-                        <div class="stat-content">
-                            <h3>25+</h3>
-                            <p>Años de Experiencia</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </header>
 
     <main class="content">
-        <!-- Sección Nosotros -->
-        <section id="nosotros" class="about-section">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Nuestra Filosofía Educativa</h2>
-                    <p>Comprometidos con la formación integral de nuestros estudiantes</p>
+        <section class="banner">
+            <div class="banner-content">
+                <div class="welcome-message">
+                    <h1>¡Bienvenidos a la Familia del Colegio Naciones Unidas!</h1>
+                    <a href="#" id="admissions-btn" class="btn-login" role="button">Conoce Nuestros Programas</a>
                 </div>
-                <div class="row g-4">
+                
+                <div class="statistics" id="public-resumen">
+                    <div class="statistic-item">
+                        <h3 id="stat-docentes">--</h3>
+                        <p>Docentes</p>
+                    </div>
+                    <div class="statistic-item">
+                        <h3 id="stat-estudiantes">--</h3>
+                        <p>Estudiantes</p>
+                    </div>
+                    <div class="statistic-item">
+                        <h3 id="stat-cursos">--</h3>
+                        <p>Cursos</p>
+                    </div>
+                    <div class="statistic-item">
+                        <h3 id="stat-eventos">--</h3>
+                        <p>Próximos eventos</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="philosophy-section">
+            <div class="container text-center">
+                <h2>Nuestra Filosofía</h2>
+                <div class="row">
                     <div class="col-md-4">
-                        <div class="feature-card">
-                            <div class="feature-icon mission">
-                                <i class="fas fa-bullseye"></i>
-                            </div>
-                            <h3>Misión</h3>
-                            <p>Formar ciudadanos globales con pensamiento crítico, valores sólidos y compromiso social para un mundo mejor.</p>
-                        </div>
+                        <i class="fas fa-hand-holding-heart philosophy-icon"></i>
+                        <h3>Misión</h3>
+                        <p>Formar líderes integrales y ciudadanos del mundo, comprometidos con el desarrollo sostenible y la justicia social.</p>
                     </div>
                     <div class="col-md-4">
-                        <div class="feature-card">
-                            <div class="feature-icon vision">
-                                <i class="fas fa-eye"></i>
-                            </div>
-                            <h3>Visión</h3>
-                            <p>Ser el colegio referente en innovación educativa y excelencia académica a nivel nacional e internacional.</p>
-                        </div>
+                        <i class="fas fa-eye philosophy-icon"></i>
+                        <h3>Visión</h3>
+                        <p>Ser un referente educativo de excelencia, impulsando la innovación, el pensamiento crítico y la creatividad en nuestros estudiantes.</p>
                     </div>
                     <div class="col-md-4">
-                        <div class="feature-card">
-                            <div class="feature-icon values">
-                                <i class="fas fa-heart"></i>
-                            </div>
-                            <h3>Valores</h3>
-                            <p>Respeto, responsabilidad, honestidad, empatía y excelencia en todo lo que hacemos.</p>
-                        </div>
+                        <i class="fas fa-users philosophy-icon"></i>
+                        <h3>Valores</h3>
+                        <p>Inculcamos el respeto, la responsabilidad, la empatía y la excelencia académica en cada uno de nuestros programas.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Sección Resultados de Votación -->
-        <section id="resultados" class="results-section">
-            <div class="container">
-                <div class="section-header">
-                    <h2><i class="fas fa-vote-yea"></i> Resultados de Votación Estudiantil</h2>
-                    <p>Consulta los resultados en tiempo real de las elecciones del gobierno escolar</p>
+        <section class="banner-secondary">
+            <div class="banner-content2">
+                <div class="information-contacts">
+                    <p>Educación, Ciencia, Cultura y Deporte para trascender</p>
+                    <h2>COLEGIO NACIONES UNIDAS</h2>
+                    <button class="contact-button" id="contact-scroll-btn">Contáctanos</button>
                 </div>
-                
-                <div class="results-header">
-                    <div class="results-info">
-                        <p>Participa en la democracia escolar</p>
-                    </div>
-                    <div class="results-controls">
-                        <button id="btn-refresh-results" class="btn btn-light">
-                            <i class="fas fa-sync-alt"></i> Actualizar
-                        </button>
-                        <span id="last-update" class="last-update"></span>
-                    </div>
-                </div>
-                
-                <div id="public-results-container">
-                    <div class="loading-state">
-                        <div class="spinner"></div>
-                        <p>Cargando resultados...</p>
-                    </div>
-                </div>
-                
-                <div id="no-results-message" class="empty-state" style="display: none;">
-                    <i class="fas fa-chart-bar"></i>
-                    <h3>Resultados no disponibles</h3>
-                    <p>Los resultados se publicarán una vez finalice el proceso electoral</p>
+                <div class="map-container">
+                    <iframe src="http://googleusercontent.com/maps.google.com/2" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
             </div>
         </section>
 
-        <!-- Sección Programas Académicos -->
-        <section id="programas" class="programs-section">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Programas Académicos</h2>
-                    <p>Oferta educativa completa para el desarrollo integral</p>
+        <section id="mi-carrusel-1" class="carousel-component" aria-labelledby="carousel-title">
+            <h2 id="carousel-title">Nuestros Programas y Cursos</h2>
+            <div class="slides-wrapper">
+                <div class="slides-container">
+                    <div class="carousel-slide">
+                        <div class="card">
+                            <div class="card-image-wrapper">
+                                <img class="card-image" src="https://images.unsplash.com/photo-1588072432836-e10032774350?q=80&w=2070&auto=format&fit=crop" alt="Preescolar">
+                            </div>
+                            <div class="card-content">
+                                <h3 class="card-title">Preescolar</h3>
+                                <p class="card-text">Ambiente lúdico para el desarrollo integral de los más pequeños.</p>
+                                <a href="#" class="card-button btn-blue">Leer más</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="card">
+                            <div class="card-image-wrapper">
+                                <img class="card-image" src="https://images.unsplash.com/photo-1516483638261-f4dbaf036963?q=80&w=2070&auto=format&fit=crop" alt="Básica Primaria">
+                            </div>
+                            <div class="card-content">
+                                <h3 class="card-title">Básica Primaria</h3>
+                                <p class="card-text">Fortalecemos competencias en lectura, escritura y matemáticas.</p>
+                                <a href="#" class="card-button btn-red">Ver detalles</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="card">
+                            <div class="card-image-wrapper">
+                                <img class="card-image" src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=80&w=2070&auto=format&fit=crop" alt="Básica Secundaria">
+                            </div>
+                            <div class="card-content">
+                                <h3 class="card-title">Básica Secundaria</h3>
+                                <p class="card-text">Desarrollo del pensamiento crítico, científico y social.</p>
+                                <a href="#" class="card-button btn-sky">Leer más</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="card">
+                            <div class="card-image-wrapper">
+                                <img class="card-image" src="https://images.unsplash.com/photo-1513031300226-c5ef36f76dcc?q=80&w=2070&auto=format&fit=crop" alt="Media Académica">
+                            </div>
+                            <div class="card-content">
+                                <h3 class="card-title">Media Académica</h3>
+                                <p class="card-text">Preparación para la educación superior y el mundo laboral.</p>
+                                <a href="#" class="card-button btn-green">Ver detalles</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="card">
+                            <div class="card-image-wrapper">
+                                <img class="card-image" src="https://images.unsplash.com/photo-1518611012118-696072aa579a?q=80&w=2070&auto=format&fit=crop" alt="Deportes y Bienestar">
+                            </div>
+                            <div class="card-content">
+                                <h3 class="card-title">Deportes y Bienestar</h3>
+                                <p class="card-text">Fomentamos hábitos saludables y trabajo en equipo.</p>
+                                <a href="#" class="card-button btn-gray">Leer más</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-slide">
+                        <div class="card">
+                            <div class="card-image-wrapper">
+                                <img class="card-image" src="https://images.unsplash.com/photo-1510936111840-65e151ad71bb?q=80&w=2069&auto=format&fit=crop" alt="Arte y Cultura">
+                            </div>
+                            <div class="card-content">
+                                <h3 class="card-title">Arte y Cultura</h3>
+                                <p class="card-text">Desarrollamos la creatividad a través de las artes.</p>
+                                <a href="#" class="card-button btn-purple">Ver detalles</a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="programs-grid">
-                    <div class="program-card">
-                        <div class="program-image">
-                            <img src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80" alt="Educación Básica">
-                        </div>
-                        <div class="program-content">
-                            <h3>Educación Básica</h3>
-                            <p>Formación fundamental desde primero hasta quinto grado</p>
-                            <ul>
-                                <li>Lectura y escritura</li>
-                                <li>Matemáticas básicas</li>
-                                <li>Ciencias naturales</li>
-                                <li>Valores y convivencia</li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <div class="program-card">
-                        <div class="program-image">
-                            <img src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80" alt="Educación Media">
-                        </div>
-                        <div class="program-content">
-                            <h3>Educación Media</h3>
-                            <p>Sexto a once grado con enfoque preuniversitario</p>
-                            <ul>
-                                <li>Ciencias avanzadas</li>
-                                <li>Matemáticas superiores</li>
-                                <li>Inglés intensivo</li>
-                                <li>Orientación vocacional</li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <div class="program-card">
-                        <div class="program-image">
-                            <img src="https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1000&q=80" alt="Programas Especiales">
-                        </div>
-                        <div class="program-content">
-                            <h3>Programas Especiales</h3>
-                            <p>Actividades extracurriculares y complementarias</p>
-                            <ul>
-                                <li>Robótica y tecnología</li>
-                                <li>Artes y música</li>
-                                <li>Deportes</li>
-                                <li>Idiomas adicionales</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+            </div>
+
+            <button class="nav-button prev-button" aria-label="Diapositiva anterior">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+            </button>
+            <button class="nav-button next-button" aria-label="Siguiente diapositiva">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            </button>
+        </section>
+
+        <!-- Oferta académica (dinámica) -->
+        <section class="container my-5" aria-labelledby="oferta-title">
+            <h2 id="oferta-title" class="mb-4">Oferta Académica</h2>
+            <div id="public-cursos" class="row g-3">
+                <!-- Cursos públicos (máx. 6) -->
             </div>
         </section>
 
-        <!-- Sección Contacto -->
-        <section id="contacto" class="contact-section">
+        <!-- Próximos eventos (dinámica) -->
+        <section class="container my-5" aria-labelledby="eventos-title">
+            <h2 id="eventos-title" class="mb-3">Próximos Eventos</h2>
+            <ul id="public-eventos" class="list-group">
+                <!-- Eventos próximos -->
+            </ul>
+        </section>
+
+        <section id="contact-form" class="contact-form-section">
             <div class="container">
-                <div class="contact-grid">
-                    <div class="contact-info">
-                        <h2>Contáctanos</h2>
-                        <p>Estamos aquí para responder tus preguntas y orientarte</p>
-                        
-                        <div class="contact-items">
-                            <div class="contact-item">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <div>
-                                    <h4>Dirección</h4>
-                                    <p>Calle 123 #45-67, Bogotá, Colombia</p>
-                                </div>
-                            </div>
-                            <div class="contact-item">
-                                <i class="fas fa-phone"></i>
-                                <div>
-                                    <h4>Teléfono</h4>
-                                    <p>+57 (1) 123 4567</p>
-                                </div>
-                            </div>
-                            <div class="contact-item">
-                                <i class="fas fa-envelope"></i>
-                                <div>
-                                    <h4>Email</h4>
-                                    <p>info@colegionacionesunidas.edu.co</p>
-                                </div>
-                            </div>
-                            <div class="contact-item">
-                                <i class="fas fa-clock"></i>
-                                <div>
-                                    <h4>Horario</h4>
-                                    <p>Lunes a Viernes: 7:00 AM - 4:00 PM</p>
-                                </div>
-                            </div>
-                        </div>
+                <h2>Contáctanos</h2>
+                <form id="contact-form">
+                    <div class="form-group">
+                        <label for="name">Nombre</label>
+                        <input type="text" id="name" name="name" required>
                     </div>
-                    
-                    <div class="contact-form">
-                        <form id="contact-form">
-                            <div class="form-group">
-                                <label for="name">Nombre completo</label>
-                                <input type="text" id="name" name="name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="email">Correo electrónico</label>
-                                <input type="email" id="email" name="email" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="phone">Teléfono</label>
-                                <input type="tel" id="phone" name="phone">
-                            </div>
-                            <div class="form-group">
-                                <label for="subject">Asunto</label>
-                                <select id="subject" name="subject" required>
-                                    <option value="">Selecciona un asunto</option>
-                                    <option value="admissions">Admisiones</option>
-                                    <option value="information">Información general</option>
-                                    <option value="academic">Consulta académica</option>
-                                    <option value="other">Otro</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="message">Mensaje</label>
-                                <textarea id="message" name="message" rows="5" required></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-block">
-                                <i class="fas fa-paper-plane"></i> Enviar Mensaje
-                            </button>
-                        </form>
+                    <div class="form-group">
+                        <label for="email">Correo Electrónico</label>
+                        <input type="email" id="email" name="email" required>
                     </div>
-                </div>
+                    <div class="form-group">
+                        <label for="message">Mensaje</label>
+                        <textarea id="message" name="message" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-button">Enviar Mensaje</button>
+                </form>
             </div>
+        </section>
+
+        <section class="filler-section">
+            <h2>Más contenido de la página</h2>
         </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <div class="footer-logo">
-                        <i class="fas fa-graduation-cap"></i>
-                        <span>Colegio Naciones Unidas</span>
-                    </div>
-                    <p>Formando líderes con excelencia académica y valores para un mundo mejor.</p>
-                    <div class="social-links">
-                        <a href="#"><i class="fab fa-facebook"></i></a>
-                        <a href="#"><i class="fab fa-instagram"></i></a>
-                        <a href="#"><i class="fab fa-twitter"></i></a>
-                        <a href="#"><i class="fab fa-youtube"></i></a>
-                    </div>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Enlaces Rápidos</h4>
-                    <ul>
-                        <li><a href="#inicio">Inicio</a></li>
-                        <li><a href="#nosotros">Nosotros</a></li>
-                        <li><a href="#programas">Programas</a></li>
-                        <li><a href="#resultados">Resultados</a></li>
-                        <li><a href="#contacto">Contacto</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Programas</h4>
-                    <ul>
-                        <li><a href="#">Educación Básica</a></li>
-                        <li><a href="#">Educación Media</a></li>
-                        <li><a href="#">Programas Especiales</a></li>
-                        <li><a href="#">Actividades Extracurriculares</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Contacto</h4>
-                    <div class="contact-info">
-                        <p><i class="fas fa-map-marker-alt"></i> Calle 123 #45-67, Bogotá</p>
-                        <p><i class="fas fa-phone"></i> +57 (1) 123 4567</p>
-                        <p><i class="fas fa-envelope"></i> info@colegio.edu.co</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="footer-bottom">
-                <p>&copy; 2024 Colegio Naciones Unidas. Todos los derechos reservados.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>
 </html>

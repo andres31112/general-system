@@ -121,9 +121,12 @@ def mi_horario():
 @login_required
 def api_mi_horario():
     try:
-        # 1) Obtener matrícula actual
+        # 1) Obtener matrícula actual (priorizar por fecha_matricula, y si no hay usar año)
         matricula = Matricula.query.filter_by(estudianteId=current_user.id_usuario)\
             .order_by(Matricula.fecha_matricula.desc()).first()
+        if not matricula:
+            matricula = Matricula.query.filter_by(estudianteId=current_user.id_usuario)\
+                .order_by(Matricula.año.desc()).first()
         if not matricula:
             return jsonify({'success': True, 'horario': None, 'message': 'No hay matrícula activa'}), 200
 
@@ -236,6 +239,48 @@ def api_mi_horario():
                     }
                     clases_por_bloque.setdefault(dia_b, {})[bloque_key] = None
 
+        # 3b) Fallback: si no hay dias/bloques desde HorarioGeneral, construir a partir de HorarioCurso
+        if not dias_list:
+            try:
+                dias_set = set()
+                for hc, *_ in entradas:
+                    d = _normalizar_dia(getattr(hc, 'dia_semana', None))
+                    if d:
+                        dias_set.add(d)
+                dias_list = sorted(dias_set) if dias_set else ['lunes','martes','miercoles','jueves','viernes','sabado']
+            except Exception:
+                dias_list = ['lunes','martes','miercoles','jueves','viernes','sabado']
+
+        if not bloques_list:
+            try:
+                # Detectar rango mínimo-máximo de horas de las entradas y generar bloques por hora
+                mins = []
+                maxs = []
+                def _to_min(hhmm):
+                    try:
+                        h, m = map(int, str(hhmm).split(':'))
+                        return h*60 + m
+                    except Exception:
+                        return None
+                for hc, *_ in entradas:
+                    ini = _fmt_hora(getattr(hc, 'hora_inicio', ''))
+                    fin = _fmt_hora(getattr(hc, 'hora_fin', ''))
+                    mi = _to_min(ini)
+                    mf = _to_min(fin) if fin else None
+                    if mi is not None:
+                        mins.append(mi)
+                    if mf is not None:
+                        maxs.append(mf)
+                if mins:
+                    start_h = min(mins)//60
+                    end_h = (max(maxs) + 59)//60 if maxs else (min(mins)//60 + 6)
+                    bloques_list = [f"{h:02d}:00-{h+1:02d}:00" for h in range(start_h, max(start_h+1, end_h))]
+                else:
+                    # Default horario escolar
+                    bloques_list = [f"{h:02d}:00-{h+1:02d}:00" for h in range(6, 20)]
+            except Exception:
+                bloques_list = [f"{h:02d}:00-{h+1:02d}:00" for h in range(6, 20)]
+
         # 4) Asignar cada HorarioCurso al/los bloques que se solapen
         def _minutos(hhmm):
             try:
@@ -279,7 +324,13 @@ def api_mi_horario():
             'clases_por_bloque': clases_por_bloque
         }
 
-        return jsonify({'success': True, 'horario': horario_data})
+        # info de depuración mínima
+        debug_info = {
+            'matricula_id': getattr(matricula, 'id_matricula', None),
+            'curso_id': getattr(curso, 'id_curso', None),
+            'entradas_horario': len(entradas)
+        }
+        return jsonify({'success': True, 'horario': horario_data, 'debug': debug_info})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

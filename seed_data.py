@@ -439,7 +439,7 @@ def seed_estudiantes(roles, cursos, padres):
         estudianteId=est_real.id_usuario,
         cursoId=cursos[0].id_curso,
         año=2025,
-        defaults={'estado': 'activo', 'fecha_matricula': date.today()}
+        defaults={'fecha_matricula': date.today()}
     )
     
     estudiantes.append(est_real)
@@ -475,7 +475,7 @@ def seed_estudiantes(roles, cursos, padres):
             estudianteId=estudiante.id_usuario,
             cursoId=curso.id_curso,
             año=2025,
-            defaults={'estado': 'activo', 'fecha_matricula': date.today()}
+            defaults={'fecha_matricula': date.today()}
         )
         
         estudiantes.append(estudiante)

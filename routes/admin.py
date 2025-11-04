@@ -658,6 +658,32 @@ def api_equipos_con_mantenimientos():
         print(f"Error al obtener equipos con mantenimientos: {e}")
         return jsonify({'error': str(e)}), 500
 
+@admin_bp.route('/api/horario_curso/restablecer/<int:curso_id>', methods=['POST'])
+@login_required
+@role_required(1)
+def api_restablecer_horario_curso(curso_id):
+    try:
+        curso = Curso.query.get(curso_id)
+        if not curso:
+            return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+        eliminados_hc = HorarioCurso.query.filter_by(curso_id=curso_id).delete(synchronize_session=False)
+        eliminados_comp = HorarioCompartido.query.filter_by(curso_id=curso_id).delete(synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Horario del curso restablecido correctamente',
+            'eliminados': {
+                'horario_curso': eliminados_hc,
+                'horario_compartido': eliminados_comp
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Error al restablecer: {str(e)}'}), 500
+
 @admin_bp.route('/api/mantenimientos/<int:mantenimiento_id>', methods=['GET'])
 @login_required
 @role_required(1)
@@ -2249,6 +2275,30 @@ def api_guardar_horario_curso():
         if not curso:
             print(f"ERROR: Curso {curso_id} no encontrado")
             return jsonify({'success': False, 'error': 'Curso no encontrado'}), 404
+
+        # Si no hay asignaciones en la petición, interpretar como 'restablecer' y borrar todo
+        if not asignaciones or len(asignaciones) == 0:
+            try:
+                eliminados_hc = HorarioCurso.query.filter_by(curso_id=curso_id).delete(synchronize_session=False)
+                eliminados_comp = HorarioCompartido.query.filter_by(curso_id=curso_id).delete(synchronize_session=False)
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'message': 'Horario del curso eliminado correctamente',
+                    'resumen': {
+                        'creadas': 0,
+                        'actualizadas': 0,
+                        'eliminadas': eliminados_hc,
+                        'total': 0
+                    },
+                    'eliminados': {
+                        'horario_curso': eliminados_hc,
+                        'horario_compartido': eliminados_comp
+                    }
+                })
+            except Exception as del_e:
+                db.session.rollback()
+                return jsonify({'success': False, 'error': f'Error al eliminar asignaciones: {str(del_e)}'}), 500
 
         asignaciones_existentes = HorarioCurso.query.filter_by(curso_id=curso_id).all()
         print(f"Asignaciones existentes en BD: {len(asignaciones_existentes)}")

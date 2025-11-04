@@ -1,42 +1,54 @@
+.flash-message {
+    margin: 0.5rem 0 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    color: var(--black);
+    background: var(--light);
+    border-left: 4px solid var(--accent3);
+}
+
+.flash-message.success {
+    background: #f1fbea;
+    border-left-color: #7acb5a;
+}
+
+.flash-message.warning {
+    background: #fff6e6;
+    border-left-color: var(--accent2);
+}
+
+.flash-message.danger {
+    background: #ffecea;
+    border-left-color: var(--accent1);
+}
 /* --- Variables y Estilos Globales --- */
 :root {
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-texto-principal: #2c3e50;
-    --color-texto-secundario: #7f8c8d;
+    --color-primario: #0D3B66;
+    --color-primario-oscuro: #1a5080;
+    --color-texto-principal: #333333;
+    --color-texto-secundario: #666666;
     --color-blanco: #FFFFFF;
-    --color-fondo-seccion: #f8f9fa;
-    --color-borde-suave: #ecf0f1;
+    --color-fondo-seccion: #FFFFFF;
+    --color-borde-suave: #E9ECEF;
+    --accent1: #F95738;
+    --accent2: #EE964B;
+    --accent3: #F4D35E;
+    --accent4: #0D3B66;
+    --light: #FAF0CA;
+    --light-gray: #F8F9FA;
+    --border: #E9ECEF;
+    --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.15);
+    --gradient-primary: linear-gradient(135deg, var(--accent4), #1a5080);
+    --gradient-secondary: linear-gradient(135deg, var(--accent3), #e9c440);
+    --gradient-accent: linear-gradient(135deg, var(--accent1), #ff6b4a);
+    --gradient-warning: linear-gradient(135deg, var(--accent2), #f0a868);
 }
 
 body {
-    background-color: var(--color-blanco);
+    background-color: #F8F9FA;
     font-family: 'Montserrat', sans-serif;
     margin: 0;
-}
-
-/* --- Botón de Regreso a Inicio --- */
-.back-home-btn {
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: var(--color-primario);
-    border: none;
-    border-radius: 8px;
-    color: var(--color-blanco);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-    transition: background-color 0.3s;
-}
-
-.back-home-btn:hover {
-    background-color: var(--color-primario-oscuro);
 }
 
 /* --- Tarjeta de Login --- */
@@ -52,8 +64,8 @@ body {
     text-align: center;
     background: var(--color-fondo-seccion);
     border-radius: 15px;
-    border: 2px solid var(--color-primario);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--color-borde-suave);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 /* --- Campos de Input --- */
@@ -62,7 +74,7 @@ body {
     display: flex;
     align-items: center;
     gap: .5em;
-    background-color: #f0f0f0;
+    background-color: #F8F9FA;
     border-radius: 8px;
     padding: .5em 1em;
     border: 1px solid transparent;
@@ -70,7 +82,7 @@ body {
 }
 
 .field:focus-within {
-    border-color: var(--color-primario);
+    border-color: var(--accent2);
 }
 
 .input-icon {
@@ -96,7 +108,7 @@ body {
     margin-bottom: 1rem;
     font-size: 1.5em;
     font-weight: 500;
-    color: var(--color-primario);
+    color: var(--accent4);
 }
 
 /* --- Botones --- */
@@ -106,16 +118,16 @@ body {
     font-weight: bold;
     font-size: .8em;
     padding: 0.7em 1.2em;
-    background-color: var(--color-primario);
-    border: 2px solid var(--color-primario);
+    background: var(--gradient-accent);
+    border: 2px solid var(--accent1);
     color: var(--color-blanco);
     cursor: pointer;
     transition: background-color 0.3s, box-shadow 0.3s;
 }
 
 .btn:hover {
-    background-color: var(--color-primario-oscuro);
-    box-shadow: 0 8px 24px 0 rgba(0, 120, 173, 0.2);
+    background: var(--gradient-primary);
+    box-shadow: 0 8px 24px 0 rgba(249, 87, 56, 0.25);
 }
 
 .btn-link {
@@ -127,7 +139,7 @@ body {
 }
 
 .btn-link:hover {
-    color: var(--color-primario);
+    color: var(--accent2);
 }
 
 /* --- Fondo Animado --- */
@@ -147,7 +159,7 @@ body {
     list-style: none;
     width: 20px;
     height: 20px;
-    background: rgba(0, 120, 173, 0.2);
+    background: rgba(238, 150, 75, 0.18);
     animation: animate 25s linear infinite;
     bottom: -150px;
 }

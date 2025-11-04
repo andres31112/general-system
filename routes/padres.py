@@ -908,6 +908,46 @@ def api_horario_estudiante(estudiante_id):
         except Exception:
             pass
 
+        # Fallback: construir dias y bloques desde HorarioCurso si HorarioGeneral no aporta
+        if not dias_list:
+            try:
+                dias_set = set()
+                for hc, *_ in horarios_curso:
+                    d = _normalizar_dia(getattr(hc, 'dia_semana', None))
+                    if d:
+                        dias_set.add(d)
+                dias_list = sorted(dias_set) if dias_set else ['lunes','martes','miercoles','jueves','viernes','sabado']
+            except Exception:
+                dias_list = ['lunes','martes','miercoles','jueves','viernes','sabado']
+
+        if not bloques_list:
+            try:
+                mins = []
+                maxs = []
+                def _to_min(hhmm):
+                    try:
+                        h, m = map(int, str(hhmm).split(':'))
+                        return h*60 + m
+                    except Exception:
+                        return None
+                for hc, *_ in horarios_curso:
+                    ini = _fmt_hora(getattr(hc, 'hora_inicio', ''))
+                    fin = _fmt_hora(getattr(hc, 'hora_fin', ''))
+                    mi = _to_min(ini)
+                    mf = _to_min(fin) if fin else None
+                    if mi is not None:
+                        mins.append(mi)
+                    if mf is not None:
+                        maxs.append(mf)
+                if mins:
+                    start_h = min(mins)//60
+                    end_h = (max(maxs) + 59)//60 if maxs else (min(mins)//60 + 6)
+                    bloques_list = [f"{h:02d}:00-{h+1:02d}:00" for h in range(start_h, max(start_h+1, end_h))]
+                else:
+                    bloques_list = [f"{h:02d}:00-{h+1:02d}:00" for h in range(6, 20)]
+            except Exception:
+                bloques_list = [f"{h:02d}:00-{h+1:02d}:00" for h in range(6, 20)]
+
         # Determinar sede del curso
         sede_nombre = 'N/A'
         try:

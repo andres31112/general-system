@@ -928,12 +928,16 @@ class AdminEmailApp {
 
     // Modal de redacción
     openComposeModal() {
-        document.getElementById('composeModal').style.display = 'block';
+        const modal = document.getElementById('composeModal');
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
         document.getElementById('composeTo').focus();
     }
 
     closeComposeModal() {
-        document.getElementById('composeModal').style.display = 'none';
+        const modal = document.getElementById('composeModal');
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
         document.getElementById('composeForm').reset();
         this.hideSuggestions();
         this.userCache.clear();
@@ -1836,20 +1840,19 @@ body {
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
     z-index: 1050;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    padding: 1rem;
 }
 
 .compose-modal .modal-content {
     background: var(--white);
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    max-width: 600px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
+    width: min(640px, 92vw);
+    max-height: 85vh;
+    overflow: hidden;
     animation: modalSlideIn 0.3s ease-out;
 }
 
@@ -1899,7 +1902,9 @@ body {
 }
 
 .compose-form {
-    padding: 2rem;
+    padding: 1.25rem 1.25rem 1rem;
+    overflow-y: auto;
+    max-height: calc(85vh - 64px);
 }
 
 .compose-field {
@@ -1913,15 +1918,15 @@ body {
     display: block;
 }
 
-.compose-field input,
+.compose-field input[type="text"],
 .compose-field textarea,
 .compose-field select {
-    border: 2px solid var(--border);
-    border-radius: 15px;
-    padding: 12px 15px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
     transition: all 0.3s ease;
     width: 100%;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .compose-field input:focus,
@@ -1933,7 +1938,7 @@ body {
 }
 
 .compose-body textarea {
-    min-height: 200px;
+    min-height: 180px;
     resize: vertical;
 }
 
@@ -1942,8 +1947,8 @@ body {
     gap: 1rem;
     justify-content: flex-end;
     flex-wrap: wrap;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--border);
 }
 
@@ -1951,8 +1956,8 @@ body {
     background: var(--gradient-accent);
     color: var(--white);
     border: none;
-    border-radius: 15px;
-    padding: 12px 24px;
+    border-radius: 12px;
+    padding: 10px 18px;
     font-weight: 600;
     transition: all 0.3s ease;
     display: flex;
@@ -2188,6 +2193,39 @@ body {
 
 #emailDetailView {
     animation: slideInFromRight 0.3s ease-out;
+}
+
+.recipient-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem .75rem;
+}
+
+.recipient-options .form-check {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin: 0;
+    padding: .25rem .5rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--light-gray);
+}
+
+.recipient-options .form-check-input {
+    width: 14px;
+    height: 14px;
+    margin-top: 0;
+}
+
+.recipient-options .form-check-label {
+    font-size: .85rem;
+    color: var(--accent4);
+}
+
+/* prevent background scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
 }
 
 @keyframes slideInFromRight {

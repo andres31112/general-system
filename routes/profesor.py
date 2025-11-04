@@ -504,11 +504,27 @@ def generar_matriz_horario_profesor(profesor_id):
         if dia not in matriz:
             matriz[dia] = {}
         
-        # Buscar asignaciones que coincidan con este bloque
+        # Buscar asignaciones que se solapen con este bloque (no solo por igualdad de inicio)
         asignaciones_en_bloque = []
+        def _minutos(hhmm:str):
+            try:
+                h, m = map(int, hhmm.split(':'))
+                return h*60 + m
+            except Exception:
+                return None
+        b_ini_m = _minutos(hora_inicio)
+        b_fin_m = _minutos(hora_fin)
         for (curso_id, dia_asig, hora_inicio_asig), asignaciones in asignaciones_dict.items():
-            if dia_asig == dia and hora_inicio_asig == hora_inicio:
-                asignaciones_en_bloque.extend(asignaciones)
+            if dia_asig != dia:
+                continue
+            for asig in asignaciones:
+                a_ini = _minutos(asig.get('hora_inicio') or hora_inicio_asig)
+                a_fin = _minutos(asig.get('hora_fin') or asig.get('hora_inicio') or hora_inicio_asig)
+                if a_ini is None or b_ini_m is None or a_fin is None or b_fin_m is None:
+                    continue
+                # solapamiento: max(inicios) < min(fines)
+                if max(a_ini, b_ini_m) < min(a_fin, b_fin_m):
+                    asignaciones_en_bloque.append(asig)
 
         # Normalizar tipo de bloque para identificar descansos
         tipo_normalizado = str(bloque.tipo).lower().strip() if bloque.tipo else 'clase'
