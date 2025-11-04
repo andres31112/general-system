@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from datetime import datetime, date
+from sqlalchemy import text
 import os
 import json
 from werkzeug.utils import secure_filename
@@ -310,6 +311,64 @@ def api_estudiantes():
     except Exception as e:
         print(f"Error en la API de estudiantes: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
+
+@admin_bp.route('/api/estudiantes/<int:id>', methods=['GET'])
+@login_required
+@role_required(1)
+def api_detalles_estudiante(id):
+    try:
+        
+        rol_estudiante = Rol.query.filter_by(nombre='Estudiante').first()
+        if not rol_estudiante:
+            return jsonify({"success": False, "message": "Rol 'Estudiante' no encontrado"}), 500
+
+        estudiante = Usuario.query.filter_by(
+            id_usuario=id, 
+            id_rol_fk=rol_estudiante.id_rol
+        ).first()
+        if not estudiante:
+            return jsonify({"success": False, "message": "Estudiante no encontrado"}), 404
+
+        matricula = Matricula.query.filter_by(estudianteId=estudiante.id_usuario)\
+                                   .order_by(Matricula.año.desc())\
+                                   .first()
+        curso_nombre = "Sin asignar"
+        anio_matricula = "N/A"
+        if matricula:
+            curso = Curso.query.get(matricula.cursoId)
+            curso_nombre = curso.nombreCurso if curso else "Sin curso"
+            anio_matricula = str(matricula.año)
+            
+        padres = db.session.execute(
+            text("""
+                SELECT u.nombre, u.apellido 
+                FROM estudiante_padre ep 
+                JOIN usuarios u ON ep.padre_id = u.id_usuario 
+                WHERE ep.estudiante_id = :est_id
+            """),
+            {"est_id": estudiante.id_usuario}
+        ).fetchall()
+
+        padre_acudiente = ", ".join([f"{p.nombre} {p.apellido}" for p in padres]) if padres else "Sin asignar"
+
+        return jsonify({
+            "success": True,
+            "estudiante": {
+                "id_usuario": estudiante.id_usuario,
+                "no_identidad": estudiante.no_identidad,
+                "nombre": estudiante.nombre,
+                "apellido": estudiante.apellido,
+                "correo": estudiante.correo,
+                "curso": curso_nombre,
+                "anio_matricula": anio_matricula,
+                "padre_acudiente": padre_acudiente,
+                "estado_cuenta": estudiante.estado_cuenta
+            }
+        })
+
+    except Exception as e:
+        print(f"[ERROR API ESTUDIANTE] ID {id}: {str(e)}")
+        return jsonify({"success": False, "message": "Error interno del servidor"}), 500
 
 @admin_bp.route('/estudiantes/crear', methods=['GET', 'POST'])
 @login_required

@@ -524,7 +524,32 @@
                     </tbody>
                 </table>
             </div>
-
+            <!-- Modal de Detalles del Estudiante -->
+            <div class="modal fade" id="detallesEstudianteModal" tabindex="-1" aria-labelledby="detallesEstudianteModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background: var(--gradient-primary); color: white;">
+                            <h5 class="modal-title" id="detallesEstudianteModalLabel">
+                                <i class="fas fa-user-graduate"></i> Detalles del Estudiante
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="detallesEstudianteContenido">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2">Cargando información...</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times"></i> Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Paginación -->
             <div class="pagination" id="pagination">
                 <button id="prevPage" disabled>
@@ -681,9 +706,78 @@
             };
 
             window.verDetalles = function(id) {
-                window.location.href = "{{ url_for('admin.detalles_estudiante', id=0) }}".replace('0', id);
-            };
+                const modalElement = document.getElementById('detallesEstudianteModal');
+                const modalBody = document.getElementById('detallesEstudianteContenido');
+                const modal = new bootstrap.Modal(modalElement);
 
+                modalBody.innerHTML = `
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando detalles del estudiante...</p>
+                    </div>
+                `;
+                modal.show();
+
+                fetch(`/admin/api/estudiantes/${id}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error en la respuesta del servidor');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success && data.estudiante) {
+                            const e = data.estudiante;
+                            modalBody.innerHTML = `
+                                <div class="row">
+                                    <div class="col-md-4 text-center mb-3">
+                                        <div class="avatar mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2rem;">
+                                            ${e.nombre[0]}${e.apellido[0]}
+                                        </div>
+                                        <h5>${e.nombre} ${e.apellido}</h5>
+                                        <span class="badge ${e.estado_cuenta === 'activa' ? 'badge-success' : 'badge-danger'}">
+                                            ${e.estado_cuenta}
+                                        </span>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <table class="table table-borderless table-sm">
+                                            <tr>
+                                                <td><strong>No. Identidad:</strong></td>
+                                                <td>${e.no_identidad}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Correo:</strong></td>
+                                                <td><a href="mailto:${e.correo}">${e.correo}</a></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Curso Actual:</strong></td>
+                                                <td>${e.curso || 'Sin asignar'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Año de Matrícula:</strong></td>
+                                                <td>${e.anio_matricula || 'N/A'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Padre/Acudiente:</strong></td>
+                                                <td>${e.padre_acudiente || 'Sin asignar'}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="text-center">
+                                    <small class="text-muted">ID Interno: ${e.id_usuario}</small>
+                                </div>
+                            `;
+                        } else {
+                            modalBody.innerHTML = `<p class="text-danger text-center">Error: ${data.message || 'No se pudo cargar el estudiante'}</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        modalBody.innerHTML = `<p class="text-danger text-center">Error de conexión. Intenta de nuevo.</p>`;
+                    });
+            };
             window.eliminarEstudiante = function(id) {
                 if (confirm('¿Está seguro de que desea eliminar este estudiante?')) {
                     fetch("{{ url_for('admin.eliminar_estudiante', id=0) }}".replace('0', id), {

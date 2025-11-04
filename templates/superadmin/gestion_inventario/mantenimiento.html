@@ -9,14 +9,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/profesores.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/incidentes.css') }}">
     <style>
-        /* Estilos específicos para mantenimiento, si es necesario, o sobrescribir incidentes.css */
-        .stat-card.completados { border-left: 5px solid #28a745; } /* Verde */
-        .stat-card.en-progreso { border-left: 5px solid #17a2b8; } /* Azul claro */
-        .stat-card.cancelados { border-left: 5px solid #6c757d; } /* Gris */
+        .stat-card.completados { border-left: 5px solid #28a745; }
+        .stat-card.en-progreso { border-left: 5px solid #17a2b8; }
+        .stat-card.cancelados { border-left: 5px solid #6c757d; }
     </style>
 </head>
 <body>
-    <!-- Contenedor global para alertas -->
     <div id="alertaGlobal" class="position-fixed top-0 start-50 translate-middle-x mt-3"
          style="z-index: 1055; max-width: 400px;"></div>
 
@@ -124,7 +122,6 @@
                     </tr>
                 </thead>
                 <tbody id="mantenimientosBody">
-                    <!-- Contenido dinámico -->
                 </tbody>
             </table>
         </div>
@@ -164,7 +161,6 @@
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <!-- ✅ AGREGAR SECCIÓN DE SUGERENCIAS AQUÍ -->
             <div class="alert alert-info m-3 mb-0" id="sugerenciasContainer" style="display: none;">
                 <div class="d-flex align-items-start">
                     <i class="fa-solid fa-lightbulb fa-2x me-3 text-warning"></i>
@@ -174,7 +170,6 @@
                             Equipos con incidentes activos que necesitan atención:
                         </h6>
                         <div id="listaSugerencias" class="list-group list-group-flush bg-transparent">
-                            <!-- Se llenará dinámicamente -->
                         </div>
                         <small class="text-muted mt-2 d-block">
                             <i class="fa-solid fa-info-circle me-1"></i>
@@ -185,7 +180,6 @@
             </div>
             
             <div class="modal-body">
-                <!-- Alerta para mensajes -->
                 <div id="alertaMantenimiento" class="alert d-none" role="alert"></div>
 
                 <form id="formNuevoMantenimiento">
@@ -265,7 +259,6 @@
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-8">
-                            <!-- Información principal -->
                             <div class="card mb-3">
                                 <div class="card-header bg-light">
                                     <h6 class="mb-0">Información del Mantenimiento</h6>
@@ -349,7 +342,7 @@
         // ========================================
         document.addEventListener('DOMContentLoaded', function() {
             configurarEventListenersMantenimiento();
-            cargarSedesMantenimiento(); // Cargar sedes para el modal de nuevo mantenimiento
+            cargarSedesMantenimiento();
             cargarMantenimientos();
         });
 
@@ -365,7 +358,6 @@
             document.getElementById('itemsPorPaginaMantenimiento').addEventListener('change', cambiarItemsPorPaginaMantenimiento);
             document.getElementById('formNuevoMantenimiento').addEventListener('submit', guardarMantenimiento);
 
-            // Event listeners para los selects en cascada del modal de nuevo mantenimiento
             const selectSede = document.getElementById('sede_id_mantenimiento');
             const selectSalon = document.getElementById('salon_id_mantenimiento');
             const selectEquipo = document.getElementById('equipo_id_mantenimiento');
@@ -391,7 +383,6 @@
                 }
             });
 
-            // Resetear selects al cerrar modal de nuevo mantenimiento
             const modalNuevoMantenimiento = document.getElementById('nuevoMantenimientoModal');
             if (modalNuevoMantenimiento) {
                 modalNuevoMantenimiento.addEventListener('hidden.bs.modal', function () {
@@ -701,7 +692,6 @@
 
             } catch (error) {
                 console.error('Error cargando estadísticas de mantenimiento:', error);
-                // Fallback a contar desde mantenimientosData si la API falla
                 const total = mantenimientosData.length;
                 const pendientes = mantenimientosData.filter(m => m.estado === 'pendiente').length;
                 const enProgreso = mantenimientosData.filter(m => m.estado === 'en_progreso').length;
@@ -765,7 +755,7 @@
 
             mantenimientosPagina.forEach(mantenimiento => {
                 const row = document.createElement('tr');
-                row.id = `mantenimiento-fila-${mantenimiento.id_mantenimiento}`; // Añadir ID para fácil actualización
+                row.id = `mantenimiento-fila-${mantenimiento.id_mantenimiento}`;
                 row.innerHTML = `
                     <td>
                         <div><strong>${mantenimiento.equipo_nombre}</strong></div>
@@ -907,7 +897,7 @@
             const tipoProgramacion = document.getElementById('tipoProgramacion').value;
             const descripcion = document.getElementById('descripcionMantenimiento').value.trim();
             const tecnico = document.getElementById('tecnicoInput').value.trim();
-            const sedeId = document.getElementById('sede_id_mantenimiento').value; // Necesario para el backend
+            const sedeId = document.getElementById('sede_id_mantenimiento').value;
 
             if (!equipoId || !fechaProgramacion || !tipoProgramacion || !sedeId) {
                 mostrarAlertaMantenimiento('Por favor, complete todos los campos obligatorios (*)', 'warning');

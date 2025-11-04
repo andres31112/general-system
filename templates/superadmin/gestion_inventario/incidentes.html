@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_inventario/incidentes.css') }}">
 </head>
 <body>
-    <!-- Contenedor global para alertas -->
 <div id="alertaGlobal" class="position-fixed top-0 start-50 translate-middle-x mt-3" 
      style="z-index: 1055; max-width: 400px;"></div>
 {% extends "base.html" %}
@@ -30,7 +29,6 @@
 </header>
 <br>
 <div class="container-fluid px-4">
-    <!-- Tarjetas de estadísticas -->
         <div class="d-flex justify-content-between flex-wrap mb-4">
             <div class="stat-card flex-fill me-3 total" style="max-width: 35%;">
                 <div class="stat-number" id="totalIncidentes">0</div>
@@ -329,7 +327,6 @@ function cargarSedes() {
             console.error('Error cargando sedes:', error);
         });
 
-    // Evento al cambiar SEDE -> Cargar SALONES
     selectSede.addEventListener('change', (event) => {
         const sedeId = event.target.value;
         selectSalon.disabled = true;
@@ -342,7 +339,6 @@ function cargarSedes() {
         }
     });
 
-    // Evento al cambiar SALÓN -> Cargar EQUIPOS
     selectSalon.addEventListener('change', (event) => {
         const salonId = event.target.value;
         const sedeId = selectSede.value;
@@ -354,8 +350,6 @@ function cargarSedes() {
         }
     });
 
-
-    // Resetear selects al cerrar modal
     const modalNuevoIncidente = document.getElementById('nuevoIncidenteModal');
     if (modalNuevoIncidente) {
         modalNuevoIncidente.addEventListener('hidden.bs.modal', function () {
@@ -431,8 +425,7 @@ function configurarEventListeners() {
     document.getElementById('prevPage').addEventListener('click', paginaAnterior);
     document.getElementById('nextPage').addEventListener('click', paginaSiguiente);
     document.getElementById('itemsPorPagina').addEventListener('change', cambiarItemsPorPagina);
-    
-    // Configurar formulario de nuevo incidente
+
     const formNuevoIncidente = document.getElementById('formNuevoIncidente');
     if (formNuevoIncidente) {
         formNuevoIncidente.addEventListener('submit', guardarIncidente);
@@ -672,8 +665,6 @@ function mostrarSpinner(mostrar) {
 // ========================================
 // GESTIÓN DE INCIDENTES - CRUD
 // ========================================
-
-// ✅ CREAR INCIDENTE
 async function guardarIncidente(event) {
     event.preventDefault();
     
@@ -719,21 +710,17 @@ async function guardarIncidente(event) {
         if (result.success) {
             mostrarAlerta(result.message || 'Incidente registrado exitosamente', 'success');
             
-            // Cerrar el modal
             const modalEl = document.getElementById('nuevoIncidenteModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) {
                 modal.hide();
             }
 
-            // Limpieza forzada del backdrop
             document.body.classList.remove('modal-open');
             document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 
-            // Resetear el formulario
             document.getElementById('formNuevoIncidente').reset();
             
-            // Resetear los selects en cascada
             const selectSede = document.getElementById('sede_id');
             const selectSalon = document.getElementById('salon_id');
             const selectEquipo = document.getElementById('equipo_id');
@@ -744,7 +731,6 @@ async function guardarIncidente(event) {
             selectEquipo.innerHTML = '<option value="" selected disabled>Seleccione un Equipo...</option>';
             selectEquipo.disabled = true;
             
-            // Actualizar la tabla
             await cargarIncidentes();
         } else {
             mostrarAlerta(result.error || 'Error al registrar el incidente', 'danger');
@@ -755,7 +741,6 @@ async function guardarIncidente(event) {
     }
 }
 
-// ✅ VER DETALLE
 function verDetalleIncidente(incidenteId) {
     console.log("DEBUG - Ver detalle del incidente:", incidenteId);
     
@@ -786,7 +771,6 @@ function verDetalleIncidente(incidenteId) {
     modal.show();
 }
 
-// ✅ CAMBIAR ESTADO
 async function cambiarEstado(nuevoEstado) {
     if (!incidenteSeleccionado) {
         mostrarAlerta('No hay un incidente seleccionado', 'warning');
@@ -829,7 +813,6 @@ async function cambiarEstado(nuevoEstado) {
     }
 }
 
-// ✅ ELIMINAR INCIDENTE
 async function eliminarIncidente(incidenteId) {
     console.log("DEBUG - Eliminar incidente:", incidenteId);
     
