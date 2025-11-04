@@ -1,5 +1,5 @@
-from flask import current_app
-from controllers.models import db, Notificacion, Usuario
+from flask import current_app, url_for
+from controllers.models import db, Notificacion, Usuario, Equipo
 from datetime import datetime
 def crear_notificacion(usuario_id, titulo, mensaje, tipo='general', link=None, auto_commit=True):
     """Crea una nueva notificación para un usuario.
@@ -481,3 +481,73 @@ def procesar_notificaciones_programadas():
             'error': str(e),
             'procesadas': 0
         }
+
+# ============================================================================
+# NOTIFICACIONES DEL SISTEMA DE INCIDENTES TIC
+# ============================================================================
+
+def notificar_nuevo_incidente(incidente):
+    """Notifica a los administradores sobre un nuevo incidente reportado."""
+    try:
+        from controllers.models import Rol
+        
+        print(f"🔔 Iniciando notificación de incidente ID: {incidente.id_incidente}")
+        
+        # Obtener el equipo relacionado
+        equipo = Equipo.query.get(incidente.equipo_id)
+        if not equipo:
+            print(f"❌ Equipo {incidente.equipo_id} no encontrado")
+            return 0
+        
+        print(f"✅ Equipo encontrado: {equipo.nombre}")
+        
+        # Obtener todos los superadmins (rol id=1)
+        rol_superadmin = Rol.query.filter_by(id_rol=1).first()
+        if not rol_superadmin:
+            print("❌ Rol superadmin no encontrado")
+            return 0
+        
+        admins = Usuario.query.filter_by(id_rol_fk=rol_superadmin.id_rol).all()
+        print(f"✅ {len(admins)} administradores encontrados")
+        
+        if not admins:
+            print("⚠️ No hay administradores para notificar")
+            return 0
+        
+        # Construir mensaje
+        titulo = "🔴 Nuevo Incidente TIC Reportado"
+        mensaje = f"Se ha reportado un incidente en el equipo '{equipo.nombre}'. " \
+                  f"Prioridad: {incidente.prioridad.upper()}. " \
+                  f"Descripción: {incidente.descripcion[:100]}{'...' if len(incidente.descripcion) > 100 else ''}"
+        
+        contador = 0
+        for admin in admins:
+            try:
+                notif = Notificacion(
+                    usuario_id=admin.id_usuario,
+                    titulo=titulo,
+                    mensaje=mensaje,
+                    tipo='incidente',  # ✅ CORREGIDO: 'incidente' en lugar de 'incicente'
+                    link='/admin/incidentes',  # ✅ URL simple sin url_for
+                    leida=False
+                    # creada_en se auto-genera si tienes default en el modelo
+                )
+                db.session.add(notif)
+                contador += 1
+                print(f"✅ Notificación creada para admin {admin.nombre_completo}")
+            except Exception as e:
+                print(f"❌ Error creando notificación para admin {admin.id_usuario}: {str(e)}")
+                continue
+        
+        # ⚠️ NO hacer commit aquí si se hace en la función que llama
+        # Solo flush para asegurar que se agregaron a la sesión
+        db.session.flush()
+        
+        print(f"✅ Total notificaciones creadas: {contador}")
+        return contador
+        
+    except Exception as e:
+        print(f"❌ Error general notificando nuevo incidente: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return 0

@@ -90,6 +90,16 @@
         margin-bottom: 1rem;
         color: #dee2e6;
     }
+    .type-incidente { 
+    background: linear-gradient(135deg, #ffebee, #ffcdd2); 
+    color: #c62828; 
+    border: 1px solid #ef9a9a;
+    }
+    .type-mantenimiento { 
+        background: linear-gradient(135deg, #e8f5e8, #c8e6c9); 
+        color: #2e7d32; 
+        border: 1px solid #a5d6a7;
+    }
 </style>
 {% endblock %}
 
@@ -481,7 +491,9 @@ function getTipoText(tipo) {
         'solicitud': 'Solicitud',
         'evento': 'Evento',
         'votacion': 'Votación',
-        'admin': 'Administración'
+        'admin': 'Administración',
+        'incicente': 'Incidente TIC',
+        'mantenimiento': 'Mantenimiento'
     };
     return tipos[tipo] || tipo;
 }

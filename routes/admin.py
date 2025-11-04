@@ -3293,99 +3293,65 @@ def api_listar_incidentes():
 @login_required
 @role_required(1)
 def api_crear_incidente():
-    """
-    Crea un nuevo incidente.
-    """
+    """Crea un nuevo incidente y genera una notificación para administradores."""
     try:
         data = request.get_json()
         
-        # ✅ Validación de datos obligatorios
-        equipo_id = data.get('equipo_id')
-        descripcion = data.get('descripcion', '').strip()
-        prioridad = data.get('prioridad', 'media')
-        usuario_reporte = data.get('usuario_reporte', '').strip()
+        # Validaciones existentes
+        if not all(key in data for key in ['equipo_id', 'prioridad', 'usuario_reporte', 'descripcion']):
+            return jsonify({'success': False, 'error': 'Faltan campos requeridos'}), 400
         
-        print(f"DEBUG - Datos recibidos:")
-        print(f"  equipo_id: {equipo_id}")
-        print(f"  descripcion: {descripcion}")
-        print(f"  prioridad: {prioridad}")
-        print(f"  usuario_reporte: {usuario_reporte}")
-        
-        # Validaciones
-        if not equipo_id:
-            return jsonify({
-                'success': False, 
-                'error': 'El equipo es obligatorio.'
-            }), 400
-            
-        if not descripcion:
-            return jsonify({
-                'success': False, 
-                'error': 'La descripción del problema es obligatoria.'
-            }), 400
-        
-        if not usuario_reporte:
-            return jsonify({
-                'success': False, 
-                'error': 'El usuario que reporta es obligatorio.'
-            }), 400
-
-        # Verificar que el equipo existe
-        equipo = Equipo.query.get(equipo_id)
+        # Obtener el equipo para validar y obtener la sede
+        equipo = Equipo.query.get(data['equipo_id'])
         if not equipo:
-            return jsonify({
-                'success': False, 
-                'error': f'El equipo con ID {equipo_id} no existe.'
-            }), 404
-            
-        # Obtener sede del equipo
+            return jsonify({'success': False, 'error': 'Equipo no encontrado'}), 404
+        
+        # Obtener la sede del equipo
         sede_nombre = "Sin Sede"
         if equipo.salon and equipo.salon.sede:
             sede_nombre = equipo.salon.sede.nombre
-
-        # ✅ Crear el incidente con el nombre de campo correcto
-        # Verifica en tu models.py si el campo se llama 'equipo_id' o 'id_equipo'
+        
+        # Crear el incidente
         nuevo_incidente = Incidente(
-            equipo_id=equipo_id,  # Cambia a id_equipo si es necesario
-            usuario_asignado=usuario_reporte,
-            sede=sede_nombre,
-            fecha=datetime.now(),
-            descripcion=descripcion,
+            equipo_id=data['equipo_id'],
+            prioridad=data['prioridad'],
+            usuario_asignado=data['usuario_reporte'],
+            descripcion=data['descripcion'],
+            solucion_propuesta=data.get('solucion_propuesta'),
             estado='reportado',
-            prioridad=prioridad,
-            solucion_propuesta=data.get('solucion_propuesta', '')
+            fecha=datetime.utcnow(),
+            sede=sede_nombre
         )
         
         db.session.add(nuevo_incidente)
-        db.session.flush()  # Para obtener el ID antes del commit
+        db.session.flush()  # Obtener el ID sin hacer commit aún
         
-        print(f"DEBUG - Incidente creado con ID: {nuevo_incidente.id_incidente}")
+        # ✅ GENERAR NOTIFICACIÓN PARA ADMINS
+        from services.notification_service import notificar_nuevo_incidente
+        notificaciones_creadas = notificar_nuevo_incidente(nuevo_incidente)
         
+        # ✅ Actualizar estado del equipo a 'Incidente'
+        equipo.estado = 'Incidente'
+        
+        # Hacer commit de todo junto
         db.session.commit()
         
+        mensaje = 'Incidente creado exitosamente'
+        if notificaciones_creadas > 0:
+            mensaje += f' y {notificaciones_creadas} notificación(es) enviada(s)'
+        
         return jsonify({
-            'success': True, 
-            'message': 'Incidente creado exitosamente',
-            'incidente': {
-                'id': nuevo_incidente.id_incidente,
-                'equipo_nombre': equipo.nombre,
-                'usuario_reporte': usuario_reporte,
-                'fecha': nuevo_incidente.fecha.strftime('%Y-%m-%d %H:%M:%S'),
-                'estado': nuevo_incidente.estado,
-                'prioridad': nuevo_incidente.prioridad
-            }
-        }), 201
-
+            'success': True,
+            'message': mensaje,
+            'incidente': nuevo_incidente.to_dict()
+        })
+    
     except Exception as e:
         db.session.rollback()
-        print(f"❌ ERROR al crear incidente: {str(e)}")
+        print(f"❌ Error creando incidente: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({
-            'success': False, 
-            'error': f'Error interno del servidor: {str(e)}'
-        }), 500
- 
+        return jsonify({'success': False, 'error': f'Error creando incidente: {str(e)}'}), 500 
 @admin_bp.route('/api/incidentes/<int:id_incidente>/estado', methods=['PUT'])
 @login_required
 @role_required(1)
