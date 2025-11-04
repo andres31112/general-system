@@ -551,3 +551,346 @@ def notificar_nuevo_incidente(incidente):
         import traceback
         traceback.print_exc()
         return 0
+    
+
+# ============================================================================
+# NOTIFICACIONES DEL SISTEMA DE CALENDARIO DE EVENTOS - VERSIÓN MEJORADA
+# ============================================================================
+
+def notificar_nuevo_evento(evento, admin_id=None):
+    """Envía notificaciones cuando se crea un nuevo evento - VERSIÓN CORREGIDA"""
+    try:
+        from controllers.models import Rol, Usuario
+        
+        print(f"🎯 Iniciando notificaciones para evento: {evento.nombre}")
+        print(f"🎯 Rol destino: {evento.rol_destino}")
+        
+        # Convertir rol_destino a lista
+        roles_destino = [r.strip() for r in evento.rol_destino.split(',')] if evento.rol_destino else []
+        
+        if not roles_destino:
+            print("❌ No hay roles destino definidos")
+            return 0
+        
+        contador = 0
+        
+        # Preparar mensaje
+        titulo = f"📅 Nuevo Evento: {evento.nombre}"
+        mensaje = f"{evento.descripcion}\n\n"
+        mensaje += f"📅 Fecha: {evento.fecha.strftime('%d/%m/%Y')}\n"
+        if evento.hora:
+            mensaje += f"🕒 Hora: {evento.hora.strftime('%I:%M %p')}\n"
+        mensaje += f"👥 Dirigido a: {evento.rol_destino}"
+        
+        # ✅ NOTIFICAR AL ADMINISTRADOR (confirmación)
+        if admin_id:
+            mensaje_admin = f"✅ Evento '{evento.nombre}' creado exitosamente y notificado a los usuarios correspondientes."
+            crear_notificacion(
+                usuario_id=admin_id,
+                titulo="✅ Evento Creado Exitosamente",
+                mensaje=mensaje_admin,
+                tipo='admin',
+                link="/admin/eventos",
+                auto_commit=False
+            )
+            contador += 1
+            print(f"   📨 Notificación de confirmación enviada al admin ID: {admin_id}")
+        
+        # ✅ CORRECCIÓN PRINCIPAL: OBTENER TODOS LOS USUARIOS DEL ROL DESTINO
+        for rol_nombre in roles_destino:
+            rol_nombre_clean = rol_nombre.strip().lower()
+            print(f"🔍 Buscando usuarios con rol: {rol_nombre_clean}")
+            
+            rol_obj = Rol.query.filter_by(nombre=rol_nombre_clean).first()
+            if not rol_obj:
+                print(f"   ❌ Rol '{rol_nombre_clean}' no encontrado")
+                continue
+                
+            usuarios_rol = Usuario.query.filter_by(id_rol_fk=rol_obj.id_rol).all()
+            print(f"   👥 Encontrados {len(usuarios_rol)} usuarios con rol {rol_nombre_clean}")
+            
+            # Determinar link según rol
+            if rol_nombre_clean == 'estudiante':
+                link_destino = "/estudiante/eventos"
+            elif rol_nombre_clean == 'profesor':
+                link_destino = "/profesor/calendario"
+            elif rol_nombre_clean == 'padre':
+                link_destino = "/padre/eventos"
+            else:
+                link_destino = "/calendario"
+            
+            # Notificar a CADA usuario del rol
+            for usuario in usuarios_rol:
+                crear_notificacion(
+                    usuario_id=usuario.id_usuario,
+                    titulo=titulo,
+                    mensaje=mensaje,
+                    tipo='evento',
+                    link=link_destino,
+                    auto_commit=False
+                )
+                contador += 1
+                print(f"      📨 Notificación enviada a {usuario.nombre_completo} (ID: {usuario.id_usuario})")
+        
+        # ✅ CORRECCIÓN ADICIONAL: SI EL EVENTO ES PARA ESTUDIANTES, NOTIFICAR A TODOS LOS PADRES TAMBIÉN
+        if 'estudiante' in [r.lower() for r in roles_destino]:
+            print("✅ Evento para estudiantes - Notificando a TODOS los padres también...")
+            
+            rol_padre = Rol.query.filter_by(nombre='padre').first()
+            if rol_padre:
+                # Obtener TODOS los padres, no solo los que tienen relaciones
+                todos_los_padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all()
+                print(f"   👨‍👩‍👧‍👦 Encontrados {len(todos_los_padres)} padres en el sistema")
+                
+                for padre in todos_los_padres:
+                    mensaje_padre = f"📋 Nuevo evento escolar para tu(s) hijo(s):\n\n{mensaje}"
+                    crear_notificacion(
+                        usuario_id=padre.id_usuario,
+                        titulo=f"📅 Evento Escolar: {evento.nombre}",
+                        mensaje=mensaje_padre,
+                        tipo='evento',
+                        link="/padre/eventos",
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"      📨 Notificación enviada a padre: {padre.nombre_completo} (ID: {padre.id_usuario})")
+        
+        # Hacer commit de todas las notificaciones
+        db.session.commit()
+        
+        print(f"✅ Notificaciones enviadas exitosamente: {contador} notificaciones en total")
+        return contador
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error notificando evento: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return 0
+
+def notificar_evento_actualizado(evento, admin_id=None):
+    """Envía notificaciones cuando un evento es actualizado - VERSIÓN MEJORADA CON NOTIFICACIÓN AL ADMIN"""
+    try:
+        from controllers.models import Rol, Usuario, estudiante_padre
+        
+        roles_destino = [r.strip() for r in evento.rol_destino.split(',')] if evento.rol_destino else []
+        
+        if not roles_destino:
+            return 0
+        
+        contador = 0
+        
+        titulo = f"✏️ Evento Actualizado: {evento.nombre}"
+        mensaje = f"Se han realizado cambios en el evento:\n\n{evento.descripcion}\n\n"
+        mensaje += f"📅 Fecha: {evento.fecha.strftime('%d/%m/%Y')}\n"
+        mensaje += f"🕒 Hora: {evento.hora.strftime('%I:%M %p')}\n"
+        mensaje += f"👥 Destinado a: {evento.rol_destino}"
+        
+        # ✅ NOTIFICAR AL ADMINISTRADOR (confirmación de actualización)
+        if admin_id:
+            mensaje_admin = f"✏️ Evento '{evento.nombre}' actualizado exitosamente y notificado a los usuarios correspondientes."
+            crear_notificacion(
+                usuario_id=admin_id,
+                titulo="✏️ Evento Actualizado Exitosamente",
+                mensaje=mensaje_admin,
+                tipo='admin',
+                link="/admin/eventos",
+                auto_commit=False
+            )
+            contador += 1
+            print(f"   📨 Notificación de actualización enviada al admin ID: {admin_id}")
+        
+        link = "/calendario"
+        
+        # Misma lógica que notificar_nuevo_evento pero con mensaje de actualización
+        if 'Estudiante' in roles_destino:
+            rol_estudiante = Rol.query.filter_by(nombre='estudiante').first()
+            if rol_estudiante:
+                estudiantes = Usuario.query.filter_by(id_rol_fk=rol_estudiante.id_rol).all()
+                
+                for estudiante in estudiantes:
+                    crear_notificacion(
+                        usuario_id=estudiante.id_usuario,
+                        titulo=titulo,
+                        mensaje=mensaje,
+                        tipo='evento',
+                        link=link,
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"   📨 Notificación de actualización enviada a estudiante: {estudiante.nombre_completo}")
+                    
+                    # Notificar a los padres del estudiante
+                    padres_estudiante = db.session.execute(
+                        db.select(Usuario).join(
+                            estudiante_padre, 
+                            Usuario.id_usuario == estudiante_padre.c.padre_id
+                        ).where(estudiante_padre.c.estudiante_id == estudiante.id_usuario)
+                    ).scalars().all()
+                    
+                    for padre in padres_estudiante:
+                        mensaje_padre = f"📋 Evento actualizado para tu hijo/a {estudiante.nombre_completo}:\n\n{mensaje}"
+                        crear_notificacion(
+                            usuario_id=padre.id_usuario,
+                            titulo=f"✏️ Evento Actualizado para {estudiante.nombre_completo}",
+                            mensaje=mensaje_padre,
+                            tipo='evento',
+                            link=link,
+                            auto_commit=False
+                        )
+                        contador += 1
+                        print(f"   📨 Notificación de actualización enviada a padre: {padre.nombre_completo}")
+        
+        if 'Profesor' in roles_destino:
+            rol_profesor = Rol.query.filter_by(nombre='profesor').first()
+            if rol_profesor:
+                profesores = Usuario.query.filter_by(id_rol_fk=rol_profesor.id_rol).all()
+                for profesor in profesores:
+                    crear_notificacion(
+                        usuario_id=profesor.id_usuario,
+                        titulo=titulo,
+                        mensaje=mensaje,
+                        tipo='evento',
+                        link=link,
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"   📨 Notificación de actualización enviada a profesor: {profesor.nombre_completo}")
+        
+        if 'Padre' in roles_destino:
+            rol_padre = Rol.query.filter_by(nombre='padre').first()
+            if rol_padre:
+                padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all()
+                for padre in padres:
+                    crear_notificacion(
+                        usuario_id=padre.id_usuario,
+                        titulo=titulo,
+                        mensaje=mensaje,
+                        tipo='evento',
+                        link=link,
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"   📨 Notificación de actualización enviada a padre: {padre.nombre_completo}")
+        
+        db.session.commit()
+        
+        print(f"✅ Notificaciones de evento actualizado enviadas: {contador} notificaciones")
+        return contador
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error notificando evento actualizado: {str(e)}")
+        return 0
+
+def notificar_evento_eliminado(evento, admin_id=None):
+    """Envía notificaciones cuando un evento es eliminado - VERSIÓN MEJORADA CON NOTIFICACIÓN AL ADMIN"""
+    try:
+        from controllers.models import Rol, Usuario, estudiante_padre
+        
+        roles_destino = [r.strip() for r in evento.rol_destino.split(',')] if evento.rol_destino else []
+        
+        if not roles_destino:
+            return 0
+        
+        contador = 0
+        
+        titulo = f"🗑️ Evento Cancelado: {evento.nombre}"
+        mensaje = f"El evento programado para el {evento.fecha.strftime('%d/%m/%Y')} ha sido cancelado."
+        
+        # ✅ NOTIFICAR AL ADMINISTRADOR (confirmación de eliminación)
+        if admin_id:
+            mensaje_admin = f"🗑️ Evento '{evento.nombre}' eliminado exitosamente y notificado a los usuarios correspondientes."
+            crear_notificacion(
+                usuario_id=admin_id,
+                titulo="🗑️ Evento Eliminado Exitosamente",
+                mensaje=mensaje_admin,
+                tipo='admin',
+                link="/admin/eventos",
+                auto_commit=False
+            )
+            contador += 1
+            print(f"   📨 Notificación de eliminación enviada al admin ID: {admin_id}")
+        
+        # Misma lógica de notificación
+        if 'Estudiante' in roles_destino:
+            rol_estudiante = Rol.query.filter_by(nombre='estudiante').first()
+            if rol_estudiante:
+                estudiantes = Usuario.query.filter_by(id_rol_fk=rol_estudiante.id_rol).all()
+                
+                for estudiante in estudiantes:
+                    crear_notificacion(
+                        usuario_id=estudiante.id_usuario,
+                        titulo=titulo,
+                        mensaje=mensaje,
+                        tipo='evento',
+                        link="/calendario",
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"   📨 Notificación de cancelación enviada a estudiante: {estudiante.nombre_completo}")
+                    
+                    padres_estudiante = db.session.execute(
+                        db.select(Usuario).join(
+                            estudiante_padre, 
+                            Usuario.id_usuario == estudiante_padre.c.padre_id
+                        ).where(estudiante_padre.c.estudiante_id == estudiante.id_usuario)
+                    ).scalars().all()
+                    
+                    for padre in padres_estudiante:
+                        mensaje_padre = f"El evento para tu hijo/a {estudiante.nombre_completo} ha sido cancelado: {mensaje}"
+                        crear_notificacion(
+                            usuario_id=padre.id_usuario,
+                            titulo=f"🗑️ Evento Cancelado para {estudiante.nombre_completo}",
+                            mensaje=mensaje_padre,
+                            tipo='evento',
+                            link="/calendario",
+                            auto_commit=False
+                        )
+                        contador += 1
+                        print(f"   📨 Notificación de cancelación enviada a padre: {padre.nombre_completo}")
+        
+        if 'Profesor' in roles_destino:
+            rol_profesor = Rol.query.filter_by(nombre='profesor').first()
+            if rol_profesor:
+                profesores = Usuario.query.filter_by(id_rol_fk=rol_profesor.id_rol).all()
+                for profesor in profesores:
+                    crear_notificacion(
+                        usuario_id=profesor.id_usuario,
+                        titulo=titulo,
+                        mensaje=mensaje,
+                        tipo='evento',
+                        link="/calendario",
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"   📨 Notificación de cancelación enviada a profesor: {profesor.nombre_completo}")
+        
+        if 'Padre' in roles_destino:
+            rol_padre = Rol.query.filter_by(nombre='padre').first()
+            if rol_padre:
+                padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).all()
+                for padre in padres:
+                    crear_notificacion(
+                        usuario_id=padre.id_usuario,
+                        titulo=titulo,
+                        mensaje=mensaje,
+                        tipo='evento',
+                        link="/calendario",
+                        auto_commit=False
+                    )
+                    contador += 1
+                    print(f"   📨 Notificación de cancelación enviada a padre: {padre.nombre_completo}")
+        
+        db.session.commit()
+        
+        print(f"✅ Notificaciones de evento cancelado enviadas: {contador} notificaciones")
+        return contador
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error notificando evento cancelado: {str(e)}")
+        return 0
+    
+
+

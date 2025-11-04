@@ -1,3 +1,5 @@
+// calendario.js - Script completo para el calendario de eventos
+
 let events = [];
 let currentDate = new Date();
 let selectedEventIndex = null;
@@ -5,8 +7,12 @@ let selectedRoles = new Set(['Estudiante']); // Valor por defecto
 let editingEventId = null;
 let editSelectedRoles = new Set();
 
-// Inicialización cuando el DOM está listo
+// =============================================
+// INICIALIZACIÓN Y CONFIGURACIÓN
+// =============================================
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inicializando calendario...');
     initializeCalendar();
     setupEventListeners();
     loadEvents();
@@ -25,6 +31,8 @@ function initializeCalendar() {
     
     // Mostrar tooltips en hover
     setupTooltips();
+    
+    console.log('📅 Calendario inicializado correctamente');
 }
 
 function setupEventListeners() {
@@ -38,6 +46,12 @@ function setupEventListeners() {
     // Validación de fecha y hora
     document.getElementById('date').addEventListener('change', updateTimeValidation);
     document.getElementById('editDate').addEventListener('change', updateEditTimeValidation);
+    
+    // Validación en tiempo real
+    setupRealTimeValidation();
+    
+    // Prevención de caracteres especiales
+    setupCharacterValidation();
     
     // Cerrar modales con ESC
     document.addEventListener('keydown', function(e) {
@@ -73,7 +87,214 @@ function setupEventListeners() {
     
     // Efectos de hover en botones de navegación
     setupNavigationEffects();
+    
+    // Botón de eliminar en modal de detalles
+    document.getElementById('deleteBtn').addEventListener('click', function() {
+        if (selectedEventIndex !== null) {
+            const event = events[selectedEventIndex];
+            deleteEvent(event.id);
+        }
+    });
+    
+    console.log('🎯 Event listeners configurados');
 }
+
+// =============================================
+// VALIDACIÓN DE CARACTERES - SOLO LETRAS Y NÚMEROS
+// =============================================
+
+function setupCharacterValidation() {
+    // Campos que deben validar caracteres especiales
+    const titleInput = document.getElementById('title');
+    const descriptionInput = document.getElementById('description');
+    const editTitleInput = document.getElementById('editTitle');
+    const editDescriptionInput = document.getElementById('editDescription');
+    
+    if (titleInput) {
+        titleInput.addEventListener('input', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'title');
+        });
+        
+        titleInput.addEventListener('keypress', function(e) {
+            preventSpecialCharacters(e);
+        });
+        
+        titleInput.addEventListener('blur', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'title');
+        });
+    }
+    
+    if (descriptionInput) {
+        descriptionInput.addEventListener('input', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'description');
+        });
+        
+        descriptionInput.addEventListener('keypress', function(e) {
+            preventSpecialCharacters(e);
+        });
+        
+        descriptionInput.addEventListener('blur', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'description');
+        });
+    }
+    
+    if (editTitleInput) {
+        editTitleInput.addEventListener('input', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'editTitle');
+        });
+        
+        editTitleInput.addEventListener('keypress', function(e) {
+            preventSpecialCharacters(e);
+        });
+        
+        editTitleInput.addEventListener('blur', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'editTitle');
+        });
+    }
+    
+    if (editDescriptionInput) {
+        editDescriptionInput.addEventListener('input', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'editDescription');
+        });
+        
+        editDescriptionInput.addEventListener('keypress', function(e) {
+            preventSpecialCharacters(e);
+        });
+        
+        editDescriptionInput.addEventListener('blur', function(e) {
+            validateOnlyLettersNumbersSpaces(this, 'editDescription');
+        });
+    }
+}
+
+function preventSpecialCharacters(e) {
+    // Permitir teclas de control (backspace, delete, tab, etc.)
+    if (e.ctrlKey || e.altKey || e.metaKey) return true;
+    
+    // Permitir teclas de navegación
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || 
+        e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+        e.key === 'Home' || e.key === 'End' ||
+        e.key === 'Tab' || e.key === 'Enter') return true;
+    
+    // Solo permitir: letras, números, espacios
+    const allowedPattern = /^[a-zA-ZÀ-ÿ0-9\s]$/;
+    
+    if (!allowedPattern.test(e.key)) {
+        e.preventDefault();
+        showTemporaryMessage('Solo se permiten letras, números y espacios');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateOnlyLettersNumbersSpaces(input, fieldType) {
+    const value = input.value;
+    const fieldName = getFieldName(fieldType);
+    
+    // Patrón extremadamente restrictivo: solo letras, números y espacios
+    const allowedPattern = /^[a-zA-ZÀ-ÿ0-9\s]*$/;
+    
+    // Encontrar caracteres no permitidos (cualquier cosa que no sea letra, número o espacio)
+    const invalidChars = /[^a-zA-ZÀ-ÿ0-9\s]/g;
+    const foundInvalid = value.match(invalidChars);
+    const hasInvalid = foundInvalid && foundInvalid.length > 0;
+    
+    if (hasInvalid) {
+        // Mostrar error con los caracteres específicos encontrados
+        const uniqueChars = [...new Set(foundInvalid)];
+        showCharacterError(input, `Caracteres no permitidos: ${uniqueChars.join(', ')}`);
+        
+        // Limpiar automáticamente los caracteres inválidos
+        const cleanedValue = value.replace(invalidChars, '');
+        input.value = cleanedValue;
+        
+        return false;
+    }
+    
+    if (!allowedPattern.test(value) && value.length > 0) {
+        showCharacterError(input, 'Solo se permiten letras, números y espacios');
+        return false;
+    }
+    
+    // Limpiar error si todo está bien
+    clearCharacterError(input);
+    return true;
+}
+
+function getFieldName(fieldType) {
+    const fieldNames = {
+        'title': 'Título',
+        'description': 'Descripción',
+        'editTitle': 'Título',
+        'editDescription': 'Descripción'
+    };
+    return fieldNames[fieldType] || 'Campo';
+}
+
+function showCharacterError(input, message) {
+    input.classList.add('character-error');
+    
+    let errorDiv = input.parentNode.querySelector('.character-validation-error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'character-validation-error';
+        input.parentNode.appendChild(errorDiv);
+    }
+    errorDiv.innerHTML = `<i class="fas fa-ban"></i> ${message}`;
+    
+    // Agregar efecto visual de shake
+    input.style.animation = 'shake 0.5s ease';
+    setTimeout(() => {
+        input.style.animation = '';
+    }, 500);
+}
+
+function clearCharacterError(input) {
+    input.classList.remove('character-error');
+    
+    const errorDiv = input.parentNode.querySelector('.character-validation-error');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+}
+
+function showTemporaryMessage(message) {
+    // Crear mensaje temporal
+    const tempMessage = document.createElement('div');
+    tempMessage.className = 'temporary-message';
+    tempMessage.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+    tempMessage.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--error-color);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        animation: fadeInOut 2s ease;
+    `;
+    
+    document.body.appendChild(tempMessage);
+    
+    setTimeout(() => {
+        tempMessage.remove();
+    }, 2000);
+}
+
+// Función para sanitizar el texto - elimina TODO lo que no sea letra, número o espacio
+function sanitizeText(text) {
+    if (!text) return text;
+    
+    // Remover TODO carácter especial, solo dejar letras, números y espacios
+    return text.replace(/[^a-zA-ZÀ-ÿ0-9\s]/g, '');
+}
+
+// =============================================
+// SELECTOR DE ROLES
+// =============================================
 
 function initializeRoleSelector() {
     const roleOptions = document.querySelectorAll('.role-option:not(#editEvent .role-option)');
@@ -120,6 +341,7 @@ function initializeRoleSelector() {
     
     // Inicializar display con el valor por defecto
     updateSelectedRolesDisplay();
+    console.log('👥 Selector de roles principal inicializado');
 }
 
 function initializeEditRoleSelector() {
@@ -164,69 +386,8 @@ function initializeEditRoleSelector() {
             }
         });
     });
-}
-
-function createSelectParticles(element) {
-    const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
     
-    for (let i = 0; i < 8; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'role-particle';
-        
-        const angle = (i / 8) * Math.PI * 2;
-        const distance = 50 + Math.random() * 30;
-        const tx = Math.cos(angle) * distance;
-        const ty = Math.sin(angle) * distance;
-        
-        particle.style.setProperty('--tx', `${tx}px`);
-        particle.style.setProperty('--ty', `${ty}px`);
-        particle.style.left = `${centerX}px`;
-        particle.style.top = `${centerY}px`;
-        
-        // Color basado en el tipo de rol
-        const role = element.dataset.value;
-        if (role === 'Estudiante') {
-            particle.style.background = 'var(--accent1)';
-        } else {
-            particle.style.background = 'var(--accent4)';
-        }
-        
-        document.body.appendChild(particle);
-        
-        setTimeout(() => {
-            particle.remove();
-        }, 1000);
-    }
-}
-
-function createDeselectParticles(element) {
-    const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    for (let i = 0; i < 6; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'role-particle';
-        
-        const angle = (i / 6) * Math.PI * 2;
-        const distance = 30 + Math.random() * 20;
-        const tx = Math.cos(angle) * distance;
-        const ty = Math.sin(angle) * distance;
-        
-        particle.style.setProperty('--tx', `${tx}px`);
-        particle.style.setProperty('--ty', `${ty}px`);
-        particle.style.left = `${centerX}px`;
-        particle.style.top = `${centerY}px`;
-        particle.style.background = 'var(--gray)';
-        
-        document.body.appendChild(particle);
-        
-        setTimeout(() => {
-            particle.remove();
-        }, 800);
-    }
+    console.log('👥 Selector de roles de edición inicializado');
 }
 
 function updateSelectedRolesDisplay() {
@@ -339,6 +500,116 @@ function updateEditSelectedRolesDisplay() {
     });
 }
 
+// =============================================
+// EFECTOS VISUALES Y ANIMACIONES
+// =============================================
+
+function createSelectParticles(element) {
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    for (let i = 0; i < 8; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'role-particle';
+        
+        const angle = (i / 8) * Math.PI * 2;
+        const distance = 50 + Math.random() * 30;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.left = `${centerX}px`;
+        particle.style.top = `${centerY}px`;
+        
+        // Color basado en el tipo de rol
+        const role = element.dataset.value;
+        if (role === 'Estudiante') {
+            particle.style.background = 'var(--accent1)';
+        } else {
+            particle.style.background = 'var(--accent4)';
+        }
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => {
+            particle.remove();
+        }, 1000);
+    }
+}
+
+function createDeselectParticles(element) {
+    const rect = element.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    for (let i = 0; i < 6; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'role-particle';
+        
+        const angle = (i / 6) * Math.PI * 2;
+        const distance = 30 + Math.random() * 20;
+        const tx = Math.cos(angle) * distance;
+        const ty = Math.sin(angle) * distance;
+        
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        particle.style.left = `${centerX}px`;
+        particle.style.top = `${centerY}px`;
+        particle.style.background = 'var(--gray)';
+        
+        document.body.appendChild(particle);
+        
+        setTimeout(() => {
+            particle.remove();
+        }, 800);
+    }
+}
+
+function createParticles() {
+    const container = document.getElementById('particles-container');
+    const particleCount = 15;
+    
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + 'vw';
+        particle.style.top = Math.random() * 100 + 'vh';
+        particle.style.animationDelay = Math.random() * 6 + 's';
+        particle.style.background = getRandomColor();
+        container.appendChild(particle);
+    }
+    
+    console.log('✨ Partículas creadas');
+}
+
+function getRandomColor() {
+    const colors = ['#F95738', '#EE964B', '#F4D35E', '#0D3B66'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function createRippleEffect(event) {
+    const ripple = document.createElement('div');
+    ripple.style.position = 'absolute';
+    ripple.style.borderRadius = '50%';
+    ripple.style.background = 'rgba(244, 211, 94, 0.6)';
+    ripple.style.transform = 'scale(0)';
+    ripple.style.animation = 'ripple 0.6s linear';
+    ripple.style.pointerEvents = 'none';
+    
+    const rect = event.target.getBoundingClientRect();
+    ripple.style.left = (event.clientX - rect.left - 5) + 'px';
+    ripple.style.top = (event.clientY - rect.top - 5) + 'px';
+    ripple.style.width = '10px';
+    ripple.style.height = '10px';
+    
+    event.target.style.position = 'relative';
+    event.target.appendChild(ripple);
+    
+    setTimeout(() => ripple.remove(), 600);
+}
+
 function setupNavigationEffects() {
     const navButtons = document.querySelectorAll('.month-nav-btn');
     
@@ -379,53 +650,16 @@ function setupTooltips() {
     });
 }
 
-function createParticles() {
-    const container = document.getElementById('particles-container');
-    const particleCount = 15;
-    
-    for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + 'vw';
-        particle.style.top = Math.random() * 100 + 'vh';
-        particle.style.animationDelay = Math.random() * 6 + 's';
-        particle.style.background = getRandomColor();
-        container.appendChild(particle);
-    }
-}
-
-function getRandomColor() {
-    const colors = ['#F95738', '#EE964B', '#F4D35E', '#0D3B66'];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-function createRippleEffect(event) {
-    const ripple = document.createElement('div');
-    ripple.style.position = 'absolute';
-    ripple.style.borderRadius = '50%';
-    ripple.style.background = 'rgba(244, 211, 94, 0.6)';
-    ripple.style.transform = 'scale(0)';
-    ripple.style.animation = 'ripple 0.6s linear';
-    ripple.style.pointerEvents = 'none';
-    
-    const rect = event.target.getBoundingClientRect();
-    ripple.style.left = (event.clientX - rect.left - 5) + 'px';
-    ripple.style.top = (event.clientY - rect.top - 5) + 'px';
-    ripple.style.width = '10px';
-    ripple.style.height = '10px';
-    
-    event.target.style.position = 'relative';
-    event.target.appendChild(ripple);
-    
-    setTimeout(() => ripple.remove(), 600);
-}
+// =============================================
+// FUNCIONALIDAD DEL CALENDARIO
+// =============================================
 
 function toggleForm() {
     const formContent = document.getElementById('formContent');
     const toggleBtn = document.getElementById('toggleForm');
     const icon = toggleBtn.querySelector('i');
     
-    if (formContent.style.display === 'none') {
+    if (formContent.style.display === 'none' || !formContent.style.display) {
         formContent.style.display = 'block';
         icon.className = 'fas fa-chevron-up';
         showToast('Formulario expandido', 'info');
@@ -437,7 +671,6 @@ function toggleForm() {
 }
 
 function goToPreviousMonth() {
-    // Efecto visual en el botón
     const prevBtn = document.getElementById('prevMonth');
     prevBtn.style.animation = 'bounce 0.5s ease';
     
@@ -451,7 +684,6 @@ function goToPreviousMonth() {
 }
 
 function goToNextMonth() {
-    // Efecto visual en el botón
     const nextBtn = document.getElementById('nextMonth');
     nextBtn.style.animation = 'bounce 0.5s ease';
     
@@ -523,7 +755,12 @@ function createCalendar() {
     }
 
     renderEvents();
+    console.log(`📅 Calendario de ${monthNames[month]} ${year} creado`);
 }
+
+// =============================================
+// GESTIÓN DE EVENTOS
+// =============================================
 
 function getSelectedRoles() {
     return Array.from(selectedRoles);
@@ -580,20 +817,356 @@ function loadEvents() {
                 console.error("❌ Error cargando eventos:", err);
                 loadingIndicator.style.display = 'none';
                 showToast('Error al cargar eventos', 'error');
+                // Cargar eventos de ejemplo para desarrollo
+                loadSampleEvents();
             });
     }, 1000);
 }
 
+function loadSampleEvents() {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth();
+    
+    events = [
+        {
+            id: 1,
+            title: "Reunión de Padres",
+            description: "Reunión general de padres de familia para tratar temas importantes del ciclo escolar",
+            date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-15`,
+            time: "15:00",
+            role: "Estudiante"
+        },
+        {
+            id: 2,
+            title: "Capacitación Docente",
+            description: "Sesión de capacitación sobre nuevas metodologías educativas",
+            date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-20`,
+            time: "09:00",
+            role: "Profesor"
+        },
+        {
+            id: 3,
+            title: "Feria Científica",
+            description: "Exposición de proyectos científicos de los estudiantes",
+            date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-25`,
+            time: "14:00",
+            role: "Estudiante,Profesor"
+        }
+    ];
+    
+    renderEvents();
+    showToast('Eventos de ejemplo cargados', 'warning');
+}
+
+function renderEvents() {
+    document.querySelectorAll(".day").forEach(dayDiv => {
+        const dayEventsDiv = dayDiv.querySelector(".events");
+        dayEventsDiv.innerHTML = '';
+        const date = dayDiv.dataset.date;
+
+        const dayEvents = events.filter(ev => ev.date === date);
+        
+        if (dayEvents.length > 0) {
+            dayDiv.classList.add('has-events');
+        }
+
+        dayEvents.forEach((ev, index) => {
+            const evDiv = document.createElement("div");
+            // Parsear los roles
+            const roles = typeof ev.role === 'string' ? ev.role.split(',') : [ev.role];
+            
+            evDiv.className = getEventClass(roles);
+            evDiv.setAttribute('data-roles', formatRolesDisplay(roles));
+            
+            // Agregar badges de roles si hay múltiples
+            let roleBadges = '';
+            if (roles.length > 1) {
+                roleBadges = roles.map(role => 
+                    `<span class="role-badge">${role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫'}</span>`
+                ).join('');
+            }
+            
+            evDiv.innerHTML = `${ev.time} - ${ev.title} ${roleBadges}`;
+            evDiv.onclick = (e) => {
+                createRippleEffect(e);
+                showEventDetails(ev, index);
+            };
+            
+            // Animación de entrada escalonada
+            evDiv.style.animation = `fadeIn 0.5s ease ${index * 0.1}s both`;
+            dayEventsDiv.appendChild(evDiv);
+        });
+    });
+}
+
+// =============================================
+// VALIDACIÓN DE FORMULARIOS
+// =============================================
+
+function setupRealTimeValidation() {
+    // Validación en tiempo real para el formulario principal
+    const inputs = ['title', 'description', 'date', 'time'];
+    inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('blur', validateField);
+            input.addEventListener('input', clearFieldError);
+        }
+    });
+    
+    // Validación para el formulario de edición
+    const editInputs = ['editTitle', 'editDescription', 'editDate', 'editTime'];
+    editInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('blur', validateEditField);
+            input.addEventListener('input', clearEditFieldError);
+        }
+    });
+}
+
+function validateField(e) {
+    const field = e.target;
+    const value = field.value.trim();
+    const fieldName = field.previousElementSibling?.textContent || 'Campo';
+    
+    // Remover errores previos
+    clearFieldError(e);
+    
+    if (!value) {
+        showFieldError(field, `${fieldName} es obligatorio`);
+        return false;
+    }
+    
+    // Validaciones específicas por campo
+    switch(field.id) {
+        case 'title':
+            if (value.length < 5) {
+                showFieldError(field, 'El título debe tener al menos 5 caracteres');
+                return false;
+            }
+            // Validar caracteres especiales
+            if (!validateOnlyLettersNumbersSpaces(field, 'title')) {
+                return false;
+            }
+            break;
+        case 'description':
+            if (value.length < 10) {
+                showFieldError(field, 'La descripción debe tener al menos 10 caracteres');
+                return false;
+            }
+            // Validar caracteres especiales
+            if (!validateOnlyLettersNumbersSpaces(field, 'description')) {
+                return false;
+            }
+            break;
+        case 'date':
+            if (!validarFechaFutura(value, document.getElementById('time').value)) {
+                showFieldError(field, 'La fecha debe ser futura');
+                return false;
+            }
+            break;
+    }
+    
+    showFieldSuccess(field);
+    return true;
+}
+
+function validateEditField(e) {
+    const field = e.target;
+    const value = field.value.trim();
+    const fieldName = field.previousElementSibling?.textContent || 'Campo';
+    
+    // Remover errores previos
+    clearEditFieldError(e);
+    
+    if (!value) {
+        showEditFieldError(field, `${fieldName} es obligatorio`);
+        return false;
+    }
+    
+    // Validaciones específicas por campo
+    switch(field.id) {
+        case 'editTitle':
+            if (value.length < 5) {
+                showEditFieldError(field, 'El título debe tener al menos 5 caracteres');
+                return false;
+            }
+            // Validar caracteres especiales
+            if (!validateOnlyLettersNumbersSpaces(field, 'editTitle')) {
+                return false;
+            }
+            break;
+        case 'editDescription':
+            if (value.length < 10) {
+                showEditFieldError(field, 'La descripción debe tener al menos 10 caracteres');
+                return false;
+            }
+            // Validar caracteres especiales
+            if (!validateOnlyLettersNumbersSpaces(field, 'editDescription')) {
+                return false;
+            }
+            break;
+        case 'editDate':
+            if (!validarFechaFutura(value, document.getElementById('editTime').value)) {
+                showEditFieldError(field, 'La fecha debe ser futura');
+                return false;
+            }
+            break;
+    }
+    
+    showEditFieldSuccess(field);
+    return true;
+}
+
+function showFieldError(field, message) {
+    field.classList.add('field-error');
+    
+    let errorDiv = field.parentNode.querySelector('.validation-error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'validation-error';
+        field.parentNode.appendChild(errorDiv);
+    }
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+}
+
+function showEditFieldError(field, message) {
+    field.classList.add('field-error');
+    
+    let errorDiv = field.parentNode.querySelector('.validation-error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'validation-error';
+        field.parentNode.appendChild(errorDiv);
+    }
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+}
+
+function showFieldSuccess(field) {
+    field.classList.remove('field-error');
+    
+    let successDiv = field.parentNode.querySelector('.validation-success');
+    if (!successDiv) {
+        successDiv = document.createElement('div');
+        successDiv.className = 'validation-success';
+        field.parentNode.appendChild(successDiv);
+    }
+    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> Campo válido`;
+    
+    setTimeout(() => {
+        successDiv.remove();
+    }, 2000);
+}
+
+function showEditFieldSuccess(field) {
+    field.classList.remove('field-error');
+    
+    let successDiv = field.parentNode.querySelector('.validation-success');
+    if (!successDiv) {
+        successDiv = document.createElement('div');
+        successDiv.className = 'validation-success';
+        field.parentNode.appendChild(successDiv);
+    }
+    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> Campo válido`;
+    
+    setTimeout(() => {
+        successDiv.remove();
+    }, 2000);
+}
+
+function clearFieldError(e) {
+    const field = e.target;
+    field.classList.remove('field-error');
+    
+    const errorDiv = field.parentNode.querySelector('.validation-error');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+    
+    const successDiv = field.parentNode.querySelector('.validation-success');
+    if (successDiv) {
+        successDiv.remove();
+    }
+}
+
+function clearEditFieldError(e) {
+    const field = e.target;
+    field.classList.remove('field-error');
+    
+    const errorDiv = field.parentNode.querySelector('.validation-error');
+    if (errorDiv) {
+        errorDiv.remove();
+    }
+    
+    const successDiv = field.parentNode.querySelector('.validation-success');
+    if (successDiv) {
+        successDiv.remove();
+    }
+}
+
+function validateForm() {
+    const fields = ['title', 'description', 'date', 'time'];
+    let isValid = true;
+    
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            const event = new Event('blur');
+            field.dispatchEvent(event);
+            if (field.classList.contains('field-error') || field.classList.contains('character-error')) {
+                isValid = false;
+            }
+        }
+    });
+    
+    // Validar roles
+    if (selectedRoles.size === 0) {
+        showToast('Debe seleccionar al menos un destinatario', 'error');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+function validateEditForm() {
+    const fields = ['editTitle', 'editDescription', 'editDate', 'editTime'];
+    let isValid = true;
+    
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            const event = new Event('blur');
+            field.dispatchEvent(event);
+            if (field.classList.contains('field-error') || field.classList.contains('character-error')) {
+                isValid = false;
+            }
+        }
+    });
+    
+    // Validar roles
+    if (editSelectedRoles.size === 0) {
+        showToast('Debe seleccionar al menos un destinatario', 'error');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+// =============================================
+// CREACIÓN Y EDICIÓN DE EVENTOS
+// =============================================
+
 function addEvent() {
-    const title = document.getElementById("title").value;
-    const description = document.getElementById("description").value;
+    const title = document.getElementById("title").value.trim();
+    const description = document.getElementById("description").value.trim();
     const date = document.getElementById("date").value;
     const time = document.getElementById("time").value;
     const roles = getSelectedRoles();
 
-    // Validaciones básicas
-    if (!title || !description || !date || !time) {
-        showToast("⚠️ Rellena todos los campos obligatorios", 'error');
+    // Validaciones
+    if (!validateForm()) {
+        showToast("⚠️ Por favor, corrige los errores en el formulario", 'error');
         return;
     }
 
@@ -601,6 +1174,10 @@ function addEvent() {
     if (!validarFechaFutura(date, time)) {
         return;
     }
+
+    // Sanitizar texto antes de enviar (elimina TODO carácter especial)
+    const sanitizedTitle = sanitizeText(title);
+    const sanitizedDescription = sanitizeText(description);
 
     // Mostrar indicador de carga
     const submitBtn = document.querySelector('.submit-btn');
@@ -612,8 +1189,8 @@ function addEvent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            nombre: title,
-            descripcion: description,
+            nombre: sanitizedTitle,
+            descripcion: sanitizedDescription,
             fecha: date,
             hora: time,
             rol_destino: roles.join(',')
@@ -636,7 +1213,12 @@ function addEvent() {
         document.getElementById("date").value = '';
         document.getElementById("time").value = '';
         
-        showToast("🎉 Evento agregado con éxito", 'success');
+        // Resetear roles
+        selectedRoles = new Set(['Estudiante']);
+        updateSelectedRolesDisplay();
+        updateRoleSelector();
+        
+        showToast("🎉 Evento creado con éxito", 'success');
     })
     .catch(err => {
         console.error("❌ Error creando evento:", err);
@@ -645,6 +1227,18 @@ function addEvent() {
     .finally(() => {
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
+    });
+}
+
+function updateRoleSelector() {
+    const roleOptions = document.querySelectorAll('.role-option:not(#editEvent .role-option)');
+    roleOptions.forEach(option => {
+        const role = option.dataset.value;
+        if (selectedRoles.has(role)) {
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
     });
 }
 
@@ -690,51 +1284,19 @@ function updateEditTimeValidation() {
     }
 }
 
-function renderEvents() {
-    document.querySelectorAll(".day").forEach(dayDiv => {
-        const dayEventsDiv = dayDiv.querySelector(".events");
-        dayEventsDiv.innerHTML = '';
-        const date = dayDiv.dataset.date;
-
-        const dayEvents = events.filter(ev => ev.date === date);
-        
-        if (dayEvents.length > 0) {
-            dayDiv.classList.add('has-events');
-        }
-
-        dayEvents.forEach((ev, index) => {
-            const evDiv = document.createElement("div");
-            // Parsear los roles
-            const roles = typeof ev.role === 'string' ? ev.role.split(',') : [ev.role];
-            
-            evDiv.className = getEventClass(roles);
-            evDiv.setAttribute('data-roles', formatRolesDisplay(roles));
-            
-            // Agregar badges de roles si hay múltiples
-            let roleBadges = '';
-            if (roles.length > 1) {
-                roleBadges = roles.map(role => 
-                    `<span class="role-badge">${role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫'}</span>`
-                ).join('');
-            }
-            
-            evDiv.innerHTML = `${ev.time} - ${ev.title} ${roleBadges}`;
-            evDiv.onclick = (e) => {
-                createRippleEffect(e);
-                showEventDetails(ev, index);
-            };
-            
-            // Animación de entrada escalonada
-            evDiv.style.animation = `fadeIn 0.5s ease ${index * 0.1}s both`;
-            dayEventsDiv.appendChild(evDiv);
-        });
-    });
-}
+// =============================================
+// MODALES Y DETALLES
+// =============================================
 
 function showEventDetails(ev, index) {
     selectedEventIndex = index;
     document.getElementById("detailTitle").textContent = ev.title;
-    document.getElementById("detailDate").textContent = ev.date;
+    
+    // Formatear fecha para mostrar
+    const fecha = new Date(ev.date);
+    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById("detailDate").textContent = fecha.toLocaleDateString('es-ES', opciones);
+    
     document.getElementById("detailTime").textContent = ev.time || 'Por definir';
     
     // Mostrar roles en el modal
@@ -755,10 +1317,6 @@ function showEventDetails(ev, index) {
         badge.style.background = 'linear-gradient(135deg, var(--accent4), #2a5a8c)';
     }
     
-    // Configurar botón de eliminar
-    const deleteBtn = document.getElementById("deleteBtn");
-    deleteBtn.onclick = () => deleteEvent(ev.id);
-    
     // Mostrar modal con animación
     const modal = document.getElementById("eventDetails");
     modal.style.display = "flex";
@@ -776,7 +1334,6 @@ function closeModal() {
     }, 300);
 }
 
-// Función para abrir el modal de edición
 function openEditModal(event) {
     editingEventId = event.id;
     
@@ -801,7 +1358,6 @@ function openEditModal(event) {
     modal.style.display = "flex";
 }
 
-// Función para cerrar el modal de edición
 function closeEditModal() {
     const modal = document.getElementById("editEvent");
     const modalContent = modal.querySelector('.modal-content');
@@ -815,33 +1371,16 @@ function closeEditModal() {
     }, 300);
 }
 
-// Función para actualizar el selector de roles en el modal de edición
-function updateEditRoleSelector() {
-    const roleOptions = document.querySelectorAll('#editEvent .role-option');
-    
-    roleOptions.forEach(option => {
-        const role = option.dataset.value;
-        if (editSelectedRoles.has(role)) {
-            option.classList.add('selected');
-        } else {
-            option.classList.remove('selected');
-        }
-    });
-    
-    updateEditSelectedRolesDisplay();
-}
-
-// Función para guardar los cambios del evento editado
 function saveEditedEvent() {
-    const title = document.getElementById("editTitle").value;
-    const description = document.getElementById("editDescription").value;
+    const title = document.getElementById("editTitle").value.trim();
+    const description = document.getElementById("editDescription").value.trim();
     const date = document.getElementById("editDate").value;
     const time = document.getElementById("editTime").value;
     const roles = Array.from(editSelectedRoles);
 
-    // Validaciones básicas
-    if (!title || !description || !date || !time) {
-        showToast("⚠️ Rellena todos los campos obligatorios", 'error');
+    // Validaciones
+    if (!validateEditForm()) {
+        showToast("⚠️ Por favor, corrige los errores en el formulario", 'error');
         return;
     }
 
@@ -849,6 +1388,10 @@ function saveEditedEvent() {
     if (!validarFechaFutura(date, time)) {
         return;
     }
+
+    // Sanitizar texto antes de enviar (elimina TODO carácter especial)
+    const sanitizedTitle = sanitizeText(title);
+    const sanitizedDescription = sanitizeText(description);
 
     // Mostrar indicador de carga
     const saveBtn = document.getElementById('saveEditBtn');
@@ -860,8 +1403,8 @@ function saveEditedEvent() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            nombre: title,
-            descripcion: description,
+            nombre: sanitizedTitle,
+            descripcion: sanitizedDescription,
             fecha: date,
             hora: time,
             rol_destino: roles.join(',')
@@ -891,7 +1434,7 @@ function saveEditedEvent() {
 }
 
 function deleteEvent(id) {
-    if (!confirm('¿Está seguro de que desea eliminar este evento?')) {
+    if (!confirm('¿Está seguro de que desea eliminar este evento? Esta acción no se puede deshacer.')) {
         return;
     }
 
@@ -921,6 +1464,10 @@ function deleteEvent(id) {
         });
 }
 
+// =============================================
+// NOTIFICACIONES Y UTILIDADES
+// =============================================
+
 function showToast(message, type = 'info') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -940,7 +1487,38 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// Exportar funciones para uso global
+// =============================================
+// EXPORTACIÓN DE FUNCIONES GLOBALES
+// =============================================
+
 window.addEvent = addEvent;
 window.closeModal = closeModal;
 window.closeEditModal = closeEditModal;
+window.validateForm = validateForm;
+
+console.log('🎉 Calendario de eventos cargado correctamente');
+
+// Manejo de errores global
+window.addEventListener('error', function(e) {
+    console.error('❌ Error global:', e.error);
+    showToast('Ha ocurrido un error inesperado', 'error');
+});
+
+// Exportar para pruebas
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        events,
+        currentDate,
+        selectedRoles,
+        editSelectedRoles,
+        initializeCalendar,
+        createCalendar,
+        validateForm,
+        validateEditForm,
+        getSelectedRoles,
+        formatRolesDisplay,
+        getEventClass,
+        validateOnlyLettersNumbersSpaces,
+        sanitizeText
+    };
+}

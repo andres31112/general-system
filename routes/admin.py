@@ -8,6 +8,11 @@ import json
 from werkzeug.utils import secure_filename
 from controllers.decorators import role_required
 from extensions import db
+from services.notification_service import (
+    notificar_nuevo_evento, 
+    notificar_evento_actualizado, 
+    notificar_evento_eliminado
+)
 from services.email_service import send_welcome_email, generate_verification_code, send_verification_success_email, send_welcome_email_with_retry, get_verification_info
 from controllers.forms import RegistrationForm, UserEditForm, SalonForm, CursoForm, SedeForm, EquipoForm
 from controllers.models import (
@@ -3461,16 +3466,222 @@ def api_detalle_incidente(id_incidente):
         return jsonify({'error': f"Error interno del servidor: {str(e)}"}), 500
 
 
-# ==================== CALENDARIO Y EVENTOS ====================
 
-# 📌 Vista del calendario de eventos (HTML)
+
+
+
+# 📌 VISTA DEL CALENDARIO (HTML) - AGREGA ESTA RUTA
 @admin_bp.route("/eventos/calendario", methods=["GET"])
 @login_required
 def calendario_eventos():
-    
-    return render_template("superadmin/calendario_admin/index.html")
+    return render_template("superadmin/calendario_admin/index.html") 
 
-# 📌 API: Obtener todos los eventos
+
+@admin_bp.route("/debug/notificaciones-eventos", methods=["GET"])
+@login_required
+def debug_notificaciones_eventos():
+    """Debug ESPECÍFICO para notificaciones de eventos"""
+    try:
+        from controllers.models import Notificacion, Usuario, Evento
+        
+        print("\n" + "="*80)
+        print("🔍 NOTIFICACIONES DE EVENTOS ESPECÍFICAMENTE")
+        print("="*80)
+        
+        # 1. Contar notificaciones por tipo
+        total_notificaciones = Notificacion.query.count()
+        notif_eventos = Notificacion.query.filter_by(tipo='evento').count()
+        notif_otros = total_notificaciones - notif_eventos
+        
+        print(f"\n📊 ESTADÍSTICAS DE NOTIFICACIONES:")
+        print(f"   - Total: {total_notificaciones}")
+        print(f"   - Tipo 'evento': {notif_eventos}")
+        print(f"   - Otros tipos: {notif_otros}")
+        
+        # 2. Mostrar todas las notificaciones de eventos
+        notificaciones_eventos = Notificacion.query.filter_by(
+            tipo='evento'
+        ).order_by(Notificacion.creada_en.desc()).limit(30).all()
+        
+        print(f"\n📅 NOTIFICACIONES DE EVENTOS ({len(notificaciones_eventos)} encontradas):")
+        
+        for i, notif in enumerate(notificaciones_eventos, 1):
+            usuario = Usuario.query.get(notif.usuario_id)
+            nombre_usuario = usuario.nombre_completo if usuario else f"ID:{notif.usuario_id}"
+            fecha_str = notif.creada_en.strftime("%m/%d %H:%M") if notif.creada_en else "Sin fecha"
+            
+            print(f"   {i}. [{fecha_str}] {nombre_usuario} (ID:{notif.usuario_id})")
+            print(f"      📝 {notif.titulo}")
+            print(f"      📄 {notif.mensaje[:60]}...")
+            print(f"      🔸 Leída: {notif.leida}")
+            print()
+        
+        # 3. Verificar distribución por usuarios (VERSIÓN CORREGIDA)
+        print(f"\n👥 DISTRIBUCIÓN POR USUARIOS:")
+        # Obtener distribución manualmente
+        distribucion = {}
+        notificaciones_todas = Notificacion.query.filter_by(tipo='evento').all()
+
+        for notif in notificaciones_todas:
+            if notif.usuario_id not in distribucion:
+                usuario = Usuario.query.get(notif.usuario_id)
+                nombre = usuario.nombre_completo if usuario else f"ID:{notif.usuario_id}"
+                distribucion[notif.usuario_id] = {'nombre': nombre, 'count': 0}
+            distribucion[notif.usuario_id]['count'] += 1
+
+        # Ordenar por cantidad y mostrar top 15
+        distribucion_ordenada = sorted(distribucion.values(), key=lambda x: x['count'], reverse=True)[:15]
+
+        for item in distribucion_ordenada:
+            print(f"   - {item['nombre']}: {item['count']} notificaciones")
+        
+        print("\n" + "="*80)
+        print("✅ DIAGNÓSTICO DE EVENTOS COMPLETADO")
+        print("="*80)
+        
+        return jsonify({
+            "message": "Diagnóstico de eventos completado - Revisa la consola",
+            "total_notificaciones": total_notificaciones,
+            "notificaciones_eventos": notif_eventos,
+            "distribucion_usuarios": len(distribucion)
+        })
+        
+    except Exception as e:
+        print(f"❌ ERROR EN DIAGNÓSTICO: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ========== FUNCIÓN CORREGIDA PARA ADMIN ==========
+def get_sidebar_counts():
+    """Función auxiliar CORREGIDA para obtener los contadores del sidebar en ADMIN"""
+    from datetime import datetime
+    
+    try:
+        print("🔧 DEBUG ADMIN: Calculando contadores del sidebar...")
+        
+        # ✅ 1. MENSAJES NO LEÍDOS (SOLO para Comunicaciones)
+        unread_messages = Comunicacion.query.filter(
+            Comunicacion.destinatario_id == current_user.id_usuario,
+            Comunicacion.estado.in_(['no_leido', 'inbox', 'unread', 'pendiente', 'nuevo'])
+        ).count()
+        
+        print(f"📨 ADMIN - Comunicaciones no leídas: {unread_messages}")
+        
+        # ✅ 2. NOTIFICACIONES NO LEÍDAS (SOLO para Notificaciones)  
+        unread_notifications = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        print(f"🔔 ADMIN - Notificaciones no leídas: {unread_notifications}")
+        
+        # ✅ 3. EVENTOS PRÓXIMOS
+        hoy = datetime.now().date()
+        upcoming_events = Evento.query.filter(
+            Evento.fecha.isnot(None),
+            Evento.fecha >= hoy
+        ).count()
+        
+        print(f"📅 ADMIN - Eventos próximos: {upcoming_events}")
+        print(f"🎯 ADMIN RESUMEN - Mensajes: {unread_messages}, Notificaciones: {unread_notifications}, Eventos: {upcoming_events}")
+        
+        return {
+            'unread_messages': unread_messages,
+            'unread_notifications': unread_notifications,
+            'upcoming_events': upcoming_events
+        }
+        
+    except Exception as e:
+        print(f"❌ ERROR en get_sidebar_counts ADMIN: {e}")
+        return {
+            'unread_messages': 0,
+            'unread_notifications': 0,
+            'upcoming_events': 0
+        }
+# ========== FIN FUNCIÓN CORREGIDA ==========
+@admin_bp.route('/debug-contadores')
+@login_required
+@role_required('Administrador')
+def debug_contadores_admin():
+    """Ruta temporal para debug en admin"""
+    counts = get_sidebar_counts()
+    
+    # Ver datos reales en BD
+    comunicaciones = Comunicacion.query.filter_by(destinatario_id=current_user.id_usuario).all()
+    notificaciones = Notificacion.query.filter_by(usuario_id=current_user.id_usuario).all()
+    
+    debug_info = {
+        'usuario_actual': current_user.id_usuario,
+        'rol_actual': current_user.rol.nombre if current_user.rol else 'Sin rol',
+        'counts_calculados': counts,
+        'comunicaciones': [
+            {'id': c.id_comunicacion, 'estado': c.estado, 'asunto': c.asunto, 'destinatario_id': c.destinatario_id} 
+            for c in comunicaciones
+        ],
+        'notificaciones': [
+            {'id': n.id_notificacion, 'leida': n.leida, 'titulo': n.titulo, 'usuario_id': n.usuario_id} 
+            for n in notificaciones
+        ]
+    }
+    
+    return jsonify(debug_info)
+
+@admin_bp.route("/debug/notificaciones-padres", methods=["GET"])
+@login_required
+def debug_notificaciones_padres():
+    """Ruta temporal para diagnosticar notificaciones a padres"""
+    try:
+        from controllers.models import Rol, Usuario, estudiante_padre, Evento
+        
+        print("🔍 INICIANDO DIAGNÓSTICO DE NOTIFICACIONES A PADRES")
+        
+        # 1. Verificar eventos recientes
+        eventos_recientes = Evento.query.order_by(Evento.id.desc()).limit(5).all()
+        print("📅 Eventos recientes:")
+        for evento in eventos_recientes:
+            print(f"   - {evento.nombre} | Rol: {evento.rol_destino} | Fecha: {evento.fecha}")
+        
+        # 2. Verificar padres en el sistema
+        rol_padre = Rol.query.filter_by(nombre='padre').first()
+        if rol_padre:
+            padres = Usuario.query.filter_by(id_rol_fk=rol_padre.id_rol).limit(10).all()
+            print(f"👨‍👩‍👧‍👦 Padres en sistema ({len(padres)} encontrados):")
+            for padre in padres:
+                print(f"   - {padre.nombre_completo} (ID: {padre.id_usuario})")
+        
+        # 3. Verificar relaciones padre-estudiante
+        relaciones = db.session.execute(
+            db.select(estudiante_padre).limit(10)
+        ).fetchall()
+        print("🔗 Relaciones padre-estudiante:")
+        for rel in relaciones:
+            print(f"   - Padre ID: {rel.padre_id} -> Estudiante ID: {rel.estudiante_id}")
+        
+        # 4. Verificar notificaciones existentes para padres
+        if padres:
+            notificaciones_padres = Notificacion.query.filter(
+                Notificacion.usuario_id.in_([p.id_usuario for p in padres]),
+                Notificacion.tipo == 'evento'
+            ).limit(10).all()
+            
+            print(f"📢 Notificaciones de eventos para padres ({len(notificaciones_padres)} encontradas):")
+            for notif in notificaciones_padres:
+                print(f"   - Para usuario {notif.usuario_id}: {notif.titulo}")
+        
+        return jsonify({
+            "message": "Diagnóstico completado - Revisa la consola del servidor",
+            "eventos": len(eventos_recientes),
+            "padres": len(padres) if rol_padre else 0,
+            "relaciones": len(relaciones),
+            "notificaciones_padres": len(notificaciones_padres)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en diagnóstico: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# 📌 API: OBTENER TODOS LOS EVENTOS (GET)
 @admin_bp.route("/eventos", methods=["GET"])
 @login_required
 def listar_eventos():
@@ -3479,61 +3690,79 @@ def listar_eventos():
         resultado = []
         for ev in eventos:
             resultado.append({
-                "IdEvento": ev.id,
-                "Nombre": ev.nombre,
-                "Descripcion": ev.descripcion,
-                "Fecha": ev.fecha.strftime("%Y-%m-%d"),
-                "Hora": ev.hora.strftime("%H:%M:%S"),
-                "RolDestino": ev.rol_destino
+                "id": ev.id,
+                "nombre": ev.nombre,
+                "descripcion": ev.descripcion,
+                "fecha": ev.fecha.strftime("%Y-%m-%d"),
+                "hora": ev.hora.strftime("%H:%M:%S"),
+                "rol_destino": ev.rol_destino
             })
         return jsonify(resultado), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# 📌 API: Crear un nuevo evento
+# 📌 API: CREAR NUEVO EVENTO (POST) - ¡ESTA FALTABA!
 @admin_bp.route("/eventos", methods=["POST"])
 @login_required
 def crear_evento():
     data = request.get_json()
-    print("📥 Payload recibido:", data)  # Debug en consola
+    print("📥 Payload recibido:", data)
 
     try:
-        # Leer valores (aceptando minúsculas o mayúsculas)
+        # Leer valores
         nombre = data.get("nombre") or data.get("Nombre")
         descripcion = data.get("descripcion") or data.get("Descripcion")
         fecha_str = data.get("fecha") or data.get("Fecha")
         hora_str = data.get("hora") or data.get("Hora")
         rol_destino = data.get("rol_destino") or data.get("RolDestino")
 
-        if not fecha_str or not hora_str:
-            return jsonify({"error": "Faltan fecha u hora"}), 400
+        if not all([nombre, descripcion, fecha_str, hora_str, rol_destino]):
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
 
-        # 🕒 Normalizar hora: quitar "a. m." / "p. m." y convertir a 24h
+        # 🕒 Normalizar hora
         hora_str = hora_str.replace("a. m.", "AM").replace("p. m.", "PM").strip()
 
         try:
-            hora_dt = datetime.strptime(hora_str, "%I:%M %p")  # 12h → 24h
+            hora_dt = datetime.strptime(hora_str, "%I:%M %p")
         except ValueError:
-            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")  # fallback
+            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")
 
+        # Validar fecha
+        fecha_evento = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        if fecha_evento < datetime.now().date():
+            return jsonify({"error": "No se pueden crear eventos en fechas pasadas"}), 400
+
+        # Crear evento
         nuevo_evento = Evento(
             nombre=nombre,
             descripcion=descripcion,
-            fecha=datetime.strptime(fecha_str, "%Y-%m-%d").date(),
+            fecha=fecha_evento,
             hora=hora_dt.time(),
             rol_destino=rol_destino
         )
 
         db.session.add(nuevo_evento)
         db.session.commit()
-        return jsonify({"mensaje": "Evento creado correctamente ✅"}), 201
+
+        # ✅ IMPORTAR Y USAR LA FUNCIÓN MEJORADA CON ADMIN_ID
+        from services.notification_service import notificar_nuevo_evento
+        
+        notificaciones_enviadas = notificar_nuevo_evento(nuevo_evento, current_user.id_usuario)
+        
+        print(f"✅ Evento creado - Notificaciones enviadas: {notificaciones_enviadas}")
+
+        return jsonify({
+            "mensaje": "Evento creado correctamente ✅", 
+            "notificaciones_enviadas": notificaciones_enviadas,
+            "evento_id": nuevo_evento.id
+        }), 201
 
     except Exception as e:
         db.session.rollback()
-        print("❌ Error creando evento:", str(e))  # Debug en consola
+        print("❌ Error creando evento:", str(e))
         return jsonify({"error": str(e)}), 400
 
-# 📌 API: Actualizar evento existente
+# 📌 API: ACTUALIZAR EVENTO EXISTENTE (PUT)
 @admin_bp.route("/eventos/<int:evento_id>", methods=["PUT"])
 @login_required
 def actualizar_evento(evento_id):
@@ -3545,40 +3774,56 @@ def actualizar_evento(evento_id):
         if not evento:
             return jsonify({"error": "Evento no encontrado"}), 404
 
-        # Leer valores (aceptando minúsculas o mayúsculas)
+        # Leer valores
         nombre = data.get("nombre") or data.get("Nombre")
         descripcion = data.get("descripcion") or data.get("Descripcion")
         fecha_str = data.get("fecha") or data.get("Fecha")
         hora_str = data.get("hora") or data.get("Hora")
         rol_destino = data.get("rol_destino") or data.get("RolDestino")
 
-        if not fecha_str or not hora_str:
-            return jsonify({"error": "Faltan fecha u hora"}), 400
+        if not all([nombre, descripcion, fecha_str, hora_str, rol_destino]):
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
 
-        # 🕒 Normalizar hora: quitar "a. m." / "p. m." y convertir a 24h
+        # 🕒 Normalizar hora
         hora_str = hora_str.replace("a. m.", "AM").replace("p. m.", "PM").strip()
 
         try:
-            hora_dt = datetime.strptime(hora_str, "%I:%M %p")  # 12h → 24h
+            hora_dt = datetime.strptime(hora_str, "%I:%M %p")
         except ValueError:
-            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")  # fallback
+            hora_dt = datetime.strptime(hora_str[:5], "%H:%M")
+
+        # Validar fecha
+        fecha_evento = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        if fecha_evento < datetime.now().date():
+            return jsonify({"error": "No se pueden actualizar eventos a fechas pasadas"}), 400
 
         # Actualizar campos
         evento.nombre = nombre
         evento.descripcion = descripcion
-        evento.fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        evento.fecha = fecha_evento
         evento.hora = hora_dt.time()
         evento.rol_destino = rol_destino
 
         db.session.commit()
-        return jsonify({"mensaje": "Evento actualizado correctamente ✅"}), 200
+
+        # ✅ IMPORTAR Y USAR LA FUNCIÓN MEJORADA CON ADMIN_ID
+        from services.notification_service import notificar_evento_actualizado
+        
+        notificaciones_enviadas = notificar_evento_actualizado(evento, current_user.id_usuario)
+        
+        print(f"✅ Evento actualizado - Notificaciones enviadas: {notificaciones_enviadas}")
+
+        return jsonify({
+            "mensaje": "Evento actualizado correctamente ✅",
+            "notificaciones_enviadas": notificaciones_enviadas
+        }), 200
 
     except Exception as e:
         db.session.rollback()
         print("❌ Error actualizando evento:", str(e))
         return jsonify({"error": str(e)}), 400
 
-# 📌 API: Eliminar evento
+# 📌 API: ELIMINAR EVENTO (DELETE)
 @admin_bp.route("/eventos/<int:evento_id>", methods=["DELETE"])
 @login_required
 def eliminar_evento(evento_id):
@@ -3587,11 +3832,25 @@ def eliminar_evento(evento_id):
         if not evento:
             return jsonify({"error": "Evento no encontrado"}), 404
 
+        # ✅ IMPORTAR Y USAR LA FUNCIÓN MEJORADA CON ADMIN_ID
+        from services.notification_service import notificar_evento_eliminado
+        
+        notificaciones_enviadas = notificar_evento_eliminado(evento, current_user.id_usuario)
+        
+        print(f"✅ Evento eliminado - Notificaciones enviadas: {notificaciones_enviadas}")
+
+        # Eliminar evento
         db.session.delete(evento)
         db.session.commit()
-        return jsonify({"mensaje": "Evento eliminado correctamente ✅"}), 200
+
+        return jsonify({
+            "mensaje": "Evento eliminado correctamente ✅",
+            "notificaciones_enviadas": notificaciones_enviadas
+        }), 200
+
     except Exception as e:
         db.session.rollback()
+        print("❌ Error eliminando evento:", str(e))
         return jsonify({"error": str(e)}), 500
 
 # ==================== SISTEMA DE VOTACIÓN ====================
@@ -5134,31 +5393,47 @@ def notificaciones():
 @login_required
 @role_required(1)
 def api_notificaciones():
-    """API para obtener notificaciones paginadas"""
+    """API para obtener notificaciones paginadas - VERSIÓN CORREGIDA"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         filtro = request.args.get('filtro', 'todas', type=str)
         
-        from services.notification_service import get_notifications_paginated
+        # USAR LAS FUNCIONES QUE YA TIENES
+        from services.notification_service import obtener_todas_notificaciones
         
-        pagination = get_notifications_paginated(
-            current_user.id_usuario, page, per_page, filtro
-        )
+        # Obtener todas las notificaciones del usuario
+        todas_notificaciones = obtener_todas_notificaciones(current_user.id_usuario, limite=1000)
+        
+        # Aplicar filtros
+        if filtro == 'pendientes':
+            notificaciones_filtradas = [n for n in todas_notificaciones if not n.leida]
+        elif filtro == 'leidas':
+            notificaciones_filtradas = [n for n in todas_notificaciones if n.leida]
+        else:
+            notificaciones_filtradas = todas_notificaciones
+        
+        # Paginación manual
+        total = len(notificaciones_filtradas)
+        pages = (total + per_page - 1) // per_page  # Cálculo de páginas
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        notificaciones_pagina = notificaciones_filtradas[start_idx:end_idx]
         
         return jsonify({
             'success': True,
             'data': {
-                'notificaciones': [notif.to_dict() for notif in pagination.items],
-                'total': pagination.total,
-                'pages': pagination.pages,
-                'current_page': pagination.page,
-                'has_next': pagination.has_next,
-                'has_prev': pagination.has_prev
+                'notificaciones': [notif.to_dict() for notif in notificaciones_pagina],
+                'total': total,
+                'pages': pages,
+                'current_page': page,
+                'has_next': page < pages,
+                'has_prev': page > 1
             }
         })
         
     except Exception as e:
+        print(f"❌ Error en API notificaciones: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
@@ -5169,25 +5444,42 @@ def api_notificaciones():
 @login_required
 @role_required(1)
 def api_marcar_leidas():
-    """API para marcar notificaciones como leídas"""
+    """API para marcar notificaciones como leídas - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
         notificacion_ids = data.get('notificacion_ids', [])
         
-        from services.notification_service import mark_read
+        from services.notification_service import marcar_notificacion_como_leida
         
         if notificacion_ids:
-            updated = mark_read(current_user.id_usuario, notificacion_ids)
+            # Marcar notificaciones específicas
+            contador = 0
+            for notif_id in notificacion_ids:
+                if marcar_notificacion_como_leida(notif_id, current_user.id_usuario):
+                    contador += 1
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se marcaron {contador} notificaciones como leídas'
+            })
         else:
-            from services.notification_service import mark_all_read
-            updated = mark_all_read(current_user.id_usuario)
-        
-        return jsonify({
-            'success': True,
-            'message': f'Se marcaron {updated} notificaciones como leídas'
-        })
+            # Marcar todas como leídas
+            from services.notification_service import obtener_notificaciones_no_leidas
+            
+            notificaciones_no_leidas = obtener_notificaciones_no_leidas(current_user.id_usuario)
+            contador = 0
+            
+            for notif in notificaciones_no_leidas:
+                if marcar_notificacion_como_leida(notif.id_notificacion, current_user.id_usuario):
+                    contador += 1
+            
+            return jsonify({
+                'success': True,
+                'message': f'Se marcaron {contador} notificaciones como leídas'
+            })
         
     except Exception as e:
+        print(f"❌ Error marcando notificaciones como leídas: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
@@ -5198,19 +5490,26 @@ def api_marcar_leidas():
 @login_required
 @role_required(1)
 def api_eliminar_notificaciones():
-    """API para eliminar notificaciones"""
+    """API para eliminar notificaciones - VERSIÓN CORREGIDA"""
     try:
         data = request.get_json()
         notificacion_ids = data.get('notificacion_ids', [])
         eliminar_todas = data.get('eliminar_todas', False)
         
-        from services.notification_service import delete_notifications, delete_all_user_notifications
+        from controllers.models import Notificacion, db
         
         if eliminar_todas:
-            deleted = delete_all_user_notifications(current_user.id_usuario)
+            # Eliminar todas las notificaciones del usuario
+            deleted = Notificacion.query.filter_by(usuario_id=current_user.id_usuario).delete()
+            db.session.commit()
             message = f'Se eliminaron {deleted} notificaciones'
         else:
-            deleted = delete_notifications(current_user.id_usuario, notificacion_ids)
+            # Eliminar notificaciones específicas
+            deleted = Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).delete(synchronize_session=False)
+            db.session.commit()
             message = f'Se eliminaron {deleted} notificaciones'
         
         return jsonify({
@@ -5219,10 +5518,13 @@ def api_eliminar_notificaciones():
         })
         
     except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error eliminando notificaciones: {str(e)}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+    
 
 
 # ============================================================================

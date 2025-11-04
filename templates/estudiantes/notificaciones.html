@@ -1,0 +1,372 @@
+{% extends "/estudiantes/base.html" %}
+
+{% block title %}Mis Notificaciones{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="welcome-card p-4 rounded" style="background: var(--gradient-primary); color: var(--white);">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="mb-2"><i class="fas fa-bell me-2"></i>Mis Notificaciones</h1>
+                        <p class="mb-0">Gestiona todas tus notificaciones y mantente informado.</p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <div class="stats-badge p-3 rounded d-inline-block" style="background: rgba(255,255,255,0.2);">
+                            <h4 class="mb-0">{{ notificaciones|length }}</h4>
+                            <small>Total notificaciones</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="card-title mb-0" style="color: var(--accent4);">
+                                <i class="fas fa-filter me-2"></i>Filtrar notificaciones
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                                    Todas ({{ notificaciones|length }})
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-filter="unread">
+                                    No leídas ({{ notificaciones_no_leidas }})
+                                </button>
+                            </div>
+                            <button class="btn btn-success ms-2" id="markAllAsRead">
+                                <i class="fas fa-check-double me-1"></i>Marcar todas como leídas
+                            </button>
+                            <a href="{{ url_for('estudiante.estudiante_panel') }}" class="btn btn-outline-secondary ms-2">
+                                <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Notificaciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    {% if notificaciones %}
+                    <div class="list-group list-group-flush">
+                        {% for notificacion in notificaciones %}
+                        <div class="list-group-item notification-item {% if not notificacion.leida %}bg-light{% endif %}" 
+                             data-notification-id="{{ notificacion.id_notificacion }}"
+                             data-read="{{ 'true' if notificacion.leida else 'false' }}">
+                            <div class="row align-items-center">
+                                <div class="col-1 text-center">
+                                    <div class="notification-icon">
+                                        {% if notificacion.tipo == 'votacion' %}
+                                        <i class="fas fa-vote-yea fa-2x text-primary"></i>
+                                        {% elif notificacion.tipo == 'evento' %}
+                                        <i class="fas fa-calendar-alt fa-2x text-success"></i>
+                                        {% elif notificacion.tipo == 'equipo' %}
+                                        <i class="fas fa-laptop fa-2x text-warning"></i>
+                                        {% elif notificacion.tipo == 'comunicacion' %}
+                                        <i class="fas fa-envelope fa-2x text-info"></i>
+                                        {% elif notificacion.tipo == 'calificacion' %}
+                                        <i class="fas fa-chart-line fa-2x text-danger"></i>
+                                        {% elif notificacion.tipo == 'asistencia' %}
+                                        <i class="fas fa-user-check fa-2x text-secondary"></i>
+                                        {% else %}
+                                        <i class="fas fa-bell fa-2x text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-8">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h5 class="mb-1" style="color: var(--accent4);">
+                                                {{ notificacion.titulo }}
+                                                {% if not notificacion.leida %}
+                                                <span class="badge bg-primary ms-2">Nuevo</span>
+                                                {% endif %}
+                                            </h5>
+                                            <p class="mb-1 text-muted">{{ notificacion.mensaje }}</p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                {{ notificacion.creada_en.strftime('%d/%m/%Y %H:%M') }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-3 text-end">
+                                    <div class="btn-group">
+                                        <!-- ENLACES CORREGIDOS -->
+                                        {% if notificacion.tipo == 'evento' %}
+                                        <a href="/estudiante/eventos" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-calendar me-1"></i>Ver calendario
+                                        </a>
+                                        {% elif notificacion.tipo == 'votacion' %}
+                                        <a href="/estudiante/eleccion" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-vote-yea me-1"></i>Ir a votar
+                                        </a>
+                                        {% elif notificacion.tipo == 'equipo' %}
+                                        <a href="/estudiante/mi-equipo" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-laptop me-1"></i>Ver equipo
+                                        </a>
+                                        {% elif notificacion.tipo == 'comunicacion' %}
+                                        <a href="/estudiante/comunicaciones" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-envelope me-1"></i>Ver mensajes
+                                        </a>
+                                        {% elif notificacion.link %}
+                                        <a href="{{ notificacion.link }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt me-1"></i>Ver más
+                                        </a>
+                                        {% endif %}
+                                        
+                                        {% if not notificacion.leida %}
+                                        <button class="btn btn-sm btn-outline-success mark-as-read" 
+                                                data-id="{{ notificacion.id_notificacion }}">
+                                            <i class="fas fa-check me-1"></i>Leída
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-outline-danger delete-notification" 
+                                                data-id="{{ notificacion.id_notificacion }}">
+                                            <i class="fas fa-trash me-1"></i>Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-bell-slash fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay notificaciones</h4>
+                        <p class="text-muted">Cuando recibas notificaciones, aparecerán aquí.</p>
+                        <a href="{{ url_for('estudiante.estudiante_panel') }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-1"></i>Volver al Dashboard
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if notificaciones %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Paginación de notificaciones">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1">Anterior</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">Siguiente</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.notification-item {
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    padding: 1.5rem 1rem;
+}
+
+.notification-item:hover {
+    background-color: var(--light) !important;
+    transform: translateX(5px);
+}
+
+.notification-item[data-read="false"] {
+    border-left-color: var(--accent1);
+    background-color: #f0f7ff !important;
+}
+
+.notification-item[data-read="true"] {
+    opacity: 0.8;
+}
+
+.notification-icon {
+    transition: transform 0.3s ease;
+}
+
+.notification-item:hover .notification-icon {
+    transform: scale(1.1);
+}
+
+.btn-group .btn {
+    margin: 0 2px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filtrar notificaciones
+    const filterButtons = document.querySelectorAll('[data-filter]');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            
+            // Actualizar botones activos
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Aplicar filtro
+            const notifications = document.querySelectorAll('.notification-item');
+            notifications.forEach(notification => {
+                if (filter === 'all') {
+                    notification.style.display = 'flex';
+                } else if (filter === 'unread') {
+                    if (notification.getAttribute('data-read') === 'false') {
+                        notification.style.display = 'flex';
+                    } else {
+                        notification.style.display = 'none';
+                    }
+                }
+            });
+        });
+    });
+
+    // Marcar como leída individual
+    document.querySelectorAll('.mark-as-read').forEach(button => {
+        button.addEventListener('click', async function() {
+            const notificationId = this.getAttribute('data-id');
+            const notificationItem = this.closest('.notification-item');
+            
+            try {
+                const response = await fetch(`/estudiante/api/notificaciones/${notificationId}/marcar-leida`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    // Actualizar UI
+                    notificationItem.setAttribute('data-read', 'true');
+                    notificationItem.classList.remove('bg-light');
+                    
+                    // Remover badge "Nuevo"
+                    const badge = notificationItem.querySelector('.badge');
+                    if (badge) {
+                        badge.remove();
+                    }
+                    
+                    // Ocultar botón "Leída"
+                    this.style.display = 'none';
+                    
+                    // Actualizar contador
+                    updateNotificationCount();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al marcar la notificación como leída');
+            }
+        });
+    });
+
+    // Marcar todas como leídas
+    document.getElementById('markAllAsRead').addEventListener('click', async function() {
+        if (!confirm('¿Estás seguro de que quieres marcar todas las notificaciones como leídas?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch("/estudiante/api/notificaciones/marcar-todas-leidas", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                // Actualizar todas las notificaciones en la UI
+                document.querySelectorAll('.notification-item').forEach(item => {
+                    item.setAttribute('data-read', 'true');
+                    item.classList.remove('bg-light');
+                    
+                    const badge = item.querySelector('.badge');
+                    if (badge) {
+                        badge.remove();
+                    }
+                    
+                    const readButton = item.querySelector('.mark-as-read');
+                    if (readButton) {
+                        readButton.style.display = 'none';
+                    }
+                });
+                
+                updateNotificationCount();
+                alert('Todas las notificaciones han sido marcadas como leídas');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al marcar las notificaciones como leídas');
+        }
+    });
+
+    // Eliminar notificación
+    document.querySelectorAll('.delete-notification').forEach(button => {
+        button.addEventListener('click', function() {
+            const notificationId = this.getAttribute('data-id');
+            const notificationItem = this.closest('.notification-item');
+            
+            if (!confirm('¿Estás seguro de que quieres eliminar esta notificación?')) {
+                return;
+            }
+            
+            fetch(`/estudiante/api/notificaciones/${notificationId}/eliminar`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    notificationItem.style.opacity = '0';
+                    setTimeout(() => {
+                        notificationItem.remove();
+                        updateNotificationCount();
+                        
+                        // Si no quedan notificaciones, recargar la página
+                        if (document.querySelectorAll('.notification-item').length === 0) {
+                            location.reload();
+                        }
+                    }, 300);
+                } else {
+                    alert('Error al eliminar la notificación');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al eliminar la notificación');
+            });
+        });
+    });
+
+    function updateNotificationCount() {
+        // Actualizar el contador en el header si es necesario
+        location.reload();
+    }
+});
+</script>
+{% endblock %}

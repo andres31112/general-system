@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
-    HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta, AsignacionEquipo, Equipo, Rol
+HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion
 )
 from datetime import datetime, date
 import json
@@ -3165,15 +3165,17 @@ def api_eventos_profesor():
                 "Nombre": ev.nombre,
                 "Descripcion": ev.descripcion,
                 "Fecha": ev.fecha.strftime("%Y-%m-%d"),
-                "Hora": ev.hora.strftime("%H:%M:%S"),
+                "Hora": ev.hora.strftime("%H:%M:%S") if ev.hora else "",
                 "RolDestino": ev.rol_destino
             })
 
         return jsonify(resultado), 200
     except Exception as e:
+        print(f"Error en api_eventos_profesor: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
+        
 # ============================================================================ #
 # SOLICITUDES DE CONSULTA
 # ============================================================================ #
@@ -3418,6 +3420,224 @@ def api_obtener_periodos_profesor():
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+
+
+
+# ========== SERVICIO DE NOTIFICACIONES PARA PROFESORES ==========
+def crear_notificacion_profesor(usuario_id, titulo, mensaje, tipo="sistema", link=None):
+    """Crear una notificación para un profesor específico"""
+    try:
+        notificacion = Notificacion(
+            usuario_id=usuario_id,
+            titulo=titulo,
+            mensaje=mensaje,
+            tipo=tipo,
+            leida=False,
+            link=link
+        )
+        db.session.add(notificacion)
+        db.session.commit()
+        print(f"✅ Notificación creada para profesor {usuario_id}")
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error creando notificación: {e}")
+        return False
+
+def get_sidebar_counts_profesor():
+    """Función auxiliar para obtener los contadores del sidebar para profesores"""
+    from datetime import datetime
+    
+    try:
+        # Mensajes no leídos (para comunicaciones)
+        unread_messages = Comunicacion.query.filter_by(
+            destinatario_id=current_user.id_usuario, 
+            estado='inbox'
+        ).count()
+        
+        # Notificaciones no leídas (para notificaciones)
+        unread_notifications = Notificacion.query.filter_by(
+            usuario_id=current_user.id_usuario,
+            leida=False
+        ).count()
+        
+        # Eventos próximos (para calendario)
+        hoy = datetime.now().date()
+        eventos_proximos = Evento.query.filter(
+            Evento.fecha >= hoy,
+            Evento.rol_destino == "Profesor"
+        ).all()
+        upcoming_events = len(eventos_proximos)
+        
+        return {
+            'unread_messages': unread_messages,
+            'unread_notifications': unread_notifications,
+            'upcoming_events': upcoming_events
+        }
+        
+    except Exception as e:
+        print(f"❌ Error en get_sidebar_counts_profesor: {e}")
+        return {
+            'unread_messages': 0,
+            'unread_notifications': 0,
+            'upcoming_events': 0
+        }
+# ========== FIN SERVICIO DE NOTIFICACIONES ==========
+
+# ========== RUTAS DE NOTIFICACIONES PARA PROFESORES ==========
+@profesor_bp.route("/api/sidebar/contadores")
+@login_required
+def api_sidebar_contadores_profesor():
+    """API para obtener los contadores del sidebar para profesores"""
+    try:
+        counts = get_sidebar_counts_profesor()
+        return jsonify({
+            'success': True,
+            'unread_messages': counts['unread_messages'],
+            'unread_notifications': counts['unread_notifications'],
+            'upcoming_events': counts['upcoming_events']
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'error': str(e),
+            'unread_messages': 0,
+            'unread_notifications': 0,
+            'upcoming_events': 0
+        })
+
+@profesor_bp.route("/notificaciones")
+@login_required
+def notificaciones_profesor():
+    """Vista principal de notificaciones para profesores"""
+    counts = get_sidebar_counts_profesor()
+    return render_template("profesores/notificaciones/notificaciones.html",
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
+
+@profesor_bp.route("/api/notificaciones")
+@login_required
+def api_obtener_notificaciones_profesor():
+    """API para obtener notificaciones del profesor con paginación"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        filtro = request.args.get('filtro', 'todas')
+        
+        query = Notificacion.query.filter_by(usuario_id=current_user.id_usuario)
+        
+        if filtro == 'pendientes':
+            query = query.filter_by(leida=False)
+        elif filtro == 'leidas':
+            query = query.filter_by(leida=True)
+        
+        pagination = query.order_by(Notificacion.creada_en.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        notificaciones_data = []
+        for notif in pagination.items:
+            notificaciones_data.append({
+                "id": notif.id_notificacion,
+                "titulo": notif.titulo,
+                "mensaje": notif.mensaje,
+                "tipo": notif.tipo,
+                "leida": notif.leida,
+                "link": notif.link,
+                "fecha_creacion": notif.creada_en.strftime('%d/%m/%Y %H:%M') if notif.creada_en else 'Reciente',
+                "creada_en": notif.creada_en.isoformat() if notif.creada_en else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "notificaciones": notificaciones_data,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": pagination.page,
+                "has_next": pagination.has_next,
+                "has_prev": pagination.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@profesor_bp.route("/api/notificaciones/marcar-leidas", methods=["POST"])
+@login_required
+def api_marcar_notificaciones_leidas_profesor():
+    """Marcar notificaciones como leídas"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        
+        if notificacion_ids:
+            Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).update({"leida": True})
+        else:
+            Notificacion.query.filter_by(
+                usuario_id=current_user.id_usuario,
+                leida=False
+            ).update({"leida": True})
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@profesor_bp.route("/api/notificaciones/eliminar", methods=["POST"])
+@login_required
+def api_eliminar_notificaciones_profesor():
+    """Eliminar notificaciones"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        eliminar_todas = data.get('eliminar_todas', False)
+        
+        if eliminar_todas:
+            Notificacion.query.filter_by(usuario_id=current_user.id_usuario).delete()
+        elif notificacion_ids:
+            Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).delete()
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@profesor_bp.route("/api/notificaciones/probar", methods=["GET"])
+@login_required
+def probar_notificacion_profesor():
+    """Ruta para probar la creación de notificaciones"""
+    try:
+        resultado = crear_notificacion_profesor(
+            usuario_id=current_user.id_usuario,
+            titulo="🔔 Notificación de prueba - Profesor",
+            mensaje=f"Esta es una notificación de prueba para verificar que el sistema funciona correctamente. Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            tipo="sistema",
+            link="/profesor/notificaciones"
+        )
+        
+        if resultado:
+            flash("✅ Notificación de prueba creada correctamente", "success")
+        else:
+            flash("❌ Error creando notificación de prueba", "error")
+            
+        return redirect(url_for('profesor.notificaciones_profesor'))
+            
+    except Exception as e:
+        flash(f"❌ Error: {str(e)}", "error")
+        return redirect(url_for('profesor.notificaciones_profesor'))
 
 # ==================== ASIGNACIÓN DE EQUIPOS POR PROFESORES ====================
 

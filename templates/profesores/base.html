@@ -603,7 +603,16 @@
                 <a href="{{ url_for('profesor.comunicaciones') }}" class="nav-link rounded {% if request.endpoint == 'profesor.comunicaciones' %}active{% endif %}">
                     <i class="fas fa-envelope"></i>Comunicaciones
                     {% if unread_messages|default(0) > 0 %}
-                    <span class="badge-notification">{{ unread_messages|default(0) }}</span>
+                    <span class="badge-notification" id="messagesBadge">{{ unread_messages|default(0) }}</span>
+                    {% endif %}
+                </a>
+                <!-- ✅ ENLACE DE NOTIFICACIONES AGREGADO -->
+                <a href="{{ url_for('profesor.notificaciones_profesor') }}" class="nav-link rounded {% if request.endpoint == 'profesor.notificaciones_profesor' %}active{% endif %}">
+                    <i class="fas fa-bell"></i>Notificaciones
+                    {% if unread_notifications|default(0) > 0 %}
+                    <span class="badge-notification" id="notificationsBadge">{{ unread_notifications|default(0) }}</span>
+                    {% else %}
+                    <span class="badge-notification" id="notificationsBadge" style="display: none;">0</span>
                     {% endif %}
                 </a>
                 <a href="{{ url_for('profesor.solicitudes') }}" class="nav-link rounded {% if request.endpoint == 'profesor.solicitudes' %}active{% endif %}">
@@ -614,6 +623,11 @@
                 </a>
                 <a href="{{ url_for('profesor.ver_eventos') }}" class="nav-link rounded {% if request.endpoint == 'profesor.ver_eventos' %}active{% endif %}">
                     <i class="fas fa-calendar-day"></i>Eventos
+                    {% if upcoming_events|default(0) > 0 %}
+                    <span class="badge-notification" id="eventsBadge">{{ upcoming_events|default(0) }}</span>
+                    {% else %}
+                    <span class="badge-notification" id="eventsBadge" style="display: none;">0</span>
+                    {% endif %}
                 </a>
             </div>
 
@@ -790,6 +804,62 @@
                     document.body.style.overflow = '';
                 }
             });
+
+            // ✅ ACTUALIZAR CONTADORES DEL SIDEBAR AL CARGAR
+            actualizarContadoresSidebar();
+        });
+
+        // ✅ FUNCIÓN PARA ACTUALIZAR CONTADORES DEL SIDEBAR
+        function actualizarContadoresSidebar() {
+            fetch('/profesor/api/sidebar/contadores')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Actualizar badge de notificaciones
+                        const notifBadge = document.getElementById('notificationsBadge');
+                        if (notifBadge) {
+                            if (data.unread_notifications > 0) {
+                                notifBadge.textContent = data.unread_notifications;
+                                notifBadge.style.display = 'flex';
+                            } else {
+                                notifBadge.style.display = 'none';
+                            }
+                        }
+                        
+                        // Actualizar badge de mensajes
+                        const msgBadge = document.getElementById('messagesBadge');
+                        if (msgBadge) {
+                            if (data.unread_messages > 0) {
+                                msgBadge.textContent = data.unread_messages;
+                                msgBadge.style.display = 'flex';
+                            } else {
+                                msgBadge.style.display = 'none';
+                            }
+                        }
+                        
+                        // Actualizar badge de eventos
+                        const eventsBadge = document.getElementById('eventsBadge');
+                        if (eventsBadge) {
+                            if (data.upcoming_events > 0) {
+                                eventsBadge.textContent = data.upcoming_events;
+                                eventsBadge.style.display = 'flex';
+                            } else {
+                                eventsBadge.style.display = 'none';
+                            }
+                        }
+                    }
+                })
+                .catch(error => console.error('Error actualizando contadores:', error));
+        }
+
+        // Ejecutar cada 30 segundos
+        setInterval(actualizarContadoresSidebar, 30000);
+
+        // También actualizar cuando la página se enfoca
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                actualizarContadoresSidebar();
+            }
         });
 
         // Variables globales para el modal de selección

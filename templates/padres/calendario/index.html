@@ -1,5 +1,4 @@
-{% extends "/estudiantes/base.html" %}
-
+{% extends "/padres/base.html" %}
 {% block title %}Calendario de Eventos{% endblock %}
 
 {% block content %}
@@ -11,7 +10,7 @@
         <div class="header-content">
             <button id="todayBtn" class="btn-today">
                 <i class="fas fa-calendar-day"></i>
-                <span class="btn-text">Hoy</span>
+                Hoy
             </button>
             
             <div class="date-navigation">
@@ -62,13 +61,13 @@
 
     <!-- Encabezados de días de la semana -->
     <div class="weekdays-header">
-        <div class="weekday">Dom</div>
-        <div class="weekday">Lun</div>
-        <div class="weekday">Mar</div>
-        <div class="weekday">Mié</div>
-        <div class="weekday">Jue</div>
-        <div class="weekday">Vie</div>
-        <div class="weekday">Sáb</div>
+        <div class="weekday">Domingo</div>
+        <div class="weekday">Lunes</div>
+        <div class="weekday">Martes</div>
+        <div class="weekday">Miércoles</div>
+        <div class="weekday">Jueves</div>
+        <div class="weekday">Viernes</div>
+        <div class="weekday">Sábado</div>
     </div>
 
     <!-- Contenedor del calendario -->
@@ -182,27 +181,55 @@
         }
     }
 
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40% {
+            transform: translateY(-8px);
+        }
+        60% {
+            transform: translateY(-4px);
+        }
+    }
+
+    @keyframes ripple {
+        0% {
+            transform: scale(0);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
     /* Estilos generales */
     .calendar-title {
         color: var(--accent4);
         font-weight: 700;
-        font-size: clamp(1.8rem, 4vw, 2.5rem);
-        margin-bottom: 1.5rem;
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
         animation: fadeInUp 0.8s ease-out;
         text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         background: linear-gradient(135deg, var(--accent4), var(--accent1));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        padding: 0 1rem;
     }
 
     /* Header del calendario */
     .calendar-header {
         background: linear-gradient(135deg, var(--accent4), var(--accent1));
         border-radius: var(--border-radius);
-        padding: 1rem;
-        margin-bottom: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
         box-shadow: var(--shadow);
         animation: slideInLeft 0.6s ease-out;
     }
@@ -220,7 +247,7 @@
         background: rgba(255, 255, 255, 0.2);
         border: 2px solid rgba(255, 255, 255, 0.3);
         color: white;
-        padding: 0.6rem 1rem;
+        padding: 0.75rem 1.5rem;
         border-radius: 50px;
         cursor: pointer;
         font-weight: 600;
@@ -229,7 +256,6 @@
         gap: 0.5rem;
         transition: var(--transition);
         backdrop-filter: blur(10px);
-        font-size: 0.9rem;
     }
 
     .btn-today:hover {
@@ -242,24 +268,21 @@
     .date-navigation {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        flex: 1;
-        justify-content: center;
+        gap: 1rem;
     }
 
     .nav-btn {
         background: rgba(255, 255, 255, 0.2);
         border: none;
         color: white;
-        width: 35px;
-        height: 35px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: var(--transition);
-        flex-shrink: 0;
     }
 
     .nav-btn:hover {
@@ -269,40 +292,31 @@
 
     .current-month {
         text-align: center;
-        min-width: 0;
-        flex: 1;
     }
 
     .current-month h3 {
         margin: 0;
-        font-size: clamp(1.1rem, 3vw, 1.5rem);
+        font-size: 1.5rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     .month-year-selector {
         display: flex;
-        gap: 0.3rem;
+        gap: 0.5rem;
         align-items: center;
-        justify-content: center;
-        flex-wrap: wrap;
     }
 
     .select-custom {
         background: rgba(255, 255, 255, 0.9);
         border: none;
-        padding: 0.4rem 0.8rem;
+        padding: 0.5rem 1rem;
         border-radius: 25px;
         font-weight: 600;
         color: var(--accent4);
         cursor: pointer;
         transition: var(--transition);
-        min-width: 100px;
-        font-size: 0.8rem;
-        height: 35px;
+        min-width: 120px;
     }
 
     .select-custom:focus {
@@ -314,8 +328,8 @@
         background: var(--accent3);
         border: none;
         color: var(--black);
-        width: 35px;
-        height: 35px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         cursor: pointer;
         display: flex;
@@ -323,7 +337,6 @@
         justify-content: center;
         transition: var(--transition);
         font-weight: bold;
-        flex-shrink: 0;
     }
 
     .btn-go:hover {
@@ -334,20 +347,18 @@
     /* Resumen de eventos */
     .events-summary .badge {
         background: rgba(255, 255, 255, 0.2);
-        padding: 0.4rem 0.8rem;
+        padding: 0.5rem 1rem;
         border-radius: 20px;
         font-weight: 600;
         backdrop-filter: blur(10px);
-        font-size: 0.8rem;
-        white-space: nowrap;
     }
 
     /* Encabezados de días */
     .weekdays-header {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 0.3rem;
-        margin-bottom: 0.5rem;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
         animation: fadeInUp 0.8s ease-out 0.2s both;
     }
 
@@ -355,51 +366,36 @@
         text-align: center;
         font-weight: 600;
         color: var(--accent4);
-        padding: 0.6rem 0.3rem;
+        padding: 1rem;
         background: var(--light);
-        border-radius: 8px;
-        font-size: clamp(0.7rem, 2.5vw, 0.9rem);
-        border: 1px solid var(--accent3);
-        text-overflow: ellipsis;
-        overflow: hidden;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        border: 2px solid var(--accent3);
     }
 
     /* Grid del calendario */
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 0.3rem;
+        gap: 0.5rem;
         background: white;
-        padding: 1rem;
+        padding: 1.5rem;
         border-radius: var(--border-radius);
         box-shadow: var(--shadow);
         animation: fadeInUp 1s ease-out 0.4s both;
-        min-height: 400px;
+        min-height: 600px;
     }
 
     .day {
-        border: 1px solid var(--light-gray);
-        padding: 0.5rem;
-        min-height: 80px;
+        border: 2px solid var(--light-gray);
+        padding: 1rem;
+        min-height: 120px;
         position: relative;
-        border-radius: 8px;
+        border-radius: 10px;
         background: white;
         transition: var(--transition);
         cursor: pointer;
         overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .day.empty {
-        background: var(--light-gray);
-        cursor: default;
-    }
-
-    .day.empty:hover {
-        transform: none;
-        box-shadow: none;
-        border-color: var(--light-gray);
     }
 
     .day::before {
@@ -408,14 +404,14 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 3px;
+        height: 4px;
         background: var(--accent4);
         transform: scaleX(0);
         transition: var(--transition);
     }
 
     .day:hover {
-        transform: translateY(-2px);
+        transform: translateY(-5px);
         box-shadow: var(--shadow-hover);
         border-color: var(--accent4);
     }
@@ -441,11 +437,10 @@
 
     .day-number {
         display: block;
-        font-size: clamp(0.8rem, 3vw, 1.1rem);
+        font-size: 1.1rem;
         font-weight: 700;
-        margin-bottom: 0.3rem;
-        color: var(--black);
-        line-height: 1;
+        margin-bottom: 0.5rem;
+        color: var(--dark);
     }
 
     .day.events .day-number {
@@ -453,25 +448,21 @@
     }
 
     .events-container {
-        font-size: 0.7rem;
-        flex: 1;
-        overflow: hidden;
+        font-size: 0.75rem;
     }
 
     .event {
         background: linear-gradient(135deg, var(--accent4), #1a4a7a);
         color: white;
-        padding: 0.2rem 0.4rem;
-        margin-bottom: 0.2rem;
-        border-radius: 4px;
+        padding: 0.4rem 0.6rem;
+        margin-bottom: 0.3rem;
+        border-radius: 6px;
         cursor: pointer;
         transition: var(--transition);
-        font-size: 0.6rem;
-        line-height: 1.2;
+        font-size: 0.7rem;
+        line-height: 1.3;
         position: relative;
         overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
     }
 
     .event::before {
@@ -489,12 +480,12 @@
 
     .event:hover {
         background: linear-gradient(135deg, var(--accent1), #ff6b4a);
-        transform: translateX(2px);
+        transform: translateX(3px);
     }
 
     .event:hover::before {
-        width: 200px;
-        height: 200px;
+        width: 300px;
+        height: 300px;
     }
 
     .event.urgent {
@@ -504,19 +495,18 @@
 
     .event-time {
         font-weight: 600;
-        margin-right: 0.2rem;
-        font-size: 0.55rem;
+        margin-right: 0.3rem;
     }
 
     .event-more {
         background: var(--accent3);
         color: var(--black);
-        padding: 0.2rem 0.3rem;
-        border-radius: 3px;
-        font-size: 0.55rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
         font-weight: 600;
         text-align: center;
-        margin-top: 0.1rem;
+        margin-top: 0.2rem;
     }
 
     /* Modal mejorado */
@@ -533,41 +523,37 @@
         z-index: 1000;
         backdrop-filter: blur(5px);
         animation: fadeInUp 0.3s ease-out;
-        padding: 1rem;
     }
 
     .modal-content {
         background: white;
         border-radius: var(--border-radius);
-        width: 100%;
+        width: 90%;
         max-width: 500px;
         box-shadow: var(--shadow-large);
         overflow: hidden;
-        max-height: 90vh;
-        overflow-y: auto;
     }
 
     .modal-header {
         background: linear-gradient(135deg, var(--accent4), var(--accent1));
         color: white;
-        padding: 1.2rem;
+        padding: 1.5rem;
         position: relative;
     }
 
     .modal-header h3 {
         margin: 0;
         margin-right: 3rem;
-        font-size: 1.2rem;
-        line-height: 1.3;
+        font-size: 1.3rem;
     }
 
     .event-badge {
         display: inline-block;
         background: var(--accent3);
         color: var(--black);
-        padding: 0.3rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.7rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
         font-weight: 600;
         margin-top: 0.5rem;
     }
@@ -575,8 +561,8 @@
     .close {
         position: absolute;
         top: 1rem;
-        right: 1.2rem;
-        font-size: 1.3rem;
+        right: 1.5rem;
+        font-size: 1.5rem;
         cursor: pointer;
         transition: var(--transition);
         width: 30px;
@@ -593,17 +579,17 @@
     }
 
     .modal-body {
-        padding: 1.2rem;
+        padding: 1.5rem;
     }
 
     .detail-item {
         display: flex;
         align-items: flex-start;
-        gap: 0.8rem;
-        margin-bottom: 0.8rem;
-        padding: 0.6rem;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding: 0.8rem;
         background: var(--light);
-        border-radius: 6px;
+        border-radius: 8px;
         transition: var(--transition);
     }
 
@@ -613,9 +599,9 @@
 
     .detail-item i {
         color: var(--accent4);
-        font-size: 1rem;
-        margin-top: 0.1rem;
-        min-width: 16px;
+        font-size: 1.1rem;
+        margin-top: 0.2rem;
+        min-width: 20px;
     }
 
     .detail-item.full-width {
@@ -626,12 +612,11 @@
     .detail-item strong {
         color: var(--accent4);
         display: block;
-        margin-bottom: 0.2rem;
-        font-size: 0.9rem;
+        margin-bottom: 0.3rem;
     }
 
     .modal-footer {
-        padding: 1rem 1.2rem;
+        padding: 1rem 1.5rem;
         text-align: right;
         border-top: 1px solid var(--border);
     }
@@ -640,15 +625,14 @@
         background: var(--accent1);
         color: white;
         border: none;
-        padding: 0.6rem 1.2rem;
-        border-radius: 20px;
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
         cursor: pointer;
         font-weight: 600;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         transition: var(--transition);
-        font-size: 0.9rem;
     }
 
     .btn-close:hover {
@@ -659,23 +643,21 @@
     /* Toast notifications */
     .toast {
         position: fixed;
-        bottom: 1rem;
-        right: 1rem;
-        left: 1rem;
+        bottom: 2rem;
+        right: 2rem;
         background: var(--accent4);
         color: white;
-        padding: 0.8rem 1rem;
+        padding: 1rem 1.5rem;
         border-radius: var(--border-radius);
         box-shadow: var(--shadow-large);
-        transform: translateY(150%);
+        transform: translateX(150%);
         transition: var(--transition);
         z-index: 1001;
-        max-width: none;
-        text-align: center;
+        max-width: 300px;
     }
 
     .toast.show {
-        transform: translateY(0);
+        transform: translateX(0);
     }
 
     .toast.success {
@@ -694,19 +676,19 @@
     /* Indicador de carga */
     .loading-indicator {
         text-align: center;
-        padding: 2rem 1rem;
+        padding: 30px;
         color: var(--accent4);
         display: none;
     }
 
     .spinner {
-        border: 3px solid var(--light);
-        border-top: 3px solid var(--accent4);
+        border: 4px solid var(--light);
+        border-top: 4px solid var(--accent4);
         border-radius: 50%;
-        width: 35px;
-        height: 35px;
+        width: 40px;
+        height: 40px;
         animation: spin 1s linear infinite;
-        margin: 0 auto 1rem;
+        margin: 0 auto 15px;
     }
 
     @keyframes spin {
@@ -714,161 +696,34 @@
         100% { transform: rotate(360deg); }
     }
 
-    /* Responsive mejorado */
+    /* Responsive */
     @media (max-width: 768px) {
-        .container {
-            padding: 0 0.5rem;
-        }
-        
-        .calendar-header {
-            padding: 0.8rem;
-            margin-bottom: 0.8rem;
-        }
-        
         .header-content {
             flex-direction: column;
-            gap: 0.8rem;
             text-align: center;
         }
         
-        .date-navigation {
-            order: 2;
-            width: 100%;
+        .calendar-grid {
+            gap: 0.3rem;
+            padding: 1rem;
         }
         
-        .btn-today {
-            order: 1;
-            align-self: center;
-        }
-        
-        .view-actions {
-            order: 3;
-            width: 100%;
-            display: flex;
-            justify-content: center;
+        .day {
+            min-height: 80px;
+            padding: 0.5rem;
         }
         
         .month-year-selector {
             flex-direction: column;
             width: 100%;
-            gap: 0.3rem;
         }
         
         .select-custom {
             width: 100%;
-            min-width: auto;
         }
         
-        .calendar-grid {
-            gap: 0.2rem;
-            padding: 0.8rem;
-            min-height: 350px;
-        }
-        
-        .day {
-            min-height: 70px;
-            padding: 0.3rem;
-        }
-        
-        .day-number {
-            font-size: 0.9rem;
-        }
-        
-        .events-container {
-            font-size: 0.65rem;
-        }
-        
-        .event {
-            padding: 0.15rem 0.3rem;
-            font-size: 0.55rem;
-            margin-bottom: 0.15rem;
-        }
-        
-        .event-time {
-            display: none; /* Ocultar hora en móviles para ahorrar espacio */
-        }
-    }
-
-    @media (max-width: 480px) {
-        .calendar-grid {
-            min-height: 300px;
-        }
-        
-        .day {
-            min-height: 60px;
-        }
-        
-        .weekday {
-            padding: 0.4rem 0.2rem;
-            font-size: 0.75rem;
-        }
-        
-        .day-number {
-            font-size: 0.8rem;
-            margin-bottom: 0.2rem;
-        }
-        
-        .events-container {
-            font-size: 0.6rem;
-        }
-        
-        .event {
-            font-size: 0.5rem;
-            padding: 0.1rem 0.2rem;
-        }
-        
-        .event-more {
-            font-size: 0.5rem;
-            padding: 0.15rem 0.25rem;
-        }
-        
-        .modal-content {
-            margin: 0.5rem;
-        }
-        
-        .modal-header {
-            padding: 1rem;
-        }
-        
-        .modal-body {
-            padding: 1rem;
-        }
-        
-        .detail-item {
-            padding: 0.5rem;
-            gap: 0.6rem;
-        }
-        
-        .detail-item i {
-            font-size: 0.9rem;
-        }
-        
-        .btn-text {
-            display: none;
-        }
-        
-        .btn-today {
-            padding: 0.6rem;
-        }
-    }
-
-    @media (max-width: 360px) {
-        .calendar-grid {
-            min-height: 280px;
-        }
-        
-        .day {
-            min-height: 55px;
-        }
-        
-        .weekday {
-            font-size: 0.7rem;
-            padding: 0.3rem 0.1rem;
-        }
-        
-        .event {
-            font-size: 0.45rem;
-            padding: 0.1rem;
+        .calendar-title {
+            font-size: 2rem;
         }
     }
 </style>
@@ -1001,20 +856,20 @@ function createCalendar() {
         dayDiv.innerHTML = `
             <span class="day-number">${day}</span>
             <div class="events-container">
-                ${dayEvents.slice(0, 2).map((ev, index) => `
+                ${dayEvents.slice(0, 3).map((ev, index) => `
                     <div class="event ${ev.urgent ? 'urgent' : ''}" 
                          onclick="showEventDetails(${JSON.stringify(ev).replace(/"/g, '&quot;')}, ${index})">
-                        ${window.innerWidth > 480 ? `<span class="event-time">${ev.time}</span>` : ''}
+                        <span class="event-time">${ev.time}</span>
                         ${ev.title}
                     </div>
                 `).join('')}
-                ${dayEvents.length > 2 ? `<div class="event-more">+${dayEvents.length - 2} más</div>` : ''}
+                ${dayEvents.length > 3 ? `<div class="event-more">+${dayEvents.length - 3} más</div>` : ''}
             </div>
         `;
         
         // Efecto al hacer click
         dayDiv.addEventListener('click', function(e) {
-            if (!e.target.classList.contains('event') && !e.target.classList.contains('event-more')) {
+            if (!e.target.classList.contains('event')) {
                 if (dayEvents.length > 0) {
                     showToast(`${dayEvents.length} evento(s) para este día`, 'info');
                 }
@@ -1043,21 +898,10 @@ function updateEventsCount() {
 function loadEvents() {
     loadingIndicator.style.display = 'block';
     
-    fetch("/estudiante/api/eventos")
-        .then(response => {
-            console.log("Response status:", response.status);
-            console.log("Response headers:", response.headers.get('content-type'));
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error(`Expected JSON but got: ${contentType}`);
-            }
-            
-            return response.json();
+    fetch("/padre/api/eventos")
+        .then(r => {
+            if (!r.ok) throw new Error("Error al cargar eventos");
+            return r.json();
         })
         .then(data => {
             console.log("✅ Eventos recibidos:", data);
@@ -1078,12 +922,10 @@ function loadEvents() {
         .catch(err => {
             console.error("❌ Error cargando eventos:", err);
             loadingIndicator.style.display = 'none';
-            showToast(`Error al cargar eventos: ${err.message}`, 'error');
-            
+            showToast('Error al cargar eventos del calendario', 'error');
             // Datos de ejemplo para desarrollo
             events = getSampleEvents();
             createCalendar();
-            showToast('Usando datos de ejemplo para desarrollo', 'warning');
         });
 }
 
@@ -1095,35 +937,26 @@ function getSampleEvents() {
     return [
         {
             id: 1,
-            title: "Exámenes parciales",
-            description: "Primera evaluación parcial de todas las asignaturas.",
-            date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-10`,
-            time: "08:00",
-            role: "Estudiantes",
-            urgent: true
-        },
-        {
-            id: 2,
-            title: "Actividad cultural",
-            description: "Presentación de grupos artísticos y culturales del colegio.",
+            title: "Reunión de padres",
+            description: "Reunión general de padres de familia para tratar temas importantes del ciclo escolar.",
             date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-15`,
-            time: "14:00",
-            role: "Estudiantes",
+            time: "15:00",
+            role: "Padres",
             urgent: false
         },
         {
-            id: 3,
-            title: "Entrega de proyectos",
-            description: "Fecha límite para la entrega de proyectos de ciencia.",
+            id: 2,
+            title: "Entrega de calificaciones",
+            description: "Entrega del boletín de calificaciones del segundo bimestre.",
             date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-20`,
-            time: "23:59",
-            role: "Estudiantes",
+            time: "08:00",
+            role: "Padres",
             urgent: true
         },
         {
-            id: 4,
-            title: "Día del estudiante",
-            description: "Celebración del día del estudiante con actividades recreativas.",
+            id: 3,
+            title: "Feria científica",
+            description: "Exposición de proyectos científicos de los estudiantes.",
             date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-25`,
             time: "09:00",
             role: "Estudiantes",
@@ -1185,11 +1018,6 @@ document.getElementById('eventDetails').addEventListener('click', function(e) {
     if (e.target === this) {
         closeModal();
     }
-});
-
-// Redimensionar ventana
-window.addEventListener('resize', function() {
-    createCalendar();
 });
 
 // Inicializar
