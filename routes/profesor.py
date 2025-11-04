@@ -3,8 +3,8 @@ from flask_login import login_required, current_user
 from controllers.models import (
     db, Usuario, Asignatura, Clase, Matricula, Calificacion, Curso, Rol,
     Asistencia, CategoriaCalificacion, ConfiguracionCalificacion, HorarioCompartido, HorarioCurso,
-    HorarioGeneral, BloqueHorario, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion
-HorarioGeneral, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,Notificacion,Comunicacion, AsignacionEquipo, Equipo
+    HorarioGeneral, BloqueHorario, Salon, Sede, Evento, ReporteCalificaciones, SolicitudConsulta,
+    Notificacion,Comunicacion, AsignacionEquipo, Equipo
 )
 from datetime import datetime, date
 import json
