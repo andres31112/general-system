@@ -3638,7 +3638,7 @@ def probar_notificacion_profesor():
     except Exception as e:
         flash(f"❌ Error: {str(e)}", "error")
         return redirect(url_for('profesor.notificaciones_profesor'))
-=======
+
 # ==================== ASIGNACIÓN DE EQUIPOS POR PROFESORES ====================
 
 @profesor_bp.route('/asignar-equipos')
