@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Asignaturas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
+{% extends "base.html" %}
+{% block title %}Gestión de Asignaturas{% endblock %}
+{% block extra_css %}
+<style>
         :root {
             --accent1: #F95738;
             --accent2: #EE964B;
@@ -32,9 +28,9 @@
         }
         
         body {
-            background-color: var(--main-bg);
+            background-color: transparent;
             color: var(--black);
-            padding: 20px;
+            padding: 0;
             min-height: 100vh;
         }
         
@@ -156,7 +152,7 @@
         }
         
         .card {
-            background-color: var(--card-bg);
+            background-color: var(--main-bg);
             border-radius: 12px;
             box-shadow: var(--shadow);
             padding: 22px;
@@ -262,7 +258,7 @@
         }
         
         .table-container {
-            background-color: var(--card-bg);
+            background-color: var(--main-bg);
             border-radius: 12px;
             box-shadow: var(--shadow);
             padding: 25px;
@@ -508,16 +504,16 @@
             }
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block content %}
     <div class="container">
         <header>
             <div class="logo">
                 <i class="fas fa-book"></i>
                 <h1>Gestión de Asignaturas</h1>
             </div>
-            <a href="{{ url_for('admin.gestion_horarios_cursos') }}" class="btn">
-                <i class="fas fa-arrow-left"></i> Volver a Horarios
+            <a href="{{ url_for('admin.gestion_academica') }}" class="btn">
+                <i class="fas fa-arrow-left"></i> Dashboard
             </a>
         </header>
         
@@ -1159,5 +1155,4 @@
         window.agregarProfesor = agregarProfesor;
         window.eliminarProfesor = eliminarProfesor;
     </script>
-</body>
-</html>
+{% endblock %}
