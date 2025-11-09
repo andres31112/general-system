@@ -390,6 +390,21 @@ function initializeEditRoleSelector() {
     console.log('👥 Selector de roles de edición inicializado');
 }
 
+function updateEditRoleSelector() {
+    const roleOptions = document.querySelectorAll('#editEvent .role-option');
+    
+    roleOptions.forEach(option => {
+        const role = option.dataset.value;
+        if (editSelectedRoles.has(role)) {
+            option.classList.add('selected');
+        } else {
+            option.classList.remove('selected');
+        }
+    });
+    
+    updateEditSelectedRolesDisplay();
+}
+
 function updateSelectedRolesDisplay() {
     const tagsContainer = document.getElementById('selectedRolesTags');
     tagsContainer.innerHTML = '';
