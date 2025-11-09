@@ -1,9 +1,9 @@
-// calendario.js - Script completo para el calendario de eventos
+// calendario.js - Script completo con validación de un evento por día
 
 let events = [];
 let currentDate = new Date();
 let selectedEventIndex = null;
-let selectedRoles = new Set(['Estudiante']); // Valor por defecto
+let selectedRoles = new Set(['Estudiante']); // Valor por defecto, ahora solo uno
 let editingEventId = null;
 let editSelectedRoles = new Set();
 
@@ -29,6 +29,10 @@ function initializeCalendar() {
     document.getElementById('date').min = today;
     document.getElementById('editDate').min = today;
     
+    // Configurar hora máxima para AM (11:59 AM)
+    document.getElementById('time').max = '11:59';
+    document.getElementById('editTime').max = '11:59';
+    
     // Mostrar tooltips en hover
     setupTooltips();
     
@@ -46,6 +50,9 @@ function setupEventListeners() {
     // Validación de fecha y hora
     document.getElementById('date').addEventListener('change', updateTimeValidation);
     document.getElementById('editDate').addEventListener('change', updateEditTimeValidation);
+    
+    // Validación en tiempo real para evitar eventos en la misma fecha
+    document.getElementById('date').addEventListener('change', checkDateAvailability);
     
     // Validación en tiempo real
     setupRealTimeValidation();
@@ -76,9 +83,11 @@ function setupEventListeners() {
     
     // Botón de edición
     document.getElementById('editBtn').addEventListener('click', function() {
-        if (selectedEventIndex !== null) {
-            const event = events[selectedEventIndex];
-            openEditModal(event);
+        if (editingEventId !== null) {
+            const event = events.find(ev => ev.id === editingEventId);
+            if (event) {
+                openEditModal(event);
+            }
         }
     });
     
@@ -90,13 +99,123 @@ function setupEventListeners() {
     
     // Botón de eliminar en modal de detalles
     document.getElementById('deleteBtn').addEventListener('click', function() {
-        if (selectedEventIndex !== null) {
-            const event = events[selectedEventIndex];
-            deleteEvent(event.id);
+        if (editingEventId !== null) {
+            deleteEvent(editingEventId);
         }
     });
     
     console.log('🎯 Event listeners configurados');
+}
+
+// =============================================
+// VALIDACIÓN DE HORARIO AM Y EVENTOS EN MISMA FECHA
+// =============================================
+
+function validateTimeRange(time) {
+    if (!time) {
+        return { isValid: false, message: 'La hora es requerida' };
+    }
+    
+    // Validar que la hora esté en el rango AM (00:00 - 11:59)
+    const [hours, minutes] = time.split(':').map(Number);
+    
+    if (isNaN(hours) || isNaN(minutes)) {
+        return { isValid: false, message: 'Formato de hora inválido' };
+    }
+    
+    if (hours < 0 || hours > 11 || minutes < 0 || minutes > 59) {
+        return { isValid: false, message: 'La hora debe estar entre 00:00 y 11:59 AM' };
+    }
+    
+    return { isValid: true, message: 'Hora válida' };
+}
+
+function checkDateAvailability() {
+    const date = document.getElementById("date").value;
+    
+    if (!date) return { isValid: true, message: '' };
+    
+    // Buscar si ya existe algún evento en esta fecha
+    const existingEvent = events.find(event => event.date === date);
+    
+    const dateInput = document.getElementById("date");
+    
+    if (existingEvent) {
+        showFieldError(dateInput, `Ya existe un evento programado para el ${formatDateForDisplay(date)}. Solo se permite un evento por día.`);
+        return { isValid: false, message: `Ya existe un evento en esta fecha: "${existingEvent.title}"` };
+    } else {
+        clearFieldError({ target: dateInput });
+        return { isValid: true, message: 'Fecha disponible' };
+    }
+}
+
+function checkEditDateAvailability() {
+    const date = document.getElementById("editDate").value;
+    
+    if (!date || !editingEventId) return { isValid: true, message: '' };
+    
+    // Buscar si ya existe algún evento en esta fecha (excluyendo el actual)
+    const existingEvent = events.find(event => 
+        event.id !== editingEventId &&
+        event.date === date
+    );
+    
+    const dateInput = document.getElementById("editDate");
+    
+    if (existingEvent) {
+        showEditFieldError(dateInput, `Ya existe un evento programado para el ${formatDateForDisplay(date)}. Solo se permite un evento por día.`);
+        return { isValid: false, message: `Ya existe un evento en esta fecha: "${existingEvent.title}"` };
+    } else {
+        clearEditFieldError({ target: dateInput });
+        return { isValid: true, message: 'Fecha disponible' };
+    }
+}
+
+function checkDuplicateEvent() {
+    const title = document.getElementById("title").value.trim();
+    const date = document.getElementById("date").value;
+    
+    if (!title || !date) return { isValid: true, message: '' };
+    
+    // Buscar eventos existentes con el mismo título (para evitar nombres duplicados en general)
+    const isDuplicate = events.some(event => 
+        event.title.toLowerCase() === title.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+        return { isValid: false, message: `Ya existe un evento llamado "${title}". Por favor, usa un nombre diferente.` };
+    }
+    
+    return { isValid: true, message: 'Nombre de evento disponible' };
+}
+
+function checkEditDuplicateEvent() {
+    const title = document.getElementById("editTitle").value.trim();
+    const date = document.getElementById("editDate").value;
+    
+    if (!title || !date || !editingEventId) return { isValid: true, message: '' };
+    
+    // Buscar eventos existentes con el mismo título (excluyendo el actual)
+    const isDuplicate = events.some(event => 
+        event.id !== editingEventId &&
+        event.title.toLowerCase() === title.toLowerCase()
+    );
+    
+    if (isDuplicate) {
+        return { isValid: false, message: `Ya existe un evento llamado "${title}". Por favor, usa un nombre diferente.` };
+    }
+    
+    return { isValid: true, message: 'Nombre de evento disponible' };
+}
+
+function formatDateForDisplay(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
 }
 
 // =============================================
@@ -193,6 +312,10 @@ function validateOnlyLettersNumbersSpaces(input, fieldType) {
     const value = input.value;
     const fieldName = getFieldName(fieldType);
     
+    if (!value.trim()) {
+        return { isValid: false, message: `${fieldName} es requerido` };
+    }
+    
     // Patrón extremadamente restrictivo: solo letras, números y espacios
     const allowedPattern = /^[a-zA-ZÀ-ÿ0-9\s]*$/;
     
@@ -204,45 +327,62 @@ function validateOnlyLettersNumbersSpaces(input, fieldType) {
     if (hasInvalid) {
         // Mostrar error con los caracteres específicos encontrados
         const uniqueChars = [...new Set(foundInvalid)];
-        showCharacterError(input, `Caracteres no permitidos: ${uniqueChars.join(', ')}`);
-        
-        // Limpiar automáticamente los caracteres inválidos
-        const cleanedValue = value.replace(invalidChars, '');
-        input.value = cleanedValue;
-        
-        return false;
+        return { 
+            isValid: false, 
+            message: `Caracteres no permitidos en ${fieldName.toLowerCase()}: ${uniqueChars.join(', ')}. Solo se permiten letras, números y espacios.` 
+        };
     }
     
     if (!allowedPattern.test(value) && value.length > 0) {
-        showCharacterError(input, 'Solo se permiten letras, números y espacios');
-        return false;
+        return { isValid: false, message: `Solo se permiten letras, números y espacios en el ${fieldName.toLowerCase()}` };
     }
     
-    // Limpiar error si todo está bien
-    clearCharacterError(input);
-    return true;
+    // Validaciones de longitud específicas
+    if (fieldType === 'title' || fieldType === 'editTitle') {
+        if (value.length < 5) {
+            return { isValid: false, message: 'El título debe tener al menos 5 caracteres' };
+        }
+        if (value.length > 100) {
+            return { isValid: false, message: 'El título no puede tener más de 100 caracteres' };
+        }
+    }
+    
+    if (fieldType === 'description' || fieldType === 'editDescription') {
+        if (value.length < 10) {
+            return { isValid: false, message: 'La descripción debe tener al menos 10 caracteres' };
+        }
+        if (value.length > 500) {
+            return { isValid: false, message: 'La descripción no puede tener más de 500 caracteres' };
+        }
+    }
+    
+    return { isValid: true, message: `${fieldName} válido` };
 }
 
 function getFieldName(fieldType) {
     const fieldNames = {
-        'title': 'Título',
-        'description': 'Descripción',
-        'editTitle': 'Título',
-        'editDescription': 'Descripción'
+        'title': 'Título del evento',
+        'description': 'Descripción del evento',
+        'editTitle': 'Título del evento',
+        'editDescription': 'Descripción del evento',
+        'date': 'Fecha del evento',
+        'time': 'Hora del evento',
+        'editDate': 'Fecha del evento',
+        'editTime': 'Hora del evento'
     };
     return fieldNames[fieldType] || 'Campo';
 }
 
 function showCharacterError(input, message) {
-    input.classList.add('character-error');
+    input.classList.add('field-error');
     
-    let errorDiv = input.parentNode.querySelector('.character-validation-error');
+    let errorDiv = input.parentNode.querySelector('.validation-error');
     if (!errorDiv) {
         errorDiv = document.createElement('div');
-        errorDiv.className = 'character-validation-error';
+        errorDiv.className = 'validation-error';
         input.parentNode.appendChild(errorDiv);
     }
-    errorDiv.innerHTML = `<i class="fas fa-ban"></i> ${message}`;
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
     
     // Agregar efecto visual de shake
     input.style.animation = 'shake 0.5s ease';
@@ -252,9 +392,9 @@ function showCharacterError(input, message) {
 }
 
 function clearCharacterError(input) {
-    input.classList.remove('character-error');
+    input.classList.remove('field-error');
     
-    const errorDiv = input.parentNode.querySelector('.character-validation-error');
+    const errorDiv = input.parentNode.querySelector('.validation-error');
     if (errorDiv) {
         errorDiv.remove();
     }
@@ -293,7 +433,7 @@ function sanitizeText(text) {
 }
 
 // =============================================
-// SELECTOR DE ROLES
+// SELECTOR DE ROLES - MODIFICADO PARA UN SOLO ROL
 // =============================================
 
 function initializeRoleSelector() {
@@ -304,23 +444,15 @@ function initializeRoleSelector() {
             e.preventDefault();
             const role = this.dataset.value;
             
-            if (selectedRoles.has(role)) {
-                selectedRoles.delete(role);
-                this.classList.remove('selected');
-                createDeselectParticles(this);
-            } else {
-                selectedRoles.add(role);
-                this.classList.add('selected');
-                createSelectParticles(this);
-            }
+            // Solo permitir un rol seleccionado - limpiar todos primero
+            selectedRoles.clear();
+            selectedRoles.add(role);
             
-            // Asegurar que siempre haya al menos un rol seleccionado
-            if (selectedRoles.size === 0) {
-                selectedRoles.add('Estudiante');
-                document.querySelector('.role-option[data-value="Estudiante"]').classList.add('selected');
-                createSelectParticles(document.querySelector('.role-option[data-value="Estudiante"]'));
-            }
+            // Actualizar UI - remover selección de todos, agregar al clickeado
+            roleOptions.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
             
+            createSelectParticles(this);
             updateSelectedRolesDisplay();
             createRippleEffect(e);
         });
@@ -341,7 +473,7 @@ function initializeRoleSelector() {
     
     // Inicializar display con el valor por defecto
     updateSelectedRolesDisplay();
-    console.log('👥 Selector de roles principal inicializado');
+    console.log('👥 Selector de roles principal inicializado (solo un rol)');
 }
 
 function initializeEditRoleSelector() {
@@ -352,23 +484,15 @@ function initializeEditRoleSelector() {
             e.preventDefault();
             const role = this.dataset.value;
             
-            if (editSelectedRoles.has(role)) {
-                editSelectedRoles.delete(role);
-                this.classList.remove('selected');
-                createDeselectParticles(this);
-            } else {
-                editSelectedRoles.add(role);
-                this.classList.add('selected');
-                createSelectParticles(this);
-            }
+            // Solo permitir un rol seleccionado - limpiar todos primero
+            editSelectedRoles.clear();
+            editSelectedRoles.add(role);
             
-            // Asegurar que siempre haya al menos un rol seleccionado
-            if (editSelectedRoles.size === 0) {
-                editSelectedRoles.add('Estudiante');
-                document.querySelector('#editEvent .role-option[data-value="Estudiante"]').classList.add('selected');
-                createSelectParticles(document.querySelector('#editEvent .role-option[data-value="Estudiante"]'));
-            }
+            // Actualizar UI - remover selección de todos, agregar al clickeado
+            roleOptions.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
             
+            createSelectParticles(this);
             updateEditSelectedRolesDisplay();
             createRippleEffect(e);
         });
@@ -387,7 +511,7 @@ function initializeEditRoleSelector() {
         });
     });
     
-    console.log('👥 Selector de roles de edición inicializado');
+    console.log('👥 Selector de roles de edición inicializado (solo un rol)');
 }
 
 function updateEditRoleSelector() {
@@ -419,45 +543,17 @@ function updateSelectedRolesDisplay() {
         return;
     }
     
-    selectedRoles.forEach(role => {
-        const tag = document.createElement('div');
-        tag.className = `role-tag ${role.toLowerCase()}`;
-        
-        const icon = role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫';
-        tag.innerHTML = `
-            ${icon} ${role}
-            <button class="tag-remove" data-role="${role}">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        
-        tagsContainer.appendChild(tag);
-    });
+    // Solo mostrar un rol (el primero del Set)
+    const role = Array.from(selectedRoles)[0];
+    const tag = document.createElement('div');
+    tag.className = `role-tag ${role.toLowerCase()}`;
     
-    // Agregar event listeners para los botones de eliminar
-    document.querySelectorAll('.tag-remove').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const role = this.dataset.role;
-            
-            // No permitir eliminar si es el último rol
-            if (selectedRoles.size <= 1) {
-                showToast('Debe haber al menos un rol seleccionado', 'warning');
-                return;
-            }
-            
-            selectedRoles.delete(role);
-            
-            // Deseleccionar la opción correspondiente
-            const roleOption = document.querySelector(`.role-option[data-value="${role}"]`);
-            if (roleOption) {
-                roleOption.classList.remove('selected');
-                createDeselectParticles(roleOption);
-            }
-            
-            updateSelectedRolesDisplay();
-        });
-    });
+    const icon = role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫';
+    tag.innerHTML = `
+        ${icon} ${role}
+    `;
+    
+    tagsContainer.appendChild(tag);
 }
 
 function updateEditSelectedRolesDisplay() {
@@ -474,45 +570,35 @@ function updateEditSelectedRolesDisplay() {
         return;
     }
     
-    editSelectedRoles.forEach(role => {
-        const tag = document.createElement('div');
-        tag.className = `role-tag ${role.toLowerCase()}`;
-        
-        const icon = role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫';
-        tag.innerHTML = `
-            ${icon} ${role}
-            <button class="tag-remove" data-role="${role}">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        
-        tagsContainer.appendChild(tag);
-    });
+    // Solo mostrar un rol (el primero del Set)
+    const role = Array.from(editSelectedRoles)[0];
+    const tag = document.createElement('div');
+    tag.className = `role-tag ${role.toLowerCase()}`;
     
-    // Agregar event listeners para los botones de eliminar
-    document.querySelectorAll('#editEvent .tag-remove').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const role = this.dataset.role;
-            
-            // No permitir eliminar si es el último rol
-            if (editSelectedRoles.size <= 1) {
-                showToast('Debe haber al menos un rol seleccionado', 'warning');
-                return;
-            }
-            
-            editSelectedRoles.delete(role);
-            
-            // Deseleccionar la opción correspondiente
-            const roleOption = document.querySelector(`#editEvent .role-option[data-value="${role}"]`);
-            if (roleOption) {
-                roleOption.classList.remove('selected');
-                createDeselectParticles(roleOption);
-            }
-            
-            updateEditSelectedRolesDisplay();
-        });
-    });
+    const icon = role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫';
+    tag.innerHTML = `
+        ${icon} ${role}
+    `;
+    
+    tagsContainer.appendChild(tag);
+}
+
+// =============================================
+// VALIDACIÓN DE ROLES
+// =============================================
+
+function validateRoles() {
+    if (selectedRoles.size === 0) {
+        return { isValid: false, message: 'Debe seleccionar un destinatario para el evento' };
+    }
+    return { isValid: true, message: 'Destinatario válido' };
+}
+
+function validateEditRoles() {
+    if (editSelectedRoles.size === 0) {
+        return { isValid: false, message: 'Debe seleccionar un destinatario para el evento' };
+    }
+    return { isValid: true, message: 'Destinatario válido' };
 }
 
 // =============================================
@@ -782,9 +868,7 @@ function getSelectedRoles() {
 }
 
 function formatRolesDisplay(roles) {
-    if (roles.length === 2) {
-        return 'Estudiantes y Profesores';
-    } else if (roles.length === 1) {
+    if (roles.length === 1) {
         return roles[0] === 'Estudiante' ? 'Estudiantes' : 'Profesores';
     } else {
         return roles.join(', ');
@@ -792,9 +876,7 @@ function formatRolesDisplay(roles) {
 }
 
 function getEventClass(roles) {
-    if (roles.length === 2) {
-        return 'event multiple-roles';
-    } else if (roles.includes('Estudiante')) {
+    if (roles.includes('Estudiante')) {
         return 'event estudiante';
     } else if (roles.includes('Profesor')) {
         return 'event profesor';
@@ -848,7 +930,7 @@ function loadSampleEvents() {
             title: "Reunión de Padres",
             description: "Reunión general de padres de familia para tratar temas importantes del ciclo escolar",
             date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-15`,
-            time: "15:00",
+            time: "10:00",
             role: "Estudiante"
         },
         {
@@ -858,14 +940,6 @@ function loadSampleEvents() {
             date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-20`,
             time: "09:00",
             role: "Profesor"
-        },
-        {
-            id: 3,
-            title: "Feria Científica",
-            description: "Exposición de proyectos científicos de los estudiantes",
-            date: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-25`,
-            time: "14:00",
-            role: "Estudiante,Profesor"
         }
     ];
     
@@ -893,18 +967,10 @@ function renderEvents() {
             evDiv.className = getEventClass(roles);
             evDiv.setAttribute('data-roles', formatRolesDisplay(roles));
             
-            // Agregar badges de roles si hay múltiples
-            let roleBadges = '';
-            if (roles.length > 1) {
-                roleBadges = roles.map(role => 
-                    `<span class="role-badge">${role === 'Estudiante' ? '👨‍🎓' : '👩‍🏫'}</span>`
-                ).join('');
-            }
-            
-            evDiv.innerHTML = `${ev.time} - ${ev.title} ${roleBadges}`;
+            evDiv.innerHTML = `${ev.time} - ${ev.title}`;
             evDiv.onclick = (e) => {
                 createRippleEffect(e);
-                showEventDetails(ev, index);
+                showEventDetails(ev);
             };
             
             // Animación de entrada escalonada
@@ -915,7 +981,7 @@ function renderEvents() {
 }
 
 // =============================================
-// VALIDACIÓN DE FORMULARIOS
+// VALIDACIÓN DE FORMULARIOS - MEJORADA
 // =============================================
 
 function setupRealTimeValidation() {
@@ -943,95 +1009,150 @@ function setupRealTimeValidation() {
 function validateField(e) {
     const field = e.target;
     const value = field.value.trim();
-    const fieldName = field.previousElementSibling?.textContent || 'Campo';
+    const fieldName = getFieldName(field.id);
     
     // Remover errores previos
     clearFieldError(e);
     
-    if (!value) {
-        showFieldError(field, `${fieldName} es obligatorio`);
-        return false;
-    }
+    let validationResult = { isValid: true, message: '' };
     
     // Validaciones específicas por campo
     switch(field.id) {
         case 'title':
-            if (value.length < 5) {
-                showFieldError(field, 'El título debe tener al menos 5 caracteres');
-                return false;
-            }
-            // Validar caracteres especiales
-            if (!validateOnlyLettersNumbersSpaces(field, 'title')) {
-                return false;
+            if (!value) {
+                validationResult = { isValid: false, message: 'El título del evento es requerido' };
+            } else {
+                validationResult = validateOnlyLettersNumbersSpaces(field, 'title');
+                if (validationResult.isValid) {
+                    const duplicateCheck = checkDuplicateEvent();
+                    if (!duplicateCheck.isValid) {
+                        validationResult = duplicateCheck;
+                    }
+                }
             }
             break;
+            
         case 'description':
-            if (value.length < 10) {
-                showFieldError(field, 'La descripción debe tener al menos 10 caracteres');
-                return false;
-            }
-            // Validar caracteres especiales
-            if (!validateOnlyLettersNumbersSpaces(field, 'description')) {
-                return false;
+            if (!value) {
+                validationResult = { isValid: false, message: 'La descripción del evento es requerida' };
+            } else {
+                validationResult = validateOnlyLettersNumbersSpaces(field, 'description');
             }
             break;
+            
         case 'date':
-            if (!validarFechaFutura(value, document.getElementById('time').value)) {
-                showFieldError(field, 'La fecha debe ser futura');
-                return false;
+            if (!value) {
+                validationResult = { isValid: false, message: 'La fecha del evento es requerida' };
+            } else {
+                const dateAvailability = checkDateAvailability();
+                if (!dateAvailability.isValid) {
+                    validationResult = dateAvailability;
+                } else if (!validarFechaFutura(value, document.getElementById('time').value).isValid) {
+                    validationResult = validarFechaFutura(value, document.getElementById('time').value);
+                } else {
+                    validationResult = { isValid: true, message: 'Fecha disponible' };
+                }
+            }
+            break;
+            
+        case 'time':
+            if (!value) {
+                validationResult = { isValid: false, message: 'La hora del evento es requerida' };
+            } else {
+                validationResult = validateTimeRange(value);
             }
             break;
     }
     
-    showFieldSuccess(field);
-    return true;
+    if (!validationResult.isValid) {
+        showFieldError(field, validationResult.message);
+    } else {
+        showFieldSuccess(field, validationResult.message);
+    }
+    
+    return validationResult.isValid;
 }
 
 function validateEditField(e) {
     const field = e.target;
     const value = field.value.trim();
-    const fieldName = field.previousElementSibling?.textContent || 'Campo';
+    const fieldName = getFieldName(field.id);
     
     // Remover errores previos
     clearEditFieldError(e);
     
-    if (!value) {
-        showEditFieldError(field, `${fieldName} es obligatorio`);
-        return false;
-    }
+    let validationResult = { isValid: true, message: '' };
     
     // Validaciones específicas por campo
     switch(field.id) {
         case 'editTitle':
-            if (value.length < 5) {
-                showEditFieldError(field, 'El título debe tener al menos 5 caracteres');
-                return false;
-            }
-            // Validar caracteres especiales
-            if (!validateOnlyLettersNumbersSpaces(field, 'editTitle')) {
-                return false;
+            if (!value) {
+                validationResult = { isValid: false, message: 'El título del evento es requerido' };
+            } else {
+                validationResult = validateOnlyLettersNumbersSpaces(field, 'editTitle');
+                if (validationResult.isValid) {
+                    const duplicateCheck = checkEditDuplicateEvent();
+                    if (!duplicateCheck.isValid) {
+                        validationResult = duplicateCheck;
+                    }
+                }
             }
             break;
+            
         case 'editDescription':
-            if (value.length < 10) {
-                showEditFieldError(field, 'La descripción debe tener al menos 10 caracteres');
-                return false;
-            }
-            // Validar caracteres especiales
-            if (!validateOnlyLettersNumbersSpaces(field, 'editDescription')) {
-                return false;
+            if (!value) {
+                validationResult = { isValid: false, message: 'La descripción del evento es requerida' };
+            } else {
+                validationResult = validateOnlyLettersNumbersSpaces(field, 'editDescription');
             }
             break;
+            
         case 'editDate':
-            if (!validarFechaFutura(value, document.getElementById('editTime').value)) {
-                showEditFieldError(field, 'La fecha debe ser futura');
-                return false;
+            if (!value) {
+                validationResult = { isValid: false, message: 'La fecha del evento es requerida' };
+            } else {
+                const dateAvailability = checkEditDateAvailability();
+                if (!dateAvailability.isValid) {
+                    validationResult = dateAvailability;
+                } else if (!validarFechaFutura(value, document.getElementById('editTime').value).isValid) {
+                    validationResult = validarFechaFutura(value, document.getElementById('editTime').value);
+                } else {
+                    validationResult = { isValid: true, message: 'Fecha disponible' };
+                }
+            }
+            break;
+            
+        case 'editTime':
+            if (!value) {
+                validationResult = { isValid: false, message: 'La hora del evento es requerida' };
+            } else {
+                validationResult = validateTimeRange(value);
             }
             break;
     }
     
-    showEditFieldSuccess(field);
-    return true;
+    if (!validationResult.isValid) {
+        showEditFieldError(field, validationResult.message);
+    } else {
+        showEditFieldSuccess(field, validationResult.message);
+    }
+    
+    return validationResult.isValid;
+}
+
+function validarFechaFutura(date, time) {
+    if (!date) {
+        return { isValid: false, message: 'La fecha es requerida' };
+    }
+    
+    const ahora = new Date();
+    const fechaEvento = new Date(date + 'T' + (time || '00:00'));
+    
+    if (fechaEvento < ahora) {
+        return { isValid: false, message: 'No puedes crear eventos en fechas pasadas' };
+    }
+    
+    return { isValid: true, message: 'Fecha válida' };
 }
 
 function showFieldError(field, message) {
@@ -1058,7 +1179,7 @@ function showEditFieldError(field, message) {
     errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
 }
 
-function showFieldSuccess(field) {
+function showFieldSuccess(field, message) {
     field.classList.remove('field-error');
     
     let successDiv = field.parentNode.querySelector('.validation-success');
@@ -1067,14 +1188,14 @@ function showFieldSuccess(field) {
         successDiv.className = 'validation-success';
         field.parentNode.appendChild(successDiv);
     }
-    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> Campo válido`;
+    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
     
     setTimeout(() => {
         successDiv.remove();
-    }, 2000);
+    }, 3000);
 }
 
-function showEditFieldSuccess(field) {
+function showEditFieldSuccess(field, message) {
     field.classList.remove('field-error');
     
     let successDiv = field.parentNode.querySelector('.validation-success');
@@ -1083,11 +1204,11 @@ function showEditFieldSuccess(field) {
         successDiv.className = 'validation-success';
         field.parentNode.appendChild(successDiv);
     }
-    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> Campo válido`;
+    successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
     
     setTimeout(() => {
         successDiv.remove();
-    }, 2000);
+    }, 3000);
 }
 
 function clearFieldError(e) {
@@ -1121,55 +1242,85 @@ function clearEditFieldError(e) {
 }
 
 function validateForm() {
-    const fields = ['title', 'description', 'date', 'time'];
-    let isValid = true;
+    const fields = [
+        { id: 'title', name: 'Título del evento' },
+        { id: 'description', name: 'Descripción del evento' },
+        { id: 'date', name: 'Fecha del evento' },
+        { id: 'time', name: 'Hora del evento' }
+    ];
     
-    fields.forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
+    let isValid = true;
+    let errorMessages = [];
+    
+    // Validar campos individuales
+    fields.forEach(field => {
+        const input = document.getElementById(field.id);
+        if (input) {
             const event = new Event('blur');
-            field.dispatchEvent(event);
-            if (field.classList.contains('field-error') || field.classList.contains('character-error')) {
+            input.dispatchEvent(event);
+            if (input.classList.contains('field-error')) {
                 isValid = false;
+                errorMessages.push(field.name);
             }
         }
     });
     
     // Validar roles
-    if (selectedRoles.size === 0) {
-        showToast('Debe seleccionar al menos un destinatario', 'error');
+    const rolesValidation = validateRoles();
+    if (!rolesValidation.isValid) {
         isValid = false;
+        showToast(rolesValidation.message, 'error');
+    }
+    
+    // Mostrar mensaje específico si hay errores
+    if (!isValid && errorMessages.length > 0) {
+        showToast(`Por favor corrige los siguientes campos: ${errorMessages.join(', ')}`, 'error');
     }
     
     return isValid;
 }
 
 function validateEditForm() {
-    const fields = ['editTitle', 'editDescription', 'editDate', 'editTime'];
-    let isValid = true;
+    const fields = [
+        { id: 'editTitle', name: 'Título del evento' },
+        { id: 'editDescription', name: 'Descripción del evento' },
+        { id: 'editDate', name: 'Fecha del evento' },
+        { id: 'editTime', name: 'Hora del evento' }
+    ];
     
-    fields.forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
+    let isValid = true;
+    let errorMessages = [];
+    
+    // Validar campos individuales
+    fields.forEach(field => {
+        const input = document.getElementById(field.id);
+        if (input) {
             const event = new Event('blur');
-            field.dispatchEvent(event);
-            if (field.classList.contains('field-error') || field.classList.contains('character-error')) {
+            input.dispatchEvent(event);
+            if (input.classList.contains('field-error')) {
                 isValid = false;
+                errorMessages.push(field.name);
             }
         }
     });
     
     // Validar roles
-    if (editSelectedRoles.size === 0) {
-        showToast('Debe seleccionar al menos un destinatario', 'error');
+    const rolesValidation = validateEditRoles();
+    if (!rolesValidation.isValid) {
         isValid = false;
+        showToast(rolesValidation.message, 'error');
+    }
+    
+    // Mostrar mensaje específico si hay errores
+    if (!isValid && errorMessages.length > 0) {
+        showToast(`Por favor corrige los siguientes campos: ${errorMessages.join(', ')}`, 'error');
     }
     
     return isValid;
 }
 
 // =============================================
-// CREACIÓN Y EDICIÓN DE EVENTOS
+// CREACIÓN Y EDICIÓN DE EVENTOS - CORREGIDO
 // =============================================
 
 function addEvent() {
@@ -1179,14 +1330,37 @@ function addEvent() {
     const time = document.getElementById("time").value;
     const roles = getSelectedRoles();
 
-    // Validaciones
+    console.log("📝 Intentando crear evento...");
+
+    // Validaciones detalladas
     if (!validateForm()) {
-        showToast("⚠️ Por favor, corrige los errores en el formulario", 'error');
+        console.log("❌ Validación falló - mostrando errores específicos");
         return;
     }
 
-    // Validar que la fecha no sea del pasado
-    if (!validarFechaFutura(date, time)) {
+    // Validaciones adicionales de fecha
+    const fechaValidation = validarFechaFutura(date, time);
+    if (!fechaValidation.isValid) {
+        showToast(fechaValidation.message, 'error');
+        return;
+    }
+
+    // Validación de disponibilidad de fecha (UN EVENTO POR DÍA)
+    const dateAvailability = checkDateAvailability();
+    if (!dateAvailability.isValid) {
+        showToast(dateAvailability.message, 'error');
+        return;
+    }
+
+    const timeValidation = validateTimeRange(time);
+    if (!timeValidation.isValid) {
+        showToast(timeValidation.message, 'error');
+        return;
+    }
+
+    const duplicateCheck = checkDuplicateEvent();
+    if (!duplicateCheck.isValid) {
+        showToast(duplicateCheck.message, 'error');
         return;
     }
 
@@ -1214,7 +1388,7 @@ function addEvent() {
     .then(async r => {
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-            throw new Error(data.error || "❌ No se pudo crear el evento");
+            throw new Error(data.error || "No se pudo crear el evento");
         }
         return data;
     })
@@ -1237,7 +1411,7 @@ function addEvent() {
     })
     .catch(err => {
         console.error("❌ Error creando evento:", err);
-        showToast("⚠️ No se pudo crear el evento: " + err.message, 'error');
+        showToast(`❌ Error al crear evento: ${err.message}`, 'error');
     })
     .finally(() => {
         submitBtn.innerHTML = originalText;
@@ -1257,18 +1431,6 @@ function updateRoleSelector() {
     });
 }
 
-function validarFechaFutura(date, time) {
-    const ahora = new Date();
-    const fechaEvento = new Date(date + 'T' + time);
-    
-    if (fechaEvento < ahora) {
-        showToast("📅 No puedes crear eventos en fechas pasadas", 'error');
-        return false;
-    }
-    
-    return true;
-}
-
 function updateTimeValidation() {
     const selectedDate = document.getElementById('date').value;
     const today = new Date().toISOString().split('T')[0];
@@ -1282,6 +1444,9 @@ function updateTimeValidation() {
     } else {
         timeInput.min = '00:00';
     }
+    
+    // Siempre mantener máximo en 11:59 AM
+    timeInput.max = '11:59';
 }
 
 function updateEditTimeValidation() {
@@ -1297,14 +1462,21 @@ function updateEditTimeValidation() {
     } else {
         timeInput.min = '00:00';
     }
+    
+    // Siempre mantener máximo en 11:59 AM
+    timeInput.max = '11:59';
 }
 
 // =============================================
-// MODALES Y DETALLES
+// MODALES Y DETALLES - CORREGIDO
 // =============================================
 
-function showEventDetails(ev, index) {
-    selectedEventIndex = index;
+function showEventDetails(ev) {
+    console.log("🔍 Mostrando detalles del evento:", ev);
+    
+    // Guardar el ID real del evento para edición
+    editingEventId = ev.id;
+    
     document.getElementById("detailTitle").textContent = ev.title;
     
     // Formatear fecha para mostrar
@@ -1321,10 +1493,7 @@ function showEventDetails(ev, index) {
     
     // Actualizar badge del modal
     const badge = document.getElementById("detailBadge");
-    if (roles.length === 2) {
-        badge.textContent = '👥 Ambos';
-        badge.style.background = 'linear-gradient(135deg, var(--accent2), var(--accent3))';
-    } else if (roles.includes('Estudiante')) {
+    if (roles.includes('Estudiante')) {
         badge.textContent = '👨‍🎓 Estudiantes';
         badge.style.background = 'linear-gradient(135deg, var(--accent1), #ff7a5a)';
     } else {
@@ -1335,6 +1504,8 @@ function showEventDetails(ev, index) {
     // Mostrar modal con animación
     const modal = document.getElementById("eventDetails");
     modal.style.display = "flex";
+    
+    console.log("✅ Evento seleccionado para edición - ID:", editingEventId, "Título:", ev.title);
 }
 
 function closeModal() {
@@ -1350,6 +1521,9 @@ function closeModal() {
 }
 
 function openEditModal(event) {
+    console.log("✏️ Abriendo modal de edición para evento:", event);
+    
+    // Usar el evento que se pasa como parámetro
     editingEventId = event.id;
     
     // Llenar el formulario con los datos actuales del evento
@@ -1371,6 +1545,8 @@ function openEditModal(event) {
     // Mostrar el modal de edición
     const modal = document.getElementById("editEvent");
     modal.style.display = "flex";
+    
+    console.log("✅ Formulario de edición listo para evento ID:", editingEventId);
 }
 
 function closeEditModal() {
@@ -1387,20 +1563,48 @@ function closeEditModal() {
 }
 
 function saveEditedEvent() {
+    if (!editingEventId) {
+        showToast("❌ No se ha seleccionado ningún evento para editar", 'error');
+        return;
+    }
+
     const title = document.getElementById("editTitle").value.trim();
     const description = document.getElementById("editDescription").value.trim();
     const date = document.getElementById("editDate").value;
     const time = document.getElementById("editTime").value;
     const roles = Array.from(editSelectedRoles);
 
-    // Validaciones
+    console.log("💾 Guardando cambios para evento ID:", editingEventId);
+
+    // Validaciones detalladas
     if (!validateEditForm()) {
-        showToast("⚠️ Por favor, corrige los errores en el formulario", 'error');
+        console.log("❌ Validación de edición falló - mostrando errores específicos");
         return;
     }
 
-    // Validar que la fecha no sea del pasado
-    if (!validarFechaFutura(date, time)) {
+    // Validaciones adicionales de fecha
+    const fechaValidation = validarFechaFutura(date, time);
+    if (!fechaValidation.isValid) {
+        showToast(fechaValidation.message, 'error');
+        return;
+    }
+
+    // Validación de disponibilidad de fecha (UN EVENTO POR DÍA)
+    const dateAvailability = checkEditDateAvailability();
+    if (!dateAvailability.isValid) {
+        showToast(dateAvailability.message, 'error');
+        return;
+    }
+
+    const timeValidation = validateTimeRange(time);
+    if (!timeValidation.isValid) {
+        showToast(timeValidation.message, 'error');
+        return;
+    }
+
+    const duplicateCheck = checkEditDuplicateEvent();
+    if (!duplicateCheck.isValid) {
+        showToast(duplicateCheck.message, 'error');
         return;
     }
 
@@ -1428,7 +1632,7 @@ function saveEditedEvent() {
     .then(async r => {
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-            throw new Error(data.error || "❌ No se pudo actualizar el evento");
+            throw new Error(data.error || "No se pudo actualizar el evento");
         }
         return data;
     })
@@ -1440,7 +1644,7 @@ function saveEditedEvent() {
     })
     .catch(err => {
         console.error("❌ Error actualizando evento:", err);
-        showToast("⚠️ No se pudo actualizar el evento: " + err.message, 'error');
+        showToast(`❌ Error al actualizar evento: ${err.message}`, 'error');
     })
     .finally(() => {
         saveBtn.innerHTML = originalText;
@@ -1449,6 +1653,11 @@ function saveEditedEvent() {
 }
 
 function deleteEvent(id) {
+    if (!id) {
+        showToast("❌ No se ha seleccionado ningún evento para eliminar", 'error');
+        return;
+    }
+
     if (!confirm('¿Está seguro de que desea eliminar este evento? Esta acción no se puede deshacer.')) {
         return;
     }
@@ -1458,9 +1667,11 @@ function deleteEvent(id) {
     deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
     deleteBtn.disabled = true;
 
+    console.log("🗑️ Eliminando evento ID:", id);
+
     fetch(`/admin/eventos/${id}`, { method: "DELETE" })
         .then(r => {
-            if (!r.ok) throw new Error("Error al eliminar");
+            if (!r.ok) throw new Error("Error al eliminar el evento");
             return r.json();
         })
         .then(data => {
@@ -1471,7 +1682,7 @@ function deleteEvent(id) {
         })
         .catch(err => {
             console.error("❌ Error eliminando evento:", err);
-            showToast("⚠️ No se pudo eliminar el evento", 'error');
+            showToast("❌ No se pudo eliminar el evento", 'error');
         })
         .finally(() => {
             deleteBtn.innerHTML = originalText;
@@ -1499,7 +1710,7 @@ function showToast(message, type = 'info') {
     
     setTimeout(() => {
         toast.classList.remove('show');
-    }, 4000);
+    }, 5000);
 }
 
 // =============================================

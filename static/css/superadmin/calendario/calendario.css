@@ -611,13 +611,6 @@ h1::after {
   background: linear-gradient(135deg, var(--accent4), #2a5a8c);
 }
 
-.color-swatch.ambos {
-  background: linear-gradient(135deg, var(--accent2), var(--accent3));
-}
-
-.color-info {
-  flex: 1;
-}
 
 .color-label {
   color: var(--white);
