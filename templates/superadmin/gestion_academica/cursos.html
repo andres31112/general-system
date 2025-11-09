@@ -54,6 +54,27 @@
         overflow: hidden;
     }
 
+    /* Botón Dashboard (igual a Gestión de Asignaturas) */
+    .btn-dashboard {
+        background: linear-gradient(135deg, var(--accent3), #e9c440);
+        color: var(--black);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .btn-dashboard:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        color: var(--black);
+        text-decoration: none;
+    }
+
     .h4 {
         color: var(--white);
         font-weight: 800;
@@ -190,6 +211,9 @@
             <h1 class="h4 mb-1">Gestión de Cursos</h1>
             <p class="text-light mb-0 opacity-75">Administra y organiza los cursos académicos</p>
         </div>
+        <a href="{{ url_for('admin.gestion_i') }}" class="btn-dashboard">
+            <i class="fas fa-arrow-left"></i> Dashboard
+        </a>
     </header>
 
     <div class="main-container mt-4">
