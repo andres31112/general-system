@@ -3869,12 +3869,12 @@ def api_profesor_equipos_disponibles():
         if salon_id:
             query = query.filter_by(id_salon_fk=salon_id)
         
-        if curso_id:
-            # Filtrar por salas asociadas al curso (usando HorarioCurso y Salon)
-            salas_del_curso = db.session.query(Salon.id_salon).join(HorarioCurso).filter(
-                HorarioCurso.curso_id == curso_id
-            ).distinct().subquery()
-            query = query.filter(Equipo.id_salon_fk.in_(salas_del_curso))
+        #if curso_id:
+        # Filtrar por salas asociadas al curso (usando HorarioCurso y Salon)
+        #    salas_del_curso = db.session.query(Salon.id_salon).join(HorarioCurso).filter(
+        #        HorarioCurso.curso_id == curso_id
+        #    ).distinct().subquery()
+        #    query = query.filter(Equipo.id_salon_fk.in_(salas_del_curso))
         
         equipos = query.all()
         

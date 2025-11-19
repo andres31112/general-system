@@ -6,230 +6,763 @@
     <title>Gestión de Salones - Crear Salón</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin/gestion_usuarios/crear_usuario.css') }}">
+    <style>
+        /* Variables CSS con paleta completa */
+        :root {
+            --primary: #0D3B66;
+            --primary-light: #1a5080;
+            --secondary: #F4D35E;
+            --accent: #F95738;
+            --accent-light: #EE964B;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --dark: #2C3E50;
+            --gray: #7F8C8D;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --success: #28A745;
+            --error: #DC3545;
+            --warning: #FFC107;
+            
+            --shadow-sm: 0 2px 8px rgba(13, 59, 102, 0.08);
+            --shadow-md: 0 4px 16px rgba(13, 59, 102, 0.12);
+            --shadow-lg: 0 8px 32px rgba(13, 59, 102, 0.15);
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Estilos Base */
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, var(--light-gray) 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Layout Principal */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header con Gradiente */
+        .main-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-title {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.75rem;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            position: relative;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            border: none;
+        }
+
+        .header-icon:hover {
+            background: var(--secondary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 211, 94, 0.3);
+        }
+
+        .header-icon.notification::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Grid Principal */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel de Formulario */
+        .form-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+        }
+
+        .form-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .form-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-title {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .form-subtitle {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Grupos de Formulario */
+        .form-section {
+            margin-bottom: 2rem;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .form-section:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Campos de Formulario */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--white);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-light);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.1);
+            outline: none;
+        }
+
+        .form-control:hover, .form-select:hover {
+            border-color: var(--accent-light);
+        }
+
+        /* Badge para campos requeridos */
+        .required-badge {
+            background: var(--accent);
+            color: var(--white);
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        /* Panel Lateral */
+        .sidebar-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--secondary);
+            position: sticky;
+            top: 2rem;
+            background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .sidebar-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary), #e9c440);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: var(--dark);
+            font-size: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-title {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Lista de Información */
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .info-item:hover {
+            background: var(--light);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 0 -0.5rem;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        .info-content h4 {
+            color: var(--primary);
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+        }
+
+        .info-content p {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        /* Botones Mejorados */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--white), var(--light-gray));
+            border: 2px solid var(--secondary);
+            color: var(--dark);
+            padding: 0.875rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            text-decoration: none;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-light);
+            background: var(--light);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            color: var(--primary);
+        }
+
+        /* Mensajes Flash Mejorados */
+        .alert {
+            border-radius: var(--radius-md);
+            border: none;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid;
+            background: var(--white);
+        }
+
+        .alert-success {
+            border-left-color: var(--success);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(40, 167, 69, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-danger {
+            border-left-color: var(--error);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(220, 53, 69, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-warning {
+            border-left-color: var(--warning);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(255, 193, 7, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-info {
+            border-left-color: var(--accent-light);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(238, 150, 75, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        /* Errores de Formulario */
+        .error-message, .text-danger {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container {
+                padding: 1rem;
+            }
+            
+            .main-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+                padding: 1.5rem;
+            }
+            
+            .form-panel {
+                padding: 1.5rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .sidebar-panel {
+                position: static;
+            }
+        }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-panel, .sidebar-panel {
+            animation: slideIn 0.6s ease-out;
+        }
+
+        /* Efectos de profundidad */
+        .depth-1 { box-shadow: var(--shadow-sm); }
+        .depth-2 { box-shadow: var(--shadow-md); }
+        .depth-3 { box-shadow: var(--shadow-lg); }
+    </style>
 </head>
 <body>
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-:root {
-    --color-primario: #0078ad;
-    --color-primario-oscuro: #00628e;
-    --color-texto-principal: #2c3e50;
-    --color-texto-secundario: #7f8c8d;
-    --color-blanco: #FFFFFF;
-    --color-fondo-seccion: #f8f9fa;
-    --color-borde-suave: #ecf0f1;
-    --color-rojo: #dc3545;
-    --color-negro: #212529;
-}
-
-/* Estilos Generales */
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--color-fondo-seccion);
-    color: var(--color-texto-principal);
-}
-
-/* Encabezado */
-header {
-    background-color: var(--color-blanco);
-    border-bottom: 1px solid var(--color-borde-suave);
-    border-radius: 0.5rem;
-    padding: 1rem 2rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.h4 {
-    color: var(--color-primario-oscuro);
-    font-weight: 700;
-}
-
-.text-secondary {
-    color: var(--color-texto-secundario) !important;
-}
-
-.text-secondary:hover {
-    color: var(--color-primario) !important;
-}
-
-/* Contenedor principal y tarjetas */
-.main-container {
-    padding: 1rem;
-}
-
-/* Formulario */
-.form-control, .form-select {
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-borde-suave);
-    padding: 0.75rem 1rem;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: var(--color-primario);
-    box-shadow: 0 0 0 0.25rem rgba(0, 120, 173, 0.25);
-}
-
-/* Títulos dentro del formulario */
-.h5 {
-    font-weight: 600;
-    color: var(--color-primario-oscuro);
-}
-
-.h6 {
-    font-weight: 600;
-    color: var(--color-texto-principal);
-}
-
-hr.my-4 {
-    border-top: 2px solid var(--color-borde-suave);
-}
-
-/* Botones */
-.btn-dark {
-    background-color: var(--color-negro);
-    border-color: var(--color-negro);
-    border-radius: 50px;
-    font-weight: 600;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.btn-dark:hover {
-    background-color: var(--color-texto-principal);
-    border-color: var(--color-texto-principal);
-}
-
-.btn-secondary {
-    background-color: var(--color-texto-secundario);
-    border-color: var(--color-texto-secundario);
-    border-radius: 50px;
-    font-weight: 600;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-.btn-secondary:hover {
-    background-color: #6c757d;
-    border-color: #6c757d;
-}
-
-/* Placeholder de imagen */
-.image-placeholder {
-    background-color: var(--color-borde-suave);
-    color: var(--color-texto-secundario);
-    border-radius: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    min-height: 450px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Mensajes Flash */
-.flash-messages .alert {
-    border-radius: 0.5rem;
-    font-weight: 500;
-    margin-bottom: 1rem;
-}
-</style>
-
-<div class="container-fluid px-4">
-    <header class="d-flex justify-content-between align-items-center py-3">
-        <div class="d-flex align-items-center">
-            <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
+<div class="admin-container">
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-left">
+            <a onclick="history.back()" class="header-icon">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <h1 class="h4 mb-0">Gestión de Salones</h1>
+            <h1 class="header-title">
+                <i class="fas fa-school me-2"></i>
+                Gestión de Salones
+            </h1>
         </div>
-        <div>
-            <a href="#" class="text-secondary me-3"><i class="fas fa-bell fs-5"></i></a>
-            <a href="#" class="text-secondary"><i class="fas fa-user-circle fs-5"></i></a>
+        <div class="header-actions">
+            <a href="#" class="header-icon notification">
+                <i class="fas fa-bell"></i>
+            </a>
+            <a href="#" class="header-icon">
+                <i class="fas fa-user-circle"></i>
+            </a>
         </div>
     </header>
 
+    <!-- Mensajes Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }}">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="main-container mt-4">
-        <div class="row">
-            <div class="col-lg-7">
-                <h2 class="h5 mb-4">Crear Nuevo Salón</h2>
-                <form method="POST" action="{{ url_for('admin.registro_salon') }}">
-                    {{ form.hidden_tag() }}  {# Token CSRF #}
-
-                    <div class="mb-3">
-                        <label for="{{ form.nombre_salon.id }}" class="form-label">Nombre del Salón</label>
-                        {{ form.nombre_salon(class="form-control", placeholder="Ej: Laboratorio de Cómputo 1") }}
-                        {% for error in form.nombre_salon.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.sede.id }}" class="form-label">Sede</label>
-                        {{ form.sede(class="form-select") }}
-                        {% for error in form.sede.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.tipo.id }}" class="form-label">Tipo de Salón</label>
-                        {{ form.tipo(class="form-select") }}
-                        {% for error in form.tipo.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.capacidad.id }}" class="form-label">Capacidad</label>
-                        {{ form.capacidad(class="form-control", placeholder="Ej: 30") }}
-                        {% for error in form.capacidad.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.cantidad_sillas.id }}" class="form-label">Cantidad de Sillas</label>
-                        {{ form.cantidad_sillas(class="form-control", placeholder="Ej: 30") }}
-                        {% for error in form.cantidad_sillas.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.cantidad_mesas.id }}" class="form-label">Cantidad de Mesas</label>
-                        {{ form.cantidad_mesas(class="form-control", placeholder="Ej: 15") }}
-                        {% for error in form.cantidad_mesas.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <button type="submit" class="btn btn-dark w-100 py-2 mt-3">CREAR SALÓN</button>
-                </form>
-            </div>
-            
-            <div class="col-lg-5 d-none d-lg-flex align-items-center justify-content-center">
-                <div class="image-placeholder border rounded p-5 text-center">
-                    <i class="fa-solid fa-school fa-3x"></i>
-                    <p class="mt-3 text-muted">Gestión de Salones</p>
-                    <p class="small text-muted">Crea y administra los espacios académicos de tu institución</p>
+    <!-- Contenido Principal -->
+    <div class="content-grid">
+        <!-- Panel de Formulario -->
+        <div class="form-panel depth-2">
+            <div class="form-header">
+                <div class="form-icon">
+                    <i class="fas fa-door-open"></i>
+                </div>
+                <div>
+                    <h2 class="form-title">Crear Nuevo Salón</h2>
+                    <p class="form-subtitle">Complete la información del salón para agregarlo al sistema</p>
                 </div>
             </div>
+
+            <form method="POST" action="{{ url_for('admin.registro_salon') }}">
+                {{ form.hidden_tag() }}
+
+                <!-- Información Básica del Salón -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Información Básica
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.nombre_salon.id }}" class="form-label">
+                            <i class="fas fa-tag"></i>
+                            Nombre del Salón
+                        </label>
+                        {{ form.nombre_salon(class="form-control", placeholder="Ej: Laboratorio de Cómputo 1") }}
+                        {% for error in form.nombre_salon.errors %}
+                            <div class="text-danger small">
+                                <i class="fas fa-exclamation-circle"></i>
+                                {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.sede.id }}" class="form-label">
+                                <i class="fas fa-building"></i>
+                                Sede
+                            </label>
+                            {{ form.sede(class="form-select") }}
+                            {% for error in form.sede.errors %}
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.tipo.id }}" class="form-label">
+                                <i class="fas fa-list"></i>
+                                Tipo de Salón
+                            </label>
+                            {{ form.tipo(class="form-select") }}
+                            {% for error in form.tipo.errors %}
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Capacidad y Mobiliario -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-users"></i>
+                        Capacidad y Mobiliario
+                    </h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.capacidad.id }}" class="form-label">
+                                <i class="fas fa-user-friends"></i>
+                                Capacidad Total
+                            </label>
+                            {{ form.capacidad(class="form-control", placeholder="Ej: 30", type="number", min="1") }}
+                            {% for error in form.capacidad.errors %}
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.cantidad_sillas.id }}" class="form-label">
+                                <i class="fas fa-chair"></i>
+                                Cantidad de Sillas
+                            </label>
+                            {{ form.cantidad_sillas(class="form-control", placeholder="Ej: 30", type="number", min="0") }}
+                            {% for error in form.cantidad_sillas.errors %}
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.cantidad_mesas.id }}" class="form-label">
+                                <i class="fas fa-table"></i>
+                                Cantidad de Mesas
+                            </label>
+                            {{ form.cantidad_mesas(class="form-control", placeholder="Ej: 15", type="number", min="0") }}
+                            {% for error in form.cantidad_mesas.errors %}
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary depth-2">
+                    <i class="fas fa-plus-circle me-2"></i>CREAR SALÓN
+                </button>
+            </form>
+
+            <a href="{{ url_for('admin.salones') }}" class="btn-secondary depth-1">
+                <i class="fas fa-arrow-left me-2"></i>Volver a la Lista
+            </a>
         </div>
 
-        <a href="{{ url_for('admin.salones') }}" class="btn btn-secondary w-100 py-2 mt-4">Atrás</a>
+        <!-- Panel Lateral -->
+        <div class="sidebar-panel depth-2">
+            <div class="sidebar-header">
+                <div class="sidebar-icon">
+                    <i class="fas fa-school"></i>
+                </div>
+                <h3 class="sidebar-title">Gestión de Salones</h3>
+                <p class="sidebar-text">Crea y administra los espacios académicos de tu institución</p>
+            </div>
+
+            <ul class="info-list">
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-door-open"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Espacios organizados</h4>
+                        <p>Mantén un registro completo de todos los salones disponibles</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Control por sede</h4>
+                        <p>Organiza los salones según la sede a la que pertenecen</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Inventario de mobiliario</h4>
+                        <p>Registra la cantidad de sillas y mesas disponibles</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-users-cog"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Capacidad definida</h4>
+                        <p>Establece el número máximo de personas por salón</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Tipos de salón</h4>
+                        <p>Clasifica los espacios según su uso (laboratorios, aulas, etc.)</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
     </div>
 </div>
 

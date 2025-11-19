@@ -6,123 +6,783 @@
     <title>Gestión de Inventario - Crear Equipo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        /* Variables CSS con paleta completa */
+        :root {
+            --primary: #0D3B66;
+            --primary-light: #1a5080;
+            --secondary: #F4D35E;
+            --accent: #F95738;
+            --accent-light: #EE964B;
+            --light: #FAF0CA;
+            --white: #FFFFFF;
+            --dark: #2C3E50;
+            --gray: #7F8C8D;
+            --light-gray: #F8F9FA;
+            --border: #E9ECEF;
+            --success: #28A745;
+            --error: #DC3545;
+            --warning: #FFC107;
+            
+            --shadow-sm: 0 2px 8px rgba(13, 59, 102, 0.08);
+            --shadow-md: 0 4px 16px rgba(13, 59, 102, 0.12);
+            --shadow-lg: 0 8px 32px rgba(13, 59, 102, 0.15);
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Estilos Base */
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, var(--light-gray) 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Layout Principal */
+        .admin-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header con Gradiente */
+        .main-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-title {
+            color: var(--white);
+            font-weight: 700;
+            font-size: 1.75rem;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            position: relative;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            border: none;
+        }
+
+        .header-icon:hover {
+            background: var(--secondary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 211, 94, 0.3);
+        }
+
+        .header-icon.notification::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Grid Principal */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1200px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel de Formulario */
+        .form-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--secondary));
+        }
+
+        .form-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .form-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-title {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .form-subtitle {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Grupos de Formulario */
+        .form-section {
+            margin-bottom: 2rem;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .form-section:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .section-title {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Campos de Formulario */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            background: var(--white);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-light);
+            box-shadow: 0 0 0 3px rgba(238, 150, 75, 0.1);
+            outline: none;
+        }
+
+        .form-control:hover, .form-select:hover {
+            border-color: var(--accent-light);
+        }
+
+        .form-select:disabled {
+            background-color: var(--light-gray);
+            cursor: not-allowed;
+        }
+
+        /* Badge para campos requeridos */
+        .required-badge {
+            background: var(--accent);
+            color: var(--white);
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        /* Panel Lateral */
+        .sidebar-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            border-top: 4px solid var(--secondary);
+            position: sticky;
+            top: 2rem;
+            background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .sidebar-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary), #e9c440);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: var(--dark);
+            font-size: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-title {
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-text {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Lista de Información */
+        .info-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .info-item:hover {
+            background: var(--light);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin: 0 -0.5rem;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            flex-shrink: 0;
+            font-size: 0.9rem;
+        }
+
+        .info-content h4 {
+            color: var(--primary);
+            font-weight: 600;
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+        }
+
+        .info-content p {
+            color: var(--gray);
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        /* Resumen de Asignaciones */
+        .resumen-asignaciones {
+            background: var(--white);
+            border: 2px dashed var(--secondary);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .resumen-title {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .resumen-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .resumen-item:last-child {
+            border-bottom: none;
+        }
+
+        .resumen-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .resumen-value {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        /* Botones Mejorados */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            color: var(--white);
+            padding: 1rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--white), var(--light-gray));
+            border: 2px solid var(--secondary);
+            color: var(--dark);
+            padding: 0.875rem 2rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            text-decoration: none;
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-light);
+            background: var(--light);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            color: var(--primary);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-outline-danger {
+            border: 2px solid var(--error);
+            color: var(--error);
+            background: var(--white);
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .btn-outline-danger:hover {
+            background: var(--error);
+            color: var(--white);
+            transform: scale(1.05);
+        }
+
+        /* Card de Asignaciones */
+        .card {
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            background: var(--white);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .card-title {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .list-group-item {
+            border-radius: var(--radius-sm) !important;
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .list-group-item:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+            transform: translateX(5px);
+        }
+
+        /* Mensajes Flash Mejorados */
+        .alert {
+            border-radius: var(--radius-md);
+            border: none;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border-left: 4px solid;
+            background: var(--white);
+        }
+
+        .alert-success {
+            border-left-color: var(--success);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(40, 167, 69, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-danger {
+            border-left-color: var(--error);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(220, 53, 69, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        .alert-info {
+            border-left-color: var(--accent-light);
+            background: linear-gradient(135deg, var(--white) 0%, rgba(238, 150, 75, 0.05) 100%);
+            color: var(--dark);
+        }
+
+        /* Errores de Formulario */
+        .error-message, .text-danger {
+            color: var(--error);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container {
+                padding: 1rem;
+            }
+            
+            .main-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+                padding: 1.5rem;
+            }
+            
+            .form-panel {
+                padding: 1.5rem;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .sidebar-panel {
+                position: static;
+            }
+        }
+
+        /* Animaciones */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-panel, .sidebar-panel {
+            animation: slideIn 0.6s ease-out;
+        }
+
+        /* Efectos de profundidad */
+        .depth-1 { box-shadow: var(--shadow-sm); }
+        .depth-2 { box-shadow: var(--shadow-md); }
+        .depth-3 { box-shadow: var(--shadow-lg); }
+    </style>
 </head>
 <body>
 {% extends "base.html" %}
 
 {% block content %}
-<header class="main-header">
-    <a onclick="history.back()" class="btn btn-outline-secondary btn-sm border-0 me-3">
-        <i class="fa-solid fa-arrow-left"></i>
-    </a>
-    <h1>Gestión Inventario</h1>
-    <div class="header-icons">
-        <i class="fa-solid fa-bell"></i>
-        <i class="fa-solid fa-user"></i>
-    </div>
-</header>
+<div class="admin-container">
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-left">
+            <a onclick="history.back()" class="header-icon">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="header-title">
+                <i class="fas fa-desktop me-2"></i>
+                Gestión de Inventario
+            </h1>
+        </div>
+        <div class="header-actions">
+            <a href="#" class="header-icon notification">
+                <i class="fas fa-bell"></i>
+            </a>
+            <a href="#" class="header-icon">
+                <i class="fas fa-user-circle"></i>
+            </a>
+        </div>
+    </header>
 
-<div class="container-fluid px-4">
+    <!-- Mensajes Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            </div>
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }}">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
         {% endif %}
     {% endwith %}
 
-    <div class="main-container mt-4">
-        <div class="row">
-            <div class="col-lg-8">
-                <h2 class="h5 mb-4">
-                    <i class="fas fa-desktop me-2 text-primary"></i>
-                    Registrar Nuevo Equipo
-                </h2>
-                
-                <form method="POST" action="{{ url_for('admin.crear_equipo') }}" id="formEquipo">
-                    {{ form.hidden_tag() }}
+    <!-- Contenido Principal -->
+    <div class="content-grid">
+        <!-- Panel de Formulario -->
+        <div class="form-panel depth-2">
+            <div class="form-header">
+                <div class="form-icon">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                <div>
+                    <h2 class="form-title">Registrar Nuevo Equipo</h2>
+                    <p class="form-subtitle">Complete la información del equipo y asigne estudiantes según sea necesario</p>
+                </div>
+            </div>
 
-                    <div class="section-header">
-                        <h6 class="text-primary mb-3">
-                            <i class="fas fa-info-circle me-2"></i>Información Básica
-                        </h6>
-                    </div>
+            <form method="POST" action="{{ url_for('admin.crear_equipo') }}" id="formEquipo">
+                {{ form.hidden_tag() }}
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
+                <!-- Información Básica -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Información Básica
+                        <span class="required-badge">OBLIGATORIO</span>
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
                             <label for="{{ form.id_referencia.id }}" class="form-label">
-                                ID/Referencia *
+                                <i class="fas fa-barcode"></i>
+                                ID/Referencia
                             </label>
                             {{ form.id_referencia(class="form-control", placeholder="Ej: EQ-001") }}
                             {% for error in form.id_referencia.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
                             {% endfor %}
                         </div>
-                        <div class="col-md-6">
+                        <div class="form-group">
                             <label for="{{ form.nombre.id }}" class="form-label">
-                                Nombre del Equipo *
+                                <i class="fas fa-laptop"></i>
+                                Nombre del Equipo
                             </label>
                             {{ form.nombre(class="form-control", placeholder="Ej: Laptop Dell 15") }}
                             {% for error in form.nombre.errors %}
-                                <div class="text-danger small">{{ error }}</div>
+                                <div class="text-danger small">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ error }}
+                                </div>
                             {% endfor %}
                         </div>
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="{{ form.tipo.id }}" class="form-label">Tipo de Equipo *</label>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="{{ form.tipo.id }}" class="form-label">
+                                <i class="fas fa-tag"></i>
+                                Tipo de Equipo
+                            </label>
                             {{ form.tipo(class="form-select") }}
                         </div>
-                        <div class="col-md-6">
-                            <label for="{{ form.salon.id }}" class="form-label">Sala *</label>
+                        <div class="form-group">
+                            <label for="{{ form.salon.id }}" class="form-label">
+                                <i class="fas fa-door-open"></i>
+                                Sala
+                            </label>
                             {{ form.salon(class="form-select") }}
                         </div>
                     </div>
+                </div>
 
-                    <div class="section-header mt-4">
-                        <h6 class="text-primary mb-3">
-                            <i class="fas fa-microchip me-2"></i>Especificaciones Técnicas
-                        </h6>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-4">
+                <!-- Especificaciones Técnicas -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-microchip"></i>
+                        Especificaciones Técnicas
+                    </h3>
+                    <div class="form-grid">
+                        <div class="form-group">
                             <label for="{{ form.sistema_operativo.id }}" class="form-label">
+                                <i class="fas fa-windows"></i>
                                 Sistema Operativo
                             </label>
                             {{ form.sistema_operativo(class="form-control", placeholder="Ej: Windows 11") }}
                         </div>
-                        <div class="col-md-4">
-                            <label for="{{ form.ram.id }}" class="form-label">Memoria RAM</label>
+                        <div class="form-group">
+                            <label for="{{ form.ram.id }}" class="form-label">
+                                <i class="fas fa-memory"></i>
+                                Memoria RAM
+                            </label>
                             {{ form.ram(class="form-control", placeholder="Ej: 8GB DDR4") }}
                         </div>
-                        <div class="col-md-4">
-                            <label for="{{ form.disco_duro.id }}" class="form-label">Disco Duro</label>
+                        <div class="form-group">
+                            <label for="{{ form.disco_duro.id }}" class="form-label">
+                                <i class="fas fa-hdd"></i>
+                                Disco Duro
+                            </label>
                             {{ form.disco_duro(class="form-control", placeholder="Ej: 256GB SSD") }}
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="form-group">
                             <label for="{{ form.fecha_adquisicion.id }}" class="form-label">
+                                <i class="fas fa-calendar"></i>
                                 Fecha de Adquisición
                             </label>
                             {{ form.fecha_adquisicion(class="form-control") }}
                         </div>
                     </div>
+                </div>
 
-                    <div class="section-header mt-4">
-                        <h6 class="text-primary mb-3">
-                            <i class="fas fa-users me-2"></i>
-                            Asignaciones a Estudiantes (Opcional)
-                        </h6>
-                    </div>
+                <!-- Asignaciones a Estudiantes -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-users"></i>
+                        Asignaciones a Estudiantes
+                        <small class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: auto;">(Opcional)</small>
+                    </h3>
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
@@ -132,9 +792,10 @@
 
                     <div class="card mb-3">
                         <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
+                            <div class="form-grid">
+                                <div class="form-group">
                                     <label for="curso_selector" class="form-label">
+                                        <i class="fas fa-graduation-cap"></i>
                                         Seleccionar Curso
                                     </label>
                                     <select class="form-select" id="curso_selector">
@@ -146,8 +807,9 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="form-group">
                                     <label for="estudiante_selector" class="form-label">
+                                        <i class="fas fa-user-graduate"></i>
                                         Seleccionar Estudiante
                                     </label>
                                     <select class="form-select" id="estudiante_selector" disabled>
@@ -156,87 +818,124 @@
                                 </div>
                             </div>
                             
-                            <button type="button" class="btn btn-sm btn-primary" id="btnAgregarEstudiante">
+                            <button type="button" class="btn btn-sm btn-primary" id="btnAgregarEstudiante" style="width: auto;">
                                 <i class="fas fa-plus me-2"></i>Agregar Estudiante
                             </button>
                         </div>
                     </div>
 
                     <div id="listaAsignaciones" class="mb-3"></div>
-
                     <div id="hiddenEstudiantes"></div>
+                </div>
 
-                    <div class="section-header mt-4">
-                        <h6 class="text-primary mb-3">
-                            <i class="fas fa-clipboard-list me-2"></i>Información Adicional
-                        </h6>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="{{ form.descripcion.id }}" class="form-label">Descripción</label>
+                <!-- Información Adicional -->
+                <div class="form-section depth-1">
+                    <h3 class="section-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        Información Adicional
+                    </h3>
+                    <div class="form-group">
+                        <label for="{{ form.descripcion.id }}" class="form-label">
+                            <i class="fas fa-file-alt"></i>
+                            Descripción
+                        </label>
                         {{ form.descripcion(class="form-control", rows="3") }}
                     </div>
 
-                    <div class="mb-3">
-                        <label for="{{ form.observaciones.id }}" class="form-label">Observaciones</label>
+                    <div class="form-group">
+                        <label for="{{ form.observaciones.id }}" class="form-label">
+                            <i class="fas fa-sticky-note"></i>
+                            Observaciones
+                        </label>
                         {{ form.observaciones(class="form-control", rows="3") }}
                     </div>
+                </div>
 
-                    <button type="submit" class="btn btn-dark w-100 py-2 mt-3">
-                        <i class="fas fa-plus me-2"></i>REGISTRAR EQUIPO
-                    </button>
-                </form>
+                <button type="submit" class="btn-primary depth-2">
+                    <i class="fas fa-plus me-2"></i>REGISTRAR EQUIPO
+                </button>
+            </form>
+
+            <a href="{{ url_for('admin.equipos') }}" class="btn-secondary depth-1">
+                <i class="fas fa-arrow-left me-2"></i>Volver a Gestión de Equipos
+            </a>
+        </div>
+
+        <!-- Panel Lateral -->
+        <div class="sidebar-panel depth-2">
+            <div class="sidebar-header">
+                <div class="sidebar-icon">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                <h3 class="sidebar-title">Registro de Equipos</h3>
+                <p class="sidebar-text">Complete los campos para registrar el equipo en el sistema</p>
             </div>
 
-            <div class="col-lg-4">
-                <div class="equipment-preview border rounded p-4 text-center sticky-top">
-                    <i class="fas fa-desktop fa-4x text-primary mb-3"></i>
-                    <h5 class="text-primary">Registro de Equipos</h5>
-                    <p class="text-muted small">Complete los campos para registrar el equipo.</p>
-                    
-                    <div class="feature-list text-start mt-4">
-                        <div class="feature-item mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Asignación múltiple a estudiantes</small>
-                        </div>
-                        <div class="feature-item mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Un estudiante por curso</small>
-                        </div>
-                        <div class="feature-item mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Control de inventario completo</small>
-                        </div>
-                        <div class="feature-item mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <small>Seguimiento en tiempo real</small>
-                        </div>
+            <ul class="info-list">
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-check-circle"></i>
                     </div>
-                    
-                    <!-- Resumen de asignaciones -->
-                    <div class="mt-4 p-3 bg-light rounded" id="resumenAsignaciones">
-                        <h6 class="text-secondary mb-2">
-                            <i class="fas fa-clipboard-list me-2"></i>Resumen
-                        </h6>
-                        <p class="mb-1 small">
-                            <strong>Estudiantes:</strong> 
-                            <span id="totalEstudiantes">0</span>
-                        </p>
-                        <p class="mb-0 small">
-                            <strong>Cursos:</strong> 
-                            <span id="totalCursos">0</span>
-                        </p>
+                    <div class="info-content">
+                        <h4>Asignación múltiple</h4>
+                        <p>Puedes asignar el equipo a estudiantes de diferentes cursos</p>
                     </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Un estudiante por curso</h4>
+                        <p>Cada equipo puede tener solo un estudiante asignado por curso</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Control completo</h4>
+                        <p>Gestiona todo el inventario de equipos desde un solo lugar</p>
+                    </div>
+                </li>
+                <li class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="info-content">
+                        <h4>Seguimiento en tiempo real</h4>
+                        <p>Monitorea el estado y ubicación de cada equipo</p>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Resumen de asignaciones -->
+            <div class="resumen-asignaciones">
+                <h6 class="resumen-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Resumen de Asignaciones
+                </h6>
+                <div class="resumen-item">
+                    <span class="resumen-label">
+                        <i class="fas fa-users me-1"></i>
+                        Estudiantes
+                    </span>
+                    <span class="resumen-value" id="totalEstudiantes">0</span>
+                </div>
+                <div class="resumen-item">
+                    <span class="resumen-label">
+                        <i class="fas fa-graduation-cap me-1"></i>
+                        Cursos
+                    </span>
+                    <span class="resumen-value" id="totalCursos">0</span>
                 </div>
             </div>
         </div>
-
-        <a href="{{ url_for('admin.equipos') }}" class="btn btn-secondary w-100 py-2 mt-4">
-            <i class="fas fa-arrow-left me-2"></i>Volver a Gestión de Equipos
-        </a>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const cursoSelector = document.getElementById('curso_selector');
@@ -274,7 +973,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     estudianteSelector.innerHTML = '<option value="">No hay estudiantes en este curso</option>';
                 } else {
                     estudiantes.forEach(est => {
-
                         if (!asignaciones.find(a => a.estudiante_id === est.id_usuario)) {
                             const option = document.createElement('option');
                             option.value = est.id_usuario;
@@ -361,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         let html = '<div class="card"><div class="card-body">';
-        html += '<h6 class="card-title mb-3"><i class="fas fa-users me-2"></i>Estudiantes Asignados</h6>';
+        html += '<h6 class="card-title"><i class="fas fa-users me-2"></i>Estudiantes Asignados</h6>';
         html += '<div class="list-group">';
         
         asignaciones.forEach((asig, index) => {
@@ -452,81 +1150,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-.section-header {
-    border-bottom: 2px solid #e9ecef;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.equipment-preview {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    top: 20px;
-}
-
-.feature-list {
-    text-align: left;
-}
-
-.feature-item {
-    display: flex;
-    align-items: center;
-}
-
-.main-container {
-    background: #fff;
-    border-radius: 10px;
-    padding: 2rem;
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
-}
-
-.form-control, .form-select {
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    padding: 0.75rem;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.form-select:disabled {
-    background-color: #f8f9fa;
-    cursor: not-allowed;
-}
-
-.btn {
-    border-radius: 8px;
-    font-weight: 500;
-}
-
-.list-group-item {
-    border-radius: 8px !important;
-    margin-bottom: 0.5rem;
-    border: 1px solid #dee2e6;
-}
-
-.card {
-    border-radius: 10px;
-    border: 1px solid #e9ecef;
-}
-
-header {
-    background: #fff;
-    border-bottom: 1px solid #e9ecef;
-    margin-bottom: 1rem;
-    padding: 1rem;
-}
-
-.alert {
-    border-radius: 8px;
-}
-
-#resumenAsignaciones {
-    border: 2px dashed #dee2e6;
-}
-</style>
 {% endblock %}
 </body>
 </html>
