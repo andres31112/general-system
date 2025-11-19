@@ -13,13 +13,66 @@ from services.notification_service import (
     marcar_notificacion_como_leida,
     contar_notificaciones_no_leidas
 )
+
 estudiante_bp = Blueprint('estudiante', __name__, url_prefix='/estudiante')
+
+# ========== FUNCIÓN AUXILIAR PARA CONTADORES ==========
+def get_sidebar_counts():
+    """Función auxiliar para obtener los contadores del sidebar"""
+    from datetime import datetime
+    
+    try:
+        estados = db.session.query(Comunicacion.estado).distinct().all()
+        estados_lista = [e[0] for e in estados]
+    except Exception as e:
+        estados_lista = []
+    
+    estado_no_leido = 'inbox'
+    
+    if 'no_leido' in estados_lista:
+        estado_no_leido = 'no_leido'
+    elif 'unread' in estados_lista:
+        estado_no_leido = 'unread'
+    elif 'pendiente' in estados_lista:
+        estado_no_leido = 'pendiente'
+    elif 'nuevo' in estados_lista:
+        estado_no_leido = 'nuevo'
+    
+    unread_messages = Comunicacion.query.filter_by(
+        destinatario_id=current_user.id_usuario, 
+        estado=estado_no_leido
+    ).count()
+    
+    unread_notifications = Notificacion.query.filter_by(
+        usuario_id=current_user.id_usuario,
+        leida=False
+    ).count()
+    
+    hoy = datetime.now().date()
+    
+    eventos_filtrados = Evento.query.filter(
+        Evento.fecha.isnot(None),
+        Evento.fecha >= hoy
+    ).all()
+    
+    upcoming_events = len(eventos_filtrados)
+    
+    return {
+        'unread_messages': unread_messages,
+        'unread_notifications': unread_notifications,
+        'upcoming_events': upcoming_events
+    }
+# ========== FIN FUNCIÓN AUXILIAR ==========
 
 @estudiante_bp.route('/dashboard')
 @login_required
 def estudiante_panel():
     if current_user.rol and current_user.rol.nombre.lower() == 'estudiante':
-        return render_template('estudiantes/dashboard.html')
+        counts = get_sidebar_counts()
+        return render_template('estudiantes/dashboard.html',
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     else:
         flash('Acceso no autorizado.', 'danger')
         return redirect(url_for('auth.login')) 
@@ -47,6 +100,7 @@ def ver_calificaciones():
             solicitud_sel = q_aceptadas.filter_by(asignatura_id=asignatura_id).first()
 
         if not solicitud_sel:
+            counts = get_sidebar_counts()
             return render_template(
                 'estudiantes/calificaciones.html',
                 estudiante=estudiante,
@@ -55,7 +109,10 @@ def ver_calificaciones():
                 calificaciones_por_categoria={},
                 promedios_por_categoria={},
                 promedio_general=0.0,
-                aceptadas=q_aceptadas.all()
+                aceptadas=q_aceptadas.all(),
+                unread_messages=counts['unread_messages'],
+                unread_notifications=counts['unread_notifications'],
+                upcoming_events=counts['upcoming_events']
             )
 
         califs = Calificacion.query.filter_by(estudianteId=estudiante.id_usuario, asignaturaId=asignatura_id).all()
@@ -80,6 +137,7 @@ def ver_calificaciones():
         asignatura = Asignatura.query.get(asignatura_id)
         ultima_fecha = solicitud_sel.fecha_respuesta
 
+        counts = get_sidebar_counts()
         return render_template(
             'estudiantes/calificaciones.html',
             estudiante=estudiante,
@@ -88,7 +146,10 @@ def ver_calificaciones():
             calificaciones_por_categoria=por_cat,
             promedios_por_categoria=proms_por_cat,
             promedio_general=promedio_general,
-            aceptadas=q_aceptadas.all()
+            aceptadas=q_aceptadas.all(),
+            unread_messages=counts['unread_messages'],
+            unread_notifications=counts['unread_notifications'],
+            upcoming_events=counts['upcoming_events']
         )
     except Exception as e:
         flash(f'Error cargando calificaciones: {str(e)}', 'danger')
@@ -98,7 +159,11 @@ def ver_calificaciones():
 @login_required
 @permission_required('ver_horario')
 def ver_horario():
-    return render_template('estudiante/horario.html')
+    counts = get_sidebar_counts()
+    return render_template('estudiante/horario.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 # =======================
 # Mi Horario (vista y API)
@@ -111,7 +176,12 @@ def mi_horario():
         matricula = Matricula.query.filter_by(estudianteId=current_user.id_usuario)\
             .order_by(Matricula.fecha_matricula.desc()).first()
         curso = Curso.query.get(matricula.cursoId) if matricula else None
-        return render_template('estudiantes/mi_horario.html', curso=curso)
+        counts = get_sidebar_counts()
+        return render_template('estudiantes/mi_horario.html', 
+                             curso=curso,
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     except Exception as e:
         flash(f'Error cargando Mi Horario: {str(e)}', 'error')
         return redirect(url_for('estudiante.estudiante_panel'))
@@ -451,16 +521,24 @@ def votar():
 @estudiante_bp.route('/eleccion')
 @login_required
 def eleccion_electoral():
+    counts = get_sidebar_counts()
     return render_template(
         "estudiantes/votar.html",
-        current_user_id=current_user.id_usuario
+        current_user_id=current_user.id_usuario,
+        unread_messages=counts['unread_messages'],
+        unread_notifications=counts['unread_notifications'],
+        upcoming_events=counts['upcoming_events']
     )
 
 
 @estudiante_bp.route('/comunicaciones')
 @login_required
 def comunicaciones():
-    return render_template('estudiantes/comunicaciones.html')
+    counts = get_sidebar_counts()
+    return render_template('estudiantes/comunicaciones.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @estudiante_bp.route('/notificaciones')
 @login_required
@@ -469,9 +547,117 @@ def notificaciones():
         unread = contar_notificaciones_no_leidas(current_user.id_usuario)
     except Exception:
         unread = 0
-    return render_template('estudiantes/notificaciones.html', unread=unread)
+    
+    counts = get_sidebar_counts()
+    return render_template('estudiantes/notificaciones.html', 
+                         unread=unread,
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
-@estudiante_bp.route('/api/notificaciones', methods=['GET'])
+# ============================================================================
+# RUTAS API - NOTIFICACIONES (NUEVAS)
+# ============================================================================
+
+@estudiante_bp.route('/api/notificaciones')
+@login_required
+def api_obtener_notificaciones():
+    """API para obtener notificaciones del estudiante con paginación"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        filtro = request.args.get('filtro', 'todas')
+        
+        query = Notificacion.query.filter_by(usuario_id=current_user.id_usuario)
+        
+        if filtro == 'pendientes':
+            query = query.filter_by(leida=False)
+        elif filtro == 'leidas':
+            query = query.filter_by(leida=True)
+        
+        pagination = query.order_by(Notificacion.creada_en.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        notificaciones_data = []
+        for notif in pagination.items:
+            notificaciones_data.append({
+                "id": notif.id_notificacion,
+                "titulo": notif.titulo,
+                "mensaje": notif.mensaje,
+                "tipo": notif.tipo,
+                "leida": notif.leida,
+                "link": notif.link,
+                "fecha_creacion": notif.creada_en.strftime('%d/%m/%Y %H:%M') if notif.creada_en else 'Reciente',
+                "creada_en": notif.creada_en.isoformat() if notif.creada_en else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "notificaciones": notificaciones_data,
+                "total": pagination.total,
+                "pages": pagination.pages,
+                "current_page": pagination.page,
+                "has_next": pagination.has_next,
+                "has_prev": pagination.has_prev
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/marcar-leidas", methods=["POST"])
+@login_required
+def api_marcar_notificaciones_leidas():
+    """Marcar notificaciones como leídas"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        
+        if notificacion_ids:
+            Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).update({"leida": True})
+        else:
+            Notificacion.query.filter_by(
+                usuario_id=current_user.id_usuario,
+                leida=False
+            ).update({"leida": True})
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@estudiante_bp.route("/api/notificaciones/eliminar", methods=["POST"])
+@login_required
+def api_eliminar_notificaciones():
+    """Eliminar notificaciones"""
+    try:
+        data = request.get_json()
+        notificacion_ids = data.get('notificacion_ids', [])
+        eliminar_todas = data.get('eliminar_todas', False)
+        
+        if eliminar_todas:
+            Notificacion.query.filter_by(usuario_id=current_user.id_usuario).delete()
+        elif notificacion_ids:
+            Notificacion.query.filter(
+                Notificacion.id_notificacion.in_(notificacion_ids),
+                Notificacion.usuario_id == current_user.id_usuario
+            ).delete()
+        
+        db.session.commit()
+        return jsonify({"success": True}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@estudiante_bp.route('/api/notificaciones/listar', methods=['GET'])
 @login_required
 def api_listar_notificaciones():
     try:
@@ -780,7 +966,11 @@ def buscar_usuarios():
 @estudiante_bp.route("/eventos", methods=["GET"])
 @login_required
 def ver_eventos():
-    return render_template("estudiantes/calendario/index.html")
+    counts = get_sidebar_counts()
+    return render_template("estudiantes/calendario/index.html",
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @estudiante_bp.route("/api/eventos", methods=["GET"])
 @login_required
@@ -817,17 +1007,21 @@ def ver_notificaciones():
             leida=False
         ).count()
         
+        counts = get_sidebar_counts()
         return render_template(
             "estudiantes/notificaciones.html", 
             notificaciones=notificaciones,
-            notificaciones_no_leidas=no_leidas
+            notificaciones_no_leidas=no_leidas,
+            unread_messages=counts['unread_messages'],
+            unread_notifications=counts['unread_notifications'],
+            upcoming_events=counts['upcoming_events']
         )
         
     except Exception as e:
         flash(f"Error al cargar notificaciones: {str(e)}", "error")
         return redirect(url_for('estudiante.estudiante_panel'))  
 
-@estudiante_bp.route("/api/notificaciones")
+@estudiante_bp.route("/api/notificaciones/obtener")
 @login_required
 def obtener_notificaciones():
     try:
@@ -1073,7 +1267,12 @@ def ver_tareas():
         
         curso = Curso.query.get(matricula.cursoId)
         
-        return render_template('estudiantes/tareas.html', curso=curso)
+        counts = get_sidebar_counts()
+        return render_template('estudiantes/tareas.html', 
+                             curso=curso,
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     
     except Exception as e:
         flash(f'Error al cargar tareas: {str(e)}', 'error')
@@ -1095,7 +1294,12 @@ def ver_detalle_tarea(tarea_id):
             flash('No tienes acceso a esta tarea', 'error')
             return redirect(url_for('estudiante.ver_tareas'))
         
-        return render_template('estudiantes/detalle_tarea.html', tarea=tarea)
+        counts = get_sidebar_counts()
+        return render_template('estudiantes/detalle_tarea.html', 
+                             tarea=tarea,
+                             unread_messages=counts['unread_messages'],
+                             unread_notifications=counts['unread_notifications'],
+                             upcoming_events=counts['upcoming_events'])
     
     except Exception as e:
         flash(f'Error al cargar tarea: {str(e)}', 'error')
@@ -1203,8 +1407,11 @@ def api_obtener_tarea(tarea_id):
 @login_required
 @permission_required('ver_equipos')
 def mi_equipo():
-  
-    return render_template('estudiantes/mi_equipo.html')
+    counts = get_sidebar_counts()
+    return render_template('estudiantes/mi_equipo.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @estudiante_bp.route('/api/mi-equipo', methods=['GET'])
 @login_required

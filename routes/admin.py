@@ -26,17 +26,98 @@ from controllers.models import (
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+# ========== FUNCIÓN AUXILIAR==========
+def get_sidebar_counts():
+    """Función auxiliar para obtener los contadores del sidebar"""
+    from datetime import datetime
+    
+    try:
+        # DEBUG: Ver qué valores de estado existen
+        estados = db.session.query(Comunicacion.estado).distinct().all()
+        estados_lista = [e[0] for e in estados]
+        print("🔍 VALORES DE 'estado' EN COMUNICACIONES:", estados_lista)
+    except Exception as e:
+        print("❌ Error en debug de estados:", e)
+        estados_lista = []
+    
+    # Determinar el valor correcto para mensajes no leídos
+    estado_no_leido = 'inbox'  # Valor por defecto común
+    
+    # Probar diferentes valores comunes
+    if 'no_leido' in estados_lista:
+        estado_no_leido = 'no_leido'
+    elif 'unread' in estados_lista:
+        estado_no_leido = 'unread'
+    elif 'pendiente' in estados_lista:
+        estado_no_leido = 'pendiente'
+    elif 'nuevo' in estados_lista:
+        estado_no_leido = 'nuevo'
+    
+    print(f"🎯 Usando estado: '{estado_no_leido}' para mensajes no leídos")
+    
+    # Mensajes no leídos (para comunicaciones)
+    unread_messages = Comunicacion.query.filter_by(
+        destinatario_id=current_user.id_usuario, 
+        estado=estado_no_leido
+    ).count()
+    
+    # Notificaciones no leídas (para notificaciones)
+    unread_notifications = Notificacion.query.filter_by(
+        usuario_id=current_user.id_usuario,
+        leida=False
+    ).count()
+    
+    # ✅ VERSIÓN CORREGIDA: Eventos próximos con filtro más estricto
+    hoy = datetime.now().date()
+    
+    # Obtener TODOS los eventos para debug
+    todos_eventos = Evento.query.all()
+    print(f"📋 TODOS LOS EVENTOS EN BD ({len(todos_eventos)} total):")
+    for evento in todos_eventos:
+        print(f"   - ID: {evento.id}, Nombre: '{evento.nombre}', Fecha: {evento.fecha}, Rol: {evento.rol_destino}")
+    
+    # Eventos que cumplen el filtro estricto
+    eventos_filtrados = Evento.query.filter(
+        Evento.fecha.isnot(None),  # Excluir eventos sin fecha
+        Evento.fecha >= hoy        # Solo eventos de hoy en adelante
+    ).all()
+    
+    print(f"🎯 EVENTOS FILTRADOS (fecha >= {hoy} y fecha NOT NULL): {len(eventos_filtrados)} eventos")
+    for evento in eventos_filtrados:
+        print(f"   ✅ INCLUIDO - ID: {evento.id}, Nombre: '{evento.nombre}', Fecha: {evento.fecha}")
+    
+    upcoming_events = len(eventos_filtrados)
+    
+    print(f"📊 RESUMEN CONTADORES - Mensajes: {unread_messages}, Notificaciones: {unread_notifications}, Eventos: {upcoming_events}")
+    
+    return {
+        'unread_messages': unread_messages,
+        'unread_notifications': unread_notifications,
+        'upcoming_events': upcoming_events
+    }
+# ========== FIN FUNCIÓN AUXILIAR ==========
+
+
 @admin_bp.route('/dashboard')
 @login_required 
 @role_required(1) 
 def admin_panel():
-    return render_template('superadmin/gestion_usuarios/dashboard.html')
+    counts = get_sidebar_counts() 
+    return render_template('superadmin/gestion_usuarios/dashboard.html',
+                            # VARIABLES PARA EL TEMPLATE BASE
+                            unread_messages=counts['unread_messages'],
+                            unread_notifications=counts['unread_notifications'],
+                            upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/inicio')
 @login_required
 @role_required(1)
 def inicio():
-    return render_template('superadmin/inicio/inicio.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/inicio/inicio.html',
+                          unread_messages=counts['unread_messages'],
+                          unread_notifications=counts['unread_notifications'],
+                          upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/buscar-usuario')
 @login_required
@@ -133,7 +214,12 @@ def buscar_usuario():
 @role_required(1)
 def profesores():
     filter_id = request.args.get('filter_id', '')
-    return render_template('superadmin/gestion_usuarios/profesores.html', filter_id=filter_id)
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_usuarios/profesores.html', 
+                         filter_id=filter_id,
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/profesores')
 @login_required
@@ -258,6 +344,8 @@ def estudiantes():
     cursos = Curso.query.all()
     form.curso_id.choices = [(str(curso.id_curso), curso.nombreCurso) for curso in cursos]
     
+    counts = get_sidebar_counts()
+    
     return render_template(
         'superadmin/gestion_usuarios/estudiantes.html', 
         estudiantes=estudiantes,
@@ -265,8 +353,12 @@ def estudiantes():
         cursos=cursos,
         rol_predefinido='Estudiante',
         rol_predefinido_id=str(rol_estudiante.id_rol) if rol_estudiante else None,
-        now=date.today
+        now=date.today,
+        unread_messages=counts['unread_messages'],
+        unread_notifications=counts['unread_notifications'],
+        upcoming_events=counts['upcoming_events']
     )
+
 @admin_bp.route('/api/estudiantes')
 @login_required
 @role_required(1)
@@ -1024,7 +1116,12 @@ def api_estudiantes_directorio():
 @role_required(1)
 def padres():
     filter_id = request.args.get('filter_id', '')
-    return render_template('superadmin/gestion_usuarios/padres.html', filter_id=filter_id)
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_usuarios/padres.html', 
+                         filter_id=filter_id,
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/padres')
 @login_required
@@ -1091,7 +1188,12 @@ def api_padres():
 @role_required(1)
 def superadmins():
     filter_id = request.args.get('filter_id', '')
-    return render_template('superadmin/gestion_usuarios/administrativos.html', filter_id=filter_id)
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_usuarios/administrativos.html', 
+                         filter_id=filter_id,
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/superadmins')
 @login_required
@@ -1437,14 +1539,24 @@ def api_crear_padre():
 @login_required
 @role_required(1)
 def gestion_academica():
-    return render_template('superadmin/gestion_academica/dashboard.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_academica/dashboard.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/gestion_sedes')
 @login_required
 @role_required(1)
 def gestion_sedes():
     form = SedeForm()
-    return render_template('superadmin/gestion_academica/sedes.html', form=form)
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_academica/sedes.html', 
+                         form=form,
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
+
 
 @admin_bp.route('/api/sedes', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -1507,13 +1619,23 @@ def api_sedes():
 @role_required(1)
 def gestion_cursos():
     form = CursoForm()
-    return render_template('superadmin/gestion_academica/cursos.html', form=form)
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_academica/cursos.html', 
+                         form=form,
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/periodos')
 @login_required
 @role_required(1)
 def gestion_periodos():
-    return render_template('superadmin/gestion_academica/periodos.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_academica/periodos.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
+
 
 @admin_bp.route('/api/cursos', methods=['GET', 'POST', 'DELETE'])
 @login_required
@@ -1784,11 +1906,16 @@ def api_eliminar_asignatura(asignatura_id):
 
 
 
+
 @admin_bp.route('/gestion-horarios')
 @login_required
 @role_required(1)
 def gestion_horarios():
-    return render_template('superadmin/Horarios/gestion_horarios.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/Horarios/gestion_horarios.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/horarios/nuevo', methods=['POST'])
 @login_required
@@ -2208,7 +2335,11 @@ def api_estadisticas_horarios():
 @login_required
 @role_required(1)
 def gestion_horarios_cursos():
-    return render_template('superadmin/Horarios/gestion_horarios_cursos.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/Horarios/gestion_horarios_cursos.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 def validar_conflicto_horario_profesor(profesor_id, dia_semana, hora_inicio, hora_fin, curso_id_excluir=None, asignatura_id_excluir=None, dia_semana_excluir=None, hora_inicio_excluir=None):
 
@@ -2855,13 +2986,22 @@ def api_estadisticas_horarios_cursos():
 @login_required
 @role_required(1)
 def gestion_i():
-    return render_template('superadmin/gestion_inventario/gi.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_inventario/gi.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
+
 
 @admin_bp.route('/equipos')
 @login_required
 @role_required(1)
 def equipos():
-    return render_template('superadmin/gestion_inventario/equipos.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_inventario/equipos.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/equipos', methods=['GET'])
 @login_required
@@ -3342,7 +3482,11 @@ def api_equipos_por_sala(id_sede, id_salon):
 @login_required
 @role_required(1)
 def reportes():
-    return render_template('superadmin/gestion_inventario/reportes.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_inventario/reportes.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/incidentes/equipo/<int:equipo_id>', methods=['GET']) 
 @login_required
@@ -3430,13 +3574,21 @@ def api_reportes_equipos_por_sede():
 @login_required
 @role_required(1)
 def incidentes():
-    return render_template('superadmin/gestion_inventario/incidentes.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_inventario/incidentes.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/gestion-salones')
 @login_required
 @role_required(1)
 def gestion_salones():
-    return render_template('superadmin/gestion_inventario/salones.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/gestion_inventario/salones.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/registro_salon', methods=['GET', 'POST'])
 @login_required
@@ -3717,7 +3869,11 @@ def api_detalle_incidente(id_incidente):
 @admin_bp.route("/eventos/calendario", methods=["GET"])
 @login_required
 def calendario_eventos():
-    return render_template("superadmin/calendario_admin/index.html") 
+    counts = get_sidebar_counts()
+    return render_template("superadmin/calendario_admin/index.html",
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 
 @admin_bp.route("/debug/notificaciones-eventos", methods=["GET"])
@@ -4072,12 +4228,21 @@ def eliminar_evento(evento_id):
 @login_required
 @role_required(1)
 def sistema_votaciones():
-    return render_template('superadmin/sistema_votaciones/admin.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/sistema_votaciones/admin.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
+
 
 @admin_bp.route('/sistema-votaciones/votar')
 @login_required
 def votar():
-    return render_template('superadmin/sistema_votaciones/votar.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/sistema_votaciones/votar.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 
 
@@ -4599,7 +4764,11 @@ def resultados_publicos():
 @login_required
 @role_required(1)
 def reportes_calificaciones():
-    return render_template('superadmin/reportes/reportes.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/reportes/reportes.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/reportes-calificaciones', methods=['GET'])
 @login_required
@@ -4715,7 +4884,11 @@ def api_enviar_comunicado_profesor():
 @login_required
 @role_required(1)
 def comunicaciones():
-    return render_template('superadmin/comunicaciones.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/comunicaciones.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/api/comunicaciones', methods=['GET'])
 @login_required
@@ -5348,14 +5521,18 @@ def api_eliminar_reporte(reporte_id):
 @login_required
 @role_required(1)
 def verification_codes():
-
     usuarios_pendientes = Usuario.query.filter(
         Usuario.email_verified == False,
         Usuario.verification_code.isnot(None)
     ).all()
     
+    counts = get_sidebar_counts()
+    
     return render_template('superadmin/verification_codes.html', 
-                        usuarios_pendientes=usuarios_pendientes)
+                        usuarios_pendientes=usuarios_pendientes,
+                        unread_messages=counts['unread_messages'],
+                        unread_notifications=counts['unread_notifications'],
+                        upcoming_events=counts['upcoming_events'])
 
 @admin_bp.route('/reenviar-verificacion', methods=['POST'])
 @login_required
@@ -5489,7 +5666,11 @@ def get_verification_info_route(user_id):
 @login_required
 @role_required(1)
 def notificaciones():
-    return render_template('superadmin/notificaciones/notificaciones.html')
+    counts = get_sidebar_counts()
+    return render_template('superadmin/notificaciones/notificaciones.html',
+                         unread_messages=counts['unread_messages'],
+                         unread_notifications=counts['unread_notifications'],
+                         upcoming_events=counts['upcoming_events'])
 
 
 @admin_bp.route('/api/notificaciones')

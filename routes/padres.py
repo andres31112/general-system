@@ -11,7 +11,7 @@ from routes.profesor import tareas_academicas
 
 
 padre_bp = Blueprint('padre', __name__, url_prefix='/padre')
-# ========== FUNCIÓN AUXILIAR CORREGIDA ==========
+# ========== FUNCIÓN AUXILIAR==========
 def get_sidebar_counts():
     """Función auxiliar para obtener los contadores del sidebar"""
     from datetime import datetime
