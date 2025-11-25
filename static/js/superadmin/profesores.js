@@ -39,9 +39,6 @@
                         <td>${profesor.sede_asignada}</td>
                         <td class="actions-cell">
                             <a href="/admin/editar_usuario/${userId}" class="btn-action edit" title="Editar"><i class="fas fa-edit"></i></a>
-                            <form action="/admin/eliminar_usuario/${userId}" method="POST" style="display:inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este usuario?');">
-                                <button type="submit" class="btn-action delete" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
-                            </form>
                         </td>
                     `;
                     tableBody.appendChild(row);
