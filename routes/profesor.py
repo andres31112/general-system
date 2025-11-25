@@ -3862,44 +3862,66 @@ def api_profesor_equipos_disponibles():
             return jsonify({'success': False, 'error': 'No autorizado'}), 403
 
         salon_id = request.args.get('salon_id', type=int)
-        curso_id = request.args.get('curso_id', type=int)  # Agregado: filtro por curso
+        curso_id = request.args.get('curso_id', type=int)
         
+        # Query base: equipos disponibles
         query = Equipo.query.filter_by(estado='Disponible')
         
+        # Filtro por salón específico
         if salon_id:
             query = query.filter_by(id_salon_fk=salon_id)
         
-        #if curso_id:
-        # Filtrar por salas asociadas al curso (usando HorarioCurso y Salon)
-        #    salas_del_curso = db.session.query(Salon.id_salon).join(HorarioCurso).filter(
-        #        HorarioCurso.curso_id == curso_id
-        #    ).distinct().subquery()
-        #    query = query.filter(Equipo.id_salon_fk.in_(salas_del_curso))
+        # Filtro por curso: obtener equipos de la sede del curso
+        elif curso_id:
+            curso = Curso.query.get(curso_id)
+            if curso and curso.sedeId:
+                # Obtener todos los salones de la sede del curso
+                salones_sede = db.session.query(Salon.id_salon).filter_by(
+                    id_sede_fk=curso.sedeId
+                ).all()
+                salones_ids = [s[0] for s in salones_sede]
+                
+                if salones_ids:
+                    query = query.filter(Equipo.id_salon_fk.in_(salones_ids))
+                else:
+                    # Si no hay salones en la sede, devolver lista vacía
+                    return jsonify({'success': True, 'equipos': []})
         
-        equipos = query.all()
+        # Cargar relaciones para evitar queries adicionales
+        equipos = query.join(Salon).join(Sede).all()
         
         equipos_data = []
         for equipo in equipos:
-            salon_nombre = equipo.salon.nombre if equipo.salon else 'Sin salón'  # Corregido: relación
-            sede_nombre = equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede'  # Corregido
-            equipos_data.append({
-                'id_equipo': equipo.id_equipo,
-                'nombre': equipo.nombre,
-                'tipo': equipo.tipo,
-                'id_referencia': equipo.id_referencia,
-                'salon_id': equipo.id_salon_fk,  # Agregado
-                'salon': salon_nombre,  # Agregado
-                'sede': sede_nombre  # Agregado
-            })
+            try:
+                salon_nombre = equipo.salon.nombre if equipo.salon else 'Sin salón'
+                sede_nombre = equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'Sin sede'
+                
+                equipos_data.append({
+                    'id_equipo': equipo.id_equipo,
+                    'nombre': equipo.nombre,
+                    'tipo': equipo.tipo,
+                    'id_referencia': equipo.id_referencia or 'N/A',
+                    'salon_id': equipo.id_salon_fk,
+                    'salon': salon_nombre,
+                    'sede': sede_nombre
+                })
+            except Exception as eq_error:
+                current_app.logger.error(f"Error procesando equipo {equipo.id_equipo}: {eq_error}")
+                continue
         
         return jsonify({
             'success': True,
-            'equipos': equipos_data
+            'equipos': equipos_data,
+            'total': len(equipos_data)
         })
         
     except Exception as e:
-        current_app.logger.error(f"Error obteniendo equipos: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error(f"Error obteniendo equipos disponibles: {e}")
+        return jsonify({
+            'success': False, 
+            'error': f'Error al cargar equipos: {str(e)}',
+            'equipos': []
+        }), 500
        
 @profesor_bp.route('/api/devolver-equipo', methods=['POST'])
 @login_required

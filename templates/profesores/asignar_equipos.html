@@ -515,7 +515,10 @@ async function cargarCursos() {
             mostrarCursos();
             actualizarEstadisticas();
         } else mostrarError(data.error || 'Error al cargar cursos');
-    } catch (e) { mostrarError('Error de conexión'); }
+    } catch (e) { 
+        console.error('Error cargando cursos:', e);
+        mostrarError('Error de conexión'); 
+    }
 }
 
 function mostrarCursos() {
@@ -552,26 +555,39 @@ function mostrarCursos() {
 async function seleccionarCurso(id) {
     cursoSeleccionado = id;
     document.querySelectorAll('.curso-card').forEach(c => c.classList.remove('selected'));
-    document.querySelector(`[data-curso-id="${id}"]`).classList.add('selected');
+    const cursoCard = document.querySelector(`[data-curso-id="${id}"]`);
+    if (cursoCard) cursoCard.classList.add('selected');
     paginaEstudiantes = 1;
     await cargarEstudiantes(id);
 }
 
 // --- Estudiantes ---
 async function cargarEstudiantes(cursoId) {
+    const container = document.getElementById('estudiantes-container');
+    container.innerHTML = `<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-3 text-muted">Cargando estudiantes...</p></div>`;
+    
     try {
         const res = await fetch(`/profesor/api/estudiantes-curso/${cursoId}`);
         const data = await res.json();
+        
         if (data.success) {
-            estudiantes = data.estudiantes;  // <-- GUARDAMOS LA LISTA COMPLETA
-            mostrarEstudiantes();  // <-- Mostramos con paginación
+            estudiantes = data.estudiantes || [];
+            mostrarEstudiantes();
             actualizarEstadisticas();
-        } else mostrarError(data.error);
-    } catch (e) { mostrarError('Error al cargar estudiantes'); }
+        } else {
+            mostrarError(data.error || 'Error al cargar estudiantes');
+            container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${data.error}</p></div>`;
+        }
+    } catch (e) { 
+        console.error('Error cargando estudiantes:', e);
+        mostrarError('Error al cargar estudiantes');
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error de conexión</p></div>`;
+    }
 }
 
 function mostrarEstudiantes() {
     const container = document.getElementById('estudiantes-container');
+    
     if (!estudiantes || estudiantes.length === 0) {
         container.innerHTML = `<div class="empty-state"><i class="fas fa-users-slash"></i><p>No hay estudiantes</p></div>`;
         document.getElementById('total-estudiantes').textContent = '0';
@@ -583,7 +599,7 @@ function mostrarEstudiantes() {
     const fin = inicio + porPagina;
     const pagina = estudiantes.slice(inicio, fin);
 
-    const totalAsignaciones = estudiantes.reduce((a, e) => a + e.equipos_asignados.length, 0);
+    const totalAsignaciones = estudiantes.reduce((a, e) => a + (e.equipos_asignados?.length || 0), 0);
     document.getElementById('total-estudiantes').textContent = estudiantes.length;
     document.getElementById('total-asignaciones').textContent = totalAsignaciones;
 
@@ -596,18 +612,18 @@ function mostrarEstudiantes() {
                         <small class="text-muted">ID: ${est.no_identidad}</small>
                     </div>
                     <div class="col-12 col-md-6">
-                        ${est.equipos_asignados.length > 0 ? est.equipos_asignados.map(eq => `
+                        ${(est.equipos_asignados && est.equipos_asignados.length > 0) ? est.equipos_asignados.map(eq => `
                             <span class="equipo-tag">
-                                ${eq.nombre}
+                                <strong>${eq.nombre}</strong>
                                 <small class="d-block opacity-75"><i class="fas fa-door-open me-1"></i>${eq.salon}</small>
-                                <button class="btn-devolver" onclick="devolverEquipo(${est.id_usuario}, ${eq.id_equipo})" title="Devolver">
+                                <button class="btn-devolver" onclick="event.stopPropagation(); devolverEquipo(${est.id_usuario}, ${eq.id_equipo})" title="Devolver">
                                     <i class="fas fa-undo"></i>
                                 </button>
                             </span>
                         `).join('') : '<small class="text-muted"><i class="fas fa-inbox me-1"></i>Sin equipos</small>'}
                     </div>
                     <div class="col-12 col-md-3 text-md-end">
-                        <button class="btn btn-success btn-sm w-100 w-md-auto" onclick="abrirModalAsignacion(${est.id_usuario}, '${est.nombre_completo}')">
+                        <button class="btn btn-success btn-sm w-100 w-md-auto" onclick="abrirModalAsignacion(${est.id_usuario}, '${est.nombre_completo.replace(/'/g, "\\'")}')">
                             <i class="fas fa-plus me-1"></i>Asignar
                         </button>
                     </div>
@@ -628,7 +644,10 @@ function mostrarEstudiantes() {
 // --- Paginación Genérica ---
 function generarPaginacion(tipo, pagina, total) {
     const ul = document.getElementById(`${tipo}-pagination`);
-    if (total <= 1) { ul.innerHTML = ''; return; }
+    if (!ul || total <= 1) { 
+        if (ul) ul.innerHTML = ''; 
+        return; 
+    }
 
     let html = `<li class="page-item ${pagina === 1 ? 'disabled' : ''}">
         <a class="page-link" href="#" onclick="cambiarPagina('${tipo}', ${pagina - 1}); return false;">Previous</a>
@@ -662,40 +681,68 @@ function cambiarPagina(tipo, pagina) {
         total = Math.ceil(estudiantes.length / porPagina);
         if (pagina < 1 || pagina > total) return;
         paginaEstudiantes = pagina;
-        mostrarEstudiantes();  // <-- Ahora usa la variable global
+        mostrarEstudiantes();
     }
 }
 
-// --- Resto de funciones (sin cambios) ---
+// --- Modal Asignación ---
 async function abrirModalAsignacion(id, nombre) {
     estudianteSeleccionado = id;
+    equipoSeleccionado = null;
     document.getElementById('estudiante-seleccionado-nombre').textContent = nombre;
     document.getElementById('observaciones-asignacion').value = '';
     document.getElementById('btn-confirmar-asignacion').disabled = true;
+    
     await cargarEquiposDisponibles();
-    new bootstrap.Modal(document.getElementById('modalAsignarEquipo')).show();
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalAsignarEquipo'));
+    modal.show();
 }
 
 async function cargarEquiposDisponibles() {
+    const container = document.getElementById('equipos-disponibles-container');
+    container.innerHTML = `<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i><p class="mt-3 text-muted">Cargando equipos...</p></div>`;
+    
     try {
-        const res = await fetch(`/profesor/api/equipos-disponibles?curso_id=${cursoSeleccionado}`);
-        if (!res.ok) throw new Error('HTTP error');
-        const data = await res.json();
-        if (data.success) {
-            todosLosEquipos = data.equipos;
-            const salones = [...new Set(data.equipos.map(e => e.salon))].sort();
-            const select = document.getElementById('filtro-salon');
-            select.innerHTML = '<option value="">Todos</option>' + salones.map(s => `<option>${s}</option>`).join('');
-            mostrarEquiposDisponibles(data.equipos);
+        const url = cursoSeleccionado ? 
+            `/profesor/api/equipos-disponibles?curso_id=${cursoSeleccionado}` : 
+            `/profesor/api/equipos-disponibles`;
+            
+        const res = await fetch(url);
+        
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
         }
-    } catch (e) { mostrarError('Error al cargar equipos'); }
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            todosLosEquipos = data.equipos || [];
+            const salones = [...new Set(todosLosEquipos.map(e => e.salon))].sort();
+            const select = document.getElementById('filtro-salon');
+            select.innerHTML = '<option value="">Todos los salones</option>' + 
+                salones.map(s => `<option value="${s}">${s}</option>`).join('');
+            mostrarEquiposDisponibles(todosLosEquipos);
+        } else {
+            mostrarError(data.error || 'Error al cargar equipos');
+            container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${data.error}</p></div>`;
+        }
+    } catch (e) { 
+        console.error('Error cargando equipos:', e);
+        mostrarError('Error al cargar equipos');
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error de conexión</p></div>`;
+    }
 }
 
 function mostrarEquiposDisponibles(equipos) {
     const container = document.getElementById('equipos-disponibles-container');
-    container.innerHTML = equipos.length === 0 ? `
-        <div class="empty-state"><i class="fas fa-inbox"></i><p>No hay equipos disponibles</p></div>
-    ` : equipos.map(eq => `
+    
+    if (!equipos || equipos.length === 0) {
+        container.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No hay equipos disponibles en este curso</p></div>`;
+        return;
+    }
+    
+    container.innerHTML = equipos.map(eq => `
         <div class="equipo-disponible" onclick="seleccionarEquipo(${eq.id_equipo})" data-equipo-id="${eq.id_equipo}">
             <div class="row align-items-center g-2">
                 <div class="col-12 col-md-4">
@@ -723,11 +770,11 @@ function seleccionarEquipo(id) {
     equipoSeleccionado = id;
     document.querySelectorAll('.equipo-disponible').forEach(e => {
         e.classList.remove('selected');
-        e.querySelector('.fa-check-circle').style.opacity = '0';
     });
     const el = document.querySelector(`[data-equipo-id="${id}"]`);
-    el.classList.add('selected');
-    el.querySelector('.fa-check-circle').style.opacity = '1';
+    if (el) {
+        el.classList.add('selected');
+    }
     document.getElementById('btn-confirmar-asignacion').disabled = false;
 }
 
@@ -744,9 +791,15 @@ function filtrarEquipos() {
 }
 
 async function confirmarAsignacion() {
+    if (!estudianteSeleccionado || !equipoSeleccionado) {
+        mostrarError('Debe seleccionar un estudiante y un equipo');
+        return;
+    }
+
     const btn = document.getElementById('btn-confirmar-asignacion');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Asignando...';
+    
     try {
         const res = await fetch('/profesor/api/asignar-equipo', {
             method: 'POST',
@@ -757,40 +810,59 @@ async function confirmarAsignacion() {
                 observaciones: document.getElementById('observaciones-asignacion').value
             })
         });
+        
         const data = await res.json();
+        
         if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('modalAsignarEquipo')).hide();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalAsignarEquipo'));
+            modal.hide();
             await cargarEstudiantes(cursoSeleccionado);
-            mostrarExito(data.message || 'Equipo asignado');
-        } else mostrarError(data.error);
-    } catch (e) { mostrarError('Error de conexión'); }
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-check me-1"></i>Asignar Equipo';
+            mostrarExito(data.message || 'Equipo asignado correctamente');
+        } else {
+            mostrarError(data.error || 'Error al asignar equipo');
+        }
+    } catch (e) { 
+        console.error('Error asignando equipo:', e);
+        mostrarError('Error de conexión');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Asignar Equipo';
+    }
 }
 
 async function devolverEquipo(estId, eqId) {
     if (!confirm('¿Devolver este equipo?')) return;
+    
     try {
         const res = await fetch('/profesor/api/devolver-equipo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ estudiante_id: estId, equipo_id: eqId })
         });
+        
         const data = await res.json();
+        
         if (data.success) {
             await cargarEstudiantes(cursoSeleccionado);
             mostrarExito(data.message || 'Equipo devuelto');
-        } else mostrarError(data.error);
-    } catch (e) { mostrarError('Error al devolver'); }
+        } else {
+            mostrarError(data.error || 'Error al devolver equipo');
+        }
+    } catch (e) { 
+        console.error('Error devolviendo equipo:', e);
+        mostrarError('Error al devolver');
+    }
 }
 
 async function abrirModalEquiposDisponibles() {
     const modal = new bootstrap.Modal(document.getElementById('modalEquiposDisponibles'));
     modal.show();
     const tbody = document.getElementById('tabla-equipos-disponibles');
+    
     try {
         const res = await fetch('/profesor/api/equipos-disponibles');
         const data = await res.json();
+        
         tbody.innerHTML = data.success && data.equipos.length > 0 ? data.equipos.map(eq => `
             <tr>
                 <td><code>${eq.id_referencia || 'N/A'}</code></td>
@@ -801,6 +873,7 @@ async function abrirModalEquiposDisponibles() {
             </tr>
         `).join('') : `<tr><td colspan="5" class="text-center py-4 text-muted">No hay equipos disponibles</td></tr>`;
     } catch (e) {
+        console.error('Error cargando equipos disponibles:', e);
         tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error de conexión</td></tr>`;
     }
 }

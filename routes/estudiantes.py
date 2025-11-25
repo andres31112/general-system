@@ -1416,7 +1416,6 @@ def mi_equipo():
 @estudiante_bp.route('/api/mi-equipo', methods=['GET'])
 @login_required
 def api_mi_equipo():
-
     try:
         from controllers.models import AsignacionEquipo, Equipo, Mantenimiento, Incidente
         
@@ -1429,20 +1428,28 @@ def api_mi_equipo():
                 'error': 'Usuario no encontrado'
             }), 404
         
-        asignacion = AsignacionEquipo.query.filter_by(
+        # ✅ CAMBIO: Obtener TODAS las asignaciones activas (no solo la primera)
+        asignaciones = AsignacionEquipo.query.filter_by(
             estudiante_id=user_id,
             estado_asignacion='activa'
-        ).first()
+        ).all()  # Cambiar .first() por .all()
         
-        if not asignacion:
+        if not asignaciones:
             return jsonify({
                 'success': False,
-                'message': 'No tienes equipo asignado actualmente'
+                'message': 'No tienes equipos asignados actualmente'
             }), 200
         
-        equipo = asignacion.equipo
+        # ✅ Procesar todos los equipos
+        equipos_data = []
         
-        if equipo:
+        for asignacion in asignaciones:
+            equipo = asignacion.equipo
+            
+            if not equipo:
+                continue
+            
+            # Obtener incidentes activos para este equipo
             incidentes_activos = Incidente.query.filter_by(
                 equipo_id=equipo.id_equipo,
                 estado='reportado'
@@ -1460,6 +1467,18 @@ def api_mi_equipo():
                     'estado': inc.estado
                 })
             
+            # Mantenimientos
+            ultimo_mantenimiento = Mantenimiento.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='realizado'
+            ).order_by(Mantenimiento.fecha_realizada.desc()).first()
+            
+            proximo_mantenimiento = Mantenimiento.query.filter_by(
+                equipo_id=equipo.id_equipo,
+                estado='pendiente'
+            ).order_by(Mantenimiento.fecha_programada.asc()).first()
+            
+            # Construir objeto del equipo
             equipo_data = {
                 'id_equipo': equipo.id_equipo,
                 'id_referencia': equipo.id_referencia,
@@ -1474,39 +1493,23 @@ def api_mi_equipo():
                 'observaciones': equipo.observaciones or '',
                 'salon': equipo.salon.nombre if equipo.salon else 'N/A',
                 'sede_nombre': equipo.salon.sede.nombre if equipo.salon and equipo.salon.sede else 'N/A',
-                
                 'fecha_asignacion': asignacion.fecha_asignacion.strftime('%d %b %Y') if asignacion.fecha_asignacion else 'N/A',
-                'fecha_adquisicion': asignacion.fecha_asignacion.strftime('%d %b %Y') if asignacion.fecha_asignacion else 'N/A',
-                
+                'fecha_adquisicion': equipo.fecha_adquisicion.strftime('%d %b %Y') if equipo.fecha_adquisicion else 'N/A',
                 'observaciones_asignacion': asignacion.observaciones or '',
-                
                 'tiene_incidentes': tiene_incidentes,
                 'total_incidentes': len(incidentes_activos),
-                'incidentes': incidentes_info
+                'incidentes': incidentes_info,
+                'ultima_revision': ultimo_mantenimiento.fecha_realizada.strftime('%d %b %Y') if ultimo_mantenimiento and ultimo_mantenimiento.fecha_realizada else None,
+                'proximo_mantenimiento': proximo_mantenimiento.fecha_programada.strftime('%d %b %Y') if proximo_mantenimiento and proximo_mantenimiento.fecha_programada else None
             }
             
-            ultimo_mantenimiento = Mantenimiento.query.filter_by(
-                equipo_id=equipo.id_equipo,
-                estado='realizado'
-            ).order_by(Mantenimiento.fecha_realizada.desc()).first()
-            
-            proximo_mantenimiento = Mantenimiento.query.filter_by(
-                equipo_id=equipo.id_equipo,
-                estado='pendiente'
-            ).order_by(Mantenimiento.fecha_programada.asc()).first()
-            
-            equipo_data['ultima_revision'] = ultimo_mantenimiento.fecha_realizada.strftime('%d %b %Y') if ultimo_mantenimiento and ultimo_mantenimiento.fecha_realizada else None
-            equipo_data['proximo_mantenimiento'] = proximo_mantenimiento.fecha_programada.strftime('%d %b %Y') if proximo_mantenimiento and proximo_mantenimiento.fecha_programada else None
-            
-            return jsonify({
-                'success': True,
-                'equipo': equipo_data
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Error al obtener información del equipo'
-            }), 500
+            equipos_data.append(equipo_data)
+        
+        return jsonify({
+            'success': True,
+            'equipos': equipos_data,
+            'total': len(equipos_data)
+        }), 200
             
     except Exception as e:
         print(f"ERROR en api_mi_equipo: {str(e)}")
